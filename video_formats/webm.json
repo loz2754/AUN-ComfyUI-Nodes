@@ -1,0 +1,9 @@
+{
+    "main_pass": [
+        "-n",
+        "-c:v", "libvpx-vp9",
+        "-b:v", "0",
+        "-pix_fmt", "yuv420p"
+    ],
+    "extension": "webm"
+}
