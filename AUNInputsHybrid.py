@@ -175,7 +175,10 @@ class AUNInputsHybrid:
                 ),
                 "clip_type": (
                     clip_type_choices,
-                    clip_type_meta,
+                    {
+                        "default": clip_type_meta.get("default", "stable_diffusion"),
+                        "tooltip": "Clip architecture to use when loading a standalone diffusion model.",
+                    },
                 ),
                 "vae_name": (
                     vae_files,

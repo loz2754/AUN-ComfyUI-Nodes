@@ -342,18 +342,90 @@ def _apply_patch(module: Any):
             optional = dict(base_inputs.get("optional", {}))
             optional.update(
                 {
-                    "path_override": ("STRING", {"default": "", "tooltip": "Absolute or relative directory to save into. Leave empty to use the VHS folder selection."}),
-                    "filename_override": ("STRING", {"default": "", "tooltip": "Literal filename (without extension). Leave empty to reuse VHS prefix."}),
+                    # Many workflows are saved without these fields; making them socket-only avoids
+                    # ComfyUI showing transient "undefined" widget values when loading older JSON.
+                    "path_override": (
+                        "STRING",
+                        {
+                            "default": "",
+                            "forceInput": True,
+                            "tooltip": "Absolute or relative directory to save into. Leave empty to use the VHS folder selection.",
+                        },
+                    ),
+                    "filename_override": (
+                        "STRING",
+                        {
+                            "default": "",
+                            "forceInput": True,
+                            "tooltip": "Literal filename (without extension). Leave empty to reuse VHS prefix.",
+                        },
+                    ),
                     "save_png": ("BOOLEAN", {"default": True, "tooltip": "Save a PNG file containing the workflow metadata."}),
                     "apply_aun_tokens": ("BOOLEAN", {"default": False, "tooltip": "Apply AUN token replacements (%seed%, %steps%, etc.) when renaming."}),
-                    "seed_value": ("INT", {"default": 0, "min": 0, "max": 0xFFFFFFFFFFFFFFFF, "tooltip": "Value for %seed% token."}),
-                    "steps_value": ("INT", {"default": 0, "min": 0, "tooltip": "Value for %steps% token."}),
-                    "cfg_value": ("FLOAT", {"default": 0.0, "tooltip": "Value for %cfg% token."}),
-                    "model_name": ("STRING", {"default": "", "multiline": False, "tooltip": "Value for %model% token."}),
-                    "sampler_name_value": ("STRING", {"default": "", "multiline": False, "tooltip": "Value for %sampler_name% token."}),
-                    "scheduler_value": ("STRING", {"default": "", "multiline": False, "tooltip": "Value for %scheduler% token."}),
-                    "short_manual_model_name": ("STRING", {"default": "", "multiline": False, "tooltip": "Manual override for %model_short%."}),
-                    "loras_delimiter": ("STRING", {"default": ";", "tooltip": "Delimiter for %loras% token."}),
+                    "seed_value": (
+                        "INT",
+                        {
+                            "default": 0,
+                            "min": 0,
+                            # Keep this within JS safe integer range to avoid UI oddities.
+                            "max": 0xFFFFFFFF,
+                            "forceInput": True,
+                            "tooltip": "Value for %seed% token.",
+                        },
+                    ),
+                    "steps_value": (
+                        "INT",
+                        {
+                            "default": 0,
+                            "min": 0,
+                            "forceInput": True,
+                            "tooltip": "Value for %steps% token.",
+                        },
+                    ),
+                    "cfg_value": (
+                        "FLOAT",
+                        {
+                            "default": 0.0,
+                            "forceInput": True,
+                            "tooltip": "Value for %cfg% token.",
+                        },
+                    ),
+                    "model_name": (
+                        "STRING",
+                        {
+                            "default": "",
+                            "multiline": False,
+                            "forceInput": True,
+                            "tooltip": "Value for %model% token.",
+                        },
+                    ),
+                    "sampler_name_value": (
+                        "STRING",
+                        {
+                            "default": "",
+                            "multiline": False,
+                            "forceInput": True,
+                            "tooltip": "Value for %sampler_name% token.",
+                        },
+                    ),
+                    "scheduler_value": (
+                        "STRING",
+                        {
+                            "default": "",
+                            "multiline": False,
+                            "forceInput": True,
+                            "tooltip": "Value for %scheduler% token.",
+                        },
+                    ),
+                    "short_manual_model_name": (
+                        "STRING",
+                        {
+                            "default": "",
+                            "multiline": False,
+                            "forceInput": True,
+                            "tooltip": "Manual override for %model_short%.",
+                        },
+                    ),
                     "sidecar_format": (SIDE_CAR_OPTIONS, {"default": SIDE_CAR_OPTIONS[0], "tooltip": "Select how to emit sidecar metadata."}),
                 }
             )
@@ -388,7 +460,6 @@ def _apply_patch(module: Any):
             sampler_name_value: str = "",
             scheduler_value: str = "",
             short_manual_model_name: str = "",
-            loras_delimiter: str = "+",
             sidecar_format: str = SIDE_CAR_OPTIONS[0],
             **kwargs,
         ):
@@ -402,7 +473,7 @@ def _apply_patch(module: Any):
                         prompt,
                         extra_pnginfo,
                         "full",
-                        loras_delimiter if isinstance(loras_delimiter, str) else "+",
+                        ";",
                     )
                 except Exception:
                     loras_token = ""

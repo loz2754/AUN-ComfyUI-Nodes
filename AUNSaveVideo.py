@@ -9,7 +9,6 @@ from .misc import *
 from .utilsj import *
 
 import copy
-import cv2
 import json
 import math
 import random
@@ -17,8 +16,17 @@ import re
 import shutil
 import subprocess
 import torch
-import piexif
-import piexif.helper
+
+try:
+    import cv2  # type: ignore
+except Exception:  # pragma: no cover
+    cv2 = None
+
+try:
+    import piexif  # type: ignore
+    import piexif.helper  # type: ignore
+except Exception:  # pragma: no cover
+    piexif = None
 
 from .model_utils import (
     get_short_name as get_model_short_name_common,
@@ -47,11 +55,17 @@ from uuid import uuid4
 FFMPEG_PATH = shutil.which("ffmpeg")
 if FFMPEG_PATH is None:
     logger.info("ffmpeg could not be found. Using ffmpeg from imageio-ffmpeg.")
-    from imageio_ffmpeg import get_ffmpeg_exe
     try:
-        FFMPEG_PATH = get_ffmpeg_exe()
-    except:
-        logger.warning("ffmpeg could not be found. Outputs that require it have been disabled")
+        from imageio_ffmpeg import get_ffmpeg_exe  # type: ignore
+
+        try:
+            FFMPEG_PATH = get_ffmpeg_exe()
+        except Exception:
+            logger.warning("ffmpeg could not be found. Outputs that require it have been disabled")
+    except Exception:
+        logger.warning(
+            "imageio-ffmpeg is not installed and ffmpeg is not on PATH. Outputs that require it have been disabled"
+        )
 
 class AUNSaveVideo():
     '''
@@ -70,7 +84,7 @@ class AUNSaveVideo():
 
         return {
             "required": {
-                "images": ("IMAGE",),
+                "images": ("IMAGE", {"tooltip": "Image frames to encode (batch)."}),
                 "frame_rate": ("INT", {"default": 8, "min": 1, "step": 1, "tooltip": "Frames per second. For animated images sets frame delay; for videos sets FPS."},),
                 "loop_count": ("INT", {"default": 0, "min": 0, "max": 100, "step": 1, "tooltip": "Animated images only (GIF/APNG/WebP). 0 = loop forever; N = repeat N times. Ignored for video outputs."}),
                 "filename_format": ("STRING", {"default": "Comfy", "tooltip": "Output name template. Supports tokens: %seed%, %steps%, %cfg%, %model%, %model_short%, %sampler_name%, %scheduler%, %loras%. Missing values become empty. Example: Comfy_%model_short%_s%steps%_c%cfg%_seed%seed%_%loras%"}),
@@ -726,6 +740,18 @@ class AUNSaveVideo():
         return v.strip()
 
     @staticmethod
+    def _ensure_optional_dependencies() -> None:
+        # Keep the pack importable even without these installed; fail only when the node executes.
+        if cv2 is None:
+            raise RuntimeError(
+                "AUN Save Video requires OpenCV (cv2). Install dependencies via ComfyUI-Manager (Install requirements) or run 'pip install -r custom_nodes/AUN/requirements.txt'."
+            )
+        if piexif is None:
+            raise RuntimeError(
+                "AUN Save Video requires piexif for metadata handling. Install dependencies via ComfyUI-Manager (Install requirements) or run 'pip install -r custom_nodes/AUN/requirements.txt'."
+            )
+
+    @staticmethod
     def determine_file_name(filename, full_output_folder, output_format, seed_value=0, steps_value=None, cfg_value=None, model_name=None, sampler_name_value=None, scheduler_value=None, short_manual_model_name: str = "", loras_value=None):
 
         format_type, format_ext_mime = output_format.split("/")
@@ -863,6 +889,8 @@ class AUNSaveVideo():
     sidecar_format="none",
         prompt=None,
     ):
+
+        AUNSaveVideo._ensure_optional_dependencies()
 
     # Autofill removed by user request: tokens remain empty when inputs are not provided
 

@@ -1,18 +1,17 @@
-# AUN Group Muter
+# AUNSetMuteStateGroup — Group Muter (Multi)
 
-Purpose: Toggle mute state (active vs muted / mode 2) for nodes contained in one or more groups.
+Purpose: Toggle mute state (active vs muted / node mode 2) for all nodes contained in one or more ComfyUI Groups.
 
-## Variants
+## Inputs
 
-- `AUNSetMuteStateGroupSingle` — supply a `group_title` and use the switch (`Active 🟢` / `Mute 🔇`) to silence that slice of the graph.
-- `AUNSetMuteStateGroup` — multi-toggle UI with an "All Groups" toggle plus one toggle per group. The UI keeps its state aligned with the canvas so you'll always see which groups are currently muted.
+- `group_titles` (STRING): Hidden storage for selected group titles (comma-separated). Use the node UI toggles to edit.
 
 ## Behavior
-- When a toggle is OFF, nodes inside the group are muted (mode 2) but connections remain for fast re-activation.
-- When ON, nodes return to normal execution mode.
-- Multi variant writes the selected titles into the hidden `group_titles` field for serialization; use the UI to edit selections.
 
-## Tips
-- Use muting when you want to keep graph wiring intact without rerouting (e.g., alternate samplers or pre/post chains).
-- Pair with the multi bypass/collapser nodes to build control panels that manage visibility and execution together.
-- For advanced batch operations, see `AUNSetMuteStateGroupAdvanced`.
+- Toggle ON (🟢): nodes in the group are set to Active (`mode = 0`).
+- Toggle OFF (🔴): nodes in the group are set to Muted (`mode = 2`).
+- The UI shows an "All Groups" toggle plus one toggle per group title, and auto-refreshes as groups are added/renamed.
+
+## Notes
+
+- Core behavior is applied instantly in the frontend JavaScript; the Python node remains for workflow serialization/compatibility.

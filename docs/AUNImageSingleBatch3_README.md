@@ -24,6 +24,8 @@ Purpose: Load images from uploads or batch process folders with multiple selecti
   - **For fixed/range modes**: Comma-separated indices or ranges (e.g., `2,3,4-7,10`)
   - **For search mode**: Search pattern supporting multiple formats:
 
+- `max_num_words` (INT): When > 0, limits both filename outputs to the first N words.
+
 ## Search Pattern Examples:
 
 ### Wildcard Patterns:
@@ -46,7 +48,7 @@ Purpose: Load images from uploads or batch process folders with multiple selecti
 ## Outputs:
 - `image` (IMAGE): Loaded image tensor
 - `filename` (STRING): Original filename without extension
-- `cleaned filename` (STRING): Sanitized filename suitable for output paths
+- `cleaned filename` (STRING): Sanitized filename suitable for output paths (symbols removed, whitespace normalized, and optional trailing numeric counter trimmed).
 
 ## Usage Examples:
 

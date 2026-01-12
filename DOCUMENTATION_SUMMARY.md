@@ -1,5 +1,8 @@
 # AUN Nodes Documentation Implementation Summary
 
+> Maintainer note: this file is a running status/coverage tracker for documentation work.
+> End users should start with `README.md` and the relevant pages in `docs/`.
+
 ## ✅ Completed Documentation Enhancements
 
 ### 📋 Strategy & Planning

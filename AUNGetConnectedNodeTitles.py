@@ -9,16 +9,33 @@ any_type = AlwaysEqualProxy("*")
 class AUNGetConnectedNodeTitles:
     @classmethod
     def INPUT_TYPES(cls):
-        inputs = {
+        return {
             "required": {
-                "index": ("INT", {"default": 1, "min": 1, "max": 10, "step": 1, "tooltip": "Select which node title to output as 'selected_title'."}),
+                "index": (
+                    "INT",
+                    {
+                        "default": 1,
+                        "min": 1,
+                        "max": 10,
+                        "step": 1,
+                        "tooltip": "Select which node title to output as 'selected_title'.",
+                    },
+                ),
             },
             "optional": {
-                **{f"node_{i}": (any_type, {"default": f"node {i}"}) for i in range(1, 11)}
+                "node_1": (any_type, {"default": "node 1", "tooltip": "Connect any node to read its title from the workflow."}),
+                "node_2": (any_type, {"default": "node 2", "tooltip": "Connect any node to read its title from the workflow."}),
+                "node_3": (any_type, {"default": "node 3", "tooltip": "Connect any node to read its title from the workflow."}),
+                "node_4": (any_type, {"default": "node 4", "tooltip": "Connect any node to read its title from the workflow."}),
+                "node_5": (any_type, {"default": "node 5", "tooltip": "Connect any node to read its title from the workflow."}),
+                "node_6": (any_type, {"default": "node 6", "tooltip": "Connect any node to read its title from the workflow."}),
+                "node_7": (any_type, {"default": "node 7", "tooltip": "Connect any node to read its title from the workflow."}),
+                "node_8": (any_type, {"default": "node 8", "tooltip": "Connect any node to read its title from the workflow."}),
+                "node_9": (any_type, {"default": "node 9", "tooltip": "Connect any node to read its title from the workflow."}),
+                "node_10": (any_type, {"default": "node 10", "tooltip": "Connect any node to read its title from the workflow."}),
             },
-            "hidden": {"unique_id": "UNIQUE_ID", "extra_pnginfo": "EXTRA_PNGINFO"}
+            "hidden": {"unique_id": "UNIQUE_ID", "extra_pnginfo": "EXTRA_PNGINFO"},
         }
-        return inputs
 
     RETURN_TYPES = tuple("STRING" for _ in range(10)) + ("STRING",)
     RETURN_NAMES = tuple(f"label{i}_out" for i in range(1, 11)) + ("selected_title",)

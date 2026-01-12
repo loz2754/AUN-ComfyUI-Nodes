@@ -5,7 +5,6 @@ const MIN_INPUTS = 2;
 const VALUE_PREFIX = "text";
 const NODE_WIDGET_BOUNDARIES = {
     AUNTextIndexSwitch: ["index"],
-    AUNTextIndexSwitch3: ["index"],
     AUNRandomTextIndexSwitch: ["minimum", "maximum", "select"],
 };
 const TEXT_SWITCH_CLASSES = new Set(Object.keys(NODE_WIDGET_BOUNDARIES));

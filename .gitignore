@@ -30,3 +30,6 @@ web/build/
 
 # ComfyUI / runtime artifacts
 *.safetensors.tmp
+
+# Local user config (do not publish)
+predefined_paths.json

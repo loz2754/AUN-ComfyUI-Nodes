@@ -2,7 +2,6 @@
 import logging
 from .AUNAddToPrompt import AUNAddToPrompt
 from .AUNAny import AUNAny
-from .AUNAnyIndexSwitch import AUNAnyIndexSwitch
 from .AUNBookmark import AUNBookmark
 from .AUNBoolean import AUNBoolean
 from .AUNCFG import AUNCFG
@@ -15,7 +14,6 @@ from .AUNModelNamePass import AUNModelNamePass
 from .AUNModelShorten import AUNModelShorten
 from .AUNGetActiveNodeTitle import AUNGetActiveNodeTitle
 from .AUNGetConnectedNodeTitles import AUNGetConnectedNodeTitles
-from .AUNGetNodeTitles import AUNGetNodeTitles
 from .AUNGraphScraper import AUNGraphScraper
 from .AUNImageLoadResize import AUNImageLoadResize
 from .AUNImageResize import AUNImageResize
@@ -24,7 +22,6 @@ from .AUNImg2Img import AUNImg2Img
 from .AUNImgLoader import AUNImgLoader
 from .AUNInputs import AUNInputs
 from .AUNInputsHybrid import AUNInputsHybrid
-from .AUNIPadapterInputs import AUNIPadapterInputs
 from .AUNKSamplerPlusv3 import AUNKSamplerPlusv3
 from .AUNMultiBypassIndex import AUNMultiBypassIndex
 from .AUNMultiGroupUniversal import AUNMultiGroupUniversal
@@ -50,8 +47,6 @@ from .AUNShowTextWithTitle import AUNShowTextWithTitle
 from .AUNSingleLabelSwitch import AUNSingleLabelSwitch
 from .AUNStrip import AUNStrip
 from .AUNSwitchFloat import AUNSwitchFloat
-from .AUNSwitchImageOutput import AUNSwitchImageOutput
-from .AUNSwitchImageOutputV2 import AUNSwitchImageOutputV2
 from .AUNTextIndexSwitch import AUNTextIndexSwitch
 from .AUNTextIndexSwitch3 import AUNTextIndexSwitch3
 from .AUNTitleImagePreview import AUNTitleImagePreview
@@ -68,7 +63,6 @@ WEB_DIRECTORY = "./web"
 NODE_CLASS_MAPPINGS = {
     "AUNAddToPrompt": AUNAddToPrompt,
     "AUNAny": AUNAny,
-    "AUNAnyIndexSwitch": AUNAnyIndexSwitch,
     "AUNBookmark": AUNBookmark,
     "AUNBoolean": AUNBoolean,
     "AUNCFG": AUNCFG,
@@ -81,7 +75,6 @@ NODE_CLASS_MAPPINGS = {
     "AUNModelShorten": AUNModelShorten,
     "AUNGetActiveNodeTitle": AUNGetActiveNodeTitle,
     "AUNGetConnectedNodeTitles": AUNGetConnectedNodeTitles,
-    "AUNGetNodeTitles": AUNGetNodeTitles,
     "AUNGraphScraper": AUNGraphScraper,
     "AUNImageLoadResize": AUNImageLoadResize,
     "AUNImageResize": AUNImageResize,
@@ -90,7 +83,6 @@ NODE_CLASS_MAPPINGS = {
     "AUNImgLoader": AUNImgLoader,
     "AUNInputs": AUNInputs,
     "AUNInputsHybrid": AUNInputsHybrid,
-    "AUNIPadapterInputs": AUNIPadapterInputs,
     "AUNKSamplerPlusv3": AUNKSamplerPlusv3,
     "AUNMultiBypassIndex": AUNMultiBypassIndex,
     "AUNMultiGroupUniversal": AUNMultiGroupUniversal,
@@ -116,8 +108,6 @@ NODE_CLASS_MAPPINGS = {
     "AUNSingleLabelSwitch": AUNSingleLabelSwitch,
     "AUNStrip": AUNStrip,
     "AUNSwitchFloat": AUNSwitchFloat,
-    "AUNSwitchImageOutput": AUNSwitchImageOutput,
-    "AUNSwitchImageOutputV2": AUNSwitchImageOutputV2,
     "AUNTextIndexSwitch": AUNTextIndexSwitch,
     "AUNTextIndexSwitch3": AUNTextIndexSwitch3,
     "AUNTitleImagePreview": AUNTitleImagePreview,
@@ -129,7 +119,6 @@ NODE_CLASS_MAPPINGS = {
 NODE_DISPLAY_NAME_MAPPINGS = {
     "AUNAddToPrompt": "Add-To-Prompt",
     "AUNAny": "Any",
-    "AUNAnyIndexSwitch": "Any Index Switch",
     "AUNBookmark": "AUN Bookmark",
     "AUNBoolean": "Boolean",
     "AUNCFG": "CFG Selector",
@@ -142,7 +131,6 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "AUNModelShorten": "Model Name Shorten",
     "AUNGetActiveNodeTitle": "Get Active Node Title",
     "AUNGetConnectedNodeTitles": "Get Connected Node Titles",
-    "AUNGetNodeTitles": "Get Node Titles",
     "AUNImageLoadResize": "Load & Resize Image",
     "AUNImageResize": "Resize Image",
     "AUNImageSingleBatch3": "Load Image Single/Batch 3",
@@ -150,7 +138,6 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "AUNImgLoader": "Image Loader",
     "AUNInputs": "Inputs",
     "AUNInputsHybrid": "Inputs Hybrid",
-    "AUNIPadapterInputs": "IPadapter Inputs",
     "AUNKSamplerPlusv3": "KSampler Plus",
     "AUNMultiBypassIndex": "Multi Bypass Index",
     "AUNMultiGroupUniversal": "AUN Group Controller",
@@ -176,8 +163,6 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "AUNSingleLabelSwitch": "Single Label Switch",
     "AUNStrip": "Strip",
     "AUNSwitchFloat": "Switch Float",
-    "AUNSwitchImageOutput": "Switch Image Output",
-    "AUNSwitchImageOutputV2": "Switch Image Output V2",
     "AUNTextIndexSwitch": "Text Index Switch",
     "AUNTextIndexSwitch3": "Text Index Switch 3",
     "AUNTitleImagePreview": "Image Preview With Title",

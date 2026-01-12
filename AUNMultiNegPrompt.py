@@ -3,17 +3,17 @@ class AUNMultiNegPrompt:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "negative1": ("STRING", {"default": "negative 1", "multiline": True}),
-                "negative2": ("STRING", {"default": "negative 2", "multiline": True}),
-                "negative3": ("STRING", {"default": "negative 3", "multiline": True}),
-                "negative4": ("STRING", {"default": "negative 4", "multiline": True}),
-                "negative5": ("STRING", {"default": "negative 5", "multiline": True}),
-                "negative6": ("STRING", {"default": "negative 6", "multiline": True}),
-                "negative7": ("STRING", {"default": "negative 7", "multiline": True}),
-                "negative8": ("STRING", {"default": "negative 8", "multiline": True}),
-                "negative9": ("STRING", {"default": "negative 9", "multiline": True}),
-                "negative10": ("STRING", {"default": "negative 10", "multiline": True}),
-                "which_negative": ("INT", {"default": 1, "min": 1, "max": 10, "step": 1})
+                "negative1": ("STRING", {"default": "negative 1", "multiline": True, "tooltip": "Negative prompt option 1."}),
+                "negative2": ("STRING", {"default": "negative 2", "multiline": True, "tooltip": "Negative prompt option 2."}),
+                "negative3": ("STRING", {"default": "negative 3", "multiline": True, "tooltip": "Negative prompt option 3."}),
+                "negative4": ("STRING", {"default": "negative 4", "multiline": True, "tooltip": "Negative prompt option 4."}),
+                "negative5": ("STRING", {"default": "negative 5", "multiline": True, "tooltip": "Negative prompt option 5."}),
+                "negative6": ("STRING", {"default": "negative 6", "multiline": True, "tooltip": "Negative prompt option 6."}),
+                "negative7": ("STRING", {"default": "negative 7", "multiline": True, "tooltip": "Negative prompt option 7."}),
+                "negative8": ("STRING", {"default": "negative 8", "multiline": True, "tooltip": "Negative prompt option 8."}),
+                "negative9": ("STRING", {"default": "negative 9", "multiline": True, "tooltip": "Negative prompt option 9."}),
+                "negative10": ("STRING", {"default": "negative 10", "multiline": True, "tooltip": "Negative prompt option 10."}),
+                "which_negative": ("INT", {"default": 1, "min": 1, "max": 10, "step": 1, "tooltip": "Select which negative prompt (1-10) to output."})
             }
         }
 

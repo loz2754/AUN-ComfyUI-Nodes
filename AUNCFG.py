@@ -8,7 +8,7 @@ class AUNCFG:
     def INPUT_TYPES(cls):
         return {"required": {"float": ("FLOAT", {
             "default": 2, "min": -2, "max": 100, "step": 0.1, "round": 0.1,
-            #"tooltip": "CFG (Classifier-Free Guidance) scale value. 7-12 typical for most models. Higher = more prompt adherence."
+            "tooltip": "CFG (Classifier-Free Guidance) scale value. Roughly 7-12 is typical for many models. Higher = stronger prompt adherence.",
         })}}
 
     def get_float(self, float):

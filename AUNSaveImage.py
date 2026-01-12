@@ -1,8 +1,11 @@
 import os
 from datetime import datetime
 import json
-import piexif
-import piexif.helper
+try:
+    import piexif  # type: ignore
+    import piexif.helper  # type: ignore
+except Exception:  # pragma: no cover
+    piexif = None
 from PIL import Image
 from PIL.PngImagePlugin import PngInfo
 from typing import Any, Dict
@@ -1567,8 +1570,12 @@ class AUNSaveImage:
                 img.save(full_file_path, pnginfo=png_info, optimize=True)
             else:
                 img.save(full_file_path, optimize=True, quality=95)
-                exif_bytes = piexif.dump({"Exif": {piexif.ExifIFD.UserComment: piexif.helper.UserComment.dump(comment, encoding="unicode")}})
-                piexif.insert(exif_bytes, full_file_path)
+                if piexif is not None:
+                    exif_bytes = piexif.dump({"Exif": {piexif.ExifIFD.UserComment: piexif.helper.UserComment.dump(comment, encoding="unicode")}})
+                    piexif.insert(exif_bytes, full_file_path)
+                else:
+                    # Still save the image; EXIF metadata requires piexif.
+                    pass
             
             saved_filenames.append(file_path)
 

@@ -3,7 +3,7 @@ import comfy.utils
 class AUNTextIndexSwitch3:
     @classmethod
     def INPUT_TYPES(cls):
-        inputs = {
+        return {
             "required": {
                 "index": ("INT", {"default": 1, "min": 1, "max": 10, "step": 1, "tooltip": "Selects which text input to output."}),
                 "text1": ("STRING", {"default": "", "multiline": True, "tooltip": "Input for index 1."}),
@@ -17,9 +17,8 @@ class AUNTextIndexSwitch3:
                 "text9": ("STRING", {"default": "", "multiline": True, "tooltip": "Input for index 9."}),
                 "text10": ("STRING", {"default": "", "multiline": True, "tooltip": "Input for index 10."}),
             },
-            "hidden": {"unique_id": "UNIQUE_ID", "extra_pnginfo": "EXTRA_PNGINFO"}
+            "hidden": {"unique_id": "UNIQUE_ID", "extra_pnginfo": "EXTRA_PNGINFO"},
         }
-        return inputs
 
     RETURN_TYPES = ("STRING", "STRING")
     RETURN_NAMES = ("text", "label")

@@ -157,7 +157,13 @@ class AUNImageSingleBatch3:
                     "default": "0",
                     "tooltip": "Multi-purpose field:\n• For fixed/range modes: Comma-separated indices or ranges (e.g., 2,3,4-7,10)\n• For search mode: Search pattern supporting wildcards (*,?,[]), regex, or simple text (e.g., 'portrait*', 'img_[0-9]+', '.*face.*')"
                 }),
-                "image_upload": (sorted(files), {"image_upload": True}),
+                "image_upload": (
+                    sorted(files),
+                    {
+                        "image_upload": True,
+                        "tooltip": "When source_mode is 'Single Image Upload', choose the file from the ComfyUI input directory.",
+                    },
+                ),
                 "max_num_words": ("INT", {
                     "default": 0, "min": 0, "max": 32, "step": 1,
                     "tooltip": "Maximum number of words to keep for both filename outputs. Set to 0 for no limit."

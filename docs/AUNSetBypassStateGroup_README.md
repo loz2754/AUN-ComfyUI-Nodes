@@ -1,18 +1,17 @@
-# AUN Group Bypasser
+# AUNSetBypassStateGroup — Group Bypasser (Multi)
 
-Purpose: Toggle bypass state (active vs bypassed) for every node contained in a ComfyUI group.
+Purpose: Toggle bypass state (active vs bypassed / node mode 4) for all nodes contained in one or more ComfyUI Groups.
 
-## Variants
+## Inputs
 
-- `AUNSetBypassStateGroupSingle` — one `group_title` input plus a single switch (`Active 🟢` vs `Bypass 🔴`). Perfect when you only need to flip one section from a button panel.
-- `AUNSetBypassStateGroup` — multi-select UI with an "All Groups" toggle and one toggle per group title. The hidden `group_titles` field stores the active list but the UI handles selection for you.
+- `group_titles` (STRING): Hidden storage for selected group titles (comma-separated). Use the node UI toggles to edit.
 
 ## Behavior
-- Toggling a group to OFF bypasses every node inside that group (nodes switch to mode 4).
-- Toggling to ON re-activates the nodes.
-- Multi variant keeps its toggle list synchronized with the actual canvas state so manual edits (collapsing/expanding nodes, changing modes elsewhere) reflect automatically.
 
-## Tips
-- Pair single and multi variants in dashboards (single for critical sections, multi for ad-hoc routing).
-- Combine with `AUNSetBypassStateGroupAdvanced` when you need per-group presets or saved toggle sets.
-- Works alongside single-node controllers like `AUNSetBypassState` for fine-grained adjustments.
+- Toggle ON (🟢): nodes in the group are set to Active (`mode = 0`).
+- Toggle OFF (🔴): nodes in the group are set to Bypassed (`mode = 4`).
+- The UI shows an "All Groups" toggle plus one toggle per group title, and stays synchronized with the canvas.
+
+## Notes
+
+- Core behavior is applied instantly in the frontend JavaScript; the Python node remains for workflow serialization/compatibility.

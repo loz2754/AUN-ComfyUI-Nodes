@@ -44,7 +44,14 @@ class AUNRandomTextIndexSwitch:
             "hidden": {"unique_id": "UNIQUE_ID", "extra_pnginfo": "EXTRA_PNGINFO"}
         }
         for i in range(1, cls.MAX_INPUTS + 1):
-            inputs["optional"]["text%d" % i] = ("STRING", {"default": "", "forceInput": True})
+            inputs["optional"]["text%d" % i] = (
+                "STRING",
+                {
+                    "default": "",
+                    "forceInput": True,
+                    "tooltip": f"Text input {i}. Only the selected index is output.",
+                },
+            )
         return inputs
 
     RETURN_TYPES = ("STRING", "STRING", "INT")

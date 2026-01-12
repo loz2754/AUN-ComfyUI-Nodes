@@ -3,11 +3,11 @@ class TextSwitch2InputWithTextOutput:
 
     def INPUT_TYPES(cls):
         return {'required': {
-                             'text_a': ('STRING', {'multiline': False, "forceInput": False}),
-                             'label_a': ('STRING', {'default': 'Text A'}),
-                             'text_b': ('STRING', {'multiline': False, "forceInput": False}),
-                             'label_b': ('STRING', {'default': 'Text B'}),
-                             'choose': ('STRING', {'default': 'None'}),
+                             'text_a': ('STRING', {'multiline': False, "forceInput": False, 'tooltip': 'First text option.'}),
+                             'label_a': ('STRING', {'default': 'Text A', 'tooltip': 'Label used to select text_a.'}),
+                             'text_b': ('STRING', {'multiline': False, "forceInput": False, 'tooltip': 'Second text option.'}),
+                             'label_b': ('STRING', {'default': 'Text B', 'tooltip': 'Label used to select text_b.'}),
+                             'choose': ('STRING', {'default': 'None', 'tooltip': "Which label to output. Set to label_a to output text_a, label_b to output text_b, otherwise outputs empty."}),
                             }}
                 
     RETURN_TYPES = ('STRING',)

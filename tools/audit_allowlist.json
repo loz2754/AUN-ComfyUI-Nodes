@@ -1,0 +1,10 @@
+{
+  "unverifiable_node_keys": [
+    "AUNMultiBypassIndex",
+    "AUNMultiGroupUniversal",
+    "AUNMultiMuteIndex",
+    "AUNMultiUniversal",
+    "AUNRandomTextIndexSwitch",
+    "AUNTextIndexSwitch"
+  ]
+}

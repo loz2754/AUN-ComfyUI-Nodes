@@ -18,11 +18,11 @@ class AUNRandomAnySwitch:
                 "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff, "tooltip": "Seed for the random selection. Changing this will change the choice."}),
             },
             "optional": {
-                "input_1": (any_type,),
-                "input_2": (any_type,),
-                "input_3": (any_type,),
-                "input_4": (any_type,),
-                "input_5": (any_type,),
+                "input_1": (any_type, {"tooltip": "Optional candidate #1 (any type)."}),
+                "input_2": (any_type, {"tooltip": "Optional candidate #2 (any type)."}),
+                "input_3": (any_type, {"tooltip": "Optional candidate #3 (any type)."}),
+                "input_4": (any_type, {"tooltip": "Optional candidate #4 (any type)."}),
+                "input_5": (any_type, {"tooltip": "Optional candidate #5 (any type)."}),
             }
         }
 

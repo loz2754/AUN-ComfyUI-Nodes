@@ -1,7 +1,15 @@
 # AUN Nodes Documentation Strategy
 
+> Maintainer note: this file is primarily for AUN contributors/maintainers.
+> End users generally only need the main README and the per-node docs in `docs/`.
+
 ## Overview
 This document outlines the comprehensive documentation approach for all AUN nodes to improve user experience and accessibility.
+
+## Docs Index
+
+- `docs/INDEX.md` is the canonical entry point for node documentation.
+- We intentionally do not maintain a separate “missing docs” tracker file; when adding/removing nodes, keep `docs/INDEX.md` in sync.
 
 ## Documentation Levels
 

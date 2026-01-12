@@ -20,10 +20,23 @@ class AUNGraphScraper:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "template": ("STRING", {"multiline": True, "default": "Model: {1.ckpt_name} | Weight: {FaceID.weight}"}),
+                "template": (
+                    "STRING",
+                    {
+                        "multiline": True,
+                        "default": "Model: {1.ckpt_name} | Weight: {FaceID.weight}",
+                        "tooltip": "Template text with placeholders like {NodeTitle.WidgetName} or {NodeID.WidgetName}. Example: {1.ckpt_name} or {FaceID.weight}.",
+                    },
+                ),
             },
             "optional": {
-                "basename_if_path": ("BOOLEAN", {"default": True}),
+                "basename_if_path": (
+                    "BOOLEAN",
+                    {
+                        "default": True,
+                        "tooltip": "If a scraped value looks like a path, output only the filename instead of the full path.",
+                    },
+                ),
             },
             "hidden": {
                 "prompt": "PROMPT",

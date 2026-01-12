@@ -9,7 +9,7 @@ class AUNStrip:
 
     @classmethod
     def INPUT_TYPES(cls):
-        return {"required": {"text": ("STRING", {"default": "", "forceInput": True})}}
+                return {"required": {"text": ("STRING", {"default": "", "forceInput": True, "tooltip": "Text to trim. Removes leading/trailing digits and spaces."})}}
 
     def strip_text(self, text):
         
