@@ -54,6 +54,63 @@ def _sanitize_token_str(value: str) -> str:
     return s
 
 
+_WINDOWS_RESERVED_NAMES = {
+    'con', 'prn', 'aux', 'nul',
+    *(f'com{i}' for i in range(1, 10)),
+    *(f'lpt{i}' for i in range(1, 10)),
+}
+
+
+def _sanitize_subfolder_path(value: Any) -> str:
+    """Sanitize a user-provided *subfolder* path.
+
+    Goal: allow nested subfolders under the ComfyUI output directory, while preventing:
+    - absolute paths / drive letters
+    - path traversal (..)
+    - Windows-illegal characters
+    """
+    if value is None:
+        return ""
+    s = str(value).strip()
+    if not s:
+        return ""
+
+    # Normalize separators to simplify splitting.
+    s = s.replace('\\', '/')
+
+    # Strip any drive letter prefix like C: or N:
+    s = re.sub(r'^[A-Za-z]:', '', s)
+
+    # Strip leading slashes to avoid absolute paths.
+    while s.startswith('/'):
+        s = s[1:]
+
+    parts: list[str] = []
+    for raw_part in s.split('/'):
+        part = str(raw_part).strip()
+        if not part or part == '.':
+            continue
+        if part == '..':
+            # Drop traversal segments.
+            continue
+
+        # Remove characters disallowed on Windows and most filesystems.
+        part = re.sub(r'[<>:"/\\|?*\x00-\x1F]', '', part)
+
+        # Windows: no trailing dots/spaces.
+        part = part.rstrip(' .')
+        if not part:
+            continue
+
+        # Windows reserved device names (case-insensitive) cannot be used as path segments.
+        if part.lower() in _WINDOWS_RESERVED_NAMES:
+            part = f"_{part}"
+
+        parts.append(part)
+
+    return os.path.join(*parts) if parts else ""
+
+
 _LORA_TAG_PATTERN = re.compile(r"<lora:([^:>]+):([^:>]+)(?::([^:>]+))?>", re.IGNORECASE)
 
 
@@ -1193,7 +1250,19 @@ class AUNSaveImage:
 
     def _create_output_path(self, path_pattern):
         """Creates the output directory if it doesn't exist."""
-        full_output_path = os.path.join(self.output_dir, path_pattern)
+        safe_subfolder = _sanitize_subfolder_path(path_pattern)
+        base_dir = os.path.abspath(self.output_dir)
+        full_output_path = os.path.abspath(os.path.join(base_dir, safe_subfolder))
+
+        # Enforce containment within output_dir.
+        try:
+            if os.path.commonpath([base_dir, full_output_path]) != base_dir:
+                print(f"AUNSaveImage: blocked unsafe output subfolder '{path_pattern}'.")
+                full_output_path = base_dir
+        except Exception:
+            # If commonpath fails for any reason, fall back to base_dir.
+            full_output_path = base_dir
+
         if not os.path.exists(full_output_path):
             print(f"Path '{full_output_path}' doesn't exist. Creating directory.")
             os.makedirs(full_output_path, exist_ok=True)
@@ -1377,6 +1446,7 @@ class AUNSaveImage:
 
             filename_prefix = generate_path_from_pattern(filename, replacements)
             full_path_pattern = generate_path_from_pattern(path, replacements)
+            full_path_pattern = _sanitize_subfolder_path(full_path_pattern)
             
             output_path = self._create_output_path(full_path_pattern)
             
