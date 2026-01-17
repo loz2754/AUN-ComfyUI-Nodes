@@ -12,7 +12,7 @@ from typing import Any, Dict
 import numpy as np
 import folder_paths
 import re
-from .utils import get_sha256
+from .misc import get_sha256
 from .model_utils import (
     get_short_name as get_model_short_name,
     get_lora_short_name,
