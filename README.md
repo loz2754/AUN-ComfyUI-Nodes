@@ -153,6 +153,17 @@ From your ComfyUI folder:
 - Save frequently while configuring complex setups
 - Test incrementally before chaining many nodes
 
+## 🙏 Acknowledgements
+
+AUN Nodes draws inspiration and code patterns from several excellent ComfyUI node projects. Special thanks to:
+
+- **rgthree** (Power Lora Loader and related nodes)
+- **WAS Node Suite** (was-nodes)
+- **Impact Pack** (comfyui-impact-pack)
+- **Video Helper Suite** (comfyui-videohelpersuite)
+
+Their work has helped shape features, design, and best practices in this collection. Please check out their repositories for more great nodes and ideas!
+
 ## 💡 Example Workflows
 
 ### How to Randomly Select a Prompt
