@@ -45,30 +45,46 @@ def clean_filename_for_output(filename_without_ext, max_words=0):
     return ' '.join(words)
 
 def load_predefined_paths():
-    config_file = os.path.join(os.path.dirname(__file__), "predefined_paths.json")
-    default_paths = ["N:/Private/Faces/Women", "N:/Private/Faces/Men"]
+    base_dir = os.path.dirname(__file__)
+    local_file = os.path.join(base_dir, "predefined_paths.local.json")
+    legacy_file = os.path.join(base_dir, "predefined_paths.json")
+    example_file = os.path.join(base_dir, "predefined_paths.example.json")
 
-    if not os.path.exists(config_file):
-        print(f"[AUNNodes] Creating default predefined paths file at: {config_file}")
-        try:
-            with open(config_file, 'w') as f:
-                json.dump(default_paths, f, indent=4)
-            return default_paths
-        except Exception as e:
-            print(f"[AUNNodes] ERROR: Could not create default paths file: {e}")
-            return default_paths
-
+    # Safe defaults (no private/user-specific paths).
     try:
-        with open(config_file, 'r') as f:
-            paths = json.load(f)
+        default_paths = [os.path.normpath(folder_paths.get_input_directory())]
+    except Exception:
+        default_paths = []
+
+    def _read_paths(path: str) -> list[str] | None:
+        if not os.path.exists(path):
+            return None
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                paths = json.load(f)
             if isinstance(paths, list):
                 return paths
-            else:
-                print(f"[AUNNodes] ERROR: predefined_paths.json is not a valid list. Using defaults.")
-                return default_paths
-    except Exception as e:
-        print(f"[AUNNodes] ERROR: Could not read predefined_paths.json: {e}. Using defaults.")
-        return default_paths
+            print(f"[AUNNodes] ERROR: {os.path.basename(path)} is not a valid list. Ignoring.")
+            return None
+        except Exception as e:
+            print(f"[AUNNodes] ERROR: Could not read {os.path.basename(path)}: {e}.")
+            return None
+
+    # Priority: local (ignored) -> legacy (for backwards compatibility) -> example (public) -> safe defaults
+    for candidate in (local_file, legacy_file, example_file):
+        paths = _read_paths(candidate)
+        if paths is not None:
+            return paths
+
+    # Nothing found; create a local file to make customization easy.
+    if default_paths:
+        try:
+            with open(local_file, 'w', encoding='utf-8') as f:
+                json.dump(default_paths, f, indent=4)
+            print(f"[AUNNodes] Created {os.path.basename(local_file)} with safe defaults.")
+        except Exception as e:
+            print(f"[AUNNodes] ERROR: Could not create {os.path.basename(local_file)}: {e}")
+    return default_paths
 
 def filter_files_by_search(files, search_pattern, search_enabled):
     """Filter files based on search pattern using wildcards and regex"""
@@ -142,7 +158,7 @@ class AUNImageSingleBatch3:
                     "tooltip": "Select path source: Pre-defined list or manual input."
                 }),
                 "predefined_path": (predefined_paths, {
-                    "tooltip": "Select a folder from the pre-defined list. Edit predefined_paths.json in the AUN_nodes folder to customize."
+                    "tooltip": "Select a folder from the pre-defined list. Customize via predefined_paths.local.json (recommended) or copy predefined_paths.example.json."
                 }),
                 "manual_path": ("STRING", {
                     "default": "C:/path/to/your/images",
