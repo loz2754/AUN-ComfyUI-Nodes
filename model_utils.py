@@ -5,7 +5,7 @@ import re
 MODEL_SHORT_NAMES = {
     "sd_xl_base_1.0": "SDXLBase",
     "sd_xl_refiner_1.0": "SDXLRef",
-    "realisticVisionV60B1_v60VAE": "RealVis60",
+    "realisticVisionV60B1_v60VAE": "RealisticVis60",
     "juggernautXL_v8Rundiffusion": "JuggerXL8",
     "Afroditexl_XL31": "AfroditeXL31",
     "bemypony_Photo": "BeMyPonyPhoto",
@@ -21,6 +21,7 @@ MODEL_SHORT_NAMES = {
     "juggernautXL_v9Rdphoto2Lightning": "JuggerXL9Ltg",
     "lustifySDXLNSFWSFW_v40": "LustifyXL40",
     "musesThalia_v10": "MusesThalia10",
+    "nattyRealisticSDXL_v20": "NattyRealistic20",
     "omnigenxlNSFWSFW_v10": "OmnigenXL10",
     "onlyfornsfw118_v20": "Only4NSFW118v20",
     "ponyRealism_v21Lightning4SVAE": "PnyRealism21Ltg4",

@@ -32,6 +32,7 @@ from .AUNNameCrop import AUNNameCrop
 from .AUNNodeStateController import AUNNodeStateController
 from .AUNPathFilename import AUNPathFilename
 from .AUNPathFilenameVideo import AUNPathFilenameVideo
+from .AUNPathFilenameVideoResolved import AUNPathFilenameVideoResolved
 from .AUNRandomAnySwitch import AUNRandomAnySwitch
 from .AUNRandomIndexSwitch import AUNRandomIndexSwitch
 from .AUNRandomNumber import AUNRandomNumber
@@ -53,7 +54,6 @@ from .AUNTitleImagePreview import AUNTitleImagePreview
 from .KSamplerInputs import KSamplerInputs
 from .MainFolderManualName import MainFolderManualName
 from .TextSwitch2InputWithTextOutput import TextSwitch2InputWithTextOutput
-from . import vhs_patch  # noqa: F401 ensures VHS patch runs on import
 
 
 
@@ -93,6 +93,7 @@ NODE_CLASS_MAPPINGS = {
     "AUNNodeStateController": AUNNodeStateController,
     "AUNPathFilename": AUNPathFilename,
     "AUNPathFilenameVideo": AUNPathFilenameVideo,
+    "AUNPathFilenameVideoResolved": AUNPathFilenameVideoResolved,
     "AUNRandomAnySwitch": AUNRandomAnySwitch,
     "AUNRandomIndexSwitch": AUNRandomIndexSwitch,
     "AUNRandomNumber": AUNRandomNumber,
@@ -148,6 +149,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "AUNNodeStateController": "Node State Controller",
     "AUNPathFilename": "Path Filename",
     "AUNPathFilenameVideo": "Path Filename Video",
+    "AUNPathFilenameVideoResolved": "Path Filename Video (Resolved)",
     "AUNRandomAnySwitch": "Random Any Switch",
     "AUNRandomIndexSwitch": "Random/Select INT",
     "AUNRandomNumber": "Random Number",
@@ -170,6 +172,4 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "MainFolderManualName": "Main Folder Manual Name",
     "TextSwitch2InputWithTextOutput": "Text Switch 2 Input With Text Output",
 }
-
-
 __all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS", "WEB_DIRECTORY"]
