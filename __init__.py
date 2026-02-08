@@ -56,8 +56,6 @@ from .MainFolderManualName import MainFolderManualName
 from .TextSwitch2InputWithTextOutput import TextSwitch2InputWithTextOutput
 
 
-
-
 WEB_DIRECTORY = "./web"
 
 NODE_CLASS_MAPPINGS = {

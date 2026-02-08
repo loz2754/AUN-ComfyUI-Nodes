@@ -90,7 +90,8 @@ MODEL_SHORT_NAMES = {
     "Wan2.2-I2V-A14B-LowNoise-Q8_0": "Wan22I2V14BLoNoiseQ8_GGUF",
     "Wan2.2-I2V-A14B-HighNoise-Q4_K_M": "Wan22I2V14BHiNoiseQ4_GGUF",
     "Wan2.2-I2V-A14B-LowNoise-Q4_K_M": "Wan22I2V14BLoNoiseQ4_GGUF",
-    "wan2.2-i2v-rapid-aio": "Wan22I2VRapidAIO"
+    "wan2.2-i2v-rapid-aio": "Wan22I2VRapidAIO",
+    "wan22EnhancedNSFWSVICamera_nolightningSVIFmFp8L": "Wan22EnhNSFWSVICamNoLtgFP8",
 }
 
 # Sampler short names (synced from AUNSaveImage)
