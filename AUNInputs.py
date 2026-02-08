@@ -98,7 +98,7 @@ class AUNInputs:
     FUNCTION = 'inputs'
     CATEGORY = 'AUN Nodes/Loaders+Inputs'
 
-    def inputs(self, ckpt_name, speed_lora, speed_lora_model, speed_lora_strength, clip_skip, MainFolder, ManualName, name_mode, prefix, sampler, scheduler, cfg, steps, width, height, aspect_ratio, aspect_mode, batch_size, seed, date_format, crop, words, auto_name="Name"):
+    def inputs(self, ckpt_name, speed_lora, speed_lora_strength, clip_skip, MainFolder, ManualName, name_mode, prefix, sampler, scheduler, cfg, steps, width, height, aspect_ratio, aspect_mode, batch_size, seed, date_format, crop, words, speed_lora_model="", auto_name="Name"):
         ckpt_path = comfy_paths.get_full_path("checkpoints", ckpt_name)
         out = comfy.sd.load_checkpoint_guess_config(ckpt_path, output_vae=True, output_clip=True, embedding_directory=comfy_paths.get_folder_paths("embeddings"))
         model, clip, vae = out[0], out[1], out[2]
