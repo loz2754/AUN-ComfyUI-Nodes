@@ -121,7 +121,11 @@ class AUNInputsHybrid:
                         "forceInput": True,
                         "tooltip": "Automatic name input used when 'name_mode' stays on Auto.",
                     },
-                )
+                ),
+                "speed_lora_model": (
+                    comfy_paths.get_filename_list("loras"),
+                    {"default": "none", "tooltip": "SpeedLoRA file to apply after loading the model."},
+                )    
             },
             "required": {
                 "model_source": (
@@ -158,10 +162,10 @@ class AUNInputsHybrid:
                         "tooltip": "Enable SpeedLoRA when loading models in either mode.",
                     },
                 ),
-                "speed_lora_model": (
-                    comfy_paths.get_filename_list("loras"),
-                    {"default": "", "tooltip": "SpeedLoRA file to apply after loading the model."},
-                ),
+                # "speed_lora_model": (
+                #     comfy_paths.get_filename_list("loras"),
+                #     {"default": "", "tooltip": "SpeedLoRA file to apply after loading the model."},
+                # ),
                 "speed_lora_strength": (
                     "FLOAT",
                     {
@@ -462,7 +466,6 @@ class AUNInputsHybrid:
         diffusion_name,
         clip_name,
         speed_lora,
-        speed_lora_model,
         speed_lora_strength,
         clip_type,
         vae_name,
@@ -484,6 +487,7 @@ class AUNInputsHybrid:
         date_format,
         crop,
         words,
+        speed_lora_model="undefined",
         auto_name="Name",
     ):
         if model_source == "Diffusion model":

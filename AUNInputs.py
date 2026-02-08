@@ -58,7 +58,7 @@ class AUNInputs:
         return {
             "optional": {
                 "auto_name": ("STRING", {"multiline": False, "default": "Name", "forceInput": True, "tooltip": "Automatic name input, typically from a prompt node, used when 'name_mode' is set to Auto."}),
-                "speed_lora_model": (comfy_paths.get_filename_list("loras"), {"default": "", "tooltip": "The SpeedLoRA model file to use when 'speed_lora' is enabled."}),
+                "speed_lora_model": (comfy_paths.get_filename_list("loras"), {"default": "none", "tooltip": "The SpeedLoRA model file to use when 'speed_lora' is enabled."}),
             },
             'required': {
                 "ckpt_name": (comfy_paths.get_filename_list("checkpoints"), {"tooltip": "The checkpoint model file to load."}),
@@ -98,7 +98,7 @@ class AUNInputs:
     FUNCTION = 'inputs'
     CATEGORY = 'AUN Nodes/Loaders+Inputs'
 
-    def inputs(self, ckpt_name, speed_lora, speed_lora_strength, clip_skip, MainFolder, ManualName, name_mode, prefix, sampler, scheduler, cfg, steps, width, height, aspect_ratio, aspect_mode, batch_size, seed, date_format, crop, words, speed_lora_model="", auto_name="Name"):
+    def inputs(self, ckpt_name, speed_lora, speed_lora_strength, clip_skip, MainFolder, ManualName, name_mode, prefix, sampler, scheduler, cfg, steps, width, height, aspect_ratio, aspect_mode, batch_size, seed, date_format, crop, words, speed_lora_model="none", auto_name="Name"):
         ckpt_path = comfy_paths.get_full_path("checkpoints", ckpt_name)
         out = comfy.sd.load_checkpoint_guess_config(ckpt_path, output_vae=True, output_clip=True, embedding_directory=comfy_paths.get_folder_paths("embeddings"))
         model, clip, vae = out[0], out[1], out[2]
