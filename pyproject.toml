@@ -1,0 +1,37 @@
+[project]
+name = "aun-comfyui-nodes"
+description = "A collection of workflow helper nodes focused on organization + control (bypass/mute/collapse/group control), prompt/text utilities, file/path helpers, and image/video save helpers (optional VHS integration)."
+version = "1.0.0"
+license = {file = "LICENSE"} 
+# classifiers = [
+#     # For OS-independent nodes (works on all operating systems)
+#     "Operating System :: OS Independent",
+#
+#     # OR for OS-specific nodes, specify the supported systems:
+#     "Operating System :: Microsoft :: Windows",  # Windows specific
+#     "Operating System :: POSIX :: Linux",  # Linux specific
+#     "Operating System :: MacOS",  # macOS specific
+#
+#     # GPU Accelerator support. Pick the ones that are supported by your extension.
+#     "Environment :: GPU :: NVIDIA CUDA",    # NVIDIA CUDA support
+#     "Environment :: GPU :: AMD ROCm",       # AMD ROCm support
+#     "Environment :: GPU :: Intel Arc",      # Intel Arc support
+#     "Environment :: NPU :: Huawei Ascend",  # Huawei Ascend support
+#     "Environment :: GPU :: Apple Metal",    # Apple Metal support
+# ]
+
+dependencies = ["# Python dependencies for AUN nodes", "#", "# Notes:", "# - Do NOT list torch/numpy/Pillow here; ComfyUI already bundles them.", "# - ComfyUI-Manager will install this automatically (or via install.py).", "piexif>=1.1.3", "opencv-python-headless>=4.8.0.76", "imageio-ffmpeg>=0.4.9"]
+
+[project.urls]
+Repository = "https://github.com/loz2754/AUN-ComfyUI-Nodes"
+#  Used by Comfy Registry https://registry.comfy.org
+Documentation = "https://github.com/loz2754/AUN-ComfyUI-Nodes/wiki"
+"Bug Tracker" = "https://github.com/loz2754/AUN-ComfyUI-Nodes/issues"
+
+[tool.comfy]
+PublisherId = ""
+DisplayName = "AUN-ComfyUI-Nodes"
+Icon = ""
+includes = [] 
+# "requires-comfyui" = ">=1.0.0"  # ComfyUI version compatibility
+
