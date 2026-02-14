@@ -4,71 +4,103 @@ A comprehensive collection of custom nodes for ComfyUI designed to enhance workf
 
 ## 🎯 Node Categories
 
-AUN nodes appear in ComfyUI under `AUN Nodes/...` menu categories. The list below is the authoritative set of nodes currently registered by `AUN/__init__.py`.
-
-Maintainers: the node list below is auto-synced from the registry. See [CONTRIBUTING.md](CONTRIBUTING.md) for update steps.
+AUN nodes appear in ComfyUI under `AUN Nodes/...` menu categories.
 
 <!-- BEGIN: AUN_NODES_AUTO -->
 
-### ComfyUI Menu Categories (synced from registered nodes)
+### ComfyUI Menu Categories:
 
-#### AUN Nodes/Node Control
+---
 
-#### Command the Flow
+#### Node Control - Command the Flow
 
-Node controllers orchestrate bypass, mute, and collapse states so you can keep complex setups lean and responsive.
+_Node controllers orchestrate bypass, mute, and collapse states so you can keep complex setups lean and responsive:_
 
-#### Workflow image showing the many uses of the AUN Node/Group Controllers -
+- AUN Node Controller (`AUNMultiUniversal`) is a universal bypass/mute/collapse controller (1–20 slots). Nodes are chosen by ID or titles. It can take on the role of any of the more specific Node Control nodes.
+- AUN Group Controller (`AUNMultiGroupUniversal`) targets ComfyUI Groups (by group name) rather than individual nodes, with various filtering options.
+- Bypass By Title (`AUNSetBypassByTitle`) sets bypass state for nodes whose titles match any of the provided titles (one per line)
+- Mute By Title (`AUNSetMuteByTitle`) same as Bypass By Title but mute instead of bypass.
+- Group Bypasser (Multi) (`AUNSetBypassStateGroup`) set the bypass state of all nodes in groups selected from the graph.
+- Group Muter (Multi) (`AUNSetMuteStateGroup`) same as Group Bypasser but mute instead of bypass.
+- Multi Bypass Index (`AUNMultiBypassIndex`) control bypass state of multiple nodes by IDs using an index. Select an index to activate one set of nodes while bypassing others.
+- Multi Mute Index (`AUNMultiMuteIndex`) same Multi Bypass Index but mute instead of bypass.
+- Node Collapser & Bypasser Advanced (`AUNSetCollapseAndBypassStateAdvanced`) set collapse and bypass or mute state for multiple nodes. Has a combined override or separate toggles.
+- Node State Controller (`AUNNodeStateController`) control collapse + bypass or mute for nodes by ID, group, or title.
+
+##### Workflow image showing the many uses of the AUN Node/Group Controllers - (drop image into Comfyui to load the workflow)
 
 [![Node controllers workflow diagram showing AUN Node Controller, AUN Group Controller, Bypass By Title, Group Bypasser Multi, Group Muter Multi, and Multi Bypass Index nodes connected with blue lines in a ComfyUI canvas. The diagram illustrates how to orchestrate bypass, mute, and collapse states across multiple nodes and groups within a workflow. Showing labeled node groups containing input/output sockets and configuration options, demonstrating practical control patterns for complex ComfyUI setups.](docs/images/node-controllers-workflow.png)](docs/images/node-controllers-workflow.png)
 
-- AUN Group Controller (`AUNMultiGroupUniversal`)
-- AUN Node Controller (`AUNMultiUniversal`)
-- Bypass By Title (`AUNSetBypassByTitle`)
-- Group Bypasser (Multi) (`AUNSetBypassStateGroup`)
-- Group Muter (Multi) (`AUNSetMuteStateGroup`)
-- Multi Bypass Index (`AUNMultiBypassIndex`)
-- Multi Mute Index (`AUNMultiMuteIndex`)
-- Mute By Title (`AUNSetMuteByTitle`)
-- Node Collapser & Bypasser Advanced (`AUNSetCollapseAndBypassStateAdvanced`)
-- Node State Controller (`AUNNodeStateController`)
+#### 🔁 Toggle & Emoji Conventions
 
-#### AUN Nodes/File Management
+To provide a fast, visually consistent understanding of node states, AUN nodes use standardized text+emoji labels for BOOLEAN inputs:
 
-- Main Folder Manual Name (`MainFolderManualName`)
-- Path Filename (`AUNPathFilename`)
-- Path Filename Video (`AUNPathFilenameVideo`)
+| Context                                   | label_on      | label_off                     | Meaning                                                                   |
+| ----------------------------------------- | ------------- | ----------------------------- | ------------------------------------------------------------------------- |
+| Bypass switches (per group / per title)   | `Active 🟢`   | `Bypass 🔴`                   | Active = node(s) participate; Bypass = skipped/disabled path              |
+| Mute switches (per group / per title)     | `Active 🟢`   | `Mute 🔇`                     | Active = node(s) process; Mute = silenced (no processing / effect)        |
+| Global (AllSwitch) for Bypass/Mute groups | `All 🟢`      | `Individual`                  | ON forces every listed group active; OFF defers to each individual switch |
+| Model / generic on/off (where applicable) | `Active 🟢`   | `Off 🔴` (or domain specific) | Pattern reused when no special semantics                                  |
+| Collapse / Expand (per node or group)     | `Collapsed ▶` | `Expanded ▼`                  | Collapsed hides node body (compact); Expanded shows full contents         |
 
-#### AUN Nodes/Image
+---
 
-- Empty Latent (`AUNEmptyLatent`)
-- Image Loader (`AUNImgLoader`)
-- Image Preview With Title (`AUNTitleImagePreview`)
-- Img2Img (`AUNImg2Img`)
-- Load & Resize Image (`AUNImageLoadResize`)
-- Load Image Single/Batch 3 (`AUNImageSingleBatch3`)
-- Resize Image (`AUNImageResize`)
-- Save Image (`AUNSaveImage`)
+#### File Management
 
-#### AUN Nodes/KSampler
+- Main Folder Manual Name (`MainFolderManualName`) switch between a manual name and an automatic filename for the output path. Also returns the MainFolder, useful if you want to use the MainFolder in another node, and a boolean which can be used to switch other nodes.
 
-- KSampler Inputs (`KSamplerInputs`)
-- KSampler Plus (`AUNKSamplerPlusv3`)
+- Path Filename (`AUNPathFilename`) generates a file path and filename from various components and placeholders. Ideal for creating dynamic and organized output structures for saved images. Mainly for use with AUN Save Image.
 
-#### AUN Nodes/Loaders
+- Path Filename Video (`AUNPathFilenameVideo`) build a folder path and a tokenized filename for AUN Save Video.
 
-- Ckpt Load With Clip Skip (`AUNCheckpointLoaderWithClipSkip`)
+---
 
-#### AUN Nodes/Loaders+Inputs
+#### Image
 
-- Inputs (`AUNInputs`)
-- Inputs Hybrid (`AUNInputsHybrid`)
+- Empty Latent (`AUNEmptyLatent`) generates an empty latent image with specified dimensions. It offers options for predefined aspect ratios, random dimension swapping, and batching, making it a flexible starting point for your image generation workflows.
+- Image Loader (`AUNImgLoader`) loads an image and returns the image data, a mask, the original filename, and a cleaned filename. The cleaned filename is useful for prompts or file outputs in other nodes.
+- Image Preview With Title (`AUNTitleImagePreview`) optional text input is mirrored to the node's title.
+- Img2Img (`AUNImg2Img`) provides a comprehensive Img2Img node, allowing you to switch between txt2img and img2img modes. It handles image loading, resizing, and encoding into the latent space, providing essential outputs for further processing.
+- Load & Resize Image (`AUNImageLoadResize`) load images with optional automatic resizing. Supports FramePack nearest-bucket sizing, maintains aspect ratio, and provides filename information for workflow organization.
+- Load Image Single/Batch 3 (`AUNImageSingleBatch3`) load a single uploaded image or cycle through a batch of images from a folder with multiple selection modes, including increment, random, range and search filtering by filename patterns.
+- Resize Image (`AUNImageResize`) resize an input image using the same strategies as AUN Load & Resize Image, including FramePack buckets and fill/crop anchoring.
+- Save Image (`AUNSaveImage`) is a versatile image saver with advanced filename customization and metadata embedding.
 
-#### AUN Nodes/Logic
+---
 
-- Boolean (`AUNBoolean`)
+#### Video
 
-#### AUN Nodes/Text
+- Save Video (`AUNSaveVideo`)
+
+---
+
+#### KSampler
+
+- KSampler Inputs (`KSamplerInputs`) provides a convenient way to set the KSampler inputs (sampler, scheduler, CFG, and steps) in one place. This is useful for organizing your workflow and making it easier to manage these common parameters.
+- KSampler Plus (`AUNKSamplerPlusv3`) a progressive two-pass sampler with latent-upscale, pixel-space upscale and optional final refinement. Also outputs a string of the selected upscale methods for use in filenames.
+
+---
+
+#### Loaders
+
+- Ckpt Load With Clip Skip (`AUNCheckpointLoaderWithClipSkip`) speaks for itself.
+
+---
+
+#### Loaders+Inputs
+
+- Inputs (`AUNInputs`) a comprehensive 'all-in-one' node for setting up a generation pipeline. It loads a checkpoint, creates a latent image, and prepares various parameters for sampling and saving, all in one place.
+- Inputs Hybrid (`AUNInputsHybrid`) loads a standard checkpoint (UNet+CLIP+VAE), or a diffusion UNet model with separate CLIP and VAE files, but essentially the same as AUN Inputs.
+
+---
+
+#### Logic
+
+- Boolean (`AUNBoolean`) a Boolean switch with a third option: True, False, or Randomize. Outputs the resolved boolean and an optional label "True/False".
+
+---
+
+#### Text
 
 - Add-To-Prompt (`AUNAddToPrompt`)
 - Name Crop (`AUNNameCrop`)
@@ -80,7 +112,9 @@ Node controllers orchestrate bypass, mute, and collapse states so you can keep c
 - Text Index Switch 3 (`AUNTextIndexSwitch3`)
 - Text Switch 2 Input With Text Output (`TextSwitch2InputWithTextOutput`)
 
-#### AUN Nodes/Utility
+---
+
+#### Utility
 
 - Any (`AUNAny`)
 - AUN Bookmark (`AUNBookmark`)
@@ -99,32 +133,11 @@ Node controllers orchestrate bypass, mute, and collapse states so you can keep c
 - Random/Select INT (`AUNRandomIndexSwitch`)
 - Switch Float (`AUNSwitchFloat`)
 
-#### AUN Nodes/Video
+## <!-- END: AUN_NODES_AUTO -->
 
-- Save Video (`AUNSaveVideo`)
-
-<!-- END: AUN_NODES_AUTO -->
-
-### Doc shortcuts
-
-- Path Filename: [docs/AUNPathFilename_README.md](docs/AUNPathFilename_README.md)
-- Path Filename Video: [docs/SaveVideoPathNode_README.md](docs/SaveVideoPathNode_README.md)
-- Path Filename Video (Resolved): [docs/AUNPathFilenameVideoResolved_README.md](docs/AUNPathFilenameVideoResolved_README.md)
-- Load Image Single/Batch 3: [docs/AUNImageSingleBatch3_README.md](docs/AUNImageSingleBatch3_README.md)
-- Random Text Index Switch: [docs/AUNRandomTextIndexSwitch_README.md](docs/AUNRandomTextIndexSwitch_README.md)
-- Extract Model Name: [docs/AUNExtractModelName_README.md](docs/AUNExtractModelName_README.md)
-- Extract Power LoRAs: [docs/AUNExtractPowerLoras_README.md](docs/AUNExtractPowerLoras_README.md)
-- Extract Widget Value: [docs/AUNExtractWidgetValue_README.md](docs/AUNExtractWidgetValue_README.md)
-- Show Text With Title: [docs/AUNShowTextWithTitle_README.md](docs/AUNShowTextWithTitle_README.md)
-- Group Bypasser (Multi): [docs/AUNSetBypassStateGroup_README.md](docs/AUNSetBypassStateGroup_README.md)
-- Group Muter (Multi): [docs/AUNSetMuteStateGroup_README.md](docs/AUNSetMuteStateGroup_README.md)
+---
 
 ### Notes
-
-- `AUN Node Controller` (`AUNMultiUniversal`) is the universal bypass/mute/collapse controller (1–20 slots). It complements the more specific Node Control nodes.
-- `AUN Group Controller` (`AUNMultiGroupUniversal`) targets ComfyUI Groups (by group name) rather than individual nodes.
-- `KSampler Plus` (`AUNKSamplerPlusv3`) is the recommended sampler variant for new workflows.
-- If you add new node files, ensure they’re imported and included in `AUN/__init__.py` so they actually appear in ComfyUI.
 
 ## 🚀 **Getting Started**
 
@@ -193,13 +206,25 @@ Your setup: `AUN Random/Select INT` -> `AUN Text Index Switch` -> `CLIP Text Enc
 
 ## 📚 **Documentation**
 
-### Tooltip System
-
-All nodes include tooltips explaining parameters, expected values, and usage tips.
-
 ### Individual Documentation
 
 Complex nodes include detailed READMEs with examples and troubleshooting.
+
+- Path Filename: [docs/AUNPathFilename_README.md](docs/AUNPathFilename_README.md)
+- Path Filename Video: [docs/SaveVideoPathNode_README.md](docs/SaveVideoPathNode_README.md)
+- Path Filename Video (Resolved): [docs/AUNPathFilenameVideoResolved_README.md](docs/AUNPathFilenameVideoResolved_README.md)
+- Load Image Single/Batch 3: [docs/AUNImageSingleBatch3_README.md](docs/AUNImageSingleBatch3_README.md)
+- Random Text Index Switch: [docs/AUNRandomTextIndexSwitch_README.md](docs/AUNRandomTextIndexSwitch_README.md)
+- Extract Model Name: [docs/AUNExtractModelName_README.md](docs/AUNExtractModelName_README.md)
+- Extract Power LoRAs: [docs/AUNExtractPowerLoras_README.md](docs/AUNExtractPowerLoras_README.md)
+- Extract Widget Value: [docs/AUNExtractWidgetValue_README.md](docs/AUNExtractWidgetValue_README.md)
+- Show Text With Title: [docs/AUNShowTextWithTitle_README.md](docs/AUNShowTextWithTitle_README.md)
+- Group Bypasser (Multi): [docs/AUNSetBypassStateGroup_README.md](docs/AUNSetBypassStateGroup_README.md)
+- Group Muter (Multi): [docs/AUNSetMuteStateGroup_README.md](docs/AUNSetMuteStateGroup_README.md)
+
+### Tooltip System
+
+All nodes include tooltips explaining parameters, expected values, and usage tips.
 
 ### Support
 
@@ -213,14 +238,9 @@ Complex nodes include detailed READMEs with examples and troubleshooting.
 - `ModuleNotFoundError: piexif` / `ModuleNotFoundError: cv2`
   - Install dependencies: `pip install -r custom_nodes/AUN/requirements.txt` (or use ComfyUI-Manager’s dependency install).
 - ffmpeg not found / some video outputs disabled - Install ffmpeg and ensure it’s on PATH, or install `imageio-ffmpeg` via [requirements.txt](requirements.txt).
-<!-- - VHS `Video Combine` doesn’t show the AUN patch inputs / `sidecar_text`
-	- Restart ComfyUI and check the console for: `AUN VHS patch installed successfully.`
-	- The patch only targets `videohelpersuite.nodes` from the standard `comfyui-videohelpersuite` layout. -->
-- Windows long path / filename issues
-  - Avoid `%loras%` in filename templates if you hit path-length limits.
-  - Prefer shorter `MainFolder`/subfolder names and a compact filename format.
 
-Maintainers: release/registry notes live in [CONTRIBUTING.md](CONTRIBUTING.md).
+- Windows long path / filename issues
+  - Prefer shorter `MainFolder`/subfolder names and a compact filename format.
 
 ## 🔄 **Updates & Maintenance**
 
@@ -239,51 +259,3 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the practical workflow.
 ## 📄 License
 
 Released under the MIT License. See [LICENSE](LICENSE).
-
----
-
-_For detailed documentation on specific nodes, see individual README files in the `docs/` directory._
-
-## 🔁 Toggle & Emoji Conventions
-
-To provide a fast, visually consistent understanding of node states, AUN nodes use standardized text+emoji labels for BOOLEAN inputs:
-
-| Context                                   | label_on      | label_off                     | Meaning                                                                   |
-| ----------------------------------------- | ------------- | ----------------------------- | ------------------------------------------------------------------------- |
-| Bypass switches (per group / per title)   | `Active 🟢`   | `Bypass 🔴`                   | Active = node(s) participate; Bypass = skipped/disabled path              |
-| Mute switches (per group / per title)     | `Active 🟢`   | `Mute 🔇`                     | Active = node(s) process; Mute = silenced (no processing / effect)        |
-| Global (AllSwitch) for Bypass/Mute groups | `All 🟢`      | `Individual`                  | ON forces every listed group active; OFF defers to each individual switch |
-| Model / generic on/off (where applicable) | `Active 🟢`   | `Off 🔴` (or domain specific) | Pattern reused when no special semantics                                  |
-| Collapse / Expand (per node or group)     | `Collapsed ▶` | `Expanded ▼`                  | Collapsed hides node body (compact); Expanded shows full contents         |
-
-Principles:
-
-1. Always pair text + emoji (never emoji alone) for accessibility and clarity.
-2. 🟢 (green) always maps to the logically "enabled / participates" state.
-3. 🔴 (red) is reserved for bypass / disable; 🔇 (mute) specifically indicates a silenced pathway distinct from bypass when semantics differ.
-4. `All 🟢 / Individual` communicates scope control rather than a binary enable/disable of a single group.
-5. Tooltips follow a consistent pattern: `ON = all ... active (🟢). OFF = use individual ... switches.`
-
-Why not only emojis? Mixed text+emoji improves searchability (e.g., searching for "Bypass" in workflows) and helps color‑blind users or environments where emoji rendering is degraded.
-
-If you add new nodes:
-
-- Reuse these labels where semantics match.
-- For tri-state or advanced toggles, document each state clearly in the tooltip.
-- Keep labels short (< 16 chars) to avoid UI truncation.
-
-Feel free to adapt for localization by swapping the text portion while keeping the emoji for rapid scanning.
-
-## 📝 Video Sidecar Modes (AUNSaveVideo)
-
-AUNSaveVideo mirrors the image saver’s sidecar behavior. You always receive a sidecar string in the node’s second output; the option controls format and whether a file is also written next to the video.
-
-- Output only (text): returns a human-readable key: value list (no file written)
-- Output only (json): returns JSON text (no file written)
-- Save to file (text): returns text output and writes a .txt sidecar file
-- Save to file (json): returns JSON output and writes a .json sidecar file
-
-Notes:
-
-- Field ordering and formatting match AUNSaveImage (e.g., cfg uses one decimal place).
-- Video-specific fields are included: frame_rate, loop_count, quality, width, height, count.
