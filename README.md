@@ -12,6 +12,27 @@ Maintainers: the node list below is auto-synced from the registry. See [CONTRIBU
 
 ### ComfyUI Menu Categories (synced from registered nodes)
 
+#### AUN Nodes/Node Control
+
+#### Command the Flow
+
+Node controllers orchestrate bypass, mute, and collapse states so you can keep complex setups lean and responsive.
+
+#### Workflow image showing the many uses of the AUN Node/Group Controllers -
+
+[![Node controllers workflow diagram showing AUN Node Controller, AUN Group Controller, Bypass By Title, Group Bypasser Multi, Group Muter Multi, and Multi Bypass Index nodes connected with blue lines in a ComfyUI canvas. The diagram illustrates how to orchestrate bypass, mute, and collapse states across multiple nodes and groups within a workflow. Showing labeled node groups containing input/output sockets and configuration options, demonstrating practical control patterns for complex ComfyUI setups.](docs/images/node-controllers-workflow.png)](docs/images/node-controllers-workflow.png)
+
+- AUN Group Controller (`AUNMultiGroupUniversal`)
+- AUN Node Controller (`AUNMultiUniversal`)
+- Bypass By Title (`AUNSetBypassByTitle`)
+- Group Bypasser (Multi) (`AUNSetBypassStateGroup`)
+- Group Muter (Multi) (`AUNSetMuteStateGroup`)
+- Multi Bypass Index (`AUNMultiBypassIndex`)
+- Multi Mute Index (`AUNMultiMuteIndex`)
+- Mute By Title (`AUNSetMuteByTitle`)
+- Node Collapser & Bypasser Advanced (`AUNSetCollapseAndBypassStateAdvanced`)
+- Node State Controller (`AUNNodeStateController`)
+
 #### AUN Nodes/File Management
 
 - Main Folder Manual Name (`MainFolderManualName`)
@@ -46,19 +67,6 @@ Maintainers: the node list below is auto-synced from the registry. See [CONTRIBU
 #### AUN Nodes/Logic
 
 - Boolean (`AUNBoolean`)
-
-#### AUN Nodes/Node Control
-
-- AUN Group Controller (`AUNMultiGroupUniversal`)
-- AUN Node Controller (`AUNMultiUniversal`)
-- Bypass By Title (`AUNSetBypassByTitle`)
-- Group Bypasser (Multi) (`AUNSetBypassStateGroup`)
-- Group Muter (Multi) (`AUNSetMuteStateGroup`)
-- Multi Bypass Index (`AUNMultiBypassIndex`)
-- Multi Mute Index (`AUNMultiMuteIndex`)
-- Mute By Title (`AUNSetMuteByTitle`)
-- Node Collapser & Bypasser Advanced (`AUNSetCollapseAndBypassStateAdvanced`)
-- Node State Controller (`AUNNodeStateController`)
 
 #### AUN Nodes/Text
 
@@ -121,12 +129,13 @@ Maintainers: the node list below is auto-synced from the registry. See [CONTRIBU
 ## 🚀 **Getting Started**
 
 ### Installation
+
 Install into your ComfyUI `custom_nodes` directory, then restart ComfyUI.
 
 #### Option A: ComfyUI-Manager (recommended)
 
 - Use ComfyUI-Manager to install/update this repo:
-	- Repo URL: `https://github.com/loz2754/AUN-ComfyUI-Nodes`
+  - Repo URL: `https://github.com/loz2754/AUN-ComfyUI-Nodes`
 
 #### Option B: Manual (git clone)
 
@@ -140,15 +149,17 @@ From your ComfyUI folder:
 - AUN is compatible with ComfyUI-Manager installs.
 - Runtime Python dependencies are declared in [requirements.txt](requirements.txt) (and [install.py](install.py) for Manager compatibility).
 - If you install manually from git and see missing-module errors (e.g. `piexif`, `cv2`), install deps with:
-	- `pip install -r custom_nodes/AUN/requirements.txt`
+  - `pip install -r custom_nodes/AUN/requirements.txt`
 
 ### Basic Usage
+
 1. Start simple: begin with AUNBoolean or AUNSaveImage
 2. Explore categories to find nodes that match your needs
 3. Read tooltips: hover inputs for guidance and expected values
 4. Check documentation: refer to individual node READMEs for complex nodes
 
 ### Best Practices
+
 - Organize workflows using collapse/bypass/mute group nodes
 - Document settings with labels and descriptions
 - Save frequently while configuring complex setups
@@ -168,6 +179,7 @@ Their work has helped shape features, design, and best practices in this collect
 ## 💡 Example Workflows
 
 ### How to Randomly Select a Prompt
+
 Use `AUN Random/Select INT` with `AUN Text Index Switch` to randomly select a prompt.
 
 1. Add nodes: `AUN Random/Select INT` (`AUNRandomIndexSwitch`) and `AUN Text Index Switch`.
@@ -182,12 +194,15 @@ Your setup: `AUN Random/Select INT` -> `AUN Text Index Switch` -> `CLIP Text Enc
 ## 📚 **Documentation**
 
 ### Tooltip System
+
 All nodes include tooltips explaining parameters, expected values, and usage tips.
 
 ### Individual Documentation
+
 Complex nodes include detailed READMEs with examples and troubleshooting.
 
 ### Support
+
 - Check node READMEs for details
 - Use tooltips for quick reference
 - See [CHANGELOG.md](CHANGELOG.md) for updates
@@ -196,21 +211,21 @@ Complex nodes include detailed READMEs with examples and troubleshooting.
 ## ❓ FAQ / Troubleshooting
 
 - `ModuleNotFoundError: piexif` / `ModuleNotFoundError: cv2`
-	- Install dependencies: `pip install -r custom_nodes/AUN/requirements.txt` (or use ComfyUI-Manager’s dependency install).
-- ffmpeg not found / some video outputs disabled
-	- Install ffmpeg and ensure it’s on PATH, or install `imageio-ffmpeg` via [requirements.txt](requirements.txt).
-- VHS `Video Combine` doesn’t show the AUN patch inputs / `sidecar_text`
+  - Install dependencies: `pip install -r custom_nodes/AUN/requirements.txt` (or use ComfyUI-Manager’s dependency install).
+- ffmpeg not found / some video outputs disabled - Install ffmpeg and ensure it’s on PATH, or install `imageio-ffmpeg` via [requirements.txt](requirements.txt).
+<!-- - VHS `Video Combine` doesn’t show the AUN patch inputs / `sidecar_text`
 	- Restart ComfyUI and check the console for: `AUN VHS patch installed successfully.`
-	- The patch only targets `videohelpersuite.nodes` from the standard `comfyui-videohelpersuite` layout.
+	- The patch only targets `videohelpersuite.nodes` from the standard `comfyui-videohelpersuite` layout. -->
 - Windows long path / filename issues
-	- Avoid `%loras%` in filename templates if you hit path-length limits.
-	- Prefer shorter `MainFolder`/subfolder names and a compact filename format.
+  - Avoid `%loras%` in filename templates if you hit path-length limits.
+  - Prefer shorter `MainFolder`/subfolder names and a compact filename format.
 
 Maintainers: release/registry notes live in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## 🔄 **Updates & Maintenance**
 
 The AUN nodes collection is actively maintained with:
+
 - Regular improvements and new nodes
 - Documentation updates alongside changes
 - Compatibility updates for ComfyUI
@@ -227,21 +242,22 @@ Released under the MIT License. See [LICENSE](LICENSE).
 
 ---
 
-*For detailed documentation on specific nodes, see individual README files in the `docs/` directory.*
+_For detailed documentation on specific nodes, see individual README files in the `docs/` directory._
 
 ## 🔁 Toggle & Emoji Conventions
 
 To provide a fast, visually consistent understanding of node states, AUN nodes use standardized text+emoji labels for BOOLEAN inputs:
 
-| Context | label_on | label_off | Meaning |
-|---------|----------|-----------|---------|
-| Bypass switches (per group / per title) | `Active 🟢` | `Bypass 🔴` | Active = node(s) participate; Bypass = skipped/disabled path |
-| Mute switches (per group / per title) | `Active 🟢` | `Mute 🔇` | Active = node(s) process; Mute = silenced (no processing / effect) |
-| Global (AllSwitch) for Bypass/Mute groups | `All 🟢` | `Individual` | ON forces every listed group active; OFF defers to each individual switch |
-| Model / generic on/off (where applicable) | `Active 🟢` | `Off 🔴` (or domain specific) | Pattern reused when no special semantics |
-| Collapse / Expand (per node or group) | `Collapsed ▶` | `Expanded ▼` | Collapsed hides node body (compact); Expanded shows full contents |
+| Context                                   | label_on      | label_off                     | Meaning                                                                   |
+| ----------------------------------------- | ------------- | ----------------------------- | ------------------------------------------------------------------------- |
+| Bypass switches (per group / per title)   | `Active 🟢`   | `Bypass 🔴`                   | Active = node(s) participate; Bypass = skipped/disabled path              |
+| Mute switches (per group / per title)     | `Active 🟢`   | `Mute 🔇`                     | Active = node(s) process; Mute = silenced (no processing / effect)        |
+| Global (AllSwitch) for Bypass/Mute groups | `All 🟢`      | `Individual`                  | ON forces every listed group active; OFF defers to each individual switch |
+| Model / generic on/off (where applicable) | `Active 🟢`   | `Off 🔴` (or domain specific) | Pattern reused when no special semantics                                  |
+| Collapse / Expand (per node or group)     | `Collapsed ▶` | `Expanded ▼`                  | Collapsed hides node body (compact); Expanded shows full contents         |
 
 Principles:
+
 1. Always pair text + emoji (never emoji alone) for accessibility and clarity.
 2. 🟢 (green) always maps to the logically "enabled / participates" state.
 3. 🔴 (red) is reserved for bypass / disable; 🔇 (mute) specifically indicates a silenced pathway distinct from bypass when semantics differ.
@@ -251,6 +267,7 @@ Principles:
 Why not only emojis? Mixed text+emoji improves searchability (e.g., searching for "Bypass" in workflows) and helps color‑blind users or environments where emoji rendering is degraded.
 
 If you add new nodes:
+
 - Reuse these labels where semantics match.
 - For tri-state or advanced toggles, document each state clearly in the tooltip.
 - Keep labels short (< 16 chars) to avoid UI truncation.
@@ -267,6 +284,6 @@ AUNSaveVideo mirrors the image saver’s sidecar behavior. You always receive a 
 - Save to file (json): returns JSON output and writes a .json sidecar file
 
 Notes:
+
 - Field ordering and formatting match AUNSaveImage (e.g., cfg uses one decimal place).
 - Video-specific fields are included: frame_rate, loop_count, quality, width, height, count.
-
