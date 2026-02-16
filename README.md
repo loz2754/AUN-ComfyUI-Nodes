@@ -1,10 +1,13 @@
-# AUN Nodes Collection
+<div align="left">
+  <h1>
+    <img src="docs/images/aun-logo.png" alt="AUN Logo" height="120" style="vertical-align: middle;"/>
+    AUN Nodes Collection
+  </h1>
+</div>
 
 A comprehensive collection of custom nodes for ComfyUI designed to enhance workflow efficiency, organization, and control.
 
-<!-- BEGIN: AUN_NODES_AUTO -->
-
----
+## <!-- BEGIN: AUN_NODES_AUTO -->
 
 ## Node categories:
 
