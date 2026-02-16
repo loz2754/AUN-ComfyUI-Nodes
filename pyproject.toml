@@ -33,5 +33,5 @@ PublisherId = ""
 DisplayName = "AUN-ComfyUI-Nodes"
 Icon = ""
 includes = [] 
-# "requires-comfyui" = ">=1.0.0"  # ComfyUI version compatibility
+# "requires-comfyui" = ">=1.0.0"  # ComfyUI version compatibility 1
 
