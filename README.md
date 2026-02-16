@@ -2,19 +2,15 @@
 
 A comprehensive collection of custom nodes for ComfyUI designed to enhance workflow efficiency, organization, and control.
 
-## 🎯 Node Categories
-
-AUN nodes appear in ComfyUI under `AUN Nodes/...` menu categories.
-
 <!-- BEGIN: AUN_NODES_AUTO -->
-
-### ComfyUI Menu Categories:
 
 ---
 
+## Node categories:
+
 #### Node Control - Command the Flow
 
-_Node controllers orchestrate bypass, mute, and collapse states so you can keep complex setups lean and responsive:_
+_AUN Node state controllers orchestrate bypass, mute, and collapse states so you can keep complex setups lean and responsive:_
 
 - AUN Node Controller (`AUNMultiUniversal`) is a universal bypass/mute/collapse controller (1–20 slots). Nodes are chosen by ID or titles. It can take on the role of any of the more specific Node Control nodes.
 - AUN Group Controller (`AUNMultiGroupUniversal`) targets ComfyUI Groups (by group name) rather than individual nodes, with various filtering options.
@@ -102,36 +98,37 @@ To provide a fast, visually consistent understanding of node states, AUN nodes u
 
 #### Text
 
-- Add-To-Prompt (`AUNAddToPrompt`)
-- Name Crop (`AUNNameCrop`)
-- Negative Prompt Selector (`AUNMultiNegPrompt`)
-- Show Text With Title (`AUNShowTextWithTitle`)
-- Single Label Switch (`AUNSingleLabelSwitch`)
-- Strip (`AUNStrip`)
-- Text Index Switch (`AUNTextIndexSwitch`)
-- Text Index Switch 3 (`AUNTextIndexSwitch3`)
-- Text Switch 2 Input With Text Output (`TextSwitch2InputWithTextOutput`)
+- Add-To-Prompt (`AUNAddToPrompt`) add text to either before or after a prompt, with a choice of always, never or 50/50 random.
+- Name Crop (`AUNNameCrop`) crops a string to a specified number of words.
+- Negative Prompt Selector (`AUNMultiNegPrompt`) selects one of the 10 preset negative prompts to use.
+- Show Text With Title (`AUNShowTextWithTitle`) a show text node with a difference - shows text from an input, and dynamically sets the node's title from a text input upon execution. Useful when selecting from a list of text input nodes to see which one was selected.
+- Single Label Switch (`AUNSingleLabelSwitch`) a simple boolean toggle with text label. Useful for adding the same text to more than one node.
+- Strip (`AUNStrip`) trim digits and whitespace from the start and end of a string. Simple cleaner for building filenames or labels.
+- Text Index Switch (`AUNTextIndexSwitch`) switch between up to 20 text inputs based on index number. Useful for dynamic prompt selection with control over how many sockets are visible on the node. Inputs take the title of the connected node, which is also used as the label.
+- Text Index Switch 3 (`AUNTextIndexSwitch3`) select one of ten text inputs based on an index. Also outputs the label of the selected input.
+- Text Switch 2 Input With Text Output (`TextSwitch2InputWithTextOutput`) allows you to choose between 2 text inputs, or none, with text output. Labels can be customized.
+  TIP: Double-click the node or right-click and select 'Compact mode' to hide configuration widgets.
 
 ---
 
 #### Utility
 
-- Any (`AUNAny`)
-- AUN Bookmark (`AUNBookmark`)
-- AUNGraphScraper (`AUNGraphScraper`)
-- CFG Selector (`AUNCFG`)
-- Extract Model Name (`AUNExtractModelName`)
-- Extract Power LoRAs (`AUNExtractPowerLoras`)
-- Extract Widget Value (`AUNExtractWidgetValue`)
-- Get Active Node Title (`AUNGetActiveNodeTitle`)
-- Get Connected Node Titles (`AUNGetConnectedNodeTitles`)
-- Model Name Pass (`AUNModelNamePass`)
-- Model Name Shorten (`AUNModelShorten`)
-- Random Any Switch (`AUNRandomAnySwitch`)
-- Random Number (`AUNRandomNumber`)
-- Random Text Index Switch (`AUNRandomTextIndexSwitch`)
-- Random/Select INT (`AUNRandomIndexSwitch`)
-- Switch Float (`AUNSwitchFloat`)
+- Any (`AUNAny`) a universal pass-through node that accepts any data type. Useful for workflow organization and flexible data routing.
+- AUN Bookmark (`AUNBookmark`) a bookmark node for AUN with precision zoom. Assign a key press and jump to a position in the workflow.
+- AUNGraphScraper (`AUNGraphScraper`) extract multiple widget values from any node in the graph using {Node.Widget} syntax.
+- CFG Selector (`AUNCFG`) a CFG scale selector with finer control.
+- Extract Model Name (`AUNExtractModelName`) extract a model name from a specific node (by numeric ID) for use in filenames.
+- Extract Power LoRAs (`AUNExtractPowerLoras`) extract LoRA names (and strengths) from rgthree Power Lora Loader nodes in the graph/workflow.
+- Extract Widget Value (`AUNExtractWidgetValue`) extract a widget/input value from a specific node by numeric ID and widget name.
+- Get Active Node Title (`AUNGetActiveNodeTitle`) scans a user-defined list of node titles and outputs the title of the first node in that list which is currently active (not bypassed) in the workflow.
+- Get Connected Node Titles (`AUNGetConnectedNodeTitles`) gets the titles of up to 10 connected nodes.
+- Model Name Pass (`AUNModelNamePass`) a pass-through node for a MODEL that also extracts its name (full and shortened). Traces back to find the loader node.
+- Model Name Shorten (`AUNModelShorten`) takes a full model name string and outputs a shortened version suitable for filenames.
+- Random Any Switch (`AUNRandomAnySwitch`) randomly selects one of several connected inputs of any type and outputs it, along with the index of the selected input.
+- Random Number (`AUNRandomNumber`) generates random integers within specified range. Useful for seed variation and randomization in workflows.
+- Random Text Index Switch (`AUNRandomTextIndexSwitch`) generates an index based on the selected mode (Select: fixed value, Increment: cycling through range, Random: random within range) and uses it to select from up to 20 text inputs.
+- Random/Select INT (`AUNRandomIndexSwitch`) outputs an integer based on mode: Select for fixed value, Increment for cycling through range, Random for random value within range.
+- Switch Float (`AUNSwitchFloat`) switch between two float values based on boolean input. Useful for conditional parameter control and A/B testing.
 
 ## <!-- END: AUN_NODES_AUTO -->
 
