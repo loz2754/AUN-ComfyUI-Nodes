@@ -33,3 +33,4 @@ web/build/
 
 # Local user config (do not publish)
 predefined_paths.json
+predefined_paths.local.json

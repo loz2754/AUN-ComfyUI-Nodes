@@ -1,6 +1,7 @@
 [project]
 name = "aun-comfyui-nodes"
-description = "A collection of workflow helper nodes focused on organization + control (bypass/mute/collapse/group control), prompt/text utilities, file/path helpers, and image/video save helpers (optional VHS integration)."
+description = "A collection of workflow helper nodes focused on organization + control (bypass/mute/collapse/group control), prompt/text utilities, file/path helpers, and image/video save helpers."
+description = ""
 version = "1.0.0"
 license = {file = "LICENSE"} 
 # classifiers = [
@@ -34,4 +35,9 @@ DisplayName = "AUN-ComfyUI-Nodes"
 Icon = ""
 includes = [] 
 # "requires-comfyui" = ">=1.0.0"  # ComfyUI version compatibility
+PublisherId = "loz2754"
+DisplayName = "AUN-ComfyUI-Nodes"
+Icon = ""
+includes = [] 
+# "requires-comfyui" = ">=1.0.0"  # ComfyUI version compatibility 1
 

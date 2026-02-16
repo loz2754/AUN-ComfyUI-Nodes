@@ -213,8 +213,26 @@ const getAllGraphs = (root) => {
 
         const push = (collection) => {
             if (!collection) return;
-            if (Array.isArray(collection)) collection.forEach(visit);
-            else Object.values(collection).forEach(visit);
+            if (collection instanceof Map) {
+                collection.forEach((value) => visit(value));
+                return;
+            }
+            if (collection instanceof Set) {
+                collection.forEach((value) => visit(value));
+                return;
+            }
+            if (Array.isArray(collection)) {
+                collection.forEach(visit);
+                return;
+            }
+            // Generic iterable (but avoid strings)
+            if (typeof collection !== "string" && typeof collection?.[Symbol.iterator] === "function") {
+                for (const value of collection) visit(value);
+                return;
+            }
+            if (typeof collection === "object") {
+                Object.values(collection).forEach(visit);
+            }
         };
 
         push(graph.graphs);
@@ -223,7 +241,8 @@ const getAllGraphs = (root) => {
 
         const nodes = graph._nodes || graph.nodes;
         if (nodes) {
-            nodes.forEach((node) => {
+            const visitNode = (node) => {
+                if (!node) return;
                 const candidates = [
                     node?.getInnerGraph?.(),
                     node?.subgraph,
@@ -237,7 +256,12 @@ const getAllGraphs = (root) => {
                     if (Array.isArray(candidate)) candidate.forEach(visit);
                     else visit(candidate);
                 });
-            });
+            };
+
+            if (Array.isArray(nodes)) nodes.forEach(visitNode);
+            else if (nodes instanceof Map) nodes.forEach((value) => visitNode(value));
+            else if (nodes instanceof Set) nodes.forEach((value) => visitNode(value));
+            else if (typeof nodes === "object") Object.values(nodes).forEach((value) => visitNode(value));
         }
     };
 
@@ -249,12 +273,42 @@ const getGraphNodes = (graph) => {
     if (!graph) return [];
     if (Array.isArray(graph._nodes)) return graph._nodes;
     if (Array.isArray(graph.nodes)) return graph.nodes;
+    if (graph._nodes instanceof Map) return Array.from(graph._nodes.values());
+    if (graph.nodes instanceof Map) return Array.from(graph.nodes.values());
+    if (graph._nodes instanceof Set) return Array.from(graph._nodes.values());
+    if (graph.nodes instanceof Set) return Array.from(graph.nodes.values());
     return [];
+};
+
+const resolveSubgraphByKey = (key) => {
+    const normalized = typeof key === "string" ? key.trim() : String(key ?? "").trim();
+    if (!normalized) return null;
+    try {
+        const collection = app?.graph?._subgraphs;
+        if (collection instanceof Map) {
+            const value = collection.get(normalized);
+            if (!value) return null;
+            if (value.graph && (value.graph._nodes || value.graph.nodes)) return value.graph;
+            if (value._nodes || value.nodes) return value;
+            return null;
+        }
+        if (collection && typeof collection === "object") {
+            const value = collection[normalized];
+            if (!value) return null;
+            if (value.graph && (value.graph._nodes || value.graph.nodes)) return value.graph;
+            if (value._nodes || value.nodes) return value;
+        }
+    } catch (_) {
+        // ignore
+    }
+    return null;
 };
 
 const getInnerGraphsFromNode = (node) => {
     if (!node) return [];
     const candidates = [
+        // ComfyUI core subgraph wrapper nodes store the subgraph UUID in `type`.
+        node.type,
         node.getInnerGraph?.(),
         node.subgraph,
         node.inner_graph,
@@ -265,8 +319,28 @@ const getInnerGraphsFromNode = (node) => {
     const graphs = [];
     const push = (value) => {
         if (!value) return;
+        // If we see a string UUID key that exists in app.graph._subgraphs, resolve it.
+        if (typeof value === "string") {
+            const resolved = resolveSubgraphByKey(value);
+            if (resolved) {
+                graphs.push(resolved);
+                return;
+            }
+        }
         if (Array.isArray(value)) {
             value.forEach(push);
+            return;
+        }
+        if (value instanceof Map) {
+            value.forEach((entry) => push(entry));
+            return;
+        }
+        if (value instanceof Set) {
+            value.forEach((entry) => push(entry));
+            return;
+        }
+        if (typeof value !== "string" && typeof value?.[Symbol.iterator] === "function") {
+            for (const entry of value) push(entry);
             return;
         }
         // Some implementations return wrappers like { graph: ... }
@@ -615,6 +689,24 @@ const applyUniversalUpdate = (mode, groupsPayload) => {
 
     const groupMap = collectGroupsByTitle();
 
+    const parseIncludeExcludeTargets = (targets) => {
+        const includes = [];
+        const excludes = [];
+        if (!Array.isArray(targets)) return { includes, excludes };
+        targets.forEach((raw) => {
+            const value = String(raw ?? "").trim();
+            if (!value) return;
+            const first = value[0];
+            if (first === "!" || first === "-") {
+                const cleaned = value.slice(1).trim();
+                if (cleaned) excludes.push(cleaned);
+            } else {
+                includes.push(value);
+            }
+        });
+        return { includes, excludes };
+    };
+
     const updateGroupTitle = (title, isActive) => {
         const key = (title || "").trim().toLowerCase();
         if (!key) return;
@@ -637,26 +729,61 @@ const applyUniversalUpdate = (mode, groupsPayload) => {
         const normalized = String(id ?? "").trim();
         if (!normalized) return;
         const node = nodesById.get(normalized) || nodesById.get(String(Number(normalized)));
-        if (node) setNodeStateForMode(node, mode, isActive);
+        if (!node) return;
+        forEachNodeAndInnerNodes(node, (target) => setNodeStateForMode(target, mode, isActive));
     };
 
-    const updateByTitle = (target, isActive) => {
-        const search = String(target ?? "").trim().toLowerCase();
-        if (!search) return;
+    const updateByTitle = (includeTargets, excludeTargets, isActive) => {
+        const includes = (includeTargets || [])
+            .map((entry) => String(entry ?? "").trim().toLowerCase())
+            .filter(Boolean);
+        if (!includes.length) return;
+        const excludes = new Set(
+            (excludeTargets || [])
+                .map((entry) => String(entry ?? "").trim().toLowerCase())
+                .filter(Boolean)
+        );
+
         allNodes.forEach((node) => {
             const title = String(node.title || "").toLowerCase();
-            if (title.includes(search)) setNodeStateForMode(node, mode, isActive);
+            const included = includes.some((needle) => title.includes(needle));
+            if (!included) return;
+            const excluded = excludes.size && Array.from(excludes).some((needle) => title.includes(needle));
+            if (excluded) return;
+            forEachNodeAndInnerNodes(node, (target) => setNodeStateForMode(target, mode, isActive));
         });
     };
 
     groupsPayload.forEach(({ type, targets, is_active }) => {
-        if (!Array.isArray(targets)) return;
-        targets.forEach((target) => {
-            if (type === "Group") updateGroupTitle(target, is_active);
-            else if (type === "ID") updateById(target, is_active);
-            else if (type === "Title") updateByTitle(target, is_active);
-        });
+        const { includes, excludes } = parseIncludeExcludeTargets(targets);
+        if (!includes.length) return;
+
+        if (type === "Group") {
+            const excludeSet = new Set(excludes.map((value) => String(value).trim().toLowerCase()).filter(Boolean));
+            includes.forEach((target) => {
+                const key = String(target).trim().toLowerCase();
+                if (excludeSet.has(key)) return;
+                updateGroupTitle(target, is_active);
+            });
+        } else if (type === "ID") {
+            const excludeSet = new Set(excludes.map((value) => String(value).trim()).filter(Boolean));
+            includes.forEach((target) => {
+                const key = String(target).trim();
+                if (excludeSet.has(key)) return;
+                updateById(target, is_active);
+            });
+        } else if (type === "Title") {
+            updateByTitle(includes, excludes, is_active);
+        }
     });
+
+    // Ensure UI refresh also updates subgraph canvases.
+    try {
+        graphs.forEach((graph) => graph?.setDirtyCanvas?.(true, true));
+        app?.graph?.setDirtyCanvas?.(true, true);
+    } catch (_) {
+        // ignore
+    }
 };
 
 const serializeAllGroupsState = (activeSet, titles) => {

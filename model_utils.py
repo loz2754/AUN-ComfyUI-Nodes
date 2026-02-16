@@ -5,7 +5,7 @@ import re
 MODEL_SHORT_NAMES = {
     "sd_xl_base_1.0": "SDXLBase",
     "sd_xl_refiner_1.0": "SDXLRef",
-    "realisticVisionV60B1_v60VAE": "RealVis60",
+    "realisticVisionV60B1_v60VAE": "RealisticVis60",
     "juggernautXL_v8Rundiffusion": "JuggerXL8",
     "Afroditexl_XL31": "AfroditeXL31",
     "bemypony_Photo": "BeMyPonyPhoto",
@@ -21,6 +21,7 @@ MODEL_SHORT_NAMES = {
     "juggernautXL_v9Rdphoto2Lightning": "JuggerXL9Ltg",
     "lustifySDXLNSFWSFW_v40": "LustifyXL40",
     "musesThalia_v10": "MusesThalia10",
+    "nattyRealisticSDXL_v20": "NattyRealistic20",
     "omnigenxlNSFWSFW_v10": "OmnigenXL10",
     "onlyfornsfw118_v20": "Only4NSFW118v20",
     "ponyRealism_v21Lightning4SVAE": "PnyRealism21Ltg4",
@@ -89,7 +90,8 @@ MODEL_SHORT_NAMES = {
     "Wan2.2-I2V-A14B-LowNoise-Q8_0": "Wan22I2V14BLoNoiseQ8_GGUF",
     "Wan2.2-I2V-A14B-HighNoise-Q4_K_M": "Wan22I2V14BHiNoiseQ4_GGUF",
     "Wan2.2-I2V-A14B-LowNoise-Q4_K_M": "Wan22I2V14BLoNoiseQ4_GGUF",
-    "wan2.2-i2v-rapid-aio": "Wan22I2VRapidAIO"
+    "wan2.2-i2v-rapid-aio": "Wan22I2VRapidAIO",
+    "wan22EnhancedNSFWSVICamera_nolightningSVIFmFp8L": "Wan22EnhNSFWSVICamNoLtgFP8",
 }
 
 # Sampler short names (synced from AUNSaveImage)

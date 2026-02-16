@@ -2,7 +2,17 @@
 
 ## [Unreleased]
 
-- No changes yet.
+- 2026-01-20
+  - Added `AUNPathFilenameVideoResolved` node
+    - Returns resolved values instead of % tokens: `path`, `filename`, `path_filename`, and `sidecar_text`.
+    - Sidecar contains a PowerLoraLoader-formatted LoRA block under the `loras` field (if LoRAs are present in the workflow).
+    - The sidecar no longer includes the output `path` field (only `filename` and metadata).
+    - LoRA-related filename tokens and short/parsed LoRA fields were removed; LoRAs are recorded only in the sidecar block.
+    - Sidecar file writing: when `sidecar_format` save-to-file is selected, a `.txt` or `.json` is written next to the resolved output filename in ComfyUI's output tree.
+
+  Notes:
+  - LoRA detection uses the same extraction logic as `AUNSaveVideo` and mirrors its PowerLoraLoader formatting.
+  - Filenames remain compact (short model/sampler/scheduler names); full model name is preserved in the sidecar `model` field.
 
 ## [0.1.0] - 2026-01-12
 
@@ -19,7 +29,6 @@
   - Executes on workflow queue for proper timing
 
 ### Updated
-- `vhs_patch.py`: avoids ComfyUI "undefined" widget values by making most patch inputs socket-only; removed LoRA delimiter input and fixed delimiter to `;`
 - `AUNSaveVideo`: optional-import handling for `cv2`/`piexif` and safer ffmpeg fallback
 - `AUNSaveImage`: `piexif` is now optional (non-PNG still saves without EXIF insertion)
 - `KSamplerInputs`: removed unused heavy imports to reduce dependency surface
