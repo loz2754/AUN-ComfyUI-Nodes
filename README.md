@@ -1,5 +1,5 @@
 <h1 align="center">
-  <img src="docs/images/aun-logo.png" alt="AUN Logo" height="60" align="center"/> AUN Nodes Collection
+  <img src="docs/images/aun-logo.png" alt="AUN Logo" height="100" align="center"/> AUN Nodes Collection
 </h1>
 
 A comprehensive collection of custom nodes for ComfyUI designed to enhance workflow efficiency, organization, and control.
