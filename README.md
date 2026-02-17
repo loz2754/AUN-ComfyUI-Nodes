@@ -152,14 +152,14 @@ Install into your ComfyUI `custom_nodes` directory, then restart ComfyUI.
 From your ComfyUI folder:
 
 - `cd custom_nodes`
-- `git clone https://github.com/loz2754/AUN-ComfyUI-Nodes AUN`
+- `git clone https://github.com/loz2754/AUN-ComfyUI-Nodes`
 
 ### ComfyUI-Manager
 
 - AUN is compatible with ComfyUI-Manager installs.
 - Runtime Python dependencies are declared in [requirements.txt](requirements.txt) (and [install.py](install.py) for Manager compatibility).
 - If you install manually from git and see missing-module errors (e.g. `piexif`, `cv2`), install deps with:
-  - `pip install -r custom_nodes/AUN/requirements.txt`
+  - `pip install -r custom_nodes/AUN-Comfyui-Nodes/requirements.txt`
 
 ### Basic Usage
 
