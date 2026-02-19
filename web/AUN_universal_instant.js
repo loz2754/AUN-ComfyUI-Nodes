@@ -1920,12 +1920,10 @@ app.registerExtension({
   name: "AUN.Universal.Instant",
   async beforeRegisterNodeDef(nodeType, nodeData) {
     if (!nodeData) return;
+    // AUNMultiUniversalVue2 / AUNMultiGroupUniversalVue2 are handled by the
+    // AUN.Universal.Instant.Vue2 extension (AUN-ComfyUI-Nodes-Vue2).
     if (
-      ![
-        "AUNMultiUniversal",
-        "AUNMultiGroupUniversal",
-        "AUNMultiUniversalVue2",
-      ].includes(nodeData.name)
+      !["AUNMultiUniversal", "AUNMultiGroupUniversal"].includes(nodeData.name)
     )
       return;
     extendNodePrototype(nodeType, nodeData);
