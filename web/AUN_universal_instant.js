@@ -1717,7 +1717,7 @@ const decorateNode = (node, nodeData) => {
     type === "AUNMultiGroupUniversal" ||
     node.widgets?.some((w) => w.name === "group_name_1");
   node.__AUN_isUniversalNode =
-    type === "AUNMultiUniversal" ||
+    ["AUNMultiUniversal", "AUNMultiUniversalVue2"].includes(type) ||
     node.widgets?.some((w) => w.name === "targets_1");
   if (!node.__AUN_isGroupNode && !node.__AUN_isUniversalNode) return;
   ensureWidgetTracking(node);
@@ -1921,7 +1921,11 @@ app.registerExtension({
   async beforeRegisterNodeDef(nodeType, nodeData) {
     if (!nodeData) return;
     if (
-      !["AUNMultiUniversal", "AUNMultiGroupUniversal"].includes(nodeData.name)
+      ![
+        "AUNMultiUniversal",
+        "AUNMultiGroupUniversal",
+        "AUNMultiUniversalVue2",
+      ].includes(nodeData.name)
     )
       return;
     extendNodePrototype(nodeType, nodeData);
