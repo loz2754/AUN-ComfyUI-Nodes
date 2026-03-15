@@ -62,6 +62,8 @@ MODEL_SHORT_NAMES = {
     "realisticVisionV60B1_v51VAE": "RealVisV60B1",
     "realisticVisionV60B1_v60B1InpaintingVAE": "RealVisV60B1Inpaint",
     "uberRealisticPornMerge_urpmv13": "UberRealPornMerge13",
+    "uberRealisticPornMergePonyxl_ponyxlHybridV1": "URPM_PonyxlHybridV1",
+    "rsmEmbraceTheSuckXL_v11": "EmbrTheSuckXL11",
     "v1-5-pruned-emaonly": "SD15-EMA",
     "flux1-dev-kontext_fp8_scaled": "Flux1DevKontextFP8scaled",
     "FramePack_F1_I2V_HY_20250503": "FramePackF1I2VHY",
