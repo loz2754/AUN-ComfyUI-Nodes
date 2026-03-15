@@ -239,6 +239,43 @@ app.registerExtension({
       // Initial update
       setTimeout(() => updateLabels(), 0);
 
+      // Ensure labels are updated on configure (when workflow is loaded)
+      const origOnConfigure = this.onConfigure;
+      this.onConfigure = function (info) {
+        // Pre-emptively restore label_a and label_b values so the combo options are valid
+        // BEFORE LiteGraph's configure() restores the 'choose' widget value.
+        if (info && info.widgets_values) {
+          const aIdx = this.widgets.findIndex((w) => w.name === "label_a");
+          const bIdx = this.widgets.findIndex((w) => w.name === "label_b");
+          if (aIdx !== -1 && aIdx < info.widgets_values.length) {
+            this.widgets[aIdx].value = info.widgets_values[aIdx];
+          }
+          if (bIdx !== -1 && bIdx < info.widgets_values.length) {
+            this.widgets[bIdx].value = info.widgets_values[bIdx];
+          }
+          updateLabels();
+
+          // Workaround for some ComfyUI versions discarding combo values:
+          const chooseIdx = this.widgets.findIndex((w) => w.name === "choose");
+          if (chooseIdx !== -1 && chooseIdx < info.widgets_values.length) {
+            const savedChoose = info.widgets_values[chooseIdx];
+            setTimeout(() => {
+              if (this.widgets[chooseIdx].value !== savedChoose) {
+                this.widgets[chooseIdx].value = savedChoose;
+                this.setDirtyCanvas(true, true);
+              }
+            }, 10);
+          }
+        }
+
+        if (origOnConfigure) origOnConfigure.apply(this, arguments);
+      };
+
+      // Ensure we don't have the old configure override hanging around.
+      if (this.hasOwnProperty("configure")) {
+        delete this.configure;
+      }
+
       // --- Robust double-click compact mode toggle ---
       // Attach at prototype level to avoid being overwritten
       if (!nodeType.prototype._AUN_dblClickPatch) {

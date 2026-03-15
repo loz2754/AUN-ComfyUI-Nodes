@@ -1392,9 +1392,9 @@ const syncTogglesWithGraph = function syncTogglesWithGraph() {
       }
     }
   } else {
-    let allOn = true;
-    let allOff = true;
-
+    // For non-group nodes, skip AllSwitch sync in syncTogglesWithGraph.
+    // AllSwitch should only be controlled by user toggles, not by graph state sync.
+    // The switch widgets still sync to graph state for individual switches.
     for (let slot = 1; slot <= slotCount; slot++) {
       const switchWidget = getWidget(this, `switch_${slot}`);
       if (!switchWidget || switchWidget.hidden) continue;
@@ -1402,10 +1402,7 @@ const syncTogglesWithGraph = function syncTogglesWithGraph() {
       const rawTargets = splitList(getWidget(this, `targets_${slot}`)?.value, {
         lowercase: targetType !== "ID",
       });
-      if (!rawTargets.length) {
-        allOn = false;
-        continue;
-      }
+      if (!rawTargets.length) continue;
       const targetSet = new Set(rawTargets);
 
       const predicate = (node) => {
@@ -1415,30 +1412,15 @@ const syncTogglesWithGraph = function syncTogglesWithGraph() {
       };
 
       const { total, disabled } = evaluateNodeTargets(predicate, mode);
-      if (!total) {
-        allOn = false;
-        continue;
-      }
+      if (!total) continue;
       const shouldBeActive = disabled === 0;
+      // Sync switch widget to target node state (for individual switches)
       if (switchWidget.value !== shouldBeActive) {
         switchWidget.value = shouldBeActive;
         dirty = true;
       }
-      if (shouldBeActive) allOff = false;
-      else allOn = false;
     }
-
-    const allSwitch = getWidget(this, "AllSwitch");
-    if (allSwitch && !allSwitch.hidden) {
-      if (allOn && allSwitch.value !== true) {
-        allSwitch.value = true;
-        dirty = true;
-      }
-      if (allOff && allSwitch.value !== false) {
-        allSwitch.value = false;
-        dirty = true;
-      }
-    }
+    // AllSwitch sync removed - let user control it manually
   }
 
   if (dirty) this.setDirtyCanvas(true, true);
