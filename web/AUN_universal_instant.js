@@ -1786,15 +1786,44 @@ const decorateNode = (node, nodeData) => {
   node.syncTogglesWithGraph = syncTogglesWithGraph.bind(node);
   node.__AUN_executeInstant = executeInstant.bind(node);
   node.__AUN_toggleCompactMode = (nextState) => {
-    node.properties = node.properties || {};
-    const current = !!node.properties._AUN_compactMode;
-    const target = typeof nextState === "boolean" ? nextState : !current;
-    if (current === target) return;
-    node.properties._AUN_compactMode = target;
-    node.__AUN_refreshWidgets?.();
-    node.__AUN_updateAutoHeight?.();
-    scheduleAutoHeightUpdate(node);
-    node.setDirtyCanvas?.(true, true);
+    // Guard against double-invocation from multiple extensions handling the same node
+    if (node.__AUN_toggleInProgress) return;
+
+    // Check if there's an active widget input dialog (LiteGraph creates input elements for text widgets)
+    const activeElement = document.activeElement;
+    const isWidgetInput =
+      activeElement &&
+      (activeElement.tagName === "INPUT" ||
+        activeElement.tagName === "TEXTAREA" ||
+        activeElement.classList?.contains("litegraph") ||
+        activeElement.id?.includes("widget"));
+
+    // Also check if there's a pending widget interaction on the canvas
+    const canvas = app.canvas;
+    const interactingWidget =
+      canvas?.interacting_widget || canvas?.active_widget;
+
+    if (isWidgetInput || interactingWidget) {
+      return;
+    }
+
+    node.__AUN_toggleInProgress = true;
+    try {
+      node.properties = node.properties || {};
+      const current = !!node.properties._AUN_compactMode;
+      const target = typeof nextState === "boolean" ? nextState : !current;
+      if (current === target) return;
+      node.properties._AUN_compactMode = target;
+      node.__AUN_refreshWidgets?.();
+      node.__AUN_updateAutoHeight?.();
+      scheduleAutoHeightUpdate(node);
+      node.setDirtyCanvas?.(true, true);
+    } finally {
+      // Clear the flag after a short delay to allow the event loop to complete
+      setTimeout(() => {
+        node.__AUN_toggleInProgress = false;
+      }, 50);
+    }
   };
 
   const originalOnResize = node.onResize;
