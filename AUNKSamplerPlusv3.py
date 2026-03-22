@@ -142,13 +142,12 @@ class AUNKSamplerPlusv3:
         if model_name and model_name != "None":
             try:
                 from comfy_extras.chainner_models import model_loading
+                import comfy.model_management as model_management
                 model_path = comfy_paths.get_full_path("upscale_models", model_name)
                 sd = comfy.utils.load_torch_file(model_path)
                 upscaler = model_loading.load_state_dict(sd).eval()
-                # Move to GPU if available
-                device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-                upscaler = upscaler.to(device)
-            except Exception:
+            except Exception as e:
+                print(f"AUNKSamplerPlusv3 AI model load failed: {e}")
                 upscaler = None  # Fail safe: fall back to PIL
 
         # Input could be a torch tensor [B,H,W,C] or numpy array
@@ -182,13 +181,22 @@ class AUNKSamplerPlusv3:
 
             if upscaler is not None:
                 try:
-                    # AI upscale (to model-native scale), then resize to requested size if needed
-                    device = next(upscaler.parameters()).device
+                    import comfy.model_management as model_management
+                    device = model_management.get_torch_device()
+                    upscaler.to(device)
+                    
                     with torch.no_grad():
                         # HWC uint8 -> NCHW float32 [0,1]
                         t = torch.from_numpy(single_img_np).to(device=device, dtype=torch.float32) / 255.0
-                        t = t.permute(2, 0, 1).unsqueeze(0).contiguous()
-                        sr = upscaler(t)
+                        in_img = t.permute(2, 0, 1).unsqueeze(0).contiguous()
+                        
+                        tile = 512
+                        overlap = 32
+                        
+                        # Use comfy.utils.tiled_scale to properly handle large images and avoid OOM
+                        scale_amount = getattr(upscaler, 'scale', 4)
+                        sr = comfy.utils.tiled_scale(in_img, lambda a: upscaler(a), tile_x=tile, tile_y=tile, overlap=overlap, upscale_amount=scale_amount)
+                        
                         if isinstance(sr, (list, tuple)):
                             sr = sr[0]
                         # NCHW -> HWC float32 [0,1]
@@ -198,10 +206,13 @@ class AUNKSamplerPlusv3:
                         if sr_img.size != new_size:
                             sr_img = sr_img.resize(new_size, pil_method)
                         upscaled_np = np.array(sr_img).astype(np.float32) / 255.0
-                except Exception:
+                except Exception as e:
+                    print(f"AUNKSamplerPlusv3 AI upscale failed: {e}")
                     # Fallback to PIL if AI inference fails for any reason
                     upscaled = pil_img.resize(new_size, pil_method)
                     upscaled_np = np.array(upscaled).astype(np.float32) / 255.0
+                finally:
+                    upscaler.to("cpu")
             else:
                 # Pure PIL upscale
                 upscaled = pil_img.resize(new_size, pil_method)
@@ -410,9 +421,7 @@ class AUNKSamplerPlusv3:
         pixel_only_upscaled_from_latent = None
         if latent_upscale and image_upscale:
             # First, produce a pixel-space upscaled image from the decoded latent (no sampling).
-            # IMPORTANT: Use plain interpolation here (skip AI upscaler) to avoid compounding artifacts
-            # before re-encoding and resampling.
-            pixel_only_upscaled_from_latent = self.pil_upscale(latent_upscaled_image, image_upscale_ratio, image_upscale_method, model_name="None")
+            pixel_only_upscaled_from_latent = self.pil_upscale(latent_upscaled_image, image_upscale_ratio, image_upscale_method, model_name=image_upscale_model)
 
             # Re-encode and pass through sampler using the SAME number of steps
             # as the previous latent upscale pass, then decode to produce "Both upscaled".
@@ -426,11 +435,11 @@ class AUNKSamplerPlusv3:
                 disable_pbar3 = not comfy.utils.PROGRESS_BAR_ENABLED
                 # Determine conservative steps based on pass2 usage, capped to reduce artifacts
                 desired_steps = int(steps_used_in_pass2)
-                # Cap to a small, safe range; typical: 4-12
-                steps_imgpass = max(1, min(desired_steps if desired_steps > 0 else 4, 12))
+                # Cap to a smaller, safer range; try to avoid structural drift
+                steps_imgpass = max(1, min(desired_steps if desired_steps > 0 else 4, 8))
                 # Keep denoise modest to avoid structural drift (faces/limbs distortions)
                 denoise_imgpass = float(denoise_used_in_pass2) if 'denoise_used_in_pass2' in locals() else upscaling_denoise
-                denoise_imgpass = max(0.01, min(denoise_imgpass, 0.40))
+                denoise_imgpass = max(0.01, min(denoise_imgpass * 0.5, 0.20))
                 _log(f"Pass3 START (both-upscaled, safe): steps={steps_imgpass}, cfg={cfg_latent_upscale}, denoise={denoise_imgpass}")
                 callback3 = latent_preview.prepare_callback(model, max(steps_imgpass, 1))
                 t3_start = time.perf_counter()
