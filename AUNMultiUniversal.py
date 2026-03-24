@@ -30,24 +30,35 @@ class AUNMultiUniversal:
         }
         
         # Pre-define 20 slots in required to ensure proper validation and widget behavior
+        def slot_tooltip(text, slot_index):
+            return text if slot_index == 1 else ""
+
+        label_tooltip = "Descriptive label for slot 1 (other slots follow the same layout)."
+        targets_tooltip = (
+            "Target node IDs or Titles for slot 1 (comma, semicolon, or newline separated). "
+            "Use '!' or '-' prefix for exclusion (e.g. 'image, !load')."
+        )
+        switch_tooltip = "Toggle state for slot 1. 🟢 = active, 🔴 = controlled by mode."
+        target_type_tooltip = "Targeting method for slot 1: ID (numeric) or Title (display name)."
+
         for i in range(1, 21):
             inputs["required"][f"label_{i}"] = ("STRING", {
                 "default": "",
-                "tooltip": f"Descriptive label for slot {i}."
+                "tooltip": slot_tooltip(label_tooltip, i)
             })
             inputs["required"][f"targets_{i}"] = ("STRING", {
                 "default": "0",
-                "tooltip": f"Target node IDs or Titles for slot {i} (comma, semicolon, or newline separated). Use '!' or '-' prefix for exclusion (e.g. 'image, !load')."
+                "tooltip": slot_tooltip(targets_tooltip, i)
             })
             inputs["required"][f"switch_{i}"] = ("BOOLEAN", {
                 "default": False, 
                 "label_on": "Active 🟢", 
                 "label_off": "Bypass 🔴",
-                "tooltip": f"Toggle state for slot {i}. 🟢 = active, 🔴 = controlled by mode."
+                "tooltip": slot_tooltip(switch_tooltip, i)
             })
             inputs["required"][f"target_type_{i}"] = (["ID", "Title"], {
                 "default": "ID",
-                "tooltip": f"Targeting method for slot {i}: ID (numeric) or Title (display name)."
+                "tooltip": slot_tooltip(target_type_tooltip, i)
             })
             
         # AllSwitch at the bottom to match other multi-nodes

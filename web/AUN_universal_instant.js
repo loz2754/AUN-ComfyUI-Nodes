@@ -1157,7 +1157,7 @@ const refreshWidgets = function refreshWidgets() {
   const showSelectedSlotsCompact = isCompact && !useAllGroups;
   const restriction = getWidget(this, "toggle_restriction")?.value || "default";
   const offIcon = OFF_LABELS[mode] || OFF_LABELS.Bypass;
-  const onIcon = ON_LABELS[mode] || "🟢";
+  const onIcon = ON_LABELS[mode] || "Active 🟢";
   const isNodeController = this.__AUN_isUniversalNode && !isGroupNode;
   const allowCompactDetails = !isNodeController;
 

@@ -17,7 +17,7 @@ class AUNSetBypassByTitle:
                         "default": True,
                         "label_on": "Active 🟢",
                         "label_off": "Bypass 🔴",
-                        "tooltip": "Set to '🟢 Active' to enable nodes, '🔴 Bypass' to disable."
+                        "tooltip": "Set to 'Active 🟢' to enable nodes, 'Bypass 🔴' to disable."
                     }
                 ),
             }
