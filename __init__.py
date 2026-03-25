@@ -37,6 +37,7 @@ from .AUNRandomAnySwitch import AUNRandomAnySwitch
 from .AUNRandomIndexSwitch import AUNRandomIndexSwitch
 from .AUNRandomNumber import AUNRandomNumber
 from .AUNRandomTextIndexSwitch import AUNRandomTextIndexSwitch
+from .AUNRandomTextIndexSwitchV2 import AUNRandomTextIndexSwitchV2
 from .AUNSaveImage import AUNSaveImage
 from .AUNSaveVideo import AUNSaveVideo
 from .AUNSetBypassByTitle import AUNSetBypassByTitle
@@ -96,6 +97,7 @@ NODE_CLASS_MAPPINGS = {
     "AUNRandomIndexSwitch": AUNRandomIndexSwitch,
     "AUNRandomNumber": AUNRandomNumber,
     "AUNRandomTextIndexSwitch": AUNRandomTextIndexSwitch,
+    "AUNRandomTextIndexSwitchV2": AUNRandomTextIndexSwitchV2,
     "AUNSaveImage": AUNSaveImage,
     "AUNSaveVideo": AUNSaveVideo,
     "AUNSetBypassByTitle": AUNSetBypassByTitle,
@@ -152,6 +154,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "AUNRandomIndexSwitch": "Random/Select INT",
     "AUNRandomNumber": "Random Number",
     "AUNRandomTextIndexSwitch": "Random Text Index Switch",
+    "AUNRandomTextIndexSwitchV2": "Random Text Index Switch V2",
     "AUNSaveImage": "Save Image",
     "AUNSaveVideo": "Save Video",
     "AUNSetBypassStateGroup": "Group Bypasser (Multi)",

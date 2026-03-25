@@ -4,12 +4,13 @@ import time
 lazy_options = {"lazy": True}
 
 
-class AUNRandomTextIndexSwitch:
+class AUNRandomTextIndexSwitchV2:
     MAX_INPUTS = 20
     MIN_VISIBLE_INPUTS = 2
 
     def __init__(self):
         self.index = None
+        self.range_index = 0
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -23,13 +24,18 @@ class AUNRandomTextIndexSwitch:
                     "default": 10, "min": 1, "max": cls.MAX_INPUTS,
                     "tooltip": "The maximum index for selection (inclusive)."
                 }),
-                "mode": (["Select", "Increment", "Random"], {
+                "mode": (["Select", "Increment", "Random", "Range"], {
                     "default": "Random",
-                    "tooltip": "Select mode: Select for fixed index, Increment for cycling through range, Random for random index within range."
+                    "tooltip": "Select mode: Select for fixed index, Increment for cycling through range, Random for random index within range, Range for selecting a range of indices."
                 }),
                 "select": ("INT", {
                     "default": 1, "min": 1, "max": cls.MAX_INPUTS,
                     "tooltip": "The fixed index value to output when in 'Select' mode."
+                }),
+                "range": ("STRING", {
+                    "default": "1,2,5-8,12",
+                    "multiline": False,
+                    "tooltip": "A comma-separated list of indices or ranges to select from in 'Range' mode (e.g. 1, 2, 5-8, 12)."
                 }),
                 "visible_inputs": ("INT", {
                     "default": cls.MAX_INPUTS,
@@ -59,7 +65,7 @@ class AUNRandomTextIndexSwitch:
     FUNCTION = "random_text_switch"
     CATEGORY = "AUN Nodes/Utility"
     OUTPUT_NODE = True
-    DESCRIPTION = "Combines random index generation with text selection. Generates an index based on the selected mode (Select: fixed value, Increment: cycling through range, Random: random within range) and uses it to select from up to 20 text inputs. Control how many sockets are visible on the node for cleaner layouts."
+    DESCRIPTION = "Combines random index generation with text selection. Generates an index based on the selected mode (Select: fixed value, Increment: cycling through range, Random: random within range, Range: selecting a range of indices) and uses it to select from up to 20 text inputs. Control how many sockets are visible on the node for cleaner layouts."
 
     def check_lazy_status(self, minimum, maximum, mode, select, visible_inputs, **kwargs):
         # Since index is generated at runtime, cannot determine which input is needed in advance
@@ -93,9 +99,34 @@ class AUNRandomTextIndexSwitch:
             return min_val
         return max(min_val, min(int(index), max_val))
 
+    def _parse_range_string(self, range_str, min_val, max_val):
+        valid_indices = []
+        try:
+            for part in range_str.split(','):
+                part = part.strip()
+                if not part:
+                    continue
+                if '-' in part:
+                    start_str, end_str = part.split('-', 1)
+                    start = int(start_str.strip())
+                    end = int(end_str.strip())
+                    if start > end:
+                        start, end = end, start
+                    valid_indices.extend(list(range(start, end + 1)))
+                else:
+                    valid_indices.append(int(part))
+        except Exception:
+            pass
+        
+        valid_indices = [idx for idx in valid_indices if 1 <= idx <= self.MAX_INPUTS]
+        if not valid_indices:
+            valid_indices = [min_val]
+        return list(set(valid_indices)) # Remove duplicates
+
     def random_text_switch(self, minimum, maximum, mode, select, visible_inputs, **kwargs):
         min_val, max_val = self._clamp_range(minimum, maximum, visible_inputs)
-        select_val = self._clamp_index(select, min_val, max_val)
+        select_val = self._clamp_index(select, 1, self.MAX_INPUTS)
+        range_str = kwargs.get("range", "")
 
         # Generate the index based on mode
         if mode == "Random":
@@ -107,8 +138,18 @@ class AUNRandomTextIndexSwitch:
             if self.index > max_val:
                 self.index = min_val
             index = self.index
+        elif mode == "Range":
+            valid_indices = self._parse_range_string(range_str, min_val, max_val)
+            # Ensure valid_indices is sorted to iterate predictably
+            valid_indices.sort()
+            
+            if not hasattr(self, 'range_index') or self.range_index >= len(valid_indices):
+                self.range_index = 0
+                
+            index = valid_indices[self.range_index]
+            self.range_index = (self.range_index + 1) % len(valid_indices)
         else:  # Select
-            index = select
+            index = select_val
 
         key = "text%d" % index
 
@@ -172,16 +213,16 @@ class AUNRandomTextIndexSwitch:
         return (selected_text, selected_label, index)
 
     @classmethod
-    def IS_CHANGED(cls, minimum=None, maximum=None, mode=None, select=None, **_unused):
-        # Force re-execution when random or increment is chosen
-        if mode == "Random" or mode == "Increment":
-            return time.time()
-        return (select,)
+    def IS_CHANGED(cls, minimum=None, maximum=None, mode=None, select=None, **kwargs):
+        # Force re-execution when random, range, or increment is chosen
+        if mode in ["Random", "Increment", "Range"]:
+            return float("NaN")
+        return (select, mode, minimum, maximum, kwargs.get("range"))
 
 NODE_CLASS_MAPPINGS = {
-    "AUNRandomTextIndexSwitch": AUNRandomTextIndexSwitch,
+    "AUNRandomTextIndexSwitchV2": AUNRandomTextIndexSwitchV2,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "AUNRandomTextIndexSwitch": "AUN Random Text Index Switch",
+    "AUNRandomTextIndexSwitchV2": "AUN Random Text Index Switch V2",
 }
