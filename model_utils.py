@@ -95,6 +95,10 @@ MODEL_SHORT_NAMES = {
     "Wan2.2-I2V-A14B-LowNoise-Q4_K_M": "Wan22I2V14BLoNoiseQ4_GGUF",
     "wan2.2-i2v-rapid-aio": "Wan22I2VRapidAIO",
     "wan22EnhancedNSFWSVICamera_nolightningSVIFmFp8L": "Wan22EnhNSFWSVICamNoLtgFP8",
+    "mergeNattyBigLovePhoto5": "MrgNttyBgLovePht5",
+    "mergeNattyBigLovePony2-05": "MrgNttyBgLovePny2_05",
+    "mergeNattyBigLovePony2-85": "MrgNttyBgLovePny2_85",
+    "mergeNattyRealVisXL5": "MrgNttyRealVisXL5",
 }
 
 # Sampler short names (synced from AUNSaveImage)
