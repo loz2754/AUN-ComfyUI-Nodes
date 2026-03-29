@@ -27,9 +27,6 @@ class AUNKSamplerPlusv4:
                 "model": ("MODEL", {
                     "tooltip": "The diffusion model to use for progressive sampling."
                 }),
-                "model_latent": ("MODEL", {
-                    "tooltip": "The model to use for latent space upscaling."
-                }),
                 "seed": ("INT", {
                     "default": 0, "min": 0, "max": 0xffffffffffffffff, "forceInput": True,
                     "tooltip": "Random seed for reproducible results. Use same seed for identical outputs."
@@ -117,6 +114,11 @@ class AUNKSamplerPlusv4:
                 "verbose": ("BOOLEAN", {
                     "default": False, "label_on": "Yes", "label_off": "No",
                     "tooltip": "Print detailed pass logs and timings to the console."
+                })
+            },
+            "optional": {
+                "model_latent": ("MODEL", {
+                    "tooltip": "The model to use for latent space upscaling. (Optional, falls back to base model if not connected.)"
                 })
             },
             "hidden": {"prompt": "PROMPT"}
@@ -282,11 +284,14 @@ class AUNKSamplerPlusv4:
             return latent
 
     def qmSample(
-        self, vae, model, model_latent, seed, steps_total, steps_first, start_step_second, cfg, cfg_latent_upscale, sampler_name, scheduler,
+        self, vae, model, seed, steps_total, steps_first, start_step_second, cfg, cfg_latent_upscale, sampler_name, scheduler,
         positive, negative, latent_image, denoise, latent_upscale, image_upscale, upscale_method="bilinear", ratio=1.5,
         upscaling_denoise=0.61, image_upscale_method="lanczos", image_upscale_model="None", image_upscale_ratio=1.5, image_upscale_refine=False,
-        img_refine_steps=4, img_refine_denoise=0.25, verbose=False, prompt=None
+        img_refine_steps=4, img_refine_denoise=0.25, verbose=False, prompt=None, model_latent=None
     ):
+        if model_latent is None:
+            model_latent = model
+            
         latent = latent_image
         latent_data = latent_image or {}
         base_latent = latent_data.get("samples") if isinstance(latent_data, dict) else latent_data
