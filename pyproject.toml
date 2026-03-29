@@ -29,10 +29,6 @@ Documentation = "https://github.com/loz2754/AUN-ComfyUI-Nodes/wiki"
 "Bug Tracker" = "https://github.com/loz2754/AUN-ComfyUI-Nodes/issues"
 
 [tool.comfy]
-PublisherId = ""
-DisplayName = "AUN-ComfyUI-Nodes"
-Icon = ""
-includes = [] 
 # "requires-comfyui" = ">=1.0.0"  # ComfyUI version compatibility
 PublisherId = "loz2754"
 DisplayName = "AUN-ComfyUI-Nodes"
