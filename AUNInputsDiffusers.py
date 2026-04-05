@@ -20,11 +20,11 @@ sampler = AnyType("*")
 
 
 class AUNInputsDiffusers:
-    """Combined checkpoint / diffusion-model loader with the original AUNInputs ergonomics."""
+    """Diffusion-model loader with the original AUNInputs ergonomics."""
 
     DESCRIPTION = (
-        "Load a standard checkpoint (UNet+CLIP+VAE) or mix-and-match a diffusion-only UNet with "
-        "explicit CLIP and VAE files, then emit the same downstream inputs as AUNInputs."
+        "Load a diffusion-only UNet with explicit CLIP and VAE files, "
+        "then emit the same downstream inputs as AUNInputs."
     )
 
     MODEL_SOURCES = ["Checkpoint", "Diffusion model"]
@@ -99,7 +99,6 @@ class AUNInputsDiffusers:
             "1224x512",
         ]
 
-        ckpt_files = comfy_paths.get_filename_list("checkpoints")
         diffusion_files = cls._choices_or_placeholder(
             comfy_paths.get_filename_list("diffusion_models"), cls._NO_DIFFUSION
         )
@@ -124,25 +123,10 @@ class AUNInputsDiffusers:
                 )
             },
             "required": {
-                # "model_source": (
-                #     cls.MODEL_SOURCES,
-                #     {
-                #         "default": cls.MODEL_SOURCES[0],
-                #         "tooltip": "Choose a classic checkpoint (UNet+CLIP+VAE) or load a diffusion-only UNet with explicit companions.",
-                #     },
-                # ),
-                # "ckpt_name": (
-                #     ckpt_files,
-                #     {
-                #         "tooltip": "Checkpoint model file to load when model_source='Checkpoint'.",
-                #     },
-                # ),
                 "diffusion_name": (
                     diffusion_files,
                     {
-                        "tooltip": "Diffusion-model file (UNet only). "
-                #        "Only used when model_source='Diffusion model'."
-                    ,
+                        "tooltip": "Diffusion-model file (UNet only). Matches the comfy-core diffusion model list.",
                     },
                 ),
                 "clip_name": (
@@ -157,12 +141,12 @@ class AUNInputsDiffusers:
                         "default": False,
                         "label_on": "On",
                         "label_off": "Off",
-                        "tooltip": "Enable SpeedLoRA when loading models in either mode.",
+                        "tooltip": "Enable SpeedLoRA when loading models.",
                     },
                 ),
                 "speed_lora_model": (
-                    comfy_paths.get_filename_list("loras"),
-                    {"default": "", "tooltip": "SpeedLoRA file to apply after loading the model."},
+                    comfy_paths.get_filename_list("loras") + ["None"],
+                    {"default": "None", "tooltip": "SpeedLoRA file to apply after loading the model."},
                 ),
                 "speed_lora_strength": (
                     "FLOAT",
@@ -179,25 +163,13 @@ class AUNInputsDiffusers:
                     clip_type_choices,
                     {
                         "default": clip_type_meta.get("default", "stable_diffusion"),
-                        "tooltip": "Clip architecture to use when loading a standalone diffusion model.",
+                        "tooltip": "Clip architecture to use when loading a diffusion model.",
                     },
                 ),
                 "vae_name": (
                     vae_files,
                     {
                         "tooltip": "VAE checkpoint to pair with a diffusion model.",
-                    },
-                ),
-                "clip_skip": (
-                    "INT",
-                    {
-                        "default": -1,
-                        "min": -24,
-                        "max": -1,
-                        "step": 1,
-                        "tooltip": "Number of last CLIP layers to skip "
-                #        "(applied in both modes)."
-                        ,
                     },
                 ),
                 "sampler": (
@@ -367,16 +339,6 @@ class AUNInputsDiffusers:
         if choice == placeholder:
             raise RuntimeError(f"{label} is required when model_source='Diffusion model'.")
 
-    # def _load_checkpoint_bundle(self, ckpt_name):
-    #     ckpt_path = comfy_paths.get_full_path("checkpoints", ckpt_name)
-    #     out = comfy.sd.load_checkpoint_guess_config(
-    #         ckpt_path,
-    #         output_vae=True,
-    #         output_clip=True,
-    #         embedding_directory=comfy_paths.get_folder_paths("embeddings"),
-    #     )
-    #     return out[0], out[1], out[2]
-
     def _load_diffusion_bundle(self, diffusion_name, clip_name, clip_type, vae_name):
         self._ensure_valid_choice(diffusion_name, self._NO_DIFFUSION, "A diffusion-model file")
         self._ensure_valid_choice(clip_name, self._NO_CLIP, "A CLIP file")
@@ -398,11 +360,6 @@ class AUNInputsDiffusers:
         vae = vae_tuple[0] if isinstance(vae_tuple, (list, tuple)) else vae_tuple
 
         return model, clip, vae
-
-    @staticmethod
-    def _apply_clip_skip(clip, clip_skip):
-        if hasattr(clip, "clip_layer"):
-            clip.clip_layer(clip_skip)
 
     @staticmethod
     def _apply_aspect_ratio(aspect_ratio, width, height):
@@ -461,8 +418,6 @@ class AUNInputsDiffusers:
 
     def inputs(
         self,
-    #    model_source,
-    #    ckpt_name,
         diffusion_name,
         clip_name,
         speed_lora,
@@ -470,7 +425,6 @@ class AUNInputsDiffusers:
         speed_lora_strength,
         clip_type,
         vae_name,
-        clip_skip,
         sampler,
         scheduler,
         cfg,
@@ -490,25 +444,14 @@ class AUNInputsDiffusers:
         words,
         auto_name="Name",
     ):
-        #if model_source == "Diffusion model":
         model, clip, vae = self._load_diffusion_bundle(diffusion_name, clip_name, clip_type, vae_name)
         ckpt_label = os.path.splitext(os.path.basename(diffusion_name))[0]
         force_match = True
-            #try:
 
-        setattr(model, "_aun_requires_latent_processing", True)
-            # except Exception:
-            #     pass
-        # else:
-        #     model, clip, vae = self._load_checkpoint_bundle(ckpt_name)
-        #     ckpt_label = os.path.splitext(os.path.basename(ckpt_name))[0]
-        #     force_match = False
-        #     try:
-        #         setattr(model, "_aun_requires_latent_processing", False)
-        #     except Exception:
-        #         pass
-
-        self._apply_clip_skip(clip, clip_skip)
+        try:
+            setattr(model, "_aun_requires_latent_processing", True)
+        except Exception:
+            pass
 
         if speed_lora:
             lora_choice = speed_lora_model if speed_lora_model not in (None, "", "None") else None
@@ -519,7 +462,7 @@ class AUNInputsDiffusers:
                     model, clip = comfy.sd.load_lora_for_models(model, clip, lora_weights, speed_lora_strength, 0.0)
                 else:
                     print(
-                        f"SpeedLoRA model '{lora_choice}' not found for hybrid inputs; skipping SpeedLoRA load."
+                        f"SpeedLoRA model '{lora_choice}' not found for diffusion inputs; skipping SpeedLoRA load."
                     )
 
         width, height = self._apply_aspect_ratio(aspect_ratio, width, height)
