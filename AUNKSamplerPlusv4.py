@@ -27,9 +27,6 @@ class AUNKSamplerPlusv4:
                 "model": ("MODEL", {
                     "tooltip": "The diffusion model to use for progressive sampling."
                 }),
-                "model_latent": ("MODEL", {
-                    "tooltip": "The model to use for latent space upscaling."
-                }),
                 "seed": ("INT", {
                     "default": 0, "min": 0, "max": 0xffffffffffffffff, "forceInput": True,
                     "tooltip": "Random seed for reproducible results. Use same seed for identical outputs."
@@ -117,6 +114,11 @@ class AUNKSamplerPlusv4:
                 "verbose": ("BOOLEAN", {
                     "default": False, "label_on": "Yes", "label_off": "No",
                     "tooltip": "Print detailed pass logs and timings to the console."
+                })
+            },
+            "optional": {
+                "model_refine": ("MODEL", {
+                    "tooltip": "The model to use for latent space upscaling. (Optional, falls back to base model if not connected.)"
                 })
             },
             "hidden": {"prompt": "PROMPT"}
@@ -282,11 +284,14 @@ class AUNKSamplerPlusv4:
             return latent
 
     def qmSample(
-        self, vae, model, model_latent, seed, steps_total, steps_first, start_step_second, cfg, cfg_latent_upscale, sampler_name, scheduler,
+        self, vae, model, seed, steps_total, steps_first, start_step_second, cfg, cfg_latent_upscale, sampler_name, scheduler,
         positive, negative, latent_image, denoise, latent_upscale, image_upscale, upscale_method="bilinear", ratio=1.5,
         upscaling_denoise=0.61, image_upscale_method="lanczos", image_upscale_model="None", image_upscale_ratio=1.5, image_upscale_refine=False,
-        img_refine_steps=4, img_refine_denoise=0.25, verbose=False, prompt=None
+        img_refine_steps=4, img_refine_denoise=0.25, verbose=False, prompt=None, model_refine=None
     ):
+        if model_refine is None:
+            model_refine = model
+            
         latent = latent_image
         latent_data = latent_image or {}
         base_latent = latent_data.get("samples") if isinstance(latent_data, dict) else latent_data
@@ -367,12 +372,12 @@ class AUNKSamplerPlusv4:
                 pass2_start_step = start_step_actual
                 pass2_mode_continue = True if remaining_steps > 0 else False
                 _log(f"Pass2 START (continue): total={int(steps_total)}, start={start_step_actual}, remaining={remaining_steps}, cfg={cfg_latent_upscale}, denoise=1.0, seed={upscaled_seed}")
-                callback2 = latent_preview.prepare_callback(model_latent, max(remaining_steps, 1))
+                callback2 = latent_preview.prepare_callback(model_refine, max(remaining_steps, 1))
                 disable_pbar2 = not comfy.utils.PROGRESS_BAR_ENABLED
                 if remaining_steps > 0:
                     t2_start = time.perf_counter()
                     refined_samples_internal = comfy.sample.sample(
-                        model_latent, upscaled_noise, int(steps_total), cfg_latent_upscale, sampler_name, scheduler, positive, negative, upscaled_latent_internal,
+                        model_refine, upscaled_noise, int(steps_total), cfg_latent_upscale, sampler_name, scheduler, positive, negative, upscaled_latent_internal,
                         denoise=1.0, disable_noise=False, start_step=start_step_actual, last_step=int(steps_total),
                         force_full_denoise=False, noise_mask=None, callback=callback2, disable_pbar=disable_pbar2, seed=upscaled_seed
                     )
@@ -390,11 +395,11 @@ class AUNKSamplerPlusv4:
                 frac = float(max(min(upscaling_denoise, 1.0), 0.0))
                 steps2 = max(int(round(frac * int(steps_total))), 1)
                 _log(f"Pass2 START (fraction): steps={steps2}/{int(steps_total)}, cfg={cfg_latent_upscale}, denoise={upscaling_denoise}, seed={upscaled_seed}")
-                callback2 = latent_preview.prepare_callback(model_latent, steps2)
+                callback2 = latent_preview.prepare_callback(model_refine, steps2)
                 disable_pbar2 = not comfy.utils.PROGRESS_BAR_ENABLED
                 t2_start = time.perf_counter()
                 refined_samples_internal = comfy.sample.sample(
-                    model_latent, upscaled_noise, steps2, cfg_latent_upscale, sampler_name, scheduler, positive, negative, upscaled_latent_internal,
+                    model_refine, upscaled_noise, steps2, cfg_latent_upscale, sampler_name, scheduler, positive, negative, upscaled_latent_internal,
                     denoise=upscaling_denoise, disable_noise=False, start_step=None, last_step=None,
                     force_full_denoise=False, noise_mask=None, callback=callback2, disable_pbar=disable_pbar2, seed=upscaled_seed
                 )
@@ -444,10 +449,10 @@ class AUNKSamplerPlusv4:
                 denoise_imgpass = float(denoise_used_in_pass2) if 'denoise_used_in_pass2' in locals() else upscaling_denoise
                 denoise_imgpass = max(0.01, min(denoise_imgpass * 0.5, 0.20))
                 _log(f"Pass3 START (both-upscaled, safe): steps={steps_imgpass}, cfg={cfg_latent_upscale}, denoise={denoise_imgpass}")
-                callback3 = latent_preview.prepare_callback(model_latent, max(steps_imgpass, 1))
+                callback3 = latent_preview.prepare_callback(model_refine, max(steps_imgpass, 1))
                 t3_start = time.perf_counter()
                 refined_samples_imgpass_internal = comfy.sample.sample(
-                    model_latent, upscaled_noise_imgpass, steps_imgpass, cfg_latent_upscale, sampler_name, scheduler, positive, negative, image_upscaled_latent_tmp_internal,
+                    model_refine, upscaled_noise_imgpass, steps_imgpass, cfg_latent_upscale, sampler_name, scheduler, positive, negative, image_upscaled_latent_tmp_internal,
                     denoise=denoise_imgpass, disable_noise=False, start_step=None, last_step=None, force_full_denoise=False,
                     noise_mask=None, callback=callback3, disable_pbar=disable_pbar3, seed=upscaled_seed_imgpass
                 )
@@ -489,12 +494,12 @@ class AUNKSamplerPlusv4:
             refine_latent_internal = to_internal(encoded_refine)
             refine_seed = seed
             refine_noise = comfy.sample.prepare_noise(refine_latent_internal, refine_seed)
-            callback_refine = latent_preview.prepare_callback(model_latent, img_refine_steps)
+            callback_refine = latent_preview.prepare_callback(model_refine, img_refine_steps)
             disable_pbar_refine = not comfy.utils.PROGRESS_BAR_ENABLED
             _log(f"Refine START: steps={img_refine_steps}, denoise={img_refine_denoise}, cfg={cfg}")
             tr_start = time.perf_counter()
             refined_samples_internal = comfy.sample.sample(
-                model_latent, refine_noise, img_refine_steps, cfg, sampler_name, scheduler, positive, negative, refine_latent_internal,
+                model_refine, refine_noise, img_refine_steps, cfg, sampler_name, scheduler, positive, negative, refine_latent_internal,
                 denoise=img_refine_denoise, disable_noise=False, start_step=0, last_step=None, force_full_denoise=False,
                 noise_mask=None, callback=callback_refine, disable_pbar=disable_pbar_refine, seed=refine_seed
             )
