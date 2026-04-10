@@ -23,6 +23,7 @@ from .AUNImgLoader import AUNImgLoader
 from .AUNInputs import AUNInputs
 from .AUNInputsDiffusers import AUNInputsDiffusers
 from .AUNInputsHybrid import AUNInputsHybrid
+from .AUNInputsRefine import AUNInputsRefine
 from .AUNKSamplerPlusv3 import AUNKSamplerPlusv3
 from. AUNKSamplerPlusv4 import AUNKSamplerPlusv4
 from .AUNMultiBypassIndex import AUNMultiBypassIndex
@@ -85,6 +86,7 @@ NODE_CLASS_MAPPINGS = {
     "AUNInputs": AUNInputs,
     "AUNInputsDiffusers": AUNInputsDiffusers,
     "AUNInputsHybrid": AUNInputsHybrid,
+    "AUNInputsRefine": AUNInputsRefine,
     "AUNKSamplerPlusv3": AUNKSamplerPlusv3,
     "AUNKSamplerPlusv4": AUNKSamplerPlusv4,
     "AUNMultiBypassIndex": AUNMultiBypassIndex,
@@ -143,6 +145,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "AUNImgLoader": "Image Loader",
     "AUNInputs": "Inputs",
     "AUNInputsDiffusers": "Inputs Diffusers",
+    "AUNInputsHybrid": "Inputs Hybrid",
+    "AUNInputsRefine": "Inputs Refine",
     "AUNKSamplerPlusv4": "KSampler Plus V4",
     "AUNMultiBypassIndex": "Multi Bypass Index",
     "AUNMultiGroupUniversal": "AUN Group Controller",
