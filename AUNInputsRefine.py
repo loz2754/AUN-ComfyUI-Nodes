@@ -116,13 +116,21 @@ class AUNInputsRefine:
             return model.clone()
         return model
 
+    @staticmethod
+    def _tag_model_source(model, ckpt_name):
+        if model is not None:
+            setattr(model, "_aun_source_ckpt", ckpt_name)
+        return model
+
     def inputs(self, ckpt_name, refine_ckpt, speed_lora, speed_lora_model, speed_lora_strength, clip_skip, MainFolder, ManualName, name_mode, prefix, sampler, scheduler, cfg, steps, width, height, aspect_ratio, aspect_mode, batch_size, seed, date_format, crop, words, auto_name="Name"):
         model, clip, vae = self._load_checkpoint_bundle(ckpt_name)
+        model = self._tag_model_source(model, ckpt_name)
         refine_model = None
         refine_name = os.path.splitext(os.path.basename(refine_ckpt))[0]
 
         if refine_ckpt not in (None, "", "None"):
             refine_model, _, _ = self._load_checkpoint_bundle(refine_ckpt)
+            refine_model = self._tag_model_source(refine_model, refine_ckpt)
         
         # Apply clip_skip to the CLIP model
         clip.clip_layer(clip_skip)
@@ -134,11 +142,13 @@ class AUNInputsRefine:
                 if speed_lora_path:
                     lora_weights = comfy.utils.load_torch_file(speed_lora_path, safe_load=True)
                     model, clip = comfy.sd.load_lora_for_models(model, clip, lora_weights, speed_lora_strength, 0.0)
+                    model = self._tag_model_source(model, ckpt_name)
                 else:
                     print(f"SpeedLoRA model '{lora_choice}' not found; skipping SpeedLoRA load.")
 
         if refine_model is None:
             refine_model = self._clone_model_if_possible(model)
+            refine_model = self._tag_model_source(refine_model, ckpt_name)
 
         if aspect_ratio == "512x512":
             width, height = 512, 512

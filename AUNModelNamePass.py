@@ -117,9 +117,13 @@ class AUNModelNamePass:
 
     def process(self, model, unique_id, manual_name="", use_manual_name=False, prompt=None, extra_pnginfo=None):
         chosen = None
+
+        source_ckpt = getattr(model, "_aun_source_ckpt", None)
+        if isinstance(source_ckpt, str) and source_ckpt.strip():
+            chosen = source_ckpt
         
         # Find which node is connected to our 'model' input
-        if prompt and unique_id in prompt:
+        if not chosen and prompt and unique_id in prompt:
             my_node = prompt[unique_id]
             my_inputs = my_node.get("inputs", {})
             model_conn = my_inputs.get("model")
