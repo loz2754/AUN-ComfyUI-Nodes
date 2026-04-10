@@ -110,6 +110,12 @@ class AUNInputsRefine:
         )
         return out[0], out[1], out[2]
 
+    @staticmethod
+    def _clone_model_if_possible(model):
+        if hasattr(model, "clone"):
+            return model.clone()
+        return model
+
     def inputs(self, ckpt_name, refine_ckpt, speed_lora, speed_lora_model, speed_lora_strength, clip_skip, MainFolder, ManualName, name_mode, prefix, sampler, scheduler, cfg, steps, width, height, aspect_ratio, aspect_mode, batch_size, seed, date_format, crop, words, auto_name="Name"):
         model, clip, vae = self._load_checkpoint_bundle(ckpt_name)
         refine_model = None
@@ -132,7 +138,7 @@ class AUNInputsRefine:
                     print(f"SpeedLoRA model '{lora_choice}' not found; skipping SpeedLoRA load.")
 
         if refine_model is None:
-            refine_model = model
+            refine_model = self._clone_model_if_possible(model)
 
         if aspect_ratio == "512x512":
             width, height = 512, 512
