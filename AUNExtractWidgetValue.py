@@ -41,6 +41,21 @@ class AUNExtractWidgetValue:
         return float("nan")
 
     @staticmethod
+    def _id_matches(candidate_id: Any, identifier: str) -> bool:
+        cid = str(candidate_id) if candidate_id is not None else ""
+        ident = str(identifier or "")
+        if not cid or not ident:
+            return False
+        if cid == ident:
+            return True
+        # Subgraph/namespaced IDs can appear like 12.5, 12:5, 12/5
+        return (
+            cid.endswith("." + ident)
+            or cid.endswith(":" + ident)
+            or cid.endswith("/" + ident)
+        )
+
+    @staticmethod
     def _as_string(value: Any) -> str:
         if value is None:
             return ""
@@ -106,6 +121,43 @@ class AUNExtractWidgetValue:
         return None
 
     @staticmethod
+    def _find_in_widgets_values(node: Dict[str, Any], widget_name: str) -> Any:
+        """Try to resolve a widget by name from workflow-style widgets_values payloads."""
+        if not isinstance(node, dict):
+            return None
+
+        lname = str(widget_name or "").lower()
+        widgets_values = node.get("widgets_values")
+
+        # Some serializers store widgets_values as a dict-like mapping.
+        if isinstance(widgets_values, dict):
+            return AUNExtractWidgetValue._find_in_inputs(widgets_values, widget_name)
+
+        # Some serializers store widgets_values as list of {name, value} records.
+        if isinstance(widgets_values, list):
+            for item in widgets_values:
+                if not isinstance(item, dict):
+                    continue
+                nm = item.get("name") or item.get("key") or item.get("label") or item.get("title")
+                if isinstance(nm, str) and nm.lower() == lname:
+                    if "value" in item:
+                        return item.get("value")
+                    if "default" in item:
+                        return item.get("default")
+
+            # Native workflow nodes often have positional widgets_values plus widgets metadata.
+            widgets_meta = node.get("widgets")
+            if isinstance(widgets_meta, list):
+                for i, meta in enumerate(widgets_meta):
+                    if not isinstance(meta, dict):
+                        continue
+                    nm = meta.get("name") or meta.get("label") or meta.get("title")
+                    if isinstance(nm, str) and nm.lower() == lname and i < len(widgets_values):
+                        return widgets_values[i]
+
+        return None
+
+    @staticmethod
     def _get_node_from_prompt(prompt, identifier: str):
         if not isinstance(prompt, dict):
             return None
@@ -117,8 +169,8 @@ class AUNExtractWidgetValue:
             
         # Try searching by title or partial ID (for namespaced IDs in subgraphs)
         for nid, ninfo in prompt.items():
-            # Check for namespaced ID (e.g. "10.5" if identifier is "5")
-            if nid == identifier or (isinstance(nid, str) and nid.endswith("." + identifier)):
+            # Check for namespaced ID (e.g. 10.5 / 10:5 / 10/5)
+            if AUNExtractWidgetValue._id_matches(nid, identifier):
                 return ninfo
                 
             # Check title in _meta
@@ -144,7 +196,7 @@ class AUNExtractWidgetValue:
                     if not isinstance(n, dict):
                         continue
                     # Check ID
-                    if str(n.get('id')) == identifier:
+                    if AUNExtractWidgetValue._id_matches(n.get('id'), identifier):
                         return n
                     # Check Title
                     if n.get('title') == identifier:
@@ -194,6 +246,8 @@ class AUNExtractWidgetValue:
                 # Try common names for value-providing nodes
                 for k in ['value', 'float', 'int', 'number', 'string', 'text', 'boolean']:
                     found = self._find_in_inputs(inputs, k)
+                    if found is None:
+                        found = self._find_in_widgets_values(node, k)
                     if found is not None:
                         return self._resolve_value(found, prompt, extra_pnginfo, depth + 1)
         return val
@@ -220,6 +274,8 @@ class AUNExtractWidgetValue:
                 if isinstance(node, dict):
                     # In workflow, values can be in 'widgets_values' or 'inputs'
                     val = self._find_in_inputs(node.get('inputs', {}), widget_name)
+                    if val is None:
+                        val = self._find_in_widgets_values(node, widget_name)
                     if val is not None:
                         chosen = self._resolve_value(val, prompt, extra_pnginfo)
             except Exception:
