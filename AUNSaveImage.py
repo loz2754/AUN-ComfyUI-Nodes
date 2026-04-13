@@ -1527,7 +1527,9 @@ class AUNSaveImage:
                     img_array = np.clip(255. * image_tensor.cpu().numpy(), 0, 255).astype(np.uint8)
                     img = Image.fromarray(img_array)
                     # Resolve batch placeholder for this index
-                    this_prefix = filename_prefix.replace('%batch_num', str(i+1)).replace('%batch_number', str(i+1))
+                    this_prefix = filename_prefix
+                    for ph in ("%batch_num%", "%batch_number%", "%batch_num", "%batch_number"):
+                        this_prefix = this_prefix.replace(ph, str(i + 1))
                     # Use a short unique suffix in temp to avoid collisions
                     temp_name = f"{this_prefix}_tmp{i+1}.{extension}"
                     temp_path = os.path.join(temp_dir, temp_name)
@@ -1549,7 +1551,7 @@ class AUNSaveImage:
             except Exception:
                 batch_count = 1
             final_return_prefix = filename_prefix
-            for ph in ("%batch_num", "%batch_number"):
+            for ph in ("%batch_num%", "%batch_number%", "%batch_num", "%batch_number"):
                 final_return_prefix = final_return_prefix.replace(ph, str(batch_count if batch_count > 0 else 1))
 
             # Produce sidecar text output always, matching selected format when possible
@@ -1617,9 +1619,9 @@ class AUNSaveImage:
             img_array = np.clip(255. * image_tensor.cpu().numpy(), 0, 255).astype(np.uint8)
             img = Image.fromarray(img_array)
 
-            # Support both %batch_num and %batch_number placeholders
+            # Support both %batch_num%/%batch_number% and legacy non-trailing-% forms.
             final_filename_prefix = filename_prefix
-            for ph in ("%batch_num", "%batch_number"):
+            for ph in ("%batch_num%", "%batch_number%", "%batch_num", "%batch_number"):
                 final_filename_prefix = final_filename_prefix.replace(ph, str(i+1))
             unique_prefix = self.get_unique_filename(output_path, final_filename_prefix, extension)
             
