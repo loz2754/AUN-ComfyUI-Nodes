@@ -241,26 +241,56 @@ def extract_from_node(node: dict | None) -> str | None:
             return cand
     return None
 
+_MRG_PATTERN = re.compile(r'^MRG[-_]([\d.]+)[-_](.+)$', re.IGNORECASE)
+
+
+def _handle_merge_name(name_wo_ext: str) -> str | None:
+    """Return a short name for MRG-{ratio}-{model1}-{model2} style names, or None if not a merge."""
+    m = _MRG_PATTERN.match(name_wo_ext)
+    if not m:
+        return None
+    ratio_str = m.group(1)
+    remainder = m.group(2)
+    try:
+        pct = int(round(float(ratio_str) * 100))
+    except Exception:
+        pct = ratio_str.replace('.', '')
+    segments = remainder.split('-')
+    short_parts = []
+    for seg in segments:
+        seg_base = os.path.splitext(seg)[0]
+        mapped = MODEL_SHORT_NAMES.get(seg_base) or MODEL_SHORT_NAMES.get(seg)
+        short_parts.append(mapped if mapped else auto_shorten_model_name(seg_base))
+    return f"Mrg{pct}-" + '-'.join(short_parts)
+
+
 def get_short_name(value: str) -> str:
     """
     Returns a shortened version of a model name.
     1. Checks explicit mapping in MODEL_SHORT_NAMES.
-    2. Falls back to auto-shortening if not found.
-    3. Cleans up resulting name (standardize separators, handle GGUF suffix).
+    2. Detects MRG-{ratio}-{model1}-{model2} merge naming convention.
+    3. Falls back to auto-shortening if not found.
+    4. Cleans up resulting name (standardize separators, handle GGUF suffix).
     """
     if not value:
         return ""
-    
-    # Normalize path and get parts
+
+    # Normalize path
     base = os.path.basename(value.replace("\\", "/"))
+
+    # Fast-path: detect MRG merge name on the raw basename before splitext,
+    # because a ratio like 0.35 tricks splitext into treating '.35-...' as the ext.
+    merge_short = _handle_merge_name(base)
+    if merge_short:
+        return sanitize_for_filename(merge_short)
+
     name_wo_ext, ext = os.path.splitext(base)
-    
+
     # Check explicit map
     mapped = MODEL_SHORT_NAMES.get(name_wo_ext) or MODEL_SHORT_NAMES.get(base)
     if mapped:
         short = mapped
     else:
-        # Fallback to auto-shortening
         short = auto_shorten_model_name(name_wo_ext)
         
     # Standard cleanup (from AUNSaveImage)
