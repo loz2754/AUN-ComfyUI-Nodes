@@ -2,21 +2,51 @@
 
 ## [Unreleased]
 
-- 2026-01-20
-  - Added `AUNPathFilenameVideoResolved` node
-    - Returns resolved values instead of % tokens: `path`, `filename`, `path_filename`, and `sidecar_text`.
-    - Sidecar contains a PowerLoraLoader-formatted LoRA block under the `loras` field (if LoRAs are present in the workflow).
-    - The sidecar no longer includes the output `path` field (only `filename` and metadata).
-    - LoRA-related filename tokens and short/parsed LoRA fields were removed; LoRAs are recorded only in the sidecar block.
-    - Sidecar file writing: when `sidecar_format` save-to-file is selected, a `.txt` or `.json` is written next to the resolved output filename in ComfyUI's output tree.
+## [1.1.0] - 2026-04-16
 
-  Notes:
-  - LoRA detection uses the same extraction logic as `AUNSaveVideo` and mirrors its PowerLoraLoader formatting.
-  - Filenames remain compact (short model/sampler/scheduler names); full model name is preserved in the sidecar `model` field.
+### Added
+
+- New recommended V2 file-management and save workflow nodes:
+  - `AUNPathFilenameV2`
+  - `AUNPathFilenameVideoV2`
+  - `AUNSaveImageV2`
+  - `AUNSaveVideoV2`
+- New preview/compatibility helper nodes for resolver-based workflows:
+  - `AUNPathFilenameBuilderPreviewV2`
+  - `AUNFilenameResolverPreviewV2`
+- New `AUNInputsBasic` node.
+- New shared `aun_path_filename_shared.py` helpers for combined path/filename building, token resolution, and name cropping.
+- New README pages for the V2 builder, resolver, saver, and path/filename nodes.
+
+### Changed
+
+- File-management and save nodes are now labeled `Legacy` or `Recommended` in node search to make migration paths clearer.
+- README and node docs now describe the V2 migration path, with `path_filename` as the primary end-to-end contract and `path_filename_template` reserved for resolver-based compatibility flows.
+- Canonical placeholder syntax is now documented and supported as `%token%` across the newer builder flow, while older `%token` forms remain accepted for compatibility.
+- `AUNPathFilename` and `AUNPathFilenameVideo` are now explicitly documented and presented as legacy builders for existing workflows.
+- `AUNPathFilenameV2` now covers the richer image naming workflow directly, including manual/auto naming and `max_num_words`, so the preview builder is no longer needed for standard image workflows.
+- `AUNPathFilenameBuilderPreviewV2` now acts as a thin compatibility wrapper over the dedicated image/video V2 builders instead of maintaining separate builder logic.
+- `AUNPathFilenameVideoResolved` documentation was updated to reflect its resolved output contract and current sidecar schema.
+
+### Fixed
+
+- Restored backward compatibility for legacy image/video save and path nodes where widget ordering, older placeholder forms, or older workflow contracts could break saved graphs.
+- Fixed image and video saver handling for `%date%`, `%time%`, and explicit `%date:<format>%` / `%time:<format>%` style placeholders.
+- Fixed sidecar timestamp formatting so ComfyUI-style date patterns such as `yyyy-MM-dd` resolve correctly.
+- Fixed video preview metadata so saved mp4/webm outputs return the correct preview format and normalized subfolder paths.
+- Fixed the inline browser preview extension so `AUNSaveVideoV2` previews render the same way as the legacy video saver.
+- Fixed sidecar output/schema inconsistencies so filename data stays in `filename` and redundant standalone `extension` fields are no longer emitted in the updated preview/V2 flow.
+- Fixed `AUNSaveImage` and `AUNSaveVideo` token replacement so both canonical `%token%` and legacy `%token` placeholders resolve correctly.
+
+### Notes
+
+- Legacy nodes remain available for older workflows.
+- The V2 family is the recommended non-breaking migration path for new workflows.
 
 ## [0.1.0] - 2026-01-12
 
 ### Added
+
 - Dependency support for easier installs:
   - `requirements.txt` (runtime deps like `piexif`, `opencv-python-headless`, `imageio-ffmpeg`)
   - `install.py` (ComfyUI-Manager friendly dependency installer)
@@ -29,6 +59,7 @@
   - Executes on workflow queue for proper timing
 
 ### Updated
+
 - `AUNSaveVideo`: optional-import handling for `cv2`/`piexif` and safer ffmpeg fallback
 - `AUNSaveImage`: `piexif` is now optional (non-PNG still saves without EXIF insertion)
 - `KSamplerInputs`: removed unused heavy imports to reduce dependency surface
@@ -37,10 +68,11 @@
 - **AUN_text_index_switch_labels.js**: Extended to support the new combined node for automatic input labeling
 
 ### Technical Changes
+
 - Node registration updated in `__init__.py`
 - JavaScript extensions enhanced for broader node support
 - Improved input widget handling for labeling functionality
 
 ## Previous Versions
 
-*For changes prior to this changelog, see individual node comments and commit history.*
+_For changes prior to this changelog, see individual node comments and commit history._

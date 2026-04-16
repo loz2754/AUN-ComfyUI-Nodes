@@ -644,17 +644,82 @@ def extract_loras(prompt: Any = None, extra_pnginfo: Any = None) -> list[dict]:
 def get_timestamp(time_format):
     """Generates a timestamp string based on the provided format."""
     try:
-        return datetime.now().strftime(time_format)
+        normalized_format = str(time_format or "%Y%m%d-%H%M%S")
+        mapping = [
+            ("yyyy", "%Y"),
+            ("MM", "%m"),
+            ("dd", "%d"),
+            ("HH", "%H"),
+            ("mm", "%M"),
+            ("ss", "%S"),
+            ("yy", "%y"),
+            ("M", "%m"),
+            ("d", "%d"),
+            ("H", "%H"),
+            ("m", "%M"),
+            ("s", "%S"),
+        ]
+        for java_token, python_token in mapping:
+            normalized_format = re.sub(rf"(?<!%)\b{java_token}\b", python_token, normalized_format)
+        return datetime.now().strftime(normalized_format)
     except:
         return datetime.now().strftime("%Y%m%d-%H%M%S")
 
+
+def build_sidecar_timestamp(date_format):
+    """Build a sidecar timestamp without duplicating time tokens."""
+    normalized_format = str(date_format or "%Y%m%d-%H%M%S")
+    if "%H" not in normalized_format and "%M" not in normalized_format and "%S" not in normalized_format:
+        normalized_format = normalized_format + " %H:%M:%S"
+    return get_timestamp(normalized_format)
+
 def generate_path_from_pattern(pattern, replacements):
-    """Replaces placeholders in a pattern with values from a dictionary."""
-    # Replace longer placeholders first to avoid substring collisions
+    """Replace both canonical %token% and legacy %token placeholders."""
+    resolved = str(pattern)
+
+    def _java_to_python_datefmt(fmt: str) -> str:
+        mapping = [
+            ("yyyy", "%Y"),
+            ("MM", "%m"),
+            ("dd", "%d"),
+            ("HH", "%H"),
+            ("mm", "%M"),
+            ("ss", "%S"),
+            ("yy", "%y"),
+            ("M", "%m"),
+            ("d", "%d"),
+            ("H", "%H"),
+            ("m", "%M"),
+            ("s", "%S"),
+        ]
+        out = fmt
+        for java_token, python_token in mapping:
+            out = re.sub(rf"(?<!%)\b{java_token}\b", python_token, out)
+        return out
+
+    def _replace_datetime_placeholders(text: str) -> str:
+        now = datetime.now()
+
+        def _repl(match):
+            kind = match.group(1)
+            raw_fmt = match.group(2)
+            fmt = _java_to_python_datefmt(raw_fmt)
+            try:
+                return now.strftime(fmt)
+            except Exception:
+                return now.strftime("%Y-%m-%d" if kind == "date" else "%H-%M-%S")
+
+        return re.sub(r"%(date|time):([^%]+)%", _repl, text)
+
+    resolved = _replace_datetime_placeholders(resolved)
+
+    # Replace longer placeholders first to avoid substring collisions.
     for placeholder in sorted(replacements.keys(), key=len, reverse=True):
         value = replacements[placeholder]
-        pattern = pattern.replace(f"%{placeholder}", str(value))
-    return pattern
+        replacement = "" if value is None else str(value)
+        resolved = resolved.replace(f"%{placeholder}%", replacement)
+        resolved = resolved.replace(f"%{placeholder}", replacement)
+    return resolved
 
 # --- Node Class ---
 
@@ -1181,7 +1246,7 @@ class AUNSaveImage:
         return {
             "required": {
                 "images": ("IMAGE", {"tooltip": "Input images to save. Can be single image or batch."}),
-                "filename": ("STRING", {"default": '%date_%basemodelname_%seed', "tooltip": "Filename pattern. Placeholders: %date, %time, %model, %modelname, %basemodelname, %model_short, %modelname_short, %basemodelshort, %basemodelname_short, %loras (grouped, e.g., (LORAS-NameA+NameB)), %sampler_name, %scheduler, %steps, %cfg, %seed, %batch_num. Note: %loras_group is kept as an alias of %loras for compatibility."}),
+                "filename": ("STRING", {"default": '%date%_%basemodelname%_%seed%', "tooltip": "Filename pattern. Supports canonical %token% placeholders, legacy %token placeholders, and %date:<format>% / %time:<format>% forms. Common tokens: %date%, %time%, %model%, %modelname%, %basemodelname%, %model_short%, %sampler_name%, %scheduler%, %steps%, %cfg%, %seed%, %batch_num%, %loras%. %loras_group remains an alias of %loras for compatibility."}),
                 "path": ("STRING", {"default": '', "tooltip": "Subfolder path within the output directory."}),
                 "extension": (['png', 'jpg', 'webp'], {"default": "png", "tooltip": "Image format to save in."}),
             },
@@ -1192,10 +1257,16 @@ class AUNSaveImage:
                 "sampler_name": ("STRING", {"default": '', "tooltip": "Sampler name for metadata and %sampler_name placeholder."}),
                 "scheduler": ("STRING", {"default": '', "tooltip": "Scheduler name for metadata and %scheduler placeholder."}),
                 "seed_value": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff, "tooltip": "Seed value for %seed placeholder and metadata."}),
-                "time_format": ("STRING", {"default": "%Y%m%d-%H%M%S", "tooltip": "Time format for %time placeholder."}),
+                "time_format": ("STRING", {"default": "%Y%m%d-%H%M%S", "tooltip": "Legacy alias for date_format. Older workflows may still provide this value."}),
                 #"denoise": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.0, "tooltip": "Denoise strength for metadata."}),
                 "preview": (["enabled", "disabled"], {"default": "enabled", "tooltip": "Enable/disable image preview on the node."}),
                 "loras_delimiter": ("STRING", {"default": ";", "tooltip": "Delimiter between LoRA entries in %loras%. Allowed: + - _ . space , ;"}),
+                "save_sidecar_to_file": ("BOOLEAN", {"default": False, "tooltip": "Legacy sidecar file toggle kept in the old widget slot so existing workflows still load. When enabled and sidecar_format is left at its default, sidecars are written as text files."}),
+                # Boolean control: True saves images to output folder, False only writes temp previews (no output files or sidecars)
+                "save_image": ("BOOLEAN", {"default": True, "tooltip": "True: save images to output path. False: only generate previews (saved into temp directory)."}),
+                "positive_prompt": ("STRING", {"forceInput": True, "default": "", "tooltip": "Positive prompt text to embed in metadata."}),
+                "negative_prompt": ("STRING", {"forceInput": True, "default": "", "tooltip": "Negative prompt text to embed in metadata."}),
+                "date_format": ("STRING", {"default": "%Y%m%d-%H%M%S", "tooltip": "Date format for %date and %time placeholders. Explicit %date:<format>% / %time:<format>% placeholders override this per token."}),
                 # Sidecar export / output option (updated)
                 # New options (2025-10): user always gets an output (node return) and can select format; optionally also save per-image sidecar files.
                 # Options:
@@ -1210,10 +1281,6 @@ class AUNSaveImage:
                     "Save to file - text",
                     "Save to file - json"
                 ], {"default": "Output text", "tooltip": "Sidecar output format and file saving: choose Output (text/json) or also Save to file (text/json)."}),
-                # Boolean control: True saves images to output folder, False only writes temp previews (no output files or sidecars)
-                "save_image": ("BOOLEAN", {"default": True, "tooltip": "True: save images to output path. False: only generate previews (saved into temp directory)."}),
-                "positive_prompt": ("STRING", {"forceInput": True, "default": "", "tooltip": "Positive prompt text to embed in metadata."}),
-                "negative_prompt": ("STRING", {"forceInput": True, "default": "", "tooltip": "Negative prompt text to embed in metadata."}),
             },
             "hidden": {"prompt": "PROMPT", "extra_pnginfo": "EXTRA_PNGINFO"},
         }
@@ -1223,7 +1290,7 @@ class AUNSaveImage:
     FUNCTION = "save_files"
     OUTPUT_NODE = True
     CATEGORY = "AUN Nodes/Image"
-    DESCRIPTION = "A versatile image saver with advanced filename customization and metadata embedding."
+    DESCRIPTION = "Legacy image saver for workflows that provide separate path and filename inputs. Supports advanced filename customization and metadata embedding. Use Save Image V2 for new single path_filename workflows."
 
     def _get_model_hash(self, modelname):
         """Calculates the SHA256 hash of the model file."""
@@ -1423,9 +1490,10 @@ class AUNSaveImage:
                 formatted = "\n".join(line.strip() for line in lora_power_lines)
                 loras_group_raw = f"PowerLoraLoader loras:\n{formatted}".strip()
             modelhash = self._get_model_hash(modelname)
+            date_fmt = kwargs.get("date_format") or kwargs.get("time_format") or "%Y%m%d-%H%M%S"
             replacements = {
-                "date": get_timestamp("%Y-%m-%d"),
-                "time": get_timestamp(kwargs.get("time_format", "%Y%m%d-%H%M%S")),
+                "date": get_timestamp(date_fmt),
+                "time": get_timestamp(date_fmt),
                 "basemodelname": basemodelname,
                 "model": os.path.basename(modelname),
                 "modelname": os.path.basename(modelname),
@@ -1473,7 +1541,6 @@ class AUNSaveImage:
 
             sidecar_context = {
                 # removed: filename_prefix, subfolder, modelname, basemodelname
-                "extension": extension,
                 "seed": kwargs.get("seed_value", 0),
                 "steps": kwargs.get("steps", 20),
                 "cfg": f'{kwargs.get("cfg", 8.0):.1f}',
@@ -1485,12 +1552,13 @@ class AUNSaveImage:
                 "loras": loras_group_raw,
                 "positive_prompt": _pos_prompt,
                 "negative_prompt": _neg_prompt,
-                "count": batch_count,
-                "timestamp": get_timestamp("%Y-%m-%d %H:%M:%S"),
+                "timestamp": build_sidecar_timestamp(date_fmt),
             }
 
             # Determine sidecar behavior
             selected_sidecar = kwargs.get("sidecar_format", "none")
+            if selected_sidecar in (None, "", "Output text") and bool(kwargs.get("save_sidecar_to_file", False)):
+                selected_sidecar = "Save to file - text"
             sidecar_fmt, sidecar_save = _normalize_sidecar(selected_sidecar)
             # Backward compatibility: map legacy 'save_mode' (string) to new boolean 'save_image'
             if 'save_mode' in kwargs and 'save_image' not in kwargs:
@@ -1698,4 +1766,4 @@ class AUNSaveImage:
             i += 1
 
 NODE_CLASS_MAPPINGS = {"AUNSaveImage": AUNSaveImage}
-NODE_DISPLAY_NAME_MAPPINGS = {"AUNSaveImage": "AUN Save Image"}
+NODE_DISPLAY_NAME_MAPPINGS = {"AUNSaveImage": "AUN Save Image (Legacy)"}

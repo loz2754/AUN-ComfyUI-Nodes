@@ -95,7 +95,7 @@ class AUNSaveVideo():
                 "images": ("IMAGE", {"tooltip": "Image frames to encode (batch)."}),
                 "frame_rate": ("INT", {"default": 8, "min": 1, "step": 1, "tooltip": "Frames per second. For animated images sets frame delay; for videos sets FPS."},),
                 "loop_count": ("INT", {"default": 0, "min": 0, "max": 100, "step": 1, "tooltip": "Animated images only (GIF/APNG/WebP). 0 = loop forever; N = repeat N times. Ignored for video outputs."}),
-                "filename_format": ("STRING", {"default": "Comfy", "tooltip": "Output name template. Supports tokens: %seed%, %steps%, %cfg%, %model%, %model_short%, %sampler_name%, %scheduler%, %loras%. Missing values become empty. Example: Comfy_%model_short%_s%steps%_c%cfg%_seed%seed%_%loras%"}),
+                "filename_format": ("STRING", {"default": "Comfy", "tooltip": "Output name template. Supports canonical %token% placeholders and legacy %token placeholders for %seed, %steps, %cfg, %model, %model_short, %sampler_name, %scheduler, and %loras. Missing values become empty. Example: Comfy_%model_short%_%steps%_%cfg%_%seed%_%loras%"}),
                 "output_format": (["image/gif", "image/webp", "image/apng"] + video_formats, {"tooltip": "Choose animated image or video. Video/* entries come from format JSONs. WebM uses VP9; some inputs may be re-encoded for compatibility."}),
                 "save_to_output_dir": ("BOOLEAN", {"default": True, "tooltip": "Save to the ComfyUI output directory when true; otherwise to the temp directory. Affects preview location type."}),
                 "quality": ("INT", {"default": 95, "min": 0, "max": 100, "step": 1, "tooltip": "0–100. Higher is better (larger files). Mapped to each format; for videos, translated to encoder quality."}),
@@ -137,9 +137,8 @@ class AUNSaveVideo():
     FUNCTION = "combine_video"
     CATEGORY = "AUN Nodes/Video"
     DESCRIPTION = (
-    "Combine image frames into an animated image or video. Supports filename tokens: %seed%, %steps%, %cfg%, %model%, %model_short%, %sampler_name%, %scheduler%, %loras%."
-    "Empty inputs yield empty replacements."
-    "Example: %model_short%_steps-%steps%_cfg-%cfg%_seed-%seed%_%loras%."
+        "Legacy video saver for workflows using the current filename_format input. Supports canonical %token% filename placeholders and legacy %token placeholders. "
+        "%steps%, %cfg%, and %seed% are formatted as steps-<v>, cfg-<v>, and seed-<v> when resolved. Use Save Video V2 for new single path_filename workflows."
     )
 
     @staticmethod
@@ -748,6 +747,37 @@ class AUNSaveVideo():
         return v.strip()
 
     @staticmethod
+    def _normalize_date_format(fmt: str) -> str:
+        normalized = str(fmt or "%Y-%m-%d")
+        mapping = [
+            ("yyyy", "%Y"),
+            ("MM", "%m"),
+            ("dd", "%d"),
+            ("HH", "%H"),
+            ("mm", "%M"),
+            ("ss", "%S"),
+            ("yy", "%y"),
+            ("M", "%m"),
+            ("d", "%d"),
+            ("H", "%H"),
+            ("m", "%M"),
+            ("s", "%S"),
+        ]
+        for java_token, python_token in mapping:
+            normalized = re.sub(rf"(?<!%)\b{java_token}\b", python_token, normalized)
+        return normalized
+
+    @classmethod
+    def _build_sidecar_timestamp(cls, date_format: str) -> str:
+        normalized = cls._normalize_date_format(date_format)
+        if "%H" not in normalized and "%M" not in normalized and "%S" not in normalized:
+            normalized = normalized + " %H:%M:%S"
+        try:
+            return time.strftime(normalized)
+        except Exception:
+            return time.strftime("%Y-%m-%d %H:%M:%S")
+
+    @staticmethod
     def _ensure_optional_dependencies() -> None:
         # Keep the pack importable even without these installed; fail only when the node executes.
         if cv2 is None:
@@ -776,74 +806,81 @@ class AUNSaveVideo():
 
     # Removed timestamp/counter support: AUN nodes now avoid auto time/counter in filenames
 
-        seed_token = "%seed%"
-        if seed_token in new_filename:
+        seed_tokens = ("%seed%", "%seed")
+        if any(token in new_filename for token in seed_tokens):
             # 0 is a valid seed; only None means unset
             if seed_value is not None and isinstance(seed_value, int):
                 repl = "seed-" + str(seed_value)
             else:
                 repl = ""
-            new_filename = new_filename.replace(seed_token, repl)
+            for token in seed_tokens:
+                new_filename = new_filename.replace(token, repl)
             file_path = os.path.join(full_output_folder, f"{new_filename}.{format_ext}")
 
-        steps_token = "%steps%"
-        if steps_token in new_filename:
+        steps_tokens = ("%steps%", "%steps")
+        if any(token in new_filename for token in steps_tokens):
             if steps_value is not None and isinstance(steps_value, int) and steps_value > 0:
                 repl = "steps-" + str(steps_value)
             else:
                 repl = ""
-            new_filename = new_filename.replace(steps_token, repl)
+            for token in steps_tokens:
+                new_filename = new_filename.replace(token, repl)
             file_path = os.path.join(full_output_folder, f"{new_filename}.{format_ext}")
 
-        cfg_token = "%cfg%"
-        if cfg_token in new_filename:
+        cfg_tokens = ("%cfg%", "%cfg")
+        if any(token in new_filename for token in cfg_tokens):
             # Normalize cfg to trimmed value without trailing zeros where sensible
             if cfg_value is not None and isinstance(cfg_value, (int, float)) and float(cfg_value) > 0:
                 cfg_str = ("%g" % cfg_value).rstrip()
                 repl = "cfg-" + cfg_str
             else:
                 repl = ""
-            new_filename = new_filename.replace(cfg_token, repl)
+            for token in cfg_tokens:
+                new_filename = new_filename.replace(token, repl)
             file_path = os.path.join(full_output_folder, f"{new_filename}.{format_ext}")
 
-        model_token = "%model%"
-        if model_token in new_filename:
-            repl = AUNSaveVideo._sanitize_token_str(model_name) if model_name else ""
-            new_filename = new_filename.replace(model_token, repl)
-            file_path = os.path.join(full_output_folder, f"{new_filename}.{format_ext}")
-
-        # Support %model_short%
-        model_short_token = "%model_short%"
-        if model_short_token in new_filename:
+        model_short_tokens = ("%model_short%", "%model_short")
+        if any(token in new_filename for token in model_short_tokens):
             # Order: explicit override -> auto-shortened from model
             if short_manual_model_name:
                 short = short_manual_model_name
             else:
                 short = get_model_short_name_common(model_name) if model_name else ""
             repl = AUNSaveVideo._sanitize_token_str(short)
-            new_filename = new_filename.replace(model_short_token, repl)
+            for token in model_short_tokens:
+                new_filename = new_filename.replace(token, repl)
             file_path = os.path.join(full_output_folder, f"{new_filename}.{format_ext}")
 
-        sampler_token = "%sampler_name%"
-        if sampler_token in new_filename:
+        model_tokens = ("%model%", "%model")
+        if any(token in new_filename for token in model_tokens):
+            repl = AUNSaveVideo._sanitize_token_str(model_name) if model_name else ""
+            for token in model_tokens:
+                new_filename = new_filename.replace(token, repl)
+            file_path = os.path.join(full_output_folder, f"{new_filename}.{format_ext}")
+
+        sampler_tokens = ("%sampler_name%", "%sampler_name")
+        if any(token in new_filename for token in sampler_tokens):
             raw = sampler_name_value or ""
             short = get_sampler_short_name(raw)
             repl = AUNSaveVideo._sanitize_token_str(short)
-            new_filename = new_filename.replace(sampler_token, repl)
+            for token in sampler_tokens:
+                new_filename = new_filename.replace(token, repl)
             file_path = os.path.join(full_output_folder, f"{new_filename}.{format_ext}")
 
-        scheduler_token = "%scheduler%"
-        if scheduler_token in new_filename:
+        scheduler_tokens = ("%scheduler%", "%scheduler")
+        if any(token in new_filename for token in scheduler_tokens):
             raw = scheduler_value or ""
             short = get_scheduler_short_name(raw)
             repl = AUNSaveVideo._sanitize_token_str(short)
-            new_filename = new_filename.replace(scheduler_token, repl)
+            for token in scheduler_tokens:
+                new_filename = new_filename.replace(token, repl)
             file_path = os.path.join(full_output_folder, f"{new_filename}.{format_ext}")
 
-        loras_token = "%loras%"
-        if loras_token in new_filename:
+        loras_tokens = ("%loras%", "%loras")
+        if any(token in new_filename for token in loras_tokens):
             repl = AUNSaveVideo._sanitize_token_str(loras_value) if loras_value else ""
-            new_filename = new_filename.replace(loras_token, repl)
+            for token in loras_tokens:
+                new_filename = new_filename.replace(token, repl)
             file_path = os.path.join(full_output_folder, f"{new_filename}.{format_ext}")
 
         # Final tidy: remove extra spaces that may result from empty token replacements
@@ -895,6 +932,7 @@ class AUNSaveVideo():
     # loras options removed; always auto-detect from workflow
     loras_delimiter="+",
     sidecar_format="none",
+        date_format="%Y-%m-%d",
         prompt=None,
     ):
 
@@ -1039,7 +1077,6 @@ class AUNSaveVideo():
 
         # Do not include filename in context; append later like AUNSaveImage
         sidecar_ctx = {
-            "extension": format_ext,
             "seed": seed_value,
             "steps": steps_value,
             "cfg": _cfg_str,
@@ -1058,7 +1095,7 @@ class AUNSaveVideo():
             "width": _w,
             "height": _h,
             "count": _cnt,
-            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "timestamp": self._build_sidecar_timestamp(date_format),
         }
 
         metadata = PngInfo()
@@ -1318,9 +1355,9 @@ class AUNSaveVideo():
         previews = [
             {
                 "filename": f"{get_clean_filename(file_path)}.{format_ext}",
-                "subfolder": subfolder,
+                "subfolder": str(subfolder or "").replace("\\", "/"),
                 "type": "output" if save_to_output_dir else "temp",
-                "format": output_format,
+                "format": f"{format_type}/{format_ext}",
             }
         ]
 
@@ -1387,7 +1424,6 @@ class AUNSaveVideo():
         record = dict(sidecar_ctx)
         record.update({
             "filename": f"{get_clean_filename(file_path)}.{format_ext}",
-            "extension": format_ext,
         })
         sidecar_fmt, sidecar_save = _normalize_sidecar(sidecar_format)
         sidecar_text = _format_sidecar(record, sidecar_fmt)
@@ -1717,6 +1753,7 @@ class JoinVideosInDirectory:
             )
             if subfolder.startswith("/"):
                 subfolder = subfolder[1:]
+            subfolder = str(subfolder or "").replace("\\", "/")
             output_format = f"video/{format_ext}"
             
             previews = [
@@ -1780,7 +1817,7 @@ NODE_CLASS_MAPPINGS = {
 }  
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "AUNSaveVideo": "AUN Save Video",
+    "AUNSaveVideo": "AUN Save Video (Legacy)",
     "JoinVideosInDirectory": "Join Videos In Directory",
     "AudioInputOptions": "Audio Input Options (For Video Output)"
 }

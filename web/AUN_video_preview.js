@@ -1,10 +1,11 @@
-// Minimal inline media preview for AUNSaveVideo
+// Minimal inline media preview for AUN save video nodes.
 // This mirrors the ComfyUI-JNodes behavior but is scoped to AUN nodes only.
 
 import { app } from "/scripts/app.js";
 import { api } from "/scripts/api.js";
 
 const PREVIEW_REGISTRY = new WeakMap();
+const SUPPORTED_NODE_NAMES = new Set(["AUNSaveVideo", "AUNSaveVideoV2"]);
 
 function updateWidgetVisibility(widget, hidden, node) {
   if (!widget) return;
@@ -44,12 +45,16 @@ function forwardPreviewEvents(element) {
     ["mousewheel", "_mousewheel_callback"],
   ];
   forwarders.forEach(([eventName, handlerName]) => {
-    element.addEventListener(eventName, (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      const handler = app.canvas?.[handlerName];
-      handler?.call(app.canvas, event);
-    }, true);
+    element.addEventListener(
+      eventName,
+      (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const handler = app.canvas?.[handlerName];
+        handler?.call(app.canvas, event);
+      },
+      true,
+    );
   });
 }
 
@@ -63,13 +68,16 @@ function getPreviewState(node) {
 }
 
 function offsetDOMWidget(widget, ctx, node, widgetWidth, widgetY, height) {
-  const margin = 10;      // outer vertical spacing inside the node's widget area
-  const padding = 15;     // inner horizontal padding inside the node
+  const margin = 10; // outer vertical spacing inside the node's widget area
+  const padding = 15; // inner horizontal padding inside the node
 
   // Compose canvas->CSS transform
   const elRect = ctx.canvas.getBoundingClientRect();
   const M = new DOMMatrix()
-    .scaleSelf(elRect.width / ctx.canvas.width, elRect.height / ctx.canvas.height)
+    .scaleSelf(
+      elRect.width / ctx.canvas.width,
+      elRect.height / ctx.canvas.height,
+    )
     .multiplySelf(ctx.getTransform());
 
   // Compute top-left and bottom-right corners of the inner content rect in CSS pixels
@@ -78,13 +86,16 @@ function offsetDOMWidget(widget, ctx, node, widgetWidth, widgetY, height) {
   const y2 = y1 + Math.max(0, h);
 
   const p1 = new DOMPoint(padding, y1).matrixTransform(M);
-  const p2 = new DOMPoint(Math.max(0, widgetWidth - padding), y2).matrixTransform(M);
+  const p2 = new DOMPoint(
+    Math.max(0, widgetWidth - padding),
+    y2,
+  ).matrixTransform(M);
 
   Object.assign(widget.inputEl.style, {
     transformOrigin: "0 0",
     transform: "none", // width/height/pos are absolute in CSS pixels already
-  left: `${elRect.left + p1.x}px`,
-  top: `${elRect.top + p1.y}px`,
+    left: `${elRect.left + p1.x}px`,
+    top: `${elRect.top + p1.y}px`,
     width: `${Math.max(0, p2.x - p1.x)}px`,
     height: `${Math.max(0, p2.y - p1.y)}px`,
     position: "absolute",
@@ -103,7 +114,7 @@ function createMediaWidget(name, url, format, node) {
     aspectRatio: null,
     mediaEl: null,
     isHidden: false,
-  draw(ctx, node, widgetWidth, widgetY) {
+    draw(ctx, node, widgetWidth, widgetY) {
       if (!this.inputEl || this.isHidden) return;
       let desiredHeight = 160;
       if (this.aspectRatio && this.aspectRatio > 0) {
@@ -144,7 +155,10 @@ function createMediaWidget(name, url, format, node) {
     el.addEventListener("loadedmetadata", () => {
       if (el.videoWidth && el.videoHeight) {
         widget.aspectRatio = el.videoWidth / el.videoHeight;
-  node.setSize([node.size[0], node.computeSize([node.size[0], node.size[1]])[1]]);
+        node.setSize([
+          node.size[0],
+          node.computeSize([node.size[0], node.size[1]])[1],
+        ]);
         node.graph.setDirtyCanvas(true);
       }
     });
@@ -152,7 +166,10 @@ function createMediaWidget(name, url, format, node) {
     el.addEventListener("load", () => {
       if (el.naturalWidth && el.naturalHeight) {
         widget.aspectRatio = el.naturalWidth / el.naturalHeight;
-  node.setSize([node.size[0], node.computeSize([node.size[0], node.size[1]])[1]]);
+        node.setSize([
+          node.size[0],
+          node.computeSize([node.size[0], node.size[1]])[1],
+        ]);
         node.graph.setDirtyCanvas(true);
       }
     });
@@ -180,11 +197,13 @@ function createMediaWidget(name, url, format, node) {
 const AUNMediaPreview = {
   name: "AUN.media_preview",
   async beforeRegisterNodeDef(nodeType, nodeData) {
-    if (nodeData.name !== "AUNSaveVideo") return;
+    if (!SUPPORTED_NODE_NAMES.has(nodeData.name)) return;
 
     const originalOnExecuted = nodeType.prototype.onExecuted;
     nodeType.prototype.onExecuted = function (message) {
-      const r = originalOnExecuted ? originalOnExecuted.apply(this, message) : undefined;
+      const r = originalOnExecuted
+        ? originalOnExecuted.apply(this, message)
+        : undefined;
       const node = this;
       const prefix = "AUN_media_preview_";
       const previewState = getPreviewState(node);
@@ -192,7 +211,8 @@ const AUNMediaPreview = {
       if (node.widgets) {
         const pos = node.widgets.findIndex((w) => w.name === `${prefix}_0`);
         if (pos !== -1) {
-          for (let i = pos; i < node.widgets.length; i++) node.widgets[i].onRemoved?.();
+          for (let i = pos; i < node.widgets.length; i++)
+            node.widgets[i].onRemoved?.();
           node.widgets.length = pos;
         }
 
@@ -208,8 +228,10 @@ const AUNMediaPreview = {
         const imgs = message?.images;
         if (Array.isArray(imgs) && imgs.length > 0) {
           imgs.forEach((params, i) => {
-            const url = api.apiURL('/view?' + new URLSearchParams(params).toString());
-            const fmt = params.format || 'image/webp';
+            const url = api.apiURL(
+              "/view?" + new URLSearchParams(params).toString(),
+            );
+            const fmt = params.format || "image/webp";
             const widget = createMediaWidget(`${prefix}_${i}`, url, fmt, node);
             updateWidgetVisibility(widget, previewState.hidden, node);
             node.addCustomWidget(widget);
@@ -228,23 +250,29 @@ const AUNMediaPreview = {
       return r;
     };
 
-    chainCallback(nodeType.prototype, "getExtraMenuOptions", function (_, options) {
-      const menu = options ?? [];
-      const previewState = PREVIEW_REGISTRY.get(this);
-      if (!previewState || !previewState.widgets.length) return menu;
+    chainCallback(
+      nodeType.prototype,
+      "getExtraMenuOptions",
+      function (_, options) {
+        const menu = options ?? [];
+        const previewState = PREVIEW_REGISTRY.get(this);
+        if (!previewState || !previewState.widgets.length) return menu;
 
-      const hideLabel = `${previewState.hidden ? "Show" : "Hide"} preview`;
-      menu.unshift({
-        content: hideLabel,
-        callback: () => {
-          previewState.hidden = !previewState.hidden;
-          const node = this;
-          previewState.widgets.forEach((w) => updateWidgetVisibility(w, previewState.hidden, node));
-          app.graph?.setDirtyCanvas(true, true);
-        },
-      });
-      return menu;
-    });
+        const hideLabel = `${previewState.hidden ? "Show" : "Hide"} preview`;
+        menu.unshift({
+          content: hideLabel,
+          callback: () => {
+            previewState.hidden = !previewState.hidden;
+            const node = this;
+            previewState.widgets.forEach((w) =>
+              updateWidgetVisibility(w, previewState.hidden, node),
+            );
+            app.graph?.setDirtyCanvas(true, true);
+          },
+        });
+        return menu;
+      },
+    );
   },
 };
 

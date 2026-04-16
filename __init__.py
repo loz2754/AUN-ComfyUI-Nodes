@@ -21,6 +21,7 @@ from .AUNImageSingleBatch3 import AUNImageSingleBatch3
 from .AUNImg2Img import AUNImg2Img
 from .AUNImgLoader import AUNImgLoader
 from .AUNInputs import AUNInputs
+from .AUNInputsBasic import AUNInputsBasic
 from .AUNInputsDiffusers import AUNInputsDiffusers
 from .AUNInputsHybrid import AUNInputsHybrid
 from .AUNInputsRefine import AUNInputsRefine
@@ -34,15 +35,21 @@ from .AUNMultiUniversal import AUNMultiUniversal
 from .AUNNameCrop import AUNNameCrop
 from .AUNNodeStateController import AUNNodeStateController
 from .AUNPathFilename import AUNPathFilename
+from .AUNPathFilenameBuilderPreviewV2 import AUNPathFilenameBuilderPreviewV2
+from .AUNPathFilenameV2 import AUNPathFilenameV2
 from .AUNPathFilenameVideo import AUNPathFilenameVideo
+from .AUNPathFilenameVideoV2 import AUNPathFilenameVideoV2
 from .AUNPathFilenameVideoResolved import AUNPathFilenameVideoResolved
+from .AUNFilenameResolverPreviewV2 import AUNFilenameResolverPreviewV2
 from .AUNRandomAnySwitch import AUNRandomAnySwitch
 from .AUNRandomIndexSwitch import AUNRandomIndexSwitch
 from .AUNRandomNumber import AUNRandomNumber
 from .AUNRandomTextIndexSwitch import AUNRandomTextIndexSwitch
 from .AUNRandomTextIndexSwitchV2 import AUNRandomTextIndexSwitchV2
 from .AUNSaveImage import AUNSaveImage
+from .AUNSaveImageV2 import AUNSaveImageV2
 from .AUNSaveVideo import AUNSaveVideo
+from .AUNSaveVideoV2 import AUNSaveVideoV2
 from .AUNSetBypassByTitle import AUNSetBypassByTitle
 from .AUNSetBypassStateGroup import AUNSetBypassStateGroup
 from .AUNSetCollapseAndBypassStateAdvanced import AUNSetCollapseAndBypassStateAdvanced
@@ -84,6 +91,7 @@ NODE_CLASS_MAPPINGS = {
     "AUNImg2Img": AUNImg2Img,
     "AUNImgLoader": AUNImgLoader,
     "AUNInputs": AUNInputs,
+    "AUNInputsBasic": AUNInputsBasic,
     "AUNInputsDiffusers": AUNInputsDiffusers,
     "AUNInputsHybrid": AUNInputsHybrid,
     "AUNInputsRefine": AUNInputsRefine,
@@ -97,15 +105,21 @@ NODE_CLASS_MAPPINGS = {
     "AUNNameCrop": AUNNameCrop,
     "AUNNodeStateController": AUNNodeStateController,
     "AUNPathFilename": AUNPathFilename,
+    "AUNPathFilenameBuilderPreviewV2": AUNPathFilenameBuilderPreviewV2,
+    "AUNPathFilenameV2": AUNPathFilenameV2,
     "AUNPathFilenameVideo": AUNPathFilenameVideo,
+    "AUNPathFilenameVideoV2": AUNPathFilenameVideoV2,
     "AUNPathFilenameVideoResolved": AUNPathFilenameVideoResolved,
+    "AUNFilenameResolverPreviewV2": AUNFilenameResolverPreviewV2,
     "AUNRandomAnySwitch": AUNRandomAnySwitch,
     "AUNRandomIndexSwitch": AUNRandomIndexSwitch,
     "AUNRandomNumber": AUNRandomNumber,
     "AUNRandomTextIndexSwitch": AUNRandomTextIndexSwitch,
     "AUNRandomTextIndexSwitchV2": AUNRandomTextIndexSwitchV2,
     "AUNSaveImage": AUNSaveImage,
+    "AUNSaveImageV2": AUNSaveImageV2,
     "AUNSaveVideo": AUNSaveVideo,
+    "AUNSaveVideoV2": AUNSaveVideoV2,
     "AUNSetBypassByTitle": AUNSetBypassByTitle,
     "AUNSetBypassStateGroup": AUNSetBypassStateGroup,
     "AUNSetCollapseAndBypassStateAdvanced": AUNSetCollapseAndBypassStateAdvanced,
@@ -144,6 +158,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "AUNImg2Img": "Img2Img",
     "AUNImgLoader": "Image Loader",
     "AUNInputs": "Inputs",
+    "AUNInputsBasic": "Inputs Basic",
     "AUNInputsDiffusers": "Inputs Diffusers",
     "AUNInputsHybrid": "Inputs Hybrid",
     "AUNInputsRefine": "Inputs Refine",
@@ -155,16 +170,22 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "AUNMultiUniversal": "AUN Node Controller",
     "AUNNameCrop": "Name Crop",
     "AUNNodeStateController": "Node State Controller",
-    "AUNPathFilename": "Path Filename",
-    "AUNPathFilenameVideo": "Path Filename Video",
+    "AUNPathFilename": "Path Filename (Legacy)",
+    "AUNPathFilenameBuilderPreviewV2": "Filename Builder V2",
+    "AUNPathFilenameV2": "Path Filename V2",
+    "AUNPathFilenameVideo": "Path Filename Video (Legacy)",
+    "AUNPathFilenameVideoV2": "Path Filename Video V2",
     "AUNPathFilenameVideoResolved": "Path Filename Video (Resolved)",
+    "AUNFilenameResolverPreviewV2": "Filename Resolver V2",
     "AUNRandomAnySwitch": "Random Any Switch",
     "AUNRandomIndexSwitch": "Random/Select INT",
     "AUNRandomNumber": "Random Number",
     "AUNRandomTextIndexSwitch": "Random Text Index Switch",
     "AUNRandomTextIndexSwitchV2": "Random Text Index Switch V2",
-    "AUNSaveImage": "Save Image",
-    "AUNSaveVideo": "Save Video",
+    "AUNSaveImage": "Save Image (Legacy)",
+    "AUNSaveImageV2": "AUN Save Image V2 (Recommended)",
+    "AUNSaveVideo": "Save Video (Legacy)",
+    "AUNSaveVideoV2": "AUN Save Video V2 (Recommended)",
     "AUNSetBypassStateGroup": "Group Bypasser (Multi)",
     "AUNSetBypassByTitle": "Bypass By Title",
     "AUNSetCollapseAndBypassStateAdvanced": "Node Collapser & Bypasser Advanced",

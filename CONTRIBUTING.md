@@ -3,14 +3,17 @@
 Thanks for helping improve AUN.
 
 ## Scope
+
 - Small, focused PRs are preferred.
 - Keep backward compatibility: workflows depend on the string keys in `NODE_CLASS_MAPPINGS`.
 
 ## Dev Setup
+
 - Recommended: use the same Python environment ComfyUI uses.
 - Restart ComfyUI after changes (node discovery happens at startup).
 
 ## Adding or Changing a Node
+
 1. Create/update the node module (typically `AUN*.py`).
 2. Ensure the node class defines:
    - `CATEGORY = "AUN Nodes/..."`
@@ -25,16 +28,19 @@ Thanks for helping improve AUN.
    - `python tools/generate_readme_nodes.py`
 
 ## Dependencies
+
 - If you add a new third‑party dependency:
   - Add it to `requirements.txt`
   - Prefer optional imports where possible (fail at execution time with a clear message, rather than failing pack import)
   - Avoid listing packages that ComfyUI already bundles (e.g. `torch`, `numpy`, `Pillow`).
 
 ## Web / JS
+
 - Keep web assets under `web/`.
 - Don’t change the `WEB_DIRECTORY` contract without good reason.
 
 ## Docs
+
 - User-facing docs:
   - `README.md` (overview + installation)
   - `docs/` (node-specific guides)
@@ -50,6 +56,7 @@ When you add a new doc page under `docs/`, also add it to `docs/INDEX.md`.
 - Repository hygiene
   - Ensure `README.md` is up to date.
   - Update `CHANGELOG.md`.
+  - Bump the version in `pyproject.toml` to match the release.
   - Confirm `requirements.txt` covers third‑party deps your nodes import.
 - Clean install test
   - Fresh clone into `custom_nodes/AUN`.
@@ -57,18 +64,30 @@ When you add a new doc page under `docs/`, also add it to `docs/INDEX.md`.
   - Restart ComfyUI; confirm nodes load and no import errors appear in console.
 - Backward compatibility
   - Avoid renaming/removing keys in `NODE_CLASS_MAPPINGS` unless necessary (breaks existing workflows).
-- Tag a release
-  - Create a GitHub Release and tag (e.g. `v0.1.0`).
+- Registry metadata
+  - Confirm `[project]` and `[tool.comfy]` in `pyproject.toml` are correct.
+  - Keep `PublisherId`, `DisplayName`, repository URL, and version in sync with the intended release.
+- Publish the release
+  - Create a GitHub Release and tag (for example `v1.1.0`).
+  - Publish the new version to the Comfy Registry using the current publisher workflow.
 
-## ComfyUI-Manager Listing (Maintainers)
+## Comfy Registry Publishing (Maintainers)
 
-ComfyUI-Manager shows a curated registry. To appear there, you typically:
+ComfyUI-Manager installs nodes from the Comfy Registry. Publishing is driven by the metadata in `pyproject.toml` and a publisher account.
 
-1. Publish this folder as its own public GitHub repository (repo root contains `__init__.py`, `README.md`, etc.).
-2. Ensure install works from a clean environment (dependencies in `requirements.txt`).
-3. Open a PR to the ComfyUI-Manager registry adding your repo URL + a short description.
+1. Ensure this node pack is in its own public GitHub repository and the repo root contains the package files (`pyproject.toml`, `__init__.py`, `README.md`, etc.).
+2. Confirm the release version in `pyproject.toml` is semantic and matches `CHANGELOG.md`.
+3. Confirm `[tool.comfy]` includes the correct `PublisherId` and `DisplayName`.
+4. Publish using the current Comfy Registry workflow, such as the Comfy CLI (`comfy node publish`) or a GitHub Actions release workflow configured with your publishing API key.
+5. After publishing, verify the new version appears through the registry / ComfyUI-Manager flow.
+
+Notes:
+
+- Do not rely on the older manual PR-to-registry process as the primary publishing path.
+- If registry publishing requirements change, update this section and keep it aligned with the current Comfy docs.
 
 ## Style
+
 - Keep code readable and consistent with adjacent files.
 - Prefer descriptive names over one-letter variables.
 - Avoid reformat-only changes.

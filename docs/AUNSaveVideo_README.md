@@ -1,6 +1,6 @@
 # AUNSaveVideo — AUN Save Video
 
-Purpose: Combine an image batch (frames) into an animated image (GIF/APNG/WebP) or a video format, with tokenized filenames, optional audio, and optional sidecar (text/JSON).
+Purpose: Legacy video saver for workflows that still use the `filename_format` input, combining image batches into animated images or video with tokenized filenames, optional audio, and optional sidecars.
 
 ## Inputs
 
@@ -40,14 +40,18 @@ Purpose: Combine an image batch (frames) into an animated image (GIF/APNG/WebP) 
 
 `filename_format` supports these tokens (missing values become empty):
 
-- `%seed%`, `%steps%`, `%cfg%`
-- `%model%`, `%model_short%`
-- `%sampler_name%`, `%scheduler%`
-- `%loras%`
+- `%seed%` or legacy `%seed`
+- `%steps%` or legacy `%steps`
+- `%cfg%` or legacy `%cfg`
+- `%model%` or legacy `%model`
+- `%model_short%` or legacy `%model_short`
+- `%sampler_name%` or legacy `%sampler_name`
+- `%scheduler%` or legacy `%scheduler`
+- `%loras%` or legacy `%loras`
 
 Example:
 
-- `Comfy_%model_short%_s%steps%_c%cfg%_seed%seed%_%loras%`
+- `Comfy_%model_short%_%steps%_%cfg%_%seed%_%loras%`
 
 ## Outputs
 
@@ -56,8 +60,11 @@ Example:
 
 ## Notes
 
+- Canonical placeholder spelling in the current builders is `%token%`.
+- `AUNSaveVideo` accepts both canonical `%token%` and legacy `%token` placeholder forms for backward compatibility.
 - Many `video/*` formats require `ffmpeg`. If `ffmpeg` is not on PATH, the node attempts to use `imageio-ffmpeg`. If neither is available, video outputs that require ffmpeg may be disabled.
 - `loop_count` is ignored for video formats.
+- The sidecar includes `filename` with extension, but does not include a separate `extension` field.
 
 ## Common setups
 
@@ -80,7 +87,7 @@ Example:
 
 Example `filename_format`:
 
-- `Anim_%model_short%_%sampler_name%_%scheduler%_s%steps%_c%cfg%_seed%seed%_%loras%`
+- `Anim_%model_short%_%sampler_name%_%scheduler%_%steps%_%cfg%_%seed%_%loras%`
 
 If you don’t want empty underscores when a value is missing, remove the surrounding separators in the template (since missing tokens become empty).
 

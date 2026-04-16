@@ -1,6 +1,6 @@
 # AUNPathFilename — Path + Filename Builder
 
-Purpose: Build a folder path and a tokenized filename for saving images/videos.
+Purpose: Legacy path + filename builder for existing image workflows that still use separate `path` and `filename` sockets, mainly with `AUNSaveImage`.
 
 ## Inputs
 
@@ -10,15 +10,15 @@ Purpose: Build a folder path and a tokenized filename for saving images/videos.
 - `name` (STRING): Base name.
 - Optional free-text parts: `prefix_1`, `prefix_2`, `Labels`, `suffix_1`, `suffix_2`.
 - Toggles:
-  - `Date` adds `%date`
-  - `Model` adds `%model_short`
-  - `Sampler` adds `%sampler_name`
-  - `Scheduler` adds `%scheduler`
-  - `Seed` adds `seed_%seed`
-  - `Steps` adds `steps_%steps`
-  - `CFG` adds `CFG_%cfg`
+  - `Date` adds `%date%`
+  - `Model` adds `%model_short%`
+  - `Sampler` adds `%sampler_name%`
+  - `Scheduler` adds `%scheduler%`
+  - `Seed` adds `seed_%seed%`
+  - `Steps` adds `steps_%steps%`
+  - `CFG` adds `CFG_%cfg%`
 - `delimiter` (STRING): String used to join filename parts.
-- Optional: `batch_size` (INT): when > 1, appends `batch_%batch_num`.
+- Optional: `batch_size` (INT): when > 1, appends `batch_%batch_num%`.
 
 ## Outputs
 
@@ -28,4 +28,6 @@ Purpose: Build a folder path and a tokenized filename for saving images/videos.
 ## Notes
 
 - This node builds the template; token replacement happens in saver/rename nodes.
-- Token spelling here uses `%...` (not always `%...%`). Keep templates consistent with the saver you target.
+- Canonical token spelling here uses `%token%`.
+- `AUNSaveImage` accepts both `%token%` and legacy `%token` placeholder forms for backward compatibility.
+- This node preserves image-style labels such as `seed_`, `steps_`, and `CFG_` around the canonical placeholders.

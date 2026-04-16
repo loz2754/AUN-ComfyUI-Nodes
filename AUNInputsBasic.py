@@ -3,7 +3,7 @@ import folder_paths as comfy_paths
 import comfy.sd
 import comfy.utils
 import torch
-#import time
+import time
 import random
 import comfy.samplers
 from datetime import datetime
@@ -17,21 +17,20 @@ scheduler = AnyType("*")
 sampler = AnyType("*")
 
 
-class AUNInputs:
+class AUNInputsBasic:
     DESCRIPTION = "A comprehensive 'all-in-one' node for setting up a generation pipeline. It loads a checkpoint, creates a latent image, and prepares various parameters for sampling and saving, all in one place."
-    
-    date_format = ["%Y%m%d%H%M%S",
-                   "%Y%m%d%H%M",
-                   "%Y%m%d",
-                   "%Y-%m-%d-%H_%M_%S",
-                   "%Y-%m-%d-%H_%M",
-                   "%Y-%m-%d",
-                   "%Y-%m-%d %H_%M_%S",
-                   "%Y-%m-%d %H_%M",
-                   "%H%M",
-                   "%H%M%S",
-                   "%H_%M",
-                   "%H_%M_%S"]
+    # date_format = ["%Y%m%d%H%M%S",
+    #                "%Y%m%d%H%M",
+    #                "%Y%m%d",
+    #                "%Y-%m-%d-%H_%M_%S",
+    #                "%Y-%m-%d-%H_%M",
+    #                "%Y-%m-%d",
+    #                "%Y-%m-%d %H_%M_%S",
+    #                "%Y-%m-%d %H_%M",
+    #                "%H%M",
+    #                "%H%M%S",
+    #                "%H_%M",
+    #                "%H_%M_%S"]
 
     def __init__(self):
         pass
@@ -57,9 +56,9 @@ class AUNInputs:
                           ]
 
         return {
-            "optional": {
-                "auto_name": ("STRING", {"multiline": False, "default": "Name", "forceInput": True, "tooltip": "Automatic name input, typically from a prompt node, used when 'name_mode' is set to Auto."}),
-            },
+            # "optional": {
+            #     "auto_name": ("STRING", {"multiline": False, "default": "Name", "forceInput": True, "tooltip": "Automatic name input, typically from a prompt node, used when 'name_mode' is set to Auto."}),
+            # },
             'required': {
                 "ckpt_name": (comfy_paths.get_filename_list("checkpoints"), {"tooltip": "The checkpoint model file to load."}),
                 "speed_lora": ("BOOLEAN", {"default": False, "label_on": "On", "label_off": "Off", "tooltip": "Enable or disable SpeedLoRA optimizations."}),
@@ -76,30 +75,62 @@ class AUNInputs:
                 "aspect_mode": (["Random", "Swap", "Original"], {"default": "Original", "tooltip": "Random swaps dimensions 50% of the time, Swap forces a swap, Original keeps the original order."}),
                 "batch_size": ("INT", {"default": 1, "min": 1, "max": 64, "tooltip": "Number of latent images to generate in a batch."}),
                 "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff, "tooltip": "The random seed for generation."}),
-                'MainFolder': ('STRING', {'multiline': False, 'default': 'MainFolder', "forceInput": False, "tooltip": "The main output folder for saved files."}),
-                'ManualName': ('STRING', {'multiline': False, 'default': 'Name', "forceInput": False, "tooltip": "The filename to use when 'name_mode' is set to Manual."}),
-                'name_mode': ("BOOLEAN", {"default": False, "label_on": "Manual", "label_off": "Auto", "tooltip": "Switch between automatic and manual filename modes."}),
-                "prefix": ('STRING', {'multiline': False, 'default': '', "forceInput": False, "tooltip": "A prefix to add to the generated filename."}),
-                "date_format": (s.date_format, {"tooltip": "The format for the date placeholder in filenames."}),
-                "crop": ("BOOLEAN", {"default": True, "label_on": "On", "label_off": "Off", "tooltip": "Enable or disable cropping the filename to a specified number of words."}),
-                "words": ("INT", {"default": 1, "min": 1, "max": 10, "step": 1, "tooltip": "The number of words to keep from the start of the string."})
+                # 'MainFolder': ('STRING', {'multiline': False, 'default': 'MainFolder', "forceInput": False, "tooltip": "The main output folder for saved files."}),
+                # 'ManualName': ('STRING', {'multiline': False, 'default': 'Name', "forceInput": False, "tooltip": "The filename to use when 'name_mode' is set to Manual."}),
+                # 'name_mode': ("BOOLEAN", {"default": False, "label_on": "Manual", "label_off": "Auto", "tooltip": "Switch between automatic and manual filename modes."}),
+                # "prefix": ('STRING', {'multiline': False, 'default': '', "forceInput": False, "tooltip": "A prefix to add to the generated filename."}),
+                # "date_format": (s.date_format, {"tooltip": "The format for the date placeholder in filenames."}),
+                # "crop": ("BOOLEAN", {"default": True, "label_on": "On", "label_off": "Off", "tooltip": "Enable or disable cropping the filename to a specified number of words."}),
+                # "words": ("INT", {"default": 1, "min": 1, "max": 10, "step": 1, "tooltip": "The number of words to keep from the start of the string."})
             },
         }
                 
     RETURN_TYPES = (
         "MODEL", "CLIP", "VAE", "STRING", 
-        sampler, scheduler, "FLOAT", "INT", "LATENT", "INT", "INT", "INT",
-        'STRING', 'STRING', "STRING", "STRING", "INT", "BOOLEAN",
+        sampler, 
+        scheduler, 
+        "FLOAT", 
+        "INT", 
+        "LATENT", 
+        "INT", 
+        "INT", 
+        "INT",
+#        'STRING', 
+#        'STRING', 
+#        "STRING", 
+#        "STRING", 
+        "INT", 
+#        "BOOLEAN",
     )
     RETURN_NAMES = (
-        "MODEL", "CLIP", "VAE", "ckpt name",
-        "sampler", "scheduler", "cfg", "steps", "latent", "width", "height", "seed",
-        'MainFolder', 'Filename', "prefix", "date format", "batch size", "name mode"
+        "MODEL", 
+        "CLIP", 
+        "VAE", 
+        "ckpt name",
+        "sampler", 
+        "scheduler", 
+        "cfg", 
+        "steps", 
+        "latent", 
+        "width", 
+        "height", 
+        "seed",
+#        'MainFolder', 
+#        'Filename', 
+#        "prefix", 
+#        "date format", 
+        "batch size", 
+#        "name mode"
     )
     FUNCTION = 'inputs'
     CATEGORY = 'AUN Nodes/Loaders+Inputs'
 
-    def inputs(self, ckpt_name, speed_lora, speed_lora_model, speed_lora_strength, clip_skip, MainFolder, ManualName, name_mode, prefix, sampler, scheduler, cfg, steps, width, height, aspect_ratio, aspect_mode, batch_size, seed, date_format, crop, words, auto_name="Name"):
+    def inputs(self, ckpt_name, speed_lora, speed_lora_model, speed_lora_strength, clip_skip, 
+#               MainFolder, ManualName, name_mode, prefix, 
+               sampler, scheduler, cfg, steps, width, height, aspect_ratio, aspect_mode, batch_size, seed,
+                # date_format, 
+#               crop, words, auto_name="Name"
+               ):
         ckpt_path = comfy_paths.get_full_path("checkpoints", ckpt_name)
         out = comfy.sd.load_checkpoint_guess_config(ckpt_path, output_vae=True, output_clip=True, embedding_directory=comfy_paths.get_folder_paths("embeddings"))
         model, clip, vae = out[0], out[1], out[2]
@@ -160,16 +191,23 @@ class AUNInputs:
         latent = torch.zeros([batch_size, 4, height // 8, width // 8])
 
         # Determine the name to use based on name_mode
-        filename_to_process = ManualName if name_mode else auto_name
+        #filename_to_process = ManualName if name_mode else auto_name
 
         # Apply cropping if enabled
-        if crop:
-            name_words = filename_to_process.split()
-            if name_words:
-                # Take up to 'words' words, but not more than available
-                filename_to_process = ' '.join(name_words[:min(words, len(name_words))]) 
+        # if crop:
+        #     name_words = filename_to_process.split()
+        #     if name_words:
+        #         # Take up to 'words' words, but not more than available
+        #         filename_to_process = ' '.join(name_words[:min(words, len(name_words))]) 
                   
-        return (model, clip, vae, os.path.splitext(os.path.basename(ckpt_name))[0], sampler, scheduler, cfg, steps, {"samples": latent}, width, height, seed, MainFolder, filename_to_process, prefix, date_format, int(batch_size), name_mode,)
+        return (model, clip, vae, os.path.splitext(os.path.basename(ckpt_name))[0], sampler, scheduler, cfg, steps, {"samples": latent}, width, height, seed,                
+        #MainFolder, 
+        #filename_to_process, 
+        #prefix, 
+        #date_format, 
+        int(batch_size), 
+        #name_mode,
+        )
        
     def get_time(self, date_format):
         now = datetime.now()
@@ -178,16 +216,17 @@ class AUNInputs:
         return (timestamp,)
 
     @classmethod
-    def IS_CHANGED(s, date_format, **kwargs):
+    def IS_CHANGED(s, **kwargs):
+        date_format = kwargs.get('date_format', "%Y-%m-%d")
         now = datetime.now()
         timestamp = now.strftime(date_format)
         return (timestamp,)
     
 NODE_CLASS_MAPPINGS = {
-    "AUNInputs": AUNInputs
+    "AUNInputsBasic": AUNInputsBasic
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
 
-    "AUNInputs": "AUN Inputs"
+    "AUNInputsBasic": "AUN Inputs Basic"
 }

@@ -16,16 +16,16 @@ class AUNPathFilename:
                 "Subfolder_A": ("STRING", {"multiline": False, "default": "", "tooltip": "First level of custom subfolders. Add more levels by adding a / between them."}),
                 "Subfolder_B": ("STRING", {"multiline": False, "default": "", "tooltip": "Second level of custom subfolders."}),
                 "name": ("STRING", {"multiline": False, "default": "Name", "tooltip": "The base name for the file."}),
-                "Date": ("BOOLEAN", {"default": True, "label_on": "On", "label_off": "Off", "tooltip": "Include the date placeholder (%date) in the filename."}),
+                "Date": ("BOOLEAN", {"default": True, "label_on": "On", "label_off": "Off", "tooltip": "Include the date placeholder (%date%) in the filename."}),
                 "prefix_1": ("STRING", {"multiline": False, "default": "", "tooltip": "First custom prefix for the filename."}),
                 "prefix_2": ("STRING", {"multiline": False, "default": "", "tooltip": "Second custom prefix for the filename."}),
-                "Model": ("BOOLEAN", {"default": True, "label_on": "On", "label_off": "Off", "tooltip": "Include model placeholder (%model_short) in the filename."}),
-                "Sampler": ("BOOLEAN", {"default": True, "label_on": "On", "label_off": "Off", "tooltip": "Include sampler placeholder (%sampler_name) in the filename."}),
-                "Scheduler": ("BOOLEAN", {"default": True, "label_on": "On", "label_off": "Off", "tooltip": "Include scheduler placeholder (%scheduler) in the filename."}),
+                "Model": ("BOOLEAN", {"default": False, "label_on": "On", "label_off": "Off", "tooltip": "Include model placeholder (%model_short%) in the filename."}),
+                "Sampler": ("BOOLEAN", {"default": True, "label_on": "On", "label_off": "Off", "tooltip": "Include sampler placeholder (%sampler_name%) in the filename."}),
+                "Scheduler": ("BOOLEAN", {"default": True, "label_on": "On", "label_off": "Off", "tooltip": "Include scheduler placeholder (%scheduler%) in the filename."}),
                 #"Include_LoRAs": ("BOOLEAN", {"default": False, "label_on": "On", "label_off": "Off", "tooltip": "Include %loras placeholder (grouped, e.g., (LORAS-A+B)) from rgthree Power Lora Loader. %loras_group remains a compatible alias."}),
-                "Seed": ("BOOLEAN", {"default": True, "label_on": "On", "label_off": "Off", "tooltip": "Include the seed placeholder in the filename."}),
-                "Steps": ("BOOLEAN", {"default": True, "label_on": "On", "label_off": "Off", "tooltip": "Include steps placeholder in the filename."}),
-                "CFG": ("BOOLEAN", {"default": True, "label_on": "On", "label_off": "Off", "tooltip": "Include CFG placeholder in the filename."}),
+                "Seed": ("BOOLEAN", {"default": True, "label_on": "On", "label_off": "Off", "tooltip": "Include the seed placeholder as seed_%seed% in the filename."}),
+                "Steps": ("BOOLEAN", {"default": True, "label_on": "On", "label_off": "Off", "tooltip": "Include the steps placeholder as steps_%steps% in the filename."}),
+                "CFG": ("BOOLEAN", {"default": True, "label_on": "On", "label_off": "Off", "tooltip": "Include the CFG placeholder as CFG_%cfg% in the filename."}),
                 "Labels": ("STRING", {"default": "", "forceInput": False, "tooltip": "Additional labels to include in the filename."}),
                 "suffix_1": ("STRING", {"multiline": False, "default": "", "tooltip": "First custom suffix for the filename."}),
                 "suffix_2": ("STRING", {"multiline": False, "default": "", "tooltip": "Second custom suffix for the filename."}),
@@ -35,7 +35,7 @@ class AUNPathFilename:
                 "batch_size": ("INT", {"default": 1, "min": 1, "max": 1000, "step": 1, "tooltip": "The batch size for the output."}),
             },
         }
-    DESCRIPTION = "Generates a file path and filename from various components and placeholders. Ideal for creating dynamic and organized output structures for saved images and videos."
+    DESCRIPTION = "Legacy image path/filename builder for existing two-socket workflows. Uses canonical %token% placeholders with image-style labels such as seed_, steps_, and CFG_. Use Path/Filename V2 for new single path_filename workflows."
     RETURN_TYPES = ("STRING", "STRING")
     RETURN_NAMES = ("path", "filename")
     FUNCTION = "generate_path"
@@ -71,17 +71,17 @@ class AUNPathFilename:
         path_parts = []
         name_parts = []
 
-        date = "%date"
-        Model = "%model"
-        model_short = "%model_short"
-        basemodelshort = "%basemodelshort"
-        sampler = "%sampler_name"
-        scheduler = "%scheduler"
+        date = "%date%"
+        model = "%model%"
+        model_short = "%model_short%"
+        #basemodelshort = "%basemodelshort"
+        sampler = "%sampler_name%"
+        scheduler = "%scheduler%"
         # Use consolidated %loras (saver treats %loras and %loras_group the same)
         #loras = "%loras"
-        seed = "%seed"
-        steps = "%steps"
-        cfg = "%cfg"
+        seed = "%seed%"
+        steps = "%steps%"
+        cfg = "%cfg%"
 
         # Append each part based on the corresponding dropdown value and non-empty string
         path_parts.append(MainFolder)
@@ -125,7 +125,7 @@ class AUNPathFilename:
         name_parts.append(suffix_2)
 
         if batch_size > 1:
-            name_parts.append("batch_%batch_num")
+            name_parts.append("batch_%batch_num%")
 
         # Filter out empty strings before joining
         name_parts = [part for part in name_parts if part]
@@ -144,4 +144,4 @@ class AUNPathFilename:
 
 NODE_CLASS_MAPPINGS = {"AUNPathFilename": AUNPathFilename,}
 
-NODE_DISPLAY_NAME_MAPPINGS = {"AUNPathFilename": "AUN Path/Filename",}
+NODE_DISPLAY_NAME_MAPPINGS = {"AUNPathFilename": "AUN Path/Filename (Legacy)",}

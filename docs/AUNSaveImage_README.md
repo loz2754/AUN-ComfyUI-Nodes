@@ -1,6 +1,6 @@
 # AUNSaveImage — AUN Save Image
 
-Purpose: Save images with tokenized filename/path templates, embed useful metadata, and optionally emit a per-image sidecar (text or JSON).
+Purpose: Legacy image saver for workflows that still provide separate `filename` and `path` inputs, with tokenized templates, metadata embedding, and optional per-image sidecars.
 
 ## Inputs
 
@@ -19,7 +19,7 @@ Purpose: Save images with tokenized filename/path templates, embed useful metada
 - `sampler_name` (STRING): Used for metadata and `%sampler_name`.
 - `scheduler` (STRING): Used for metadata and `%scheduler`.
 - `seed_value` (INT): Used for metadata and `%seed`.
-- `time_format` (STRING): Format string used by `%time`.
+- `date_format` (STRING): Format string used by `%date` and `%time`.
 
 ### Optional (preview / LoRAs / sidecar)
 
@@ -40,19 +40,20 @@ The `filename` and `path` fields support placeholder tokens. Tokens are replaced
 
 Supported tokens include:
 
-- `%date` (YYYY-MM-DD)
-- `%time` (uses `time_format`)
-- `%seed`
-- `%steps`
-- `%cfg`
-- `%sampler_name`
-- `%scheduler`
-- `%batch_num` (1-based index within the batch)
-- `%model`, `%modelname`
-- `%basemodelname`
-- `%model_short`, `%modelname_short`
-- `%basemodelshort`, `%basemodelname_short`
-- `%loras` (grouped token, e.g. `(LORAS-NameA+NameB)`)
+- `%date` / `%date%` (uses `date_format`)
+- `%time` / `%time%` (uses `date_format`)
+- `%date:<format>%` and `%time:<format>%` for explicit per-placeholder date/time formats
+- `%seed` / `%seed%`
+- `%steps` / `%steps%`
+- `%cfg` / `%cfg%`
+- `%sampler_name` / `%sampler_name%`
+- `%scheduler` / `%scheduler%`
+- `%batch_num` / `%batch_num%` (1-based index within the batch)
+- `%model` / `%model%`, `%modelname` / `%modelname%`
+- `%basemodelname` / `%basemodelname%`
+- `%model_short` / `%model_short%`, `%modelname_short` / `%modelname_short%`
+- `%basemodelshort` / `%basemodelshort%`, `%basemodelname_short` / `%basemodelname_short%`
+- `%loras` / `%loras%` (grouped token, e.g. `(LORAS-NameA+NameB)`)
   - `%loras_group` is kept as an alias of `%loras` for compatibility.
 
 ## Outputs
@@ -62,26 +63,29 @@ Supported tokens include:
 
 ## Notes
 
+- Canonical placeholder spelling in the newer path/filename builders is `%token%`.
+- `AUNSaveImage` accepts both canonical `%token%` and legacy `%token` forms for backward compatibility.
 - LoRAs used for `%loras` and sidecar extraction are pulled from the workflow/prompt graph and formatted compactly. Text-based LoRA loaders are filtered so only LoRAs that actually appear in the final prompt text are included.
 - In preview-only mode (`save_image = False`), images are written to the temp directory for UI display and sidecar files are suppressed.
+- Current sidecar output intentionally omits `extension` and `count`.
 
 ## Common setups
 
 ### 1) Simple, tidy filenames (model + seed)
 
-- `filename`: `%date_%model_short%_seed_%seed`
-- `path`: `AUN/%date`
+- `filename`: `%date%_%model_short%_seed_%seed%`
+- `path`: `AUN/%date%`
 
 ### 2) Include sampler/scheduler and settings
 
-- `filename`: `%date_%time_%model_short%_%sampler_name%_%scheduler%_s%steps%_c%cfg%_seed%seed`
+- `filename`: `%date%_%time%_%model_short%_%sampler_name%_%scheduler%_s%steps%_c%cfg%_seed_%seed%`
 - `path`: `AUN/%model_short%`
 
 ### 3) Batch outputs with numbered files
 
-Use `%batch_num` so each image in the batch gets a unique name.
+Use `%batch_num%` so each image in the batch gets a unique name.
 
-- `filename`: `%date_%model_short%_seed%seed_%batch_num`
+- `filename`: `%date%_%model_short%_seed_%seed%_%batch_num%`
 
 ### 4) Sidecar for external tools (txt or json)
 
