@@ -1,5 +1,12 @@
 # AUN Custom Nodes Changelog
 
+## [2.0.1] - 2026-04-18
+
+### Fixed
+
+- Cleaned up published package metadata so `dependencies` contains only valid Python package requirements.
+- Removed the duplicate Comfy registry publish workflow to avoid repeated publish attempts from the same `pyproject.toml` change.
+
 ## [2.0.0] - 2026-04-18
 
 ## [1.1.0] - 2026-04-16

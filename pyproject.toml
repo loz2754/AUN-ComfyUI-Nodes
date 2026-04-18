@@ -1,7 +1,7 @@
 [project]
 name = "aun-comfyui-nodes"
 description = "A collection of workflow helper nodes focused on organization + control (bypass/mute/collapse/group control), prompt/text utilities, file/path helpers, and image/video save helpers."
-version = "2.0.0"
+version = "2.0.1"
 license = {file = "LICENSE"} 
 # classifiers = [
 #     # For OS-independent nodes (works on all operating systems)
@@ -20,7 +20,7 @@ license = {file = "LICENSE"}
 #     "Environment :: GPU :: Apple Metal",    # Apple Metal support
 # ]
 
-dependencies = ["# Python dependencies for AUN nodes", "#", "# Notes:", "# - Do NOT list torch/numpy/Pillow here; ComfyUI already bundles them.", "# - ComfyUI-Manager will install this automatically (or via install.py).", "piexif>=1.1.3", "opencv-python-headless>=4.8.0.76", "imageio-ffmpeg>=0.4.9"]
+dependencies = ["piexif>=1.1.3", "opencv-python-headless>=4.8.0.76", "imageio-ffmpeg>=0.4.9"]
 
 [project.urls]
 Repository = "https://github.com/loz2754/AUN-ComfyUI-Nodes"
