@@ -4,7 +4,7 @@ import os
 import folder_paths
 
 from .aun_path_filename_shared import format_resolved_tokens, resolve_template, split_path_filename
-from .model_utils import get_short_name as get_model_short_name
+from .model_utils import get_short_name as get_model_short_name, get_sampler_short_name, get_scheduler_short_name
 from .AUNSaveVideo import AUNSaveVideo
 
 
@@ -70,7 +70,7 @@ class AUNFilenameResolverPreviewV2:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "path_filename_template": ("STRING", {"multiline": False, "default": "%date% %seed%", "tooltip": "Combined path + filename template from a V2 builder node."}),
+                "path_filename": ("STRING", {"multiline": False, "default": "%date% %seed%", "tooltip": "Combined path + filename template from a V2 builder node."}),
                 "delimiter": ("STRING", {"multiline": False, "default": " ", "tooltip": "Delimiter used by the builder node."}),
                 "model_name": ("STRING", {"multiline": False, "default": "", "tooltip": "Full model name (used in sidecar 'model' field)."}),
                 "sampler_name": ("STRING", {"multiline": False, "default": "euler", "tooltip": "Resolved sampler name."}),
@@ -87,8 +87,8 @@ class AUNFilenameResolverPreviewV2:
                 ], {"default": "Output only (text)", "tooltip": "Choose sidecar output format. 'Save to file' writes a .txt/.json next to the resolved output file; the node always returns sidecar_text."}),
             },
             "optional": {
-                "positive_prompt": ("STRING", {"multiline": True, "forceInput": True, "tooltip": "Positive prompt text for the sidecar."}),
-                "negative_prompt": ("STRING", {"multiline": True, "forceInput": True, "tooltip": "Negative prompt text for the sidecar."}),
+                "pos_prompt": ("STRING", {"multiline": True, "forceInput": True, "tooltip": "Positive prompt text for the sidecar."}),
+                "neg_prompt": ("STRING", {"multiline": True, "forceInput": True, "tooltip": "Negative prompt text for the sidecar."}),
                 "date_format": ("STRING", {"default": "%Y-%m-%d", "tooltip": "Date format for %date and %time placeholders and sidecar timestamp."}),
                 "frame_rate": ("FLOAT", {"default": 16.0, "min": 0.0, "tooltip": "(Video) Frame rate of the saved video."}),
                 "loop_count": ("INT", {"default": 0, "min": 0, "tooltip": "(Video) Loop count (0 = infinite for gif/webp)."}),
@@ -108,10 +108,10 @@ class AUNFilenameResolverPreviewV2:
     RETURN_NAMES = ("path_filename", "sidecar_text")
     FUNCTION = "resolve_v2"
     CATEGORY = "AUN Nodes/File Management/Preview"
-    DESCRIPTION = "Recommended preview resolver for new workflows. Accepts a single path_filename_template input and returns a resolved path_filename."
+    DESCRIPTION = "Recommended preview resolver for new workflows. Accepts a single path_filename input and returns a resolved path_filename."
 
-    def resolve_v2(self, path_filename_template, **kwargs):
-        path, filename_template = split_path_filename(path_filename_template)
+    def resolve_v2(self, path_filename, **kwargs):
+        path, filename_template = split_path_filename(path_filename)
         delimiter = kwargs.get("delimiter", " ")
         model_name = kwargs.get("model_name", "")
         sampler_name = kwargs.get("sampler_name", "euler")
@@ -121,8 +121,8 @@ class AUNFilenameResolverPreviewV2:
         seed_value = kwargs.get("seed_value", 123456)
         output_type = kwargs.get("output_type", "Video")
         sidecar_format = kwargs.get("sidecar_format", "Output only (text)")
-        positive_prompt = kwargs.get("positive_prompt", "")
-        negative_prompt = kwargs.get("negative_prompt", "")
+        positive_prompt = kwargs.get("pos_prompt", "")
+        negative_prompt = kwargs.get("neg_prompt", "")
         date_format = kwargs.get("date_format", "%Y-%m-%d")
         frame_rate = kwargs.get("frame_rate", 16.0)
         loop_count = kwargs.get("loop_count", 0)
@@ -140,6 +140,9 @@ class AUNFilenameResolverPreviewV2:
         except Exception:
             base = os.path.basename(model_name_value.replace("\\", "/")) if model_name_value else ""
             resolved_model_short = os.path.splitext(base)[0] if base else ""
+
+        resolved_sampler_short = get_sampler_short_name(str(sampler_name or ""))
+        resolved_scheduler_short = get_scheduler_short_name(str(scheduler_name or ""))
 
         model_base = ""
         if model_name_value:
@@ -195,8 +198,8 @@ class AUNFilenameResolverPreviewV2:
 
         replacements = format_resolved_tokens(
             model_short=resolved_model_short,
-            sampler_name=sampler_name,
-            scheduler_name=scheduler_name,
+            sampler_name=resolved_sampler_short,
+            scheduler_name=resolved_scheduler_short,
             steps_value=steps_value,
             cfg_value=cfg_value,
             seed_value=seed_value,
@@ -276,7 +279,7 @@ class AUNFilenameResolverPreviewV2:
         sidecar_ctx["filename"] = filename
 
         if not is_video:
-            sidecar_ctx["batch_num"] = batch_num
+            sidecar_ctx["batch_size"] = batch_num
 
         sidecar_text = _format_sidecar(sidecar_ctx, sidecar_format)
 
@@ -284,13 +287,22 @@ class AUNFilenameResolverPreviewV2:
         if "save" in sidecar_selector or "file" in sidecar_selector:
             try:
                 ext = "json" if "json" in sidecar_selector else "txt"
-                base = os.path.basename(filename) or "sidecar"
                 output_root = folder_paths.get_output_directory()
                 target_dir = path if os.path.isabs(path) else os.path.join(output_root, path) if path else output_root
                 os.makedirs(target_dir, exist_ok=True)
-                sidecar_path = os.path.join(target_dir, f"{base}.{ext}")
-                with open(sidecar_path, "w", encoding="utf-8") as fh:
-                    fh.write(sidecar_text)
+                has_batch_token = "%batch_num%" in filename
+                iterations = range(1, int(batch_num) + 1) if (not is_video and has_batch_token and int(batch_num) > 1) else [None]
+                for idx in iterations:
+                    if idx is not None:
+                        resolved_name = filename.replace("%batch_num%", str(idx))
+                        iter_sidecar_text = sidecar_text.replace("%batch_num%", str(idx))
+                    else:
+                        resolved_name = filename
+                        iter_sidecar_text = sidecar_text
+                    base = os.path.basename(resolved_name) or "sidecar"
+                    sidecar_path = os.path.join(target_dir, f"{base}.{ext}")
+                    with open(sidecar_path, "w", encoding="utf-8") as fh:
+                        fh.write(iter_sidecar_text)
             except Exception:
                 pass
 
