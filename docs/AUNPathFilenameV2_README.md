@@ -2,9 +2,9 @@
 
 Purpose
 
-- Recommended path/filename builder for new image workflows using a single combined `path_filename` socket.
-- Provides a compatibility-safe migration path away from separate `path` and `filename` outputs.
-- Covers the richer builder use case directly, including manual/auto naming and `max_num_words`.
+- Recommended image path/filename builder for new workflows.
+- Returns `path_filename` plus `date_format` for generating a file path and filename from image-focused components and placeholders.
+- Includes the manual/auto naming controls directly, so a separate preview builder is usually unnecessary for image workflows.
 
 Inputs
 
@@ -22,5 +22,3 @@ Notes
 - This node preserves the existing image filename token order and formatting, including `seed_%seed%`, `steps_%steps%`, and `CFG_%cfg%`.
 - `date_format` accepts both Python-style formats such as `%Y-%m-%d` and ComfyUI-style formats such as `yyyy-dd-MM` for the date subfolder.
 - `date_format` is also returned so image saver nodes can use the same value for `%date%` and `%time%` resolution.
-- It exists to standardize new workflows without breaking older ones that still use separate outputs.
-- In most new image workflows, this node replaces the need for `AUNPathFilenameBuilderPreviewV2`.

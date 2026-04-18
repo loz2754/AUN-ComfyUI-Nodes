@@ -1,6 +1,6 @@
 # AUNSaveVideo — AUN Save Video
 
-Purpose: Legacy video saver for workflows that still use the `filename_format` input, combining image batches into animated images or video with tokenized filenames, optional audio, and optional sidecars.
+Purpose: Legacy video saver for workflows using the current `filename_format` input. Combines image batches into an animated image or video and supports both `%token%` and legacy `%token` placeholders. Empty inputs resolve to empty replacements. Use `AUNSaveVideoV2` for new single `path_filename` workflows.
 
 ## Inputs
 
@@ -51,7 +51,7 @@ Purpose: Legacy video saver for workflows that still use the `filename_format` i
 
 Example:
 
-- `Comfy_%model_short%_%steps%_%cfg%_%seed%_%loras%`
+- `%model_short%_steps-%steps%_cfg-%cfg%_seed-%seed%_%loras%`
 
 ## Outputs
 
@@ -62,6 +62,7 @@ Example:
 
 - Canonical placeholder spelling in the current builders is `%token%`.
 - `AUNSaveVideo` accepts both canonical `%token%` and legacy `%token` placeholder forms for backward compatibility.
+- `%steps%`, `%cfg%`, and `%seed%` are formatted as `steps-<value>`, `cfg-<value>`, and `seed-<value>` when resolved.
 - Many `video/*` formats require `ffmpeg`. If `ffmpeg` is not on PATH, the node attempts to use `imageio-ffmpeg`. If neither is available, video outputs that require ffmpeg may be disabled.
 - `loop_count` is ignored for video formats.
 - The sidecar includes `filename` with extension, but does not include a separate `extension` field.

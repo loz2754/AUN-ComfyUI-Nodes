@@ -107,8 +107,8 @@ class AUNFilenameResolverPreviewV2:
     RETURN_TYPES = ("STRING", "STRING")
     RETURN_NAMES = ("path_filename", "sidecar_text")
     FUNCTION = "resolve_v2"
-    CATEGORY = "AUN Nodes/File Management/Preview"
-    DESCRIPTION = "Recommended preview resolver for new workflows. Accepts a single path_filename input and returns a resolved path_filename."
+    CATEGORY = "AUN Nodes/File Management"
+    DESCRIPTION = "Acts as a bridge between AUNPathFilename nodes and standard save image/video nodes (if not using AUNSaveImage or AUNSaveVideo). Accepts a single path_filename input and returns a resolved path_filename."
 
     def resolve_v2(self, path_filename, **kwargs):
         path, filename_template = split_path_filename(path_filename)

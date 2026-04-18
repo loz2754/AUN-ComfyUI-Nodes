@@ -12,7 +12,6 @@
   - `AUNSaveImageV2`
   - `AUNSaveVideoV2`
 - New preview/compatibility helper nodes for resolver-based workflows:
-  - `AUNPathFilenameBuilderPreviewV2`
   - `AUNFilenameResolverPreviewV2`
 - New `AUNInputsBasic` node.
 - New shared `aun_path_filename_shared.py` helpers for combined path/filename building, token resolution, and name cropping.
@@ -21,11 +20,10 @@
 ### Changed
 
 - File-management and save nodes are now labeled `Legacy` or `Recommended` in node search to make migration paths clearer.
-- README and node docs now describe the V2 migration path, with `path_filename` as the primary end-to-end contract and `path_filename_template` reserved for resolver-based compatibility flows.
+- README and node docs now describe the V2 migration path, with `path_filename` as the primary end-to-end contract.
 - Canonical placeholder syntax is now documented and supported as `%token%` across the newer builder flow, while older `%token` forms remain accepted for compatibility.
 - `AUNPathFilename` and `AUNPathFilenameVideo` are now explicitly documented and presented as legacy builders for existing workflows.
 - `AUNPathFilenameV2` now covers the richer image naming workflow directly, including manual/auto naming and `max_num_words`, so the preview builder is no longer needed for standard image workflows.
-- `AUNPathFilenameBuilderPreviewV2` now acts as a thin compatibility wrapper over the dedicated image/video V2 builders instead of maintaining separate builder logic.
 - `AUNPathFilenameVideoResolved` documentation was updated to reflect its resolved output contract and current sidecar schema.
 
 ### Fixed

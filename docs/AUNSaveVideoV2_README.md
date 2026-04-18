@@ -2,8 +2,9 @@
 
 Purpose
 
-- Recommended video saver for new workflows using a single combined `path_filename` input.
-- Reuses the current `AUNSaveVideo` behavior while standardizing the input contract.
+- Recommended video saver for new workflows.
+- Combines image frames into an animated image or video using a single combined `path_filename` input.
+- Supports both `%token%` and legacy `%token` placeholders, and empty inputs resolve to empty replacements.
 
 Inputs
 
@@ -22,5 +23,6 @@ Notes
 - The sidecar `timestamp` also follows `date_format`; if the format does not include time tokens, `HH:MM:SS` is appended automatically.
 - `%loras%` is ignored by V2 for filename generation.
 - Detected LoRAs still appear in the sidecar output and sidecar files.
+- Example template: `%model_short%_steps-%steps%_cfg-%cfg%_seed-%seed%_%loras%`.
 - It preserves the current sidecar behavior of `AUNSaveVideo`.
 - The legacy `AUNSaveVideo` node is unchanged for backward compatibility.

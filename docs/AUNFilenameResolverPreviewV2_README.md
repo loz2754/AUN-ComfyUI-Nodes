@@ -2,14 +2,14 @@
 
 Purpose
 
-- Recommended preview resolver for new workflows using a single combined `path_filename_template` input.
-- Preserves the current preview sidecar behavior while standardizing the socket contract.
+- Acts as a bridge between the AUN path/filename builder nodes and standard save image/video nodes when you are not using `AUNSaveImage` or `AUNSaveVideo` directly.
+- Accepts a single combined `path_filename` input and returns a resolved combined path/filename value.
 
 Inputs
 
-- `path_filename_template` (STRING): combined relative path and filename template.
+- `path_filename` (STRING): combined relative path and filename template.
 - Additional inputs: `delimiter`, `model_name`, `sampler_name`, `scheduler_name`, `steps_value`, `cfg_value`, `seed_value`, `output_type`, `sidecar_format`.
-- Optional inputs: `positive_prompt`, `negative_prompt`, `date_format`, `frame_rate`, `loop_count`, `quality`, `width`, `height`, `count`, `batch_num`.
+- Optional inputs: `pos_prompt`, `neg_prompt`, `date_format`, `frame_rate`, `loop_count`, `quality`, `width`, `height`, `count`, `batch_num`.
 
 Outputs
 
@@ -22,4 +22,4 @@ Notes
 - The sidecar includes `filename` without an extension so it does not drift from the downstream saver's final output format.
 - The sidecar does not include a separate `extension` field.
 - When `Save to file` is selected, sidecars are written under ComfyUI's output directory alongside the resolved relative output path.
-- Intended as the V2 resolver companion for the V2 builder nodes.
+- Intended for workflows that want the V2 builder pattern but still need to hand the resolved result off to standard saver nodes.

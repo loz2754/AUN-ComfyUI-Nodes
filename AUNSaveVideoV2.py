@@ -61,7 +61,7 @@ class AUNSaveVideoV2(AUNSaveVideo):
     OUTPUT_NODE = True
     FUNCTION = "combine_video_v2"
     CATEGORY = "AUN Nodes/Video"
-    DESCRIPTION = "Recommended video saver for new workflows. Accepts a single path_filename input while preserving current AUNSaveVideo behavior through a compatibility-safe V2 node."
+    DESCRIPTION = "Recommended video saver for new workflows. Combine image frames into an animated image or video. Supports %token% filename placeholders and %token placeholders. Empty inputs yield empty replacements.Example: %model_short%_steps-%steps%_cfg-%cfg%_seed-%seed%_%loras%."
 
     @staticmethod
     def _normalize_date_format(fmt: str) -> str:

@@ -2,8 +2,9 @@
 
 Purpose
 
-- Recommended image saver for new workflows using a single combined `path_filename` input.
-- Reuses the current `AUNSaveImage` behavior while standardizing the input contract.
+- Recommended image saver for new workflows.
+- A versatile image saver with advanced filename customization and metadata embedding.
+- Accepts a single combined `path_filename` input and pairs naturally with `AUNPathFilenameV2`.
 
 Inputs
 
@@ -22,4 +23,5 @@ Notes
 - Canonical `%token%` placeholders and legacy `%token` placeholders are both supported.
 - `%loras%` and `%loras_group%` are ignored by V2 for filename generation.
 - Detected LoRAs still appear in the sidecar output and sidecar files.
+- `AUNPathFilenameV2` is the intended builder for generating the combined `path_filename` string.
 - Internally this node splits `path_filename` and then reuses the current `AUNSaveImage` save logic.

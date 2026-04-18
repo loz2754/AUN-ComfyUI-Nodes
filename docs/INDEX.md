@@ -38,7 +38,6 @@ Generated list of documentation files under `docs/`.
 - [AUNModelNamePass](./AUNModelNamePass_README.md)
 - [AUNNameCrop](./AUNNameCrop_README.md)
 - [AUNNodeStateController](./AUNNodeStateController_README.md)
-- [AUNPathFilenameBuilderPreviewV2](./AUNPathFilenameBuilderPreviewV2_README.md)
 - [AUNPathFilename](./AUNPathFilename_README.md)
 - [AUNPathFilenameV2](./AUNPathFilenameV2_README.md)
 - [AUNPathFilenameVideo](./SaveVideoPathNode_README.md)

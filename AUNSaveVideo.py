@@ -137,8 +137,8 @@ class AUNSaveVideo():
     FUNCTION = "combine_video"
     CATEGORY = "AUN Nodes/Video"
     DESCRIPTION = (
-        "Legacy video saver for workflows using the current filename_format input. Supports canonical %token% filename placeholders and legacy %token placeholders. "
-        "%steps%, %cfg%, and %seed% are formatted as steps-<v>, cfg-<v>, and seed-<v> when resolved. Use Save Video V2 for new single path_filename workflows."
+        "Legacy video saver for workflows using the current filename_format input. Supports %token% filename placeholders and %token placeholders. Combine image frames into an animated image or video. Empty inputs yield empty replacements."
+        "Example: %model_short%_steps-%steps%_cfg-%cfg%_seed-%seed%_%loras%. Use AUNSaveVideoV2 for new single path_filename workflows."
     )
 
     @staticmethod

@@ -24,7 +24,7 @@ class AUNSaveImageV2(AUNSaveImage):
     FUNCTION = "save_files_v2"
     OUTPUT_NODE = True
     CATEGORY = "AUN Nodes/Image"
-    DESCRIPTION = "Recommended image saver for new workflows. Accepts a single path_filename input while reusing the current AUNSaveImage behavior through a compatibility-safe V2 node."
+    DESCRIPTION = "Recommended image saver for new workflows. A versatile image saver with advanced filename customization and metadata embedding. Accepts a single combined path_filename input with support for %token% placeholders, %token placeholders, and date/time formatting. Use AUNPathFilenameV2 to generate path_filename strings from individual components."
 
     def save_files_v2(self, images, path_filename, extension, **kwargs):
         kwargs.pop("loras_delimiter", None)

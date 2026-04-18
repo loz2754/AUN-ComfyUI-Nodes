@@ -45,14 +45,12 @@ To provide a fast, visually consistent understanding of node states, AUN nodes u
 
 - Main Folder Manual Name (`MainFolderManualName`) switch between a manual name and an automatic filename for the output path. Also returns the MainFolder, useful if you want to use the MainFolder in another node, and a boolean which can be used to switch other nodes.
 
-- Path Filename (`AUNPathFilename`) is the legacy image path/filename builder for existing workflows that still use separate `path` and `filename` sockets.
+- Path Filename (`AUNPathFilename`) is the legacy image path/filename builder for existing workflows, generating a file path and filename from image-focused components and placeholders.
 
-- Filename Builder V2 (`AUNPathFilenameBuilderPreviewV2`) is a compatibility wrapper that emits one `path_filename_template` value for resolver-based workflows and now delegates to the image/video V2 builders.
-
-- Filename Resolver V2 (`AUNFilenameResolverPreviewV2`) is the recommended single-input resolver that consumes one `path_filename_template` value.
+- Filename Resolver V2 (`AUNFilenameResolverPreviewV2`) bridges the AUN path/filename builder nodes to standard save image/video nodes and consumes one `path_filename` value.
 
 - Path Filename Video (`AUNPathFilenameVideo`) is the legacy video path/filename builder for existing workflows that still use separate outputs.
-- Path Filename V2 (`AUNPathFilenameV2`) is the recommended image path/filename builder that emits `path_filename` plus `date_format`, with manual/auto naming and `max_num_words` built in.
+- Path Filename V2 (`AUNPathFilenameV2`) is the recommended image path/filename builder that emits `path_filename` plus `date_format` for generating image save paths and filenames, with manual/auto naming built in.
 - Path Filename Video V2 (`AUNPathFilenameVideoV2`) is the recommended single-output video path/filename builder that emits `path_filename` plus `date_format`.
 
 - Path Filename Video (Resolved) (`AUNPathFilenameVideoResolved`) builds the final resolved video filename and emits a sidecar that mirrors AUN Save Video.
@@ -69,14 +67,14 @@ To provide a fast, visually consistent understanding of node states, AUN nodes u
 - Load Image Single/Batch 3 (`AUNImageSingleBatch3`) load a single uploaded image or cycle through a batch of images from a folder with multiple selection modes, including increment, random, range and search filtering by filename patterns.
 - Resize Image (`AUNImageResize`) resize an input image using the same strategies as AUN Load & Resize Image, including FramePack buckets and fill/crop anchoring.
 - Save Image (`AUNSaveImage`) is the legacy image saver for workflows that still provide separate `path` and `filename` inputs.
-- Save Image V2 (`AUNSaveImageV2`) is the recommended image saver that accepts one combined `path_filename` input.
+- Save Image V2 (`AUNSaveImageV2`) is the recommended image saver with advanced filename customization and metadata embedding, accepting one combined `path_filename` input.
 
 ---
 
 #### Video
 
-- Save Video (`AUNSaveVideo`) is the legacy video saver for workflows that still use the current `filename_format` input.
-- Save Video V2 (`AUNSaveVideoV2`) is the recommended video saver that accepts one combined `path_filename` input.
+- Save Video (`AUNSaveVideo`) is the legacy video saver for workflows that still use the current `filename_format` input, combining image frames into animated images or video with token placeholders.
+- Save Video V2 (`AUNSaveVideoV2`) is the recommended video saver that combines image frames into animated images or video and accepts one combined `path_filename` input.
 
 ---
 
@@ -184,10 +182,9 @@ From your ComfyUI folder:
 - Existing legacy path/filename nodes remain available for older workflows.
 - For new image workflows, use `AUNPathFilenameV2` directly with `AUNSaveImageV2`, or route its `path_filename` into `AUNFilenameResolverPreviewV2` when you need a resolved filename for standard ComfyUI `Save Image`.
 - For new video workflows, use `AUNPathFilenameVideoV2` directly with `AUNSaveVideoV2`.
-- `AUNPathFilenameBuilderPreviewV2` remains available as a compatibility wrapper for resolver-based flows, but it is no longer needed for the normal image V2 workflow and is not the primary builder recommendation.
 - Canonical placeholder syntax is now `%token%` across AUN path/filename builders.
 - Saver and resolver paths still accept legacy `%token` placeholders for backward compatibility.
-- The new recommended non-breaking migration path is the V2 family, which standardizes on one combined `path_filename` or `path_filename_template` string instead of separate `path` and `filename` sockets.
+- The new recommended non-breaking migration path is the V2 family, which standardizes on one combined `path_filename` string instead of separate `path` and `filename` sockets.
 - Legacy nodes are kept intact so older workflows do not break.
 - In node search, the older file-management/save nodes are labeled `Legacy` and the V2 replacements are labeled `Recommended`.
 

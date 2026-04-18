@@ -35,7 +35,7 @@ class AUNPathFilename:
                 "batch_size": ("INT", {"default": 1, "min": 1, "max": 1000, "step": 1, "tooltip": "The batch size for the output."}),
             },
         }
-    DESCRIPTION = "Legacy image path/filename builder for existing two-socket workflows. Uses canonical %token% placeholders with image-style labels such as seed_, steps_, and CFG_. Use Path/Filename V2 for new single path_filename workflows."
+    DESCRIPTION = "Legacy image path/filename builder for existing workflows. Generates a file path and filename from various components and placeholders, when saving images. Use Path/Filename V2 for new workflows."
     RETURN_TYPES = ("STRING", "STRING")
     RETURN_NAMES = ("path", "filename")
     FUNCTION = "generate_path"

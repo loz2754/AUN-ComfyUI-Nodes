@@ -1,6 +1,6 @@
 # AUNPathFilename — Path + Filename Builder
 
-Purpose: Legacy path + filename builder for existing image workflows that still use separate `path` and `filename` sockets, mainly with `AUNSaveImage`.
+Purpose: Legacy image path/filename builder for existing workflows. Generates a file path and filename from image-oriented components and placeholders for image saving flows. Use `AUNPathFilenameV2` for new workflows.
 
 ## Inputs
 

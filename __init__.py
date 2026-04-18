@@ -35,7 +35,6 @@ from .AUNMultiUniversal import AUNMultiUniversal
 from .AUNNameCrop import AUNNameCrop
 from .AUNNodeStateController import AUNNodeStateController
 from .AUNPathFilename import AUNPathFilename
-from .AUNPathFilenameBuilderPreviewV2 import AUNPathFilenameBuilderPreviewV2
 from .AUNPathFilenameV2 import AUNPathFilenameV2
 from .AUNPathFilenameVideo import AUNPathFilenameVideo
 from .AUNPathFilenameVideoV2 import AUNPathFilenameVideoV2
@@ -105,7 +104,6 @@ NODE_CLASS_MAPPINGS = {
     "AUNNameCrop": AUNNameCrop,
     "AUNNodeStateController": AUNNodeStateController,
     "AUNPathFilename": AUNPathFilename,
-    "AUNPathFilenameBuilderPreviewV2": AUNPathFilenameBuilderPreviewV2,
     "AUNPathFilenameV2": AUNPathFilenameV2,
     "AUNPathFilenameVideo": AUNPathFilenameVideo,
     "AUNPathFilenameVideoV2": AUNPathFilenameVideoV2,
@@ -171,7 +169,6 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "AUNNameCrop": "Name Crop",
     "AUNNodeStateController": "Node State Controller",
     "AUNPathFilename": "Path Filename (Legacy)",
-    "AUNPathFilenameBuilderPreviewV2": "Filename Builder V2",
     "AUNPathFilenameV2": "Path Filename V2",
     "AUNPathFilenameVideo": "Path Filename Video (Legacy)",
     "AUNPathFilenameVideoV2": "Path Filename Video V2",

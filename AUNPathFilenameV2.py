@@ -60,7 +60,7 @@ class AUNPathFilenameV2:
     RETURN_NAMES = ("path_filename", "date_format")
     FUNCTION = "generate_path_v2"
     CATEGORY = "AUN Nodes/File Management"
-    DESCRIPTION = "Recommended image path/filename builder for new workflows. Returns path_filename plus date_format, and includes manual/auto naming controls so the older preview builder is no longer required for image workflows."
+    DESCRIPTION = "Recommended image path/filename builder for new workflows. Returns path_filename plus date_format, and includes manual/auto naming controls for generating a file path and filename from various components and placeholders, when saving images."
 
     @staticmethod
     def _normalize_date_format(fmt: str) -> str:
