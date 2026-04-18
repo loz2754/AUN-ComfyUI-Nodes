@@ -1,6 +1,6 @@
 # AUN Custom Nodes Changelog
 
-## [Unreleased]
+## [2.0.0] - 2026-04-18
 
 ## [1.1.0] - 2026-04-16
 
