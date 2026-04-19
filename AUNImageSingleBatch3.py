@@ -392,5 +392,5 @@ NODE_CLASS_MAPPINGS = {
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "AUNImageSingleBatch3": "Load Image (Single/Batch)3"
+    "AUNImageSingleBatch3": "Load Image Single/Batch"
 }
