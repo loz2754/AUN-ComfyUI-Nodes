@@ -25,8 +25,10 @@ from .AUNInputsBasic import AUNInputsBasic
 from .AUNInputsDiffusers import AUNInputsDiffusers
 from .AUNInputsHybrid import AUNInputsHybrid
 from .AUNInputsRefine import AUNInputsRefine
+from .AUNInputsRefineBasic import AUNInputsRefineBasic
 from .AUNKSamplerPlusv3 import AUNKSamplerPlusv3
 from. AUNKSamplerPlusv4 import AUNKSamplerPlusv4
+from .AUNManualAutoTextSwitch import AUNManualAutoTextSwitch
 from .AUNMultiBypassIndex import AUNMultiBypassIndex
 from .AUNMultiGroupUniversal import AUNMultiGroupUniversal
 from .AUNMultiMuteIndex import AUNMultiMuteIndex
@@ -94,8 +96,10 @@ NODE_CLASS_MAPPINGS = {
     "AUNInputsDiffusers": AUNInputsDiffusers,
     "AUNInputsHybrid": AUNInputsHybrid,
     "AUNInputsRefine": AUNInputsRefine,
+    "AUNInputsRefineBasic": AUNInputsRefineBasic,
     "AUNKSamplerPlusv3": AUNKSamplerPlusv3,
     "AUNKSamplerPlusv4": AUNKSamplerPlusv4,
+    "AUNManualAutoTextSwitch": AUNManualAutoTextSwitch,
     "AUNMultiBypassIndex": AUNMultiBypassIndex,
     "AUNMultiGroupUniversal": AUNMultiGroupUniversal,
     "AUNMultiMuteIndex": AUNMultiMuteIndex,
@@ -152,7 +156,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "AUNGetConnectedNodeTitles": "Get Connected Node Titles",
     "AUNImageLoadResize": "Load & Resize Image",
     "AUNImageResize": "Resize Image",
-    "AUNImageSingleBatch3": "Load Image Single/Batch 3",
+    "AUNImageSingleBatch3": "Load Image Single/Batch",
     "AUNImg2Img": "Img2Img",
     "AUNImgLoader": "Image Loader",
     "AUNInputs": "Inputs",
@@ -160,7 +164,9 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "AUNInputsDiffusers": "Inputs Diffusers",
     "AUNInputsHybrid": "Inputs Hybrid",
     "AUNInputsRefine": "Inputs Refine",
+    "AUNInputsRefineBasic": "Inputs Refine Basic",
     "AUNKSamplerPlusv4": "KSampler Plus V4",
+    "AUNManualAutoTextSwitch": "Manual/Auto Text Switch",
     "AUNMultiBypassIndex": "Multi Bypass Index",
     "AUNMultiGroupUniversal": "AUN Group Controller",
     "AUNMultiMuteIndex": "Multi Mute Index",
@@ -196,7 +202,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "AUNTextIndexSwitch3": "Text Index Switch 3",
     "AUNTitleImagePreview": "Image Preview With Title",
     "KSamplerInputs": "KSampler Inputs",
-    "MainFolderManualName": "Main Folder Manual Name",
+    "MainFolderManualName": "Manual Name",
     "TextSwitch2InputWithTextOutput": "Text Switch 2 Input With Text Output",
 }
 __all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS", "WEB_DIRECTORY"]
