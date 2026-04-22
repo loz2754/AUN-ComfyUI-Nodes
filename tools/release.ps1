@@ -20,16 +20,22 @@ function Invoke-Git {
         [string[]]$Arguments
     )
 
+    $escapedArguments = $Arguments | ForEach-Object {
+        if ($_ -match '[\s"]') {
+            '"' + ($_ -replace '"', '\"') + '"'
+        }
+        else {
+            $_
+        }
+    }
+
     $psi = New-Object System.Diagnostics.ProcessStartInfo
     $psi.FileName = 'git'
+    $psi.Arguments = ($escapedArguments -join ' ')
     $psi.RedirectStandardOutput = $true
     $psi.RedirectStandardError = $true
     $psi.UseShellExecute = $false
     $psi.CreateNoWindow = $true
-
-    foreach ($argument in $Arguments) {
-        [void]$psi.ArgumentList.Add($argument)
-    }
 
     $process = New-Object System.Diagnostics.Process
     $process.StartInfo = $psi
