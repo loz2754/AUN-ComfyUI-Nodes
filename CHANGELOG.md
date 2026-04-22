@@ -10,20 +10,6 @@
 
 ### Notes
 
-## [2.1.3] - 2026-04-22
-
-### Added
-
-### Changed
-
-- Advanced the package version while validating the local release flow.
-
-### Fixed
-
-### Notes
-
-- Local release-validation version with no intended node behavior changes beyond release metadata.
-
 ## [2.1.2] - 2026-04-22
 
 ### Added
