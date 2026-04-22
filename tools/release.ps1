@@ -20,25 +20,8 @@ function Invoke-Git {
         [string[]]$Arguments
     )
 
-    $nativeErrorPreference = $null
-    $hadNativePreference = $false
-    if (Get-Variable -Name PSNativeCommandUseErrorActionPreference -ErrorAction SilentlyContinue) {
-        $hadNativePreference = $true
-        $nativeErrorPreference = $PSNativeCommandUseErrorActionPreference
-        $PSNativeCommandUseErrorActionPreference = $false
-    }
-
-    try {
-        $output = & git @Arguments 2>&1
-        $exitCode = $LASTEXITCODE
-    }
-    finally {
-        if ($hadNativePreference) {
-            $PSNativeCommandUseErrorActionPreference = $nativeErrorPreference
-        }
-    }
-
-    if ($exitCode -ne 0) {
+    $output = & git @Arguments 2>&1
+    if ($LASTEXITCODE -ne 0) {
         $message = if ($output) { ($output | Out-String).Trim() } else { "git $($Arguments -join ' ') failed." }
         throw $message
     }
