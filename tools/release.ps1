@@ -153,7 +153,7 @@ if ($branch -ne 'main') {
 }
 
 $statusOutput = Invoke-Git -Arguments @('-C', $repoRoot, 'status', '--porcelain')
-$isDirty = [bool]($statusOutput | Where-Object { $_.ToString().Trim() })
+$isDirty = @($statusOutput | Where-Object { $null -ne $_ -and $_.ToString().Trim() }).Count -gt 0
 if ($isDirty -and -not $DryRun) {
     throw 'Working tree is not clean. Commit, stash, or discard changes before releasing.'
 }
