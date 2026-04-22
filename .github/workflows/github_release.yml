@@ -1,0 +1,48 @@
+name: Create GitHub Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  github-release:
+    name: Publish GitHub release from tag
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract release notes from changelog
+        id: changelog
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}" -replace '^v', ''
+          $path = 'CHANGELOG.md'
+          $content = Get-Content -Path $path -Raw
+          $pattern = "(?ms)^## \[$([regex]::Escape($version))\]\s*-\s*[^\r\n]+\s*(?<body>.*?)(?=^## \[[^\]]+\]|\z)"
+          $match = [regex]::Match($content, $pattern)
+
+          if ($match.Success) {
+              $body = $match.Groups['body'].Value.Trim()
+          }
+          else {
+              $body = "Release $version"
+          }
+
+          $bodyPath = Join-Path $env:RUNNER_TEMP 'release-notes.md'
+          Set-Content -Path $bodyPath -Value $body
+          "body_path=$bodyPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: AUN-ComfyUI-Nodes ${{ github.ref_name }}
+          body_path: ${{ steps.changelog.outputs.body_path }}
