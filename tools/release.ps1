@@ -152,10 +152,6 @@ if ((Get-FirstLine -Value $existingTag) -eq $tagName) {
 
 $releaseDate = Get-Date -Format 'yyyy-MM-dd'
 
-if (-not $DryRun -and -not $NoTag -and [string]::IsNullOrWhiteSpace($ReleaseNotes)) {
-    $ReleaseNotes = Read-Host 'Optional release summary for the annotated tag (press Enter to skip)'
-}
-
 Write-Step "Current version: $currentVersion"
 Write-Step "New version: $Version"
 
