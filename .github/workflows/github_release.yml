@@ -42,11 +42,11 @@ jobs:
             }
 
             if (@($meaningfulBody).Count -eq 0) {
-              $body = @"
-      No structured release notes were found in CHANGELOG.md for version $version.
-
-      Check the matching changelog entry or tag annotation for the intended release details.
-      "@
+                  $body = @(
+                    "No structured release notes were found in CHANGELOG.md for version $version.",
+                    '',
+                    'Check the matching changelog entry or tag annotation for the intended release details.'
+                  ) -join "`n"
             }
 
           $bodyPath = Join-Path $env:RUNNER_TEMP 'release-notes.md'
