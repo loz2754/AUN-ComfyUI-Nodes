@@ -14,7 +14,52 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Detect version change
+        id: version_check
+        shell: python
+        run: |
+          import pathlib
+          import os
+          import subprocess
+          import tomllib
+
+          github_event_name = "${{ github.event_name }}"
+          previous_sha = "${{ github.event.before }}"
+          output_path = pathlib.Path(os.environ["GITHUB_OUTPUT"])
+
+          def load_version(contents: bytes) -> str:
+              data = tomllib.loads(contents.decode("utf-8"))
+              return str(data["project"]["version"])
+
+          current_version = load_version(pathlib.Path("pyproject.toml").read_bytes())
+          should_publish = github_event_name == "workflow_dispatch"
+          previous_version = ""
+
+          if github_event_name == "push" and previous_sha and previous_sha != "0000000000000000000000000000000000000000":
+              previous_contents = subprocess.check_output(
+                  ["git", "show", f"{previous_sha}:pyproject.toml"],
+                  text=False,
+              )
+              previous_version = load_version(previous_contents)
+              should_publish = previous_version != current_version
+
+          with output_path.open("a", encoding="utf-8") as stream:
+              stream.write(f"current_version={current_version}\n")
+              stream.write(f"previous_version={previous_version}\n")
+              stream.write(f"should_publish={'true' if should_publish else 'false'}\n")
+
+      - name: Skip duplicate publish
+        if: steps.version_check.outputs.should_publish != 'true'
+        run: |
+          echo "Skipping registry publish because pyproject.toml version did not change."
+          echo "Current version: ${{ steps.version_check.outputs.current_version }}"
+          echo "Previous version: ${{ steps.version_check.outputs.previous_version }}"
+
       - name: Publish Custom Node
+        if: steps.version_check.outputs.should_publish == 'true'
         uses: Comfy-Org/publish-node-action@main
         with:
           personal_access_token: ${{ secrets.REGISTRY_ACCESS_TOKEN }} ## Add your own personal access token to your Github Repository secrets and reference it here.
