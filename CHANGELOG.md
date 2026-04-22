@@ -4,13 +4,22 @@
 
 ### Added
 
+### Changed
+
+### Fixed
+
+### Notes
+
+## [2.1.1] - 2026-04-22
+
+### Added
+
 - New `AUNInputsRefineBasic` node for the lighter `Inputs Basic` workflow with an optional separate refine checkpoint output.
 - New `AUNManualAutoTextSwitch` node for switching between an automatically generated filename and a manually entered name, while also outputting the current mode as a boolean for downstream workflow control.
 
 ### Changed
 
 - Added published documentation for `AUNManualAutoTextSwitch` in the main README and docs index.
-
 ## [2.0.1] - 2026-04-18
 
 ### Fixed

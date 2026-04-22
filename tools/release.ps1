@@ -20,8 +20,37 @@ function Invoke-Git {
         [string[]]$Arguments
     )
 
-    $output = & git @Arguments 2>&1
-    if ($LASTEXITCODE -ne 0) {
+    $psi = New-Object System.Diagnostics.ProcessStartInfo
+    $psi.FileName = 'git'
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError = $true
+    $psi.UseShellExecute = $false
+    $psi.CreateNoWindow = $true
+
+    foreach ($argument in $Arguments) {
+        [void]$psi.ArgumentList.Add($argument)
+    }
+
+    $process = New-Object System.Diagnostics.Process
+    $process.StartInfo = $psi
+    [void]$process.Start()
+
+    $stdout = $process.StandardOutput.ReadToEnd()
+    $stderr = $process.StandardError.ReadToEnd()
+    $process.WaitForExit()
+
+    $exitCode = $process.ExitCode
+    $output = @()
+
+    if (-not [string]::IsNullOrWhiteSpace($stdout)) {
+        $output += ($stdout -split "`r?`n" | Where-Object { $_ -ne '' })
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($stderr)) {
+        $output += ($stderr -split "`r?`n" | Where-Object { $_ -ne '' })
+    }
+
+    if ($exitCode -ne 0) {
         $message = if ($output) { ($output | Out-String).Trim() } else { "git $($Arguments -join ' ') failed." }
         throw $message
     }
