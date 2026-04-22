@@ -36,6 +36,19 @@ jobs:
               $body = "Release $version"
           }
 
+            $meaningfulBody = $body -split "`r?`n" | Where-Object {
+              $line = $_.Trim()
+              $line -and -not ($line -match '^###\s+')
+            }
+
+            if (@($meaningfulBody).Count -eq 0) {
+              $body = @"
+      No structured release notes were found in CHANGELOG.md for version $version.
+
+      Check the matching changelog entry or tag annotation for the intended release details.
+      "@
+            }
+
           $bodyPath = Join-Path $env:RUNNER_TEMP 'release-notes.md'
           Set-Content -Path $bodyPath -Value $body
           "body_path=$bodyPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append

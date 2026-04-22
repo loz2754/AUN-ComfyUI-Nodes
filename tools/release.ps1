@@ -104,8 +104,13 @@ function Update-Changelog {
     }
 
     $releasedBody = $match.Groups['body'].Value.Trim()
-    if ([string]::IsNullOrWhiteSpace($releasedBody)) {
-        $releasedBody = "### Notes`r`n`r`n- Release notes pending."
+    $meaningfulBody = ($releasedBody -split "`r?`n" | Where-Object {
+        $line = $_.Trim()
+        $line -and -not ($line -match '^###\s+')
+    })
+
+    if (@($meaningfulBody).Count -eq 0) {
+        throw 'CHANGELOG.md [Unreleased] section has no release entries. Add notes before running a release.'
     }
 
     $newUnreleased = @(

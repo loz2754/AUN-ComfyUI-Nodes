@@ -16,18 +16,35 @@
 
 ### Changed
 
+- Advanced the package version while validating the local release flow.
+
 ### Fixed
 
 ### Notes
+
+- Local release-validation version with no intended node behavior changes beyond release metadata.
+
 ## [2.1.2] - 2026-04-22
 
 ### Added
 
+- Added release automation tooling for the repository:
+  - `tools/release.ps1` for local version bump, changelog promotion, commit, and tag creation.
+  - `RELEASE_CHECKLIST.md` to document the dev, release, and validation workflow.
+  - A tag-triggered GitHub release workflow.
+
 ### Changed
+
+- Updated `AUNManualAutoTextSwitch` to expose `ManualName` as a separate output and align the output contract with the selected/manual naming flow.
 
 ### Fixed
 
+- Corrected `AUNManualAutoTextSwitch` input handling so `Filename` is treated as a required input instead of falling back to `None`.
+
 ### Notes
+
+- This release introduced the first pass of the repository release automation used for GitHub and registry publishing.
+
 ## [2.1.1] - 2026-04-22
 
 ### Added
@@ -38,6 +55,7 @@
 ### Changed
 
 - Added published documentation for `AUNManualAutoTextSwitch` in the main README and docs index.
+
 ## [2.0.1] - 2026-04-18
 
 ### Fixed
