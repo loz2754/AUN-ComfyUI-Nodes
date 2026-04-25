@@ -39,12 +39,22 @@ jobs:
           previous_version = ""
 
           if github_event_name == "push" and previous_sha and previous_sha != "0000000000000000000000000000000000000000":
-              previous_contents = subprocess.check_output(
+              try:
+                previous_contents = subprocess.check_output(
                   ["git", "show", f"{previous_sha}:pyproject.toml"],
                   text=False,
-              )
-              previous_version = load_version(previous_contents)
-              should_publish = previous_version != current_version
+                  stderr=subprocess.PIPE,
+                )
+              except subprocess.CalledProcessError as error:
+                stderr_text = (error.stderr or b"").decode("utf-8", errors="replace")
+                if error.returncode == 128 and "exists on disk, but not in" in stderr_text:
+                  # Treat first introduction of pyproject.toml as publishable.
+                  should_publish = True
+                else:
+                  raise
+              else:
+                previous_version = load_version(previous_contents)
+                should_publish = previous_version != current_version
 
           with output_path.open("a", encoding="utf-8") as stream:
               stream.write(f"current_version={current_version}\n")
