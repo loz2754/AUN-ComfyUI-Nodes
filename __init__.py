@@ -28,6 +28,7 @@ from .AUNInputsRefine import AUNInputsRefine
 from .AUNInputsRefineBasic import AUNInputsRefineBasic
 from .AUNKSamplerPlusv3 import AUNKSamplerPlusv3
 from. AUNKSamplerPlusv4 import AUNKSamplerPlusv4
+from .AUNManualAutoImageSwitch import AUNManualAutoImageSwitch
 from .AUNManualAutoTextSwitch import AUNManualAutoTextSwitch
 from .AUNMultiBypassIndex import AUNMultiBypassIndex
 from .AUNMultiGroupUniversal import AUNMultiGroupUniversal
@@ -99,6 +100,7 @@ NODE_CLASS_MAPPINGS = {
     "AUNInputsRefineBasic": AUNInputsRefineBasic,
     "AUNKSamplerPlusv3": AUNKSamplerPlusv3,
     "AUNKSamplerPlusv4": AUNKSamplerPlusv4,
+    "AUNManualAutoImageSwitch": AUNManualAutoImageSwitch,
     "AUNManualAutoTextSwitch": AUNManualAutoTextSwitch,
     "AUNMultiBypassIndex": AUNMultiBypassIndex,
     "AUNMultiGroupUniversal": AUNMultiGroupUniversal,
@@ -166,6 +168,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "AUNInputsRefine": "Inputs Refine",
     "AUNInputsRefineBasic": "Inputs Refine Basic",
     "AUNKSamplerPlusv4": "KSampler Plus V4",
+    "AUNManualAutoImageSwitch": "Manual/Auto Image Switch",
     "AUNManualAutoTextSwitch": "Manual/Auto Text Switch",
     "AUNMultiBypassIndex": "Multi Bypass Index",
     "AUNMultiGroupUniversal": "AUN Group Controller",

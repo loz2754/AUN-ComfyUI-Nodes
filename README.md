@@ -65,6 +65,7 @@ To provide a fast, visually consistent understanding of node states, AUN nodes u
 - Img2Img (`AUNImg2Img`) provides a comprehensive Img2Img node, allowing you to switch between txt2img and img2img modes. It handles image loading, resizing, and encoding into the latent space, providing essential outputs for further processing.
 - Load & Resize Image (`AUNImageLoadResize`) load images with optional automatic resizing. Supports FramePack nearest-bucket sizing, maintains aspect ratio, and provides filename information for workflow organization.
 - Load Image Single/Batch 3 (`AUNImageSingleBatch3`) load a single uploaded image or cycle through a batch of images from a folder with multiple selection modes, including increment, random, range and search filtering by filename patterns.
+- Manual/Auto Image Switch (`AUNManualAutoImageSwitch`) replaces the old manual/auto subgraph with one node that switches filename selection and image output together. In Auto mode it passes through the source image and filename; in Manual mode it outputs `ManualName` and a generated placeholder image with optional overlay text and color controls.
 - Resize Image (`AUNImageResize`) resize an input image using the same strategies as AUN Load & Resize Image, including FramePack buckets and fill/crop anchoring.
 - Save Image (`AUNSaveImage`) is the legacy image saver for workflows that still provide separate `path` and `filename` inputs.
 - Save Image V2 (`AUNSaveImageV2`) is the recommended image saver with advanced filename customization and metadata embedding, accepting one combined `path_filename` input.
@@ -234,6 +235,7 @@ Complex nodes include detailed READMEs with examples and troubleshooting.
 - Path Filename Video (Resolved): [docs/AUNPathFilenameVideoResolved_README.md](docs/AUNPathFilenameVideoResolved_README.md)
 - Load Image Single/Batch 3: [docs/AUNImageSingleBatch3_README.md](docs/AUNImageSingleBatch3_README.md)
 - Manual/Auto Text Switch: [docs/AUNManualAutoTextSwitch_README.md](docs/AUNManualAutoTextSwitch_README.md)
+- Manual/Auto Image Switch: [docs/AUNManualAutoImageSwitch_README.md](docs/AUNManualAutoImageSwitch_README.md)
 - Random Text Index Switch: [docs/AUNRandomTextIndexSwitch_README.md](docs/AUNRandomTextIndexSwitch_README.md)
 - Extract Model Name: [docs/AUNExtractModelName_README.md](docs/AUNExtractModelName_README.md)
 - Extract Power LoRAs: [docs/AUNExtractPowerLoras_README.md](docs/AUNExtractPowerLoras_README.md)

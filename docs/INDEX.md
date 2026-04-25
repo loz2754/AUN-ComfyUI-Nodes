@@ -18,6 +18,7 @@ Generated list of documentation files under `docs/`.
 - [AUNGetActiveNodeTitle](./AUNGetActiveNodeTitle_README.md)
 - [AUNGetConnectedNodeTitles](./AUNGetConnectedNodeTitles_README.md)
 - [AUNImageSingleBatch3](./AUNImageSingleBatch3_README.md)
+- [AUNManualAutoImageSwitch](./AUNManualAutoImageSwitch_README.md)
 - [AUNImageLoadResize](./AUNImageLoadResize_README.md)
 - [AUNImageResize](./AUNImageResize_README.md)
 - [AUNImg2Img](./AUNImg2Img_README.md)

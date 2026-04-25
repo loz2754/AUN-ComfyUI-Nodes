@@ -4,11 +4,20 @@
 
 ### Added
 
+- New `AUNManualAutoImageSwitch` node to replace the older manual/auto image subgraph with one direct node that switches filename selection and image output together.
+
 ### Changed
+
+- Added compact-mode overlay controls and inline color-picker UI for `AUNManualAutoImageSwitch`, including a node description hint for showing hidden overlay options.
+- Published documentation for `AUNManualAutoImageSwitch` in the main README, docs index, and a dedicated node README.
 
 ### Fixed
 
+- Worked around promoted subgraph widget issues by moving the manual/auto image behavior into a dedicated node instead of relying on a subgraph toggle.
+
 ### Notes
+
+- `AUNManualAutoImageSwitch` is intended as the more reliable replacement for workflows that previously used a manual/auto image subgraph, especially when promoted widgets are involved.
 
 ## [2.1.2] - 2026-04-22
 
