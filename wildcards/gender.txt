@@ -1,5 +1,0 @@
-girl
-boy
-female
-male
-non-binary
