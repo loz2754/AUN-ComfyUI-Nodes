@@ -1,5 +1,31 @@
 # AUN Custom Nodes Changelog
 
+## [Unreleased]
+
+### Added
+
+### Changed
+
+### Fixed
+
+### Notes
+
+## [2.1.4] - 2026-04-26
+
+### Added
+
+- New `AUNWildcardAddToPrompt` node for adding randomized wildcard-driven text into prompts.
+- New local `wildcards` starter library and selector workflow so users can begin with bundled wildcard files and customize them in-place.
+
+### Changed
+
+- Added a dedicated wildcard selector UI for `AUNWildcardAddToPrompt` and simplified the node so it randomizes on each execution without exposing seed controls.
+- Scoped wildcard discovery to the local `aun-comfyui-nodes/wildcards` folder so the node behaves as a self-contained AUN feature.
+
+### Notes
+
+- The bundled wildcard files are intended as starter content for new users and can be edited or removed without changing the node code.
+
 ## [2.1.3] - 2026-04-25
 
 ### Added
