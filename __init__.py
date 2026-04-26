@@ -64,6 +64,7 @@ from .AUNSwitchFloat import AUNSwitchFloat
 from .AUNTextIndexSwitch import AUNTextIndexSwitch
 from .AUNTextIndexSwitch3 import AUNTextIndexSwitch3
 from .AUNTitleImagePreview import AUNTitleImagePreview
+from .AUNWildcardAddToPrompt import AUNWildcardAddToPrompt
 from .KSamplerInputs import KSamplerInputs
 from .MainFolderManualName import MainFolderManualName
 from .TextSwitch2InputWithTextOutput import TextSwitch2InputWithTextOutput
@@ -136,6 +137,7 @@ NODE_CLASS_MAPPINGS = {
     "AUNTextIndexSwitch": AUNTextIndexSwitch,
     "AUNTextIndexSwitch3": AUNTextIndexSwitch3,
     "AUNTitleImagePreview": AUNTitleImagePreview,
+    "AUNWildcardAddToPrompt": AUNWildcardAddToPrompt,
     "KSamplerInputs": KSamplerInputs,
     "MainFolderManualName": MainFolderManualName,
     "TextSwitch2InputWithTextOutput": TextSwitch2InputWithTextOutput,
@@ -204,6 +206,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "AUNTextIndexSwitch": "Text Index Switch",
     "AUNTextIndexSwitch3": "Text Index Switch 3",
     "AUNTitleImagePreview": "Image Preview With Title",
+    "AUNWildcardAddToPrompt": "AUN Wildcard Add-To-Prompt",
     "KSamplerInputs": "KSampler Inputs",
     "MainFolderManualName": "Manual Name",
     "TextSwitch2InputWithTextOutput": "Text Switch 2 Input With Text Output",
