@@ -2,14 +2,30 @@ import { app } from "../../scripts/app.js";
 
 const MAX_INPUTS = 20;
 const MIN_INPUTS = 2;
-const VALUE_PREFIX = "text";
-const NODE_WIDGET_BOUNDARIES = {
-  AUNTextIndexSwitch: ["index"],
-  AUNRandomTextIndexSwitch: ["minimum", "maximum", "select"],
-  AUNRandomTextIndexSwitchV2: ["minimum", "maximum", "select", "range"],
+const NODE_CONFIG = {
+  AUNTextIndexSwitch: {
+    prefix: "text",
+    boundedWidgets: ["index"],
+  },
+  AUNRandomTextIndexSwitch: {
+    prefix: "text",
+    boundedWidgets: ["minimum", "maximum", "select"],
+  },
+  AUNRandomTextIndexSwitchV2: {
+    prefix: "text",
+    boundedWidgets: ["minimum", "maximum", "select", "range"],
+  },
 };
-const TEXT_SWITCH_CLASSES = new Set(Object.keys(NODE_WIDGET_BOUNDARIES));
+const TEXT_SWITCH_CLASSES = new Set(Object.keys(NODE_CONFIG));
 const trackedTextNodes = new Set();
+
+function getNodeConfig(node) {
+  return NODE_CONFIG[node?.comfyClass];
+}
+
+function getValuePrefix(node) {
+  return getNodeConfig(node)?.prefix ?? "text";
+}
 
 function clampInputCount(value) {
   if (Number.isFinite(value)) {
@@ -56,7 +72,7 @@ function ensureWidgetHook(node) {
     }
     widget.__aun_last_confirmed = target;
     if (originalCallback) {
-      originalCallback(target);
+      originalCallback.call(widget, target);
     }
     scheduleTextNodeUpdate(node, target);
     syncBoundedWidgets(node, target);
@@ -106,6 +122,7 @@ function applyVisibleInputs(node, desiredInputs) {
   }
 
   const target = clampInputCount(desiredInputs);
+  const valuePrefix = getValuePrefix(node);
   const inputs = node.inputs ?? [];
   let changed = false;
 
@@ -114,10 +131,10 @@ function applyVisibleInputs(node, desiredInputs) {
     if (!input || typeof input.name !== "string") {
       continue;
     }
-    if (!input.name.startsWith(VALUE_PREFIX)) {
+    if (!input.name.startsWith(valuePrefix)) {
       continue;
     }
-    const suffix = parseInt(input.name.substring(VALUE_PREFIX.length), 10);
+    const suffix = parseInt(input.name.substring(valuePrefix.length), 10);
     if (Number.isFinite(suffix) && suffix > target) {
       node.removeInput(i);
       changed = true;
@@ -125,7 +142,7 @@ function applyVisibleInputs(node, desiredInputs) {
   }
 
   for (let i = 1; i <= target; i++) {
-    const name = `${VALUE_PREFIX}${i}`;
+    const name = `${valuePrefix}${i}`;
     if (!node.inputs?.some((input) => input?.name === name)) {
       node.addInput(name, "STRING");
       changed = true;
@@ -163,7 +180,7 @@ function updateTrackedTextNodes() {
 }
 
 function syncBoundedWidgets(node, maxVisible) {
-  const widgetNames = NODE_WIDGET_BOUNDARIES[node?.comfyClass];
+  const widgetNames = getNodeConfig(node)?.boundedWidgets;
   if (!widgetNames || !node?.widgets) {
     return;
   }
@@ -226,21 +243,22 @@ function updateWidget(widget, value, maxVisible, minValue = 1) {
   if (widget.value !== value) {
     widget.value = value;
     if (typeof widget.callback === "function") {
-      widget.callback(value);
+      widget.callback.call(widget, value);
     }
   }
 }
 
 function hasLinkedTextInputsAbove(node, target) {
+  const valuePrefix = getValuePrefix(node);
   const inputs = node.inputs ?? [];
   for (const input of inputs) {
     if (!input || typeof input.name !== "string" || input.link == null) {
       continue;
     }
-    if (!input.name.startsWith(VALUE_PREFIX)) {
+    if (!input.name.startsWith(valuePrefix)) {
       continue;
     }
-    const suffix = parseInt(input.name.substring(VALUE_PREFIX.length), 10);
+    const suffix = parseInt(input.name.substring(valuePrefix.length), 10);
     if (Number.isFinite(suffix) && suffix > target) {
       return true;
     }
@@ -265,11 +283,12 @@ function updateInputLabels(node) {
   if (!node || !TEXT_SWITCH_CLASSES.has(node.comfyClass)) {
     return;
   }
+  const valuePrefix = getValuePrefix(node);
   const graph = node.graph || app.graph;
 
   for (let i = 1; i <= MAX_INPUTS; i++) {
     const inputSlot = node.inputs?.find(
-      (slot) => slot.name === `${VALUE_PREFIX}${i}`,
+      (slot) => slot.name === `${valuePrefix}${i}`,
     );
     if (!inputSlot) {
       continue;
@@ -284,7 +303,7 @@ function updateInputLabels(node) {
         }
       }
     } else {
-      inputSlot.label = `${VALUE_PREFIX}${i}`;
+      inputSlot.label = `${valuePrefix}${i}`;
     }
   }
   app.canvas.setDirty(true);

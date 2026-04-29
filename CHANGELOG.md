@@ -6,9 +6,17 @@
 
 ### Changed
 
+- `AUNMultiNegPrompt` now supports up to 20 manually entered negative prompts with a `visible_inputs` control so the node can stay compact while still matching the larger text-switch range.
+- `AUNMultiNegPrompt` can sync its visible negative count from an upstream selector connected to `which_negative`, keeping paired positive/negative selector setups aligned.
+
 ### Fixed
 
+- Restored safer workflow compatibility for `AUNMultiNegPrompt` by preserving the legacy serialized widget order while expanding the node to 20 prompt slots.
+- Fixed `AUNMultiNegPrompt` frontend layout and visibility handling so hidden prompt fields collapse correctly and the last visible multiline field no longer overlaps the `which_negative` control.
+
 ### Notes
+
+- `AUNMultiNegPrompt` is now intended for manual negative-prompt entry that follows the selected index from `AUNRandomTextIndexSwitch` or similar selector nodes.
 
 ## [2.1.4] - 2026-04-26
 
