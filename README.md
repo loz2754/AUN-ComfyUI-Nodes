@@ -96,8 +96,16 @@ To provide a fast, visually consistent understanding of node states, AUN nodes u
 
 - Inputs (`AUNInputs`) a comprehensive 'all-in-one' node for setting up a generation pipeline. It loads a checkpoint, creates a latent image, and prepares various parameters for sampling and saving, all in one place.
 - Inputs Basic (`AUNInputsBasic`) is a lighter all-in-one setup node for loading a checkpoint, choosing sampler settings, and creating an empty latent batch.
+- Inputs Diffusers (`AUNInputsDiffusers`) loads a standalone diffusion UNet with separate CLIP and VAE files, while keeping the fuller AUN Inputs-style naming and save-prep outputs.
+- Inputs Diffusers Basic (`AUNInputsDiffusersBasic`) keeps the diffusion-only loading flow but strips it back to the lighter basic contract: model loading, sampler settings, and empty latent creation.
+- Inputs Diffusers Refine Basic (`AUNInputsDiffusersRefineBasic`) extends the diffusion-only basic flow with an optional separate refine diffusion model while still avoiding the older naming and save-prep outputs.
+- Inputs Refine (`AUNInputsRefine`) extends `Inputs` with an optional separate refine checkpoint and SpeedLoRA controls that can either split strength between models or apply full strength to both.
 - Inputs Refine Basic (`AUNInputsRefineBasic`) keeps the lighter `Inputs Basic` contract but also outputs an optional separate refine model checkpoint.
 - Inputs Hybrid (`AUNInputsHybrid`) loads a standard checkpoint (UNet+CLIP+VAE), or a diffusion UNet model with separate CLIP and VAE files, but essentially the same as AUN Inputs.
+
+Migration note: existing workflows that use `AUNInputsRefine` or `AUNInputsRefineBasic` may need their SpeedLoRA-related widgets checked or reconnected after loading because the input set changed.
+
+Deprecation note: the full input-style nodes (`AUNInputs`, `AUNInputsDiffusers`, and `AUNInputsHybrid`) are now considered legacy directionally, and future workflows should prefer the basic input nodes paired with `AUN Save Image V2` for a cleaner overall UX.
 
 ---
 

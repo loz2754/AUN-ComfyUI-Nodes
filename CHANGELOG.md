@@ -10,6 +10,27 @@
 
 ### Notes
 
+## [2.1.6] - 2026-05-02
+
+### Added
+
+- Added `AUNInputsDiffusersBasic` and `AUNInputsDiffusersRefineBasic` for lighter diffusion-model loading flows, including optional refine-model output for diffusion-only setups.
+- Added a `prefixed_label` output to `AUNRandomTextIndexSwitchV2` so workflows can use the combined slot prefix and connected title, such as `1-Beach`.
+
+### Changed
+
+- `AUNInputsRefine` and `AUNInputsRefineBasic` now use a dedicated `speed_lora_full_both` toggle instead of overloading `speed_lora_ratio`, so the ratio remains available for normal main/refine strength splitting.
+- Expanded docs and registry-facing node listings for the new diffusion basic/refine-basic nodes and for the current guidance around legacy full-input nodes.
+- `AUNExtractWidgetValue` can now optionally concatenate the widget name with the resolved value.
+
+### Fixed
+
+- `AUNRandomTextIndexSwitchV2` now keeps the plain `label` output unprefixed while exposing prefixed self-naming input labels like `4-Volcanoes` in the UI and through the new `prefixed_label` output.
+
+### Notes
+
+- Existing workflows that use `AUNInputsRefine` or `AUNInputsRefineBasic` may need their SpeedLoRA-related widgets checked or adjusted after loading because the input set changed.
+
 ## [2.1.5] - 2026-04-29
 
 ### Added
@@ -27,6 +48,7 @@
 ### Notes
 
 - `AUNMultiNegPrompt` is now intended for manual negative-prompt entry that follows the selected index from `AUNRandomTextIndexSwitch` or similar selector nodes.
+
 ## [2.1.4] - 2026-04-26
 
 ### Added

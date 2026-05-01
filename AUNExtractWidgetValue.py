@@ -15,7 +15,7 @@ class AUNExtractWidgetValue:
     CATEGORY = "AUN Nodes/Utility"
     DESCRIPTION = "Extract a widget/input value from a specific node by numeric ID and widget name."
     RETURN_TYPES = ("STRING", "FLOAT", "INT")
-    RETURN_NAMES = ("value", "value_float", "value_int")
+    RETURN_NAMES = ("string", "float", "int")
     FUNCTION = "extract"
 
     @classmethod
@@ -28,6 +28,7 @@ class AUNExtractWidgetValue:
             "optional": {
                 "fallback": ("STRING", {"default": "", "tooltip": "Value to return if the widget isn't found."}),
                 "basename_if_path": ("BOOLEAN", {"default": True, "tooltip": "If the value looks like a path, return only the basename."}),
+                "concat_widget_name": ("BOOLEAN", {"default": False, "tooltip": "If true, concatenate the widget name and value with a dash."}),
             },
             "hidden": {
                 "prompt": "PROMPT",
@@ -252,7 +253,7 @@ class AUNExtractWidgetValue:
                         return self._resolve_value(found, prompt, extra_pnginfo, depth + 1)
         return val
 
-    def extract(self, node_identifier: str, widget_name: str, fallback: str = "", basename_if_path: bool = True, prompt=None, extra_pnginfo=None):
+    def extract(self, node_identifier: str, widget_name: str, fallback: str = "", basename_if_path: bool = True, concat_widget_name: bool = False, prompt=None, extra_pnginfo=None):
         chosen = None
         ident = str(node_identifier).strip()
 
@@ -284,6 +285,8 @@ class AUNExtractWidgetValue:
         final_val = chosen if chosen is not None else fallback
         out = self._as_string(final_val)
         out = self._maybe_basename(out, basename_if_path)
+        if concat_widget_name:
+            out = f"{widget_name}-{out}"
         fval, ival = self._parse_numeric(final_val)
         return (out, float(fval), int(ival))
 

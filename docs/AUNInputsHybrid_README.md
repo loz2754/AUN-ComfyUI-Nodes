@@ -2,7 +2,10 @@
 
 Purpose: A combined “loader + common inputs” node.
 
+Deprecation note: this full hybrid node is being phased toward legacy use. New workflows should prefer the relevant basic loader node plus `AUN Save Image V2` instead of keeping filename/save-prep controls inside the loader.
+
 It can either:
+
 - Load a classic checkpoint bundle (UNet+CLIP+VAE), or
 - Load a diffusion-only UNet and pair it with explicit CLIP + VAE files,
 
@@ -71,5 +74,8 @@ Category: `AUN Nodes/Loaders+Inputs`
 
 ## Notes
 
+- This node is now considered a legacy-style convenience wrapper because it combines loading, latent setup, and naming/save-prep helpers in one surface.
+- For checkpoint workflows, prefer `AUNInputsBasic` plus `AUN Save Image V2`.
+- For diffusion-only workflows, prefer `AUNInputsDiffusersBasic` plus `AUN Save Image V2`.
 - In “Diffusion model” mode, the node requires `diffusion_name`, `clip_name`, and `vae_name` to be real choices (not the “<no … found>” placeholders).
 - The node builds an empty latent and may attempt to match latent channel count to the loaded model.

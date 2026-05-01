@@ -23,6 +23,8 @@ from .AUNImgLoader import AUNImgLoader
 from .AUNInputs import AUNInputs
 from .AUNInputsBasic import AUNInputsBasic
 from .AUNInputsDiffusers import AUNInputsDiffusers
+from .AUNInputsDiffusersBasic import AUNInputsDiffusersBasic
+from .AUNInputsDiffusersRefineBasic import AUNInputsDiffusersRefineBasic
 from .AUNInputsHybrid import AUNInputsHybrid
 from .AUNInputsRefine import AUNInputsRefine
 from .AUNInputsRefineBasic import AUNInputsRefineBasic
@@ -96,6 +98,8 @@ NODE_CLASS_MAPPINGS = {
     "AUNInputs": AUNInputs,
     "AUNInputsBasic": AUNInputsBasic,
     "AUNInputsDiffusers": AUNInputsDiffusers,
+    "AUNInputsDiffusersBasic": AUNInputsDiffusersBasic,
+    "AUNInputsDiffusersRefineBasic": AUNInputsDiffusersRefineBasic,
     "AUNInputsHybrid": AUNInputsHybrid,
     "AUNInputsRefine": AUNInputsRefine,
     "AUNInputsRefineBasic": AUNInputsRefineBasic,
@@ -166,6 +170,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "AUNInputs": "Inputs",
     "AUNInputsBasic": "Inputs Basic",
     "AUNInputsDiffusers": "Inputs Diffusers",
+    "AUNInputsDiffusersBasic": "Inputs Diffusers Basic",
+    "AUNInputsDiffusersRefineBasic": "Inputs Diffusers Refine Basic",
     "AUNInputsHybrid": "Inputs Hybrid",
     "AUNInputsRefine": "Inputs Refine",
     "AUNInputsRefineBasic": "Inputs Refine Basic",

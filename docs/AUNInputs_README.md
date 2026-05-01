@@ -2,6 +2,8 @@
 
 Purpose: An all-in-one “setup” node that loads a checkpoint (MODEL/CLIP/VAE), picks sampler/scheduler/settings, creates an empty latent, and produces consistent naming outputs for downstream savers.
 
+Deprecation note: this full node is retained for compatibility, but new workflows should prefer `AUNInputsBasic` together with `AUN Save Image V2` for a simpler and more flexible UX.
+
 ## Inputs
 
 ### Required
@@ -48,6 +50,8 @@ This node outputs a lot of pins for convenience:
 
 ## Notes
 
+- This node is now considered a legacy-style convenience wrapper because it bundles naming/save-prep concerns into the loader node.
+- For new workflows, prefer `AUNInputsBasic` plus `AUN Save Image V2` instead of routing naming-related outputs through this node.
 - `sampler` and `scheduler` outputs are typed to be broadly connectable (wildcard-like) to reduce friction when wiring graphs.
 - `clip_skip` is applied to the loaded CLIP model via `clip.clip_layer(clip_skip)`.
 - SpeedLoRA is optional; when enabled it loads the selected LoRA weights and applies them to MODEL/CLIP.

@@ -27,6 +27,12 @@ function getValuePrefix(node) {
   return getNodeConfig(node)?.prefix ?? "text";
 }
 
+function buildSlotLabel(index, title, valuePrefix) {
+  const cleanTitle =
+    typeof title === "string" && title.trim() ? title.trim() : null;
+  return cleanTitle ? `${index}-${cleanTitle}` : `${valuePrefix}${index}`;
+}
+
 function clampInputCount(value) {
   if (Number.isFinite(value)) {
     return Math.min(MAX_INPUTS, Math.max(MIN_INPUTS, Math.floor(value)));
@@ -298,8 +304,12 @@ function updateInputLabels(node) {
       const link = graph.links[inputSlot.link];
       if (link) {
         const originNode = graph.getNodeById(link.origin_id);
-        if (originNode && originNode.title) {
-          inputSlot.label = originNode.title;
+        if (originNode) {
+          inputSlot.label = buildSlotLabel(
+            i,
+            originNode.title || originNode.type,
+            valuePrefix,
+          );
         }
       }
     } else {

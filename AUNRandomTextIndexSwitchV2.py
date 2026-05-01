@@ -60,8 +60,8 @@ class AUNRandomTextIndexSwitchV2:
             )
         return inputs
 
-    RETURN_TYPES = ("STRING", "STRING", "INT")
-    RETURN_NAMES = ("text", "label", "index")
+    RETURN_TYPES = ("STRING", "STRING", "INT", "STRING")
+    RETURN_NAMES = ("text", "label", "index", "prefixed_label")
     FUNCTION = "random_text_switch"
     CATEGORY = "AUN Nodes/Utility"
     OUTPUT_NODE = True
@@ -123,6 +123,23 @@ class AUNRandomTextIndexSwitchV2:
             valid_indices = [min_val]
         return list(set(valid_indices)) # Remove duplicates
 
+    def _build_prefixed_label(self, index, label):
+        clean_label = self._strip_slot_prefix(label, index) or f"Text {index}"
+        return f"{index}-{clean_label}"
+
+    def _strip_slot_prefix(self, label, index=None):
+        clean_label = str(label or "").strip()
+        if not clean_label:
+            return ""
+        if index is not None:
+            prefix = f"{index}-"
+            if clean_label.startswith(prefix):
+                return clean_label[len(prefix):].strip()
+        parts = clean_label.split("-", 1)
+        if len(parts) == 2 and parts[0].isdigit():
+            return parts[1].strip()
+        return clean_label
+
     def random_text_switch(self, minimum, maximum, mode, select, visible_inputs, **kwargs):
         min_val, max_val = self._clamp_range(minimum, maximum, visible_inputs)
         select_val = self._clamp_index(select, 1, self.MAX_INPUTS)
@@ -155,7 +172,8 @@ class AUNRandomTextIndexSwitchV2:
 
         # Check if the selected input exists and has a value
         if key not in kwargs or kwargs[key] is None:
-            return ("", "Text " + str(index), index)  # Return automatic name as the label if no input
+            fallback_label = "Text " + str(index)
+            return ("", fallback_label, index, self._build_prefixed_label(index, fallback_label))
 
         selected_label = "Text " + str(index)
         node_id = kwargs.get('unique_id')
@@ -170,7 +188,7 @@ class AUNRandomTextIndexSwitchV2:
                     inputs = node.get('inputs', [])
                     for slot in inputs:
                         if slot.get('name') == key and 'label' in slot:
-                            selected_label = slot['label']
+                            selected_label = self._strip_slot_prefix(slot['label'], index)
                         if slot.get('name') == key and 'link' in slot:
                             link_id = slot['link']
                             for link in workflow_data.get('links', []):
@@ -188,12 +206,14 @@ class AUNRandomTextIndexSwitchV2:
                 for node in nodelist:
                     if isinstance(node, dict) and str(node.get('id', '')) == str(connected_node_id):
                         if 'title' in node and node['title']:
-                            selected_label = node['title']
+                            selected_label = self._strip_slot_prefix(node['title'], index)
                         elif 'type' in node:
-                            selected_label = node['type']
+                            selected_label = self._strip_slot_prefix(node['type'], index)
                         break
 
         selected_text = kwargs[key]
+        selected_label = self._strip_slot_prefix(selected_label, index) or f"Text {index}"
+        prefixed_label = self._build_prefixed_label(index, selected_label)
 
         self._record_pginfo(
             kwargs.get('extra_pnginfo'),
@@ -207,10 +227,11 @@ class AUNRandomTextIndexSwitchV2:
                 "index": index,
                 "text": selected_text,
                 "label": selected_label,
+                "prefixed_label": prefixed_label,
             }
         )
 
-        return (selected_text, selected_label, index)
+        return (selected_text, selected_label, index, prefixed_label)
 
     @classmethod
     def IS_CHANGED(cls, minimum=None, maximum=None, mode=None, select=None, **kwargs):

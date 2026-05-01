@@ -65,6 +65,8 @@ class AUNInputsRefine:
                 "speed_lora": ("BOOLEAN", {"default": False, "label_on": "On", "label_off": "Off", "tooltip": "Enable or disable SpeedLoRA optimizations."}),
                 "speed_lora_model": (comfy_paths.get_filename_list("loras") + ['None'], {"default": 'None', "tooltip": "The SpeedLoRA model to apply. Select 'None' to disable SpeedLoRA."}),
                 "speed_lora_strength": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 3.0, "step": 0.01, "round": 0.01, "tooltip": "Multiplier applied to the selected SpeedLoRA weights."}),
+                "speed_lora_full_both": ("BOOLEAN", {"default": False, "label_on": "On", "label_off": "Off", "tooltip": "Apply the full SpeedLoRA strength to both the main and refine models."}),
+                "speed_lora_ratio": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.01, "round": 0.01, "tooltip": "Share of the SpeedLoRA strength applied to the main model. The refine model receives the remaining share."}),
                 "clip_skip": ("INT", {"default": -1, "min": -24, "max": -1, "step": 1, "tooltip": "Number of last layers of CLIP to skip. -1 is a good default."}),
                 "sampler": (comfy.samplers.KSampler.SAMPLERS, {"tooltip": "The sampling algorithm to use."}),
                 "scheduler": (comfy.samplers.KSampler.SCHEDULERS + ['AYS SDXL', 'AYS SD1', 'AYS SVD', 'GITS[coeff=1.2]'], {"tooltip": "The noise schedule to use."}),
@@ -89,12 +91,12 @@ class AUNInputsRefine:
     RETURN_TYPES = (
         "MODEL", "CLIP", "VAE", "MODEL", "STRING", "STRING", 
         sampler, scheduler, "FLOAT", "INT", "LATENT", "INT", "INT", "INT",
-        'STRING', 'STRING', "STRING", "STRING", "INT", "BOOLEAN",
+        'STRING', 'STRING', "STRING", "STRING", "INT", "BOOLEAN", "FLOAT",
     )
     RETURN_NAMES = (
         "MODEL", "CLIP", "VAE", "MODEL REFINE", "ckpt name", "ckpt name refine",
         "sampler", "scheduler", "cfg", "steps", "latent", "width", "height", "seed",
-        'MainFolder', 'Filename', "prefix", "date format", "batch size", "name mode"
+        'MainFolder', 'Filename', "prefix", "date format", "batch size", "name mode", "speed lora ratio"
     )
     FUNCTION = 'inputs'
     CATEGORY = 'AUN Nodes/Loaders+Inputs'
@@ -122,7 +124,20 @@ class AUNInputsRefine:
             setattr(model, "_aun_source_ckpt", ckpt_name)
         return model
 
-    def inputs(self, ckpt_name, refine_ckpt, speed_lora, speed_lora_model, speed_lora_strength, clip_skip, MainFolder, ManualName, name_mode, prefix, sampler, scheduler, cfg, steps, width, height, aspect_ratio, aspect_mode, batch_size, seed, date_format, crop, words, auto_name="Name"):
+    @staticmethod
+    def _apply_speed_lora(model, clip, lora_weights, strength, ckpt_name):
+        model, _ = comfy.sd.load_lora_for_models(model, clip, lora_weights, strength, 0.0)
+        return AUNInputsRefine._tag_model_source(model, ckpt_name)
+
+    @staticmethod
+    def _resolve_speed_lora_strengths(speed_lora_strength, speed_lora_ratio, speed_lora_full_both):
+        if speed_lora_full_both:
+            return speed_lora_strength, speed_lora_strength
+        main_strength = speed_lora_strength * speed_lora_ratio
+        refine_strength = speed_lora_strength * (1.0 - speed_lora_ratio)
+        return main_strength, refine_strength
+
+    def inputs(self, ckpt_name, refine_ckpt, speed_lora, speed_lora_model, speed_lora_strength, speed_lora_full_both, speed_lora_ratio, clip_skip, MainFolder, ManualName, name_mode, prefix, sampler, scheduler, cfg, steps, width, height, aspect_ratio, aspect_mode, batch_size, seed, date_format, crop, words, auto_name="Name"):
         model, clip, vae = self._load_checkpoint_bundle(ckpt_name)
         model = self._tag_model_source(model, ckpt_name)
         refine_model = None
@@ -131,6 +146,10 @@ class AUNInputsRefine:
         if refine_ckpt not in (None, "", "None"):
             refine_model, _, _ = self._load_checkpoint_bundle(refine_ckpt)
             refine_model = self._tag_model_source(refine_model, refine_ckpt)
+        else:
+            refine_model = self._clone_model_if_possible(model)
+            refine_model = self._tag_model_source(refine_model, ckpt_name)
+            refine_name = os.path.splitext(os.path.basename(ckpt_name))[0]
         
         # Apply clip_skip to the CLIP model
         clip.clip_layer(clip_skip)
@@ -141,14 +160,13 @@ class AUNInputsRefine:
                 speed_lora_path = comfy_paths.get_full_path("loras", lora_choice)
                 if speed_lora_path:
                     lora_weights = comfy.utils.load_torch_file(speed_lora_path, safe_load=True)
-                    model, clip = comfy.sd.load_lora_for_models(model, clip, lora_weights, speed_lora_strength, 0.0)
-                    model = self._tag_model_source(model, ckpt_name)
+                    main_strength, refine_strength = self._resolve_speed_lora_strengths(speed_lora_strength, speed_lora_ratio, speed_lora_full_both)
+                    if main_strength > 0.0:
+                        model = self._apply_speed_lora(model, clip, lora_weights, main_strength, ckpt_name)
+                    if refine_model is not None and refine_strength > 0.0:
+                        refine_model = self._apply_speed_lora(refine_model, clip, lora_weights, refine_strength, refine_ckpt if refine_ckpt not in (None, "", "None") else ckpt_name)
                 else:
                     print(f"SpeedLoRA model '{lora_choice}' not found; skipping SpeedLoRA load.")
-
-        if refine_model is None:
-            refine_model = self._clone_model_if_possible(model)
-            refine_model = self._tag_model_source(refine_model, ckpt_name)
 
         if aspect_ratio == "512x512":
             width, height = 512, 512
@@ -199,7 +217,7 @@ class AUNInputsRefine:
                 # Take up to 'words' words, but not more than available
                 filename_to_process = ' '.join(name_words[:min(words, len(name_words))]) 
                   
-        return (model, clip, vae, refine_model, os.path.splitext(os.path.basename(ckpt_name))[0], refine_name, sampler, scheduler, cfg, steps, {"samples": latent}, width, height, seed, MainFolder, filename_to_process, prefix, date_format, int(batch_size), name_mode,)
+        return (model, clip, vae, refine_model, os.path.splitext(os.path.basename(ckpt_name))[0], refine_name, sampler, scheduler, cfg, steps, {"samples": latent}, width, height, seed, MainFolder, filename_to_process, prefix, date_format, int(batch_size), name_mode, speed_lora_ratio,)
        
     def get_time(self, date_format):
         now = datetime.now()
