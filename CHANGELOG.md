@@ -45,7 +45,6 @@
 
 - Existing workflows that use `AUNInputsRefine` or `AUNInputsRefineBasic` may need their SpeedLoRA-related widgets checked or adjusted after loading because the input set changed.
 
-
 ## [2.1.5] - 2026-04-29
 
 ### Added
