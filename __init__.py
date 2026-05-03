@@ -12,6 +12,7 @@ from .AUNExtractPowerLoras import AUNExtractPowerLoras
 from .AUNExtractWidgetValue import AUNExtractWidgetValue
 from .AUNModelNamePass import AUNModelNamePass
 from .AUNModelShorten import AUNModelShorten
+from .AUNLoraLoaderModelOnlyFromString import AUNLoraLoaderModelOnlyFromString
 from .AUNGetActiveNodeTitle import AUNGetActiveNodeTitle
 from .AUNGetConnectedNodeTitles import AUNGetConnectedNodeTitles
 from .AUNGraphScraper import AUNGraphScraper
@@ -28,6 +29,7 @@ from .AUNInputsDiffusersRefineBasic import AUNInputsDiffusersRefineBasic
 from .AUNInputsHybrid import AUNInputsHybrid
 from .AUNInputsRefine import AUNInputsRefine
 from .AUNInputsRefineBasic import AUNInputsRefineBasic
+from .AUNKSamplerPlusV2 import AUNKSamplerPlusV2
 from .AUNKSamplerPlusv3 import AUNKSamplerPlusv3
 from. AUNKSamplerPlusv4 import AUNKSamplerPlusv4
 from .AUNManualAutoImageSwitch import AUNManualAutoImageSwitch
@@ -47,6 +49,8 @@ from .AUNPathFilenameVideoResolved import AUNPathFilenameVideoResolved
 from .AUNFilenameResolverPreviewV2 import AUNFilenameResolverPreviewV2
 from .AUNRandomAnySwitch import AUNRandomAnySwitch
 from .AUNRandomIndexSwitch import AUNRandomIndexSwitch
+from .AUNRandomLoraModelOnly import AUNRandomLoraModelOnly
+from .AUNRandomModelBundleSwitch import AUNRandomModelBundleSwitch
 from .AUNRandomNumber import AUNRandomNumber
 from .AUNRandomTextIndexSwitch import AUNRandomTextIndexSwitch
 from .AUNRandomTextIndexSwitchV2 import AUNRandomTextIndexSwitchV2
@@ -87,6 +91,7 @@ NODE_CLASS_MAPPINGS = {
     "AUNExtractWidgetValue": AUNExtractWidgetValue,
     "AUNModelNamePass": AUNModelNamePass,
     "AUNModelShorten": AUNModelShorten,
+    "AUNLoraLoaderModelOnlyFromString": AUNLoraLoaderModelOnlyFromString,
     "AUNGetActiveNodeTitle": AUNGetActiveNodeTitle,
     "AUNGetConnectedNodeTitles": AUNGetConnectedNodeTitles,
     "AUNGraphScraper": AUNGraphScraper,
@@ -103,6 +108,7 @@ NODE_CLASS_MAPPINGS = {
     "AUNInputsHybrid": AUNInputsHybrid,
     "AUNInputsRefine": AUNInputsRefine,
     "AUNInputsRefineBasic": AUNInputsRefineBasic,
+    "AUNKSamplerPlusV2": AUNKSamplerPlusV2,
     "AUNKSamplerPlusv3": AUNKSamplerPlusv3,
     "AUNKSamplerPlusv4": AUNKSamplerPlusv4,
     "AUNManualAutoImageSwitch": AUNManualAutoImageSwitch,
@@ -122,6 +128,8 @@ NODE_CLASS_MAPPINGS = {
     "AUNFilenameResolverPreviewV2": AUNFilenameResolverPreviewV2,
     "AUNRandomAnySwitch": AUNRandomAnySwitch,
     "AUNRandomIndexSwitch": AUNRandomIndexSwitch,
+    "AUNRandomLoraModelOnly": AUNRandomLoraModelOnly,
+    "AUNRandomModelBundleSwitch": AUNRandomModelBundleSwitch,
     "AUNRandomNumber": AUNRandomNumber,
     "AUNRandomTextIndexSwitch": AUNRandomTextIndexSwitch,
     "AUNRandomTextIndexSwitchV2": AUNRandomTextIndexSwitchV2,
@@ -160,6 +168,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "AUNExtractWidgetValue": "Extract Widget Value",
     "AUNModelNamePass": "Model Name Pass",
     "AUNModelShorten": "Model Name Shorten",
+    "AUNLoraLoaderModelOnlyFromString": "LoRA Loader Model Only (String)",
     "AUNGetActiveNodeTitle": "Get Active Node Title",
     "AUNGetConnectedNodeTitles": "Get Connected Node Titles",
     "AUNImageLoadResize": "Load & Resize Image",
@@ -175,6 +184,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "AUNInputsHybrid": "Inputs Hybrid",
     "AUNInputsRefine": "Inputs Refine",
     "AUNInputsRefineBasic": "Inputs Refine Basic",
+    "AUNKSamplerPlusV2": "AUN KSampler PlusV2",
     "AUNKSamplerPlusv4": "KSampler Plus V4",
     "AUNManualAutoImageSwitch": "Manual/Auto Image Switch",
     "AUNManualAutoTextSwitch": "Manual/Auto Text Switch",
@@ -193,6 +203,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "AUNFilenameResolverPreviewV2": "Filename Resolver V2",
     "AUNRandomAnySwitch": "Random Any Switch",
     "AUNRandomIndexSwitch": "Random/Select INT",
+    "AUNRandomLoraModelOnly": "Random LoRA Model Loader (Compact)",
+    "AUNRandomModelBundleSwitch": "Model and Text Selector",
     "AUNRandomNumber": "Random Number",
     "AUNRandomTextIndexSwitch": "Random Text Index Switch",
     "AUNRandomTextIndexSwitchV2": "Random Text Index Switch V2",

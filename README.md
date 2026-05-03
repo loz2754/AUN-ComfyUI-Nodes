@@ -14,6 +14,7 @@ _AUN Node state controllers orchestrate bypass, mute, and collapse states so you
 
 - AUN Node Controller (`AUNMultiUniversal`) is a universal bypass/mute/collapse controller (1–20 slots). Nodes are chosen by ID or titles. It can take on the role of any of the more specific Node Control nodes.
 - AUN Group Controller (`AUNMultiGroupUniversal`) targets ComfyUI Groups (by group name) rather than individual nodes, with various filtering options.
+- Both AUN Node Controller and AUN Group Controller can also run in `index-driven` mode, so another node can select the active slot via an `INT` output.
 - Bypass By Title (`AUNSetBypassByTitle`) sets bypass state for nodes whose titles match any of the provided titles (one per line)
 - Mute By Title (`AUNSetMuteByTitle`) same as Bypass By Title but mute instead of bypass.
 - Group Bypasser (Multi) (`AUNSetBypassStateGroup`) set the bypass state of all nodes in groups selected from the graph.
@@ -144,7 +145,9 @@ Deprecation note: the full input-style nodes (`AUNInputs`, `AUNInputsDiffusers`,
 - Get Connected Node Titles (`AUNGetConnectedNodeTitles`) gets the titles of up to 10 connected nodes.
 - Model Name Pass (`AUNModelNamePass`) a pass-through node for a MODEL that also extracts its name (full and shortened). Traces back to find the loader node.
 - Model Name Shorten (`AUNModelShorten`) takes a full model name string and outputs a shortened version suitable for filenames.
+- Model and Text Selector (`AUNRandomModelBundleSwitch`) selects one model slot and optional text/label pair using None, Select, Increment, Random, or Range modes, and also outputs the active slot index for downstream control nodes.
 - Random Any Switch (`AUNRandomAnySwitch`) randomly selects one of several connected inputs of any type and outputs it, along with the index of the selected input.
+- Random LoRA Model Loader (`AUNRandomLoraModelOnly`) selects one LoRA from up to 10 slots using Select, Increment, Random, or Range modes, applies it to the incoming model, and outputs the selected LoRA name plus trigger text.
 - Random Number (`AUNRandomNumber`) generates random integers within specified range. Useful for seed variation and randomization in workflows.
 - Random Text Index Switch (`AUNRandomTextIndexSwitch`) generates an index based on the selected mode (Select: fixed value, Increment: cycling through range, Random: random within range) and uses it to select from up to 20 text inputs.
 - Random/Select INT (`AUNRandomIndexSwitch`) outputs an integer based on mode: Select for fixed value, Increment for cycling through range, Random for random value within range.
@@ -245,6 +248,8 @@ Complex nodes include detailed READMEs with examples and troubleshooting.
 - Manual/Auto Text Switch: [docs/AUNManualAutoTextSwitch_README.md](docs/AUNManualAutoTextSwitch_README.md)
 - Manual/Auto Image Switch: [docs/AUNManualAutoImageSwitch_README.md](docs/AUNManualAutoImageSwitch_README.md)
 - Random Text Index Switch: [docs/AUNRandomTextIndexSwitch_README.md](docs/AUNRandomTextIndexSwitch_README.md)
+- Model and Text Selector: [docs/AUNRandomModelBundleSwitch_README.md](docs/AUNRandomModelBundleSwitch_README.md)
+- Random LoRA Model Loader: [docs/AUNRandomLoraModelOnly_README.md](docs/AUNRandomLoraModelOnly_README.md)
 - Extract Model Name: [docs/AUNExtractModelName_README.md](docs/AUNExtractModelName_README.md)
 - Extract Power LoRAs: [docs/AUNExtractPowerLoras_README.md](docs/AUNExtractPowerLoras_README.md)
 - Extract Widget Value: [docs/AUNExtractWidgetValue_README.md](docs/AUNExtractWidgetValue_README.md)

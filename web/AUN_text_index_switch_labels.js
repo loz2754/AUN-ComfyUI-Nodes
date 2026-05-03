@@ -2,6 +2,7 @@ import { app } from "../../scripts/app.js";
 
 const MAX_INPUTS = 20;
 const MIN_INPUTS = 2;
+const SLOT_LABEL_MAX_CHARS = 26;
 const NODE_CONFIG = {
   AUNTextIndexSwitch: {
     prefix: "text",
@@ -27,10 +28,36 @@ function getValuePrefix(node) {
   return getNodeConfig(node)?.prefix ?? "text";
 }
 
+function normalizeDisplayTitle(rawTitle) {
+  const title = String(rawTitle || "").trim();
+  if (!title) {
+    return "";
+  }
+
+  // Keep node labels compact by collapsing paths and common LoRA extensions.
+  const basename = title.split(/[\\/]/).pop() || title;
+  return basename.replace(/\.(safetensors|ckpt|pt|bin)$/i, "").trim();
+}
+
+function truncateLabelText(value, maxLen) {
+  const text = String(value || "").trim();
+  if (!text || text.length <= maxLen) {
+    return text;
+  }
+  return `${text.slice(0, Math.max(1, maxLen - 3))}...`;
+}
+
 function buildSlotLabel(index, title, valuePrefix) {
   const cleanTitle =
     typeof title === "string" && title.trim() ? title.trim() : null;
-  return cleanTitle ? `${index}-${cleanTitle}` : `${valuePrefix}${index}`;
+  if (!cleanTitle) {
+    return `${valuePrefix}${index}`;
+  }
+
+  const normalized = normalizeDisplayTitle(cleanTitle) || cleanTitle;
+  const indexPrefix = `${index}-`;
+  const maxTitleLen = Math.max(8, SLOT_LABEL_MAX_CHARS - indexPrefix.length);
+  return `${indexPrefix}${truncateLabelText(normalized, maxTitleLen)}`;
 }
 
 function clampInputCount(value) {

@@ -76,7 +76,7 @@ class AUNEmptyLatent:
         
         # Handle random mode
         if mode == "random":                 
-            should_swap = random.random() < 0.5            
+            should_swap = random.SystemRandom().random() < 0.5            
             if should_swap:
                 width, height = height, width
 

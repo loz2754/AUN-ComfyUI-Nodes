@@ -424,7 +424,7 @@ class AUNInputsHybrid:
     def _maybe_swap(width, height, aspect_mode):
         if aspect_mode == "Swap":
             return height, width
-        if aspect_mode == "Random" and random.random() < 0.5:
+        if aspect_mode == "Random" and random.SystemRandom().random() < 0.5:
             return height, width
         return width, height
 

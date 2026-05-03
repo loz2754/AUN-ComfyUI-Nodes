@@ -248,7 +248,7 @@ class AUNWildcardAddToPrompt(AUNAddToPrompt):
         if mode_normalized == "on":
             add_text = True
         elif mode_normalized == "random":
-            add_text = random.choice([True, False])
+            add_text = random.SystemRandom().choice([True, False])
 
         addition_applied = add_text and bool(addition)
         if addition_applied:

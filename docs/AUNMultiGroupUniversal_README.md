@@ -4,7 +4,9 @@ Purpose: One “control panel” node for ComfyUI Groups. Lets you bypass, mute,
 
 ## Inputs
 
-- `mode` (Bypass / Mute / Collapse / Bypass+Collapse): What action to apply to *inactive* groups.
+- `mode` (Bypass / Mute / Collapse / Bypass+Collapse): What action to apply to _inactive_ groups.
+- `control_mode` (`manual` / `index-driven`): Use the slot toggles directly, or follow the external `Index` input.
+- `Index` (INT, 0–20): Used when `control_mode = index-driven`. `0` means no slot is active.
 - `slot_count` (INT, 1–20): How many control slots are used.
 - `toggle_restriction` (default / max one / always one / iterate / random): Optional rules for which slots can be active.
   - `iterate`: cycles the active slot on each run.
@@ -36,9 +38,13 @@ For each slot `i` (1–20):
 
 - When a group appears in multiple slots, **Active wins** over inactive.
 - `toggle_restriction` can override your switches at run-time for iterate/random use cases.
+- In `index-driven` mode, the external `Index` input determines the active slot and the visible toggles mirror that state.
+- `toggle_restriction` only applies in `manual` mode.
+- `use_all_groups` is a manual-mode workflow; it is disabled when `control_mode = index-driven`.
 - This node drives updates through ComfyUI’s frontend so changes are applied immediately to the canvas.
 
 ## Tips
 
 - Use `mode = Bypass+Collapse` for “turn off and tidy” dashboards.
+- Connect `AUNRandomModelBundleSwitch.index` to `Index` when you want a model selector to drive which group slot is active.
 - If you need per-node targeting (IDs or titles), use the `AUN Node State Controller` instead.

@@ -1,9 +1,13 @@
 import json
 import random
 import re
+import time
 from server import PromptServer
 
 class AUNMultiUniversal:
+    def __init__(self):
+        self._rng = random.SystemRandom()
+
     @classmethod
     def INPUT_TYPES(cls):
         # Define the base required inputs
@@ -68,6 +72,14 @@ class AUNMultiUniversal:
             "label_off": "Individual",
             "tooltip": "ON = all groups active (🟢). OFF = use individual group switches."
         })
+        inputs["required"]["control_mode"] = (["manual", "index-driven"], {
+            "default": "manual",
+            "tooltip": "manual = use the slot toggles directly. index-driven = activate the slot matching the Index input."
+        })
+        inputs["required"]["Index"] = ("INT", {
+            "default": 0, "min": 0, "max": 20, "step": 1,
+            "tooltip": "When control_mode is index-driven, activate only this slot. 0 means all slots inactive."
+        })
             
         return inputs
 
@@ -88,11 +100,14 @@ class AUNMultiUniversal:
     @classmethod
     def IS_CHANGED(cls, **kwargs):
         # Force re-execution if in iterate or random mode
-        if kwargs.get("toggle_restriction") in ["iterate", "random"]:
-            return float("NaN")
+        if (
+            kwargs.get("control_mode", "manual") == "manual"
+            and kwargs.get("toggle_restriction") in ["iterate", "random"]
+        ):
+            return time.time_ns()
         return False
 
-    def execute(self, mode, slot_count, toggle_restriction, show_outputs, AllSwitch, unique_id=None, **kwargs):
+    def execute(self, mode, slot_count, toggle_restriction, show_outputs, AllSwitch, control_mode="manual", Index=0, unique_id=None, **kwargs):
         try:
             # If only one slot is active, AllSwitch is redundant and hidden in UI
             if slot_count == 1:
@@ -101,17 +116,19 @@ class AUNMultiUniversal:
             # Handle Iteration/Random Logic
             if unique_id is not None:
                 active_slot = -1
-                if toggle_restriction == "iterate":
+                if control_mode == "index-driven":
+                    active_slot = int(Index or 0)
+                elif toggle_restriction == "iterate":
                     current_idx = self._iteration_states.get(unique_id, 0)
                     active_slot = (current_idx % slot_count) + 1
                     self._iteration_states[unique_id] = active_slot
                 elif toggle_restriction == "random":
-                    active_slot = random.randint(1, slot_count)
+                    active_slot = self._rng.randint(1, slot_count)
                 
                 if active_slot != -1:
                     # Override switches: only the chosen one is True
                     for i in range(1, 21):
-                        kwargs[f"switch_{i}"] = (i == active_slot)
+                        kwargs[f"switch_{i}"] = (1 <= active_slot <= slot_count) and (i == active_slot)
                     
                     # Tell frontend to update the UI switches
                     PromptServer.instance.send_sync("AUN_update_switches", {

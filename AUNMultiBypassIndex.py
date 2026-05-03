@@ -3,11 +3,11 @@ class AUNMultiBypassIndex:
     def INPUT_TYPES(cls):
         inputs = {}
         inputs["Index"] = ("INT", {
-            "default": 1, "min": 1, "max": 10,
-            "tooltip": "Select the group index (1-10) to activate. Only node IDs from this group will be active; others will be bypassed."
+            "default": 1, "min": 1, "max": 20,
+            "tooltip": "Select the group index (1-20) to activate. Only node IDs from this group will be active; others will be bypassed."
         })
-        # Inputs for node IDs 1-10
-        for i in range(1, 11):
+        # Inputs for node IDs 1-20
+        for i in range(1, 21):
             inputs[f"node_ids_{i}"] = ("STRING", {
                 "default": "0", "multiline": False,
                 "tooltip": f"Comma-separated node IDs for group {i} (e.g., '5,12,23'). Enable ID badges in settings to see IDs."
@@ -25,7 +25,10 @@ class AUNMultiBypassIndex:
                       node_ids_1, node_ids_2, node_ids_3,
                       node_ids_4, node_ids_5, node_ids_6,
                       node_ids_7, node_ids_8, node_ids_9,
-                      node_ids_10):
+                      node_ids_10, node_ids_11, node_ids_12,
+                      node_ids_13, node_ids_14, node_ids_15,
+                      node_ids_16, node_ids_17, node_ids_18,
+                      node_ids_19, node_ids_20):
         try:
             from server import PromptServer
 
@@ -33,7 +36,10 @@ class AUNMultiBypassIndex:
                 node_ids_1, node_ids_2, node_ids_3,
                 node_ids_4, node_ids_5, node_ids_6,
                 node_ids_7, node_ids_8, node_ids_9,
-                node_ids_10,
+                node_ids_10, node_ids_11, node_ids_12,
+                node_ids_13, node_ids_14, node_ids_15,
+                node_ids_16, node_ids_17, node_ids_18,
+                node_ids_19, node_ids_20,
             ]
 
             index = Index

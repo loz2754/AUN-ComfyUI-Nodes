@@ -302,7 +302,7 @@ class AUNImageSingleBatch3:
                 state["current_index"] = (state["current_index"] - 1 + num_files) % num_files
                 load_index = state["current_index"]
             elif batch_mode == "random":
-                load_index = random.randint(0, num_files - 1)
+                load_index = random.SystemRandom().randint(0, num_files - 1)
             elif batch_mode == "search":
                 # In search mode, use increment behavior through filtered files
                 load_index = state["current_index"]

@@ -199,7 +199,7 @@ class AUNInputsRefine:
 
         # Apply aspect mode handling
         if aspect_mode == "Random":
-            if random.random() < 0.5:
+            if random.SystemRandom().random() < 0.5:
                 width, height = height, width
         elif aspect_mode == "Swap":
             width, height = height, width

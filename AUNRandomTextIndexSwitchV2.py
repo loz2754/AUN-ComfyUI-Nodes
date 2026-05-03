@@ -11,6 +11,7 @@ class AUNRandomTextIndexSwitchV2:
     def __init__(self):
         self.index = None
         self.range_index = 0
+        self._rng = random.SystemRandom()
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -83,6 +84,22 @@ class AUNRandomTextIndexSwitchV2:
         except Exception:
             pass
 
+    def _emit_selected_index(self, unique_id, index, mode):
+        if unique_id is None:
+            return
+        try:
+            from server import PromptServer
+            PromptServer.instance.send_sync(
+                "AUN_random_text_index_selected",
+                {
+                    "node_id": str(unique_id),
+                    "index": int(index),
+                    "mode": str(mode),
+                },
+            )
+        except Exception:
+            pass
+
     def _clamp_visible_inputs(self, visible_inputs):
         return max(self.MIN_VISIBLE_INPUTS, min(int(visible_inputs or self.MAX_INPUTS), self.MAX_INPUTS))
 
@@ -147,7 +164,7 @@ class AUNRandomTextIndexSwitchV2:
 
         # Generate the index based on mode
         if mode == "Random":
-            index = random.randint(min_val, max_val)
+            index = self._rng.randint(min_val, max_val)
         elif mode == "Increment":
             if self.index is None:
                 self.index = min_val - 1
@@ -215,6 +232,8 @@ class AUNRandomTextIndexSwitchV2:
         selected_label = self._strip_slot_prefix(selected_label, index) or f"Text {index}"
         prefixed_label = self._build_prefixed_label(index, selected_label)
 
+        self._emit_selected_index(kwargs.get('unique_id'), index, mode)
+
         self._record_pginfo(
             kwargs.get('extra_pnginfo'),
             kwargs.get('unique_id'),
@@ -237,7 +256,7 @@ class AUNRandomTextIndexSwitchV2:
     def IS_CHANGED(cls, minimum=None, maximum=None, mode=None, select=None, **kwargs):
         # Force re-execution when random, range, or increment is chosen
         if mode in ["Random", "Increment", "Range"]:
-            return float("NaN")
+            return time.time_ns()
         return (select, mode, minimum, maximum, kwargs.get("range"))
 
 NODE_CLASS_MAPPINGS = {

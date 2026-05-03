@@ -24,7 +24,7 @@ class AUNBoolean:
 
     def execute(self, state, label):
         if state == "Randomize":
-            value = random.choice([True, False])
+            value = random.SystemRandom().choice([True, False])
         else:
             value = (state == "True")
         out_label = label if value else ""

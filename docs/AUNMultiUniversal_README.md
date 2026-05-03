@@ -12,6 +12,10 @@ Purpose: A multi-slot “dashboard” that can Bypass, Mute, and/or Collapse set
   - `Collapse`: collapse/expand targets
   - `Bypass+Collapse`: apply both disable + collapse
 - `slot_count` (INT 1–20): Number of active slots.
+- `control_mode`:
+  - `manual`: use the slot toggles directly
+  - `index-driven`: activate the slot matching the external `Index` input
+- `Index` (INT 0–20): Used when `control_mode = index-driven`. `0` means no slot is active.
 - `toggle_restriction`:
   - `default`: no extra rules
   - `max one`: allow at most one active slot
@@ -42,9 +46,13 @@ Each slot has:
 
 - Slot processing is limited to `slot_count`; higher-numbered slots are ignored and output `False`.
 - In `iterate` and `random` modes, the node forces re-execution and also asks the frontend to update visible switches.
+- In `index-driven` mode, the frontend mirrors the external `Index` value onto the visible slot toggles so it remains obvious which slot is active.
+- `toggle_restriction` only matters in `manual` mode.
+- `AllSwitch` is a manual-mode control; it is suppressed when `control_mode = index-driven`.
 - If a target is included in multiple slots, “active” wins over “inactive” when resolving overlaps.
 
 ## Common setups
 
 - Create 3–8 slots for major workflow regions (Loaders / Samplers / Refiners / Savers).
 - Use `target_type = ID` for robustness when node titles change.
+- Connect `AUNRandomModelBundleSwitch.index` to `Index` when you want the node to follow an external selector.

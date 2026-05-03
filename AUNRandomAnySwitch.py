@@ -41,11 +41,11 @@ class AUNRandomAnySwitch:
             # Return None for the output and 0 for the index if nothing is connected
             return (None, 0)
 
-        # Use the provided seed for reproducible random choices
-        random.seed(seed)
-        
+        # Use a local RNG so this node does not alter global random state.
+        seeded_rng = random.Random(seed)
+
         # Randomly select one of the connected (index, value) tuples
-        selected_tuple = random.choice(indexed_inputs)
+        selected_tuple = seeded_rng.choice(indexed_inputs)
         
         return (selected_tuple[1], selected_tuple[0]) # Return (value, 1-based index)
 

@@ -17,6 +17,7 @@ const VALID_TOGGLE_RESTRICTIONS = [
   "iterate",
   "random",
 ];
+const VALID_CONTROL_MODES = ["manual", "index-driven"];
 const VALID_TARGET_TYPES = ["ID", "Title"];
 
 const trackedGroupNodes = new Set();
@@ -38,6 +39,16 @@ const clampInt = (value, min = 1, max = MAX_SLOTS) => {
   const num = Number(value);
   if (!Number.isFinite(num)) return min;
   return Math.min(max, Math.max(min, Math.round(num)));
+};
+
+const getControlMode = (node) =>
+  getWidget(node, "control_mode")?.value || "manual";
+
+const isIndexDrivenMode = (node) => getControlMode(node) === "index-driven";
+
+const getExternalIndex = (node) => {
+  const widget = getWidget(node, "Index");
+  return clampInt(widget?.value ?? 0, 0, MAX_SLOTS);
 };
 
 const getWidget = (node, name) => {
@@ -426,6 +437,15 @@ const sanitizeLegacyValues = function sanitizeLegacyValues() {
     const normalized = normalize(restrictionWidget.value).trim();
     if (!VALID_TOGGLE_RESTRICTIONS.includes(normalized)) {
       restrictionWidget.value = VALID_TOGGLE_RESTRICTIONS[0];
+      dirty = true;
+    }
+  }
+
+  const controlModeWidget = getWidget(this, "control_mode");
+  if (controlModeWidget) {
+    const normalized = normalize(controlModeWidget.value).trim();
+    if (!VALID_CONTROL_MODES.includes(normalized)) {
+      controlModeWidget.value = VALID_CONTROL_MODES[0];
       dirty = true;
     }
   }
@@ -1155,6 +1175,8 @@ const refreshWidgets = function refreshWidgets() {
   const showFullInputs = !isCompact;
   const showGroupsCompact = isCompact && useAllGroups && isGroupNode;
   const showSelectedSlotsCompact = isCompact && !useAllGroups;
+  const controlMode = getControlMode(this);
+  const indexDriven = controlMode === "index-driven";
   const restriction = getWidget(this, "toggle_restriction")?.value || "default";
   const offIcon = OFF_LABELS[mode] || OFF_LABELS.Bypass;
   const onIcon = ON_LABELS[mode] || "Active 🟢";
@@ -1162,6 +1184,15 @@ const refreshWidgets = function refreshWidgets() {
   const allowCompactDetails = !isNodeController;
 
   this.__AUN_useAllGroups = useAllGroups;
+
+  if (isGroupNode && indexDriven && useAllGroups) {
+    const useAllGroupsWidget = getWidget(this, "use_all_groups");
+    if (useAllGroupsWidget) {
+      useAllGroupsWidget.value = false;
+      this.__AUN_useAllGroups = false;
+      this.setDirtyCanvas?.(true, true);
+    }
+  }
 
   if (isGroupNode && useAllGroups) {
     const restrictionWidget = getWidget(this, "toggle_restriction");
@@ -1254,6 +1285,8 @@ const refreshWidgets = function refreshWidgets() {
   const hideWhenCompact = isCompact;
   const compactToggleWidgets = [
     "mode",
+    "control_mode",
+    "Index",
     "slot_count",
     "toggle_restriction",
     "show_outputs",
@@ -1264,7 +1297,17 @@ const refreshWidgets = function refreshWidgets() {
     if (!widget) return;
     const hideForAllGroups =
       name === "toggle_restriction" && isGroupNode && useAllGroups;
-    applyWidgetHiddenState(widget, hideWhenCompact || hideForAllGroups);
+    const hideForManualOnly =
+      indexDriven &&
+      (name === "toggle_restriction" || name === "use_all_groups");
+    const hideForIndexOnly = !indexDriven && name === "Index";
+    applyWidgetHiddenState(
+      widget,
+      hideWhenCompact ||
+        hideForAllGroups ||
+        hideForManualOnly ||
+        hideForIndexOnly,
+    );
   });
 
   const singleSlot = slotCount <= 1;
@@ -1272,7 +1315,8 @@ const refreshWidgets = function refreshWidgets() {
   if (allSwitch) {
     const hideForGroups = useAllGroups && isGroupNode;
     const hideForCompactSingle = isCompact && activeSlotCount <= 1;
-    const shouldHide = hideForGroups || hideForCompactSingle || singleSlot;
+    const shouldHide =
+      indexDriven || hideForGroups || hideForCompactSingle || singleSlot;
     applyWidgetHiddenState(allSwitch, shouldHide);
     if (shouldHide && allSwitch.value) {
       allSwitch.value = false;
@@ -1290,6 +1334,7 @@ const refreshWidgets = function refreshWidgets() {
 
 const syncTogglesWithGraph = function syncTogglesWithGraph() {
   if ((!this.widgets && !this.__AUN_allWidgets) || this.configuring) return;
+  if (isIndexDrivenMode(this)) return;
   const mode = getWidget(this, "mode")?.value || "Bypass";
   const slotCount = clampInt(getWidget(this, "slot_count")?.value || 3);
   const useAllGroups = this.__AUN_useAllGroups;
@@ -1432,7 +1477,9 @@ const executeInstant = function executeInstant() {
   if ((!this.widgets && !this.__AUN_allWidgets) || this.configuring) return;
   const mode = getWidget(this, "mode")?.value || "Bypass";
   const slotCount = clampInt(getWidget(this, "slot_count")?.value || 3);
-  const allSwitch = !!getWidget(this, "AllSwitch")?.value;
+  const allSwitch = isIndexDrivenMode(this)
+    ? false
+    : !!getWidget(this, "AllSwitch")?.value;
   const groupsPayload = [];
 
   if (this.__AUN_isGroupNode) {
@@ -1584,6 +1631,7 @@ api?.addEventListener?.("AUN_universal_update", (event) => {
 });
 
 const enforceRestriction = (node, slot, value) => {
+  if (isIndexDrivenMode(node)) return true;
   const restriction = getWidget(node, "toggle_restriction")?.value || "default";
   if (!value && restriction !== "always one") return true;
   const slotCount = clampInt(getWidget(node, "slot_count")?.value || 3);
@@ -1614,6 +1662,30 @@ const enforceRestriction = (node, slot, value) => {
   return true;
 };
 
+const applyExternalIndexSelection = (node) => {
+  if (!isIndexDrivenMode(node)) return;
+
+  const slotCount = clampInt(getWidget(node, "slot_count")?.value || 3);
+  const activeSlot = getExternalIndex(node);
+  const allSwitch = getWidget(node, "AllSwitch");
+  if (allSwitch && allSwitch.value) {
+    allSwitch.value = false;
+  }
+
+  node._AUN_batchToggle = true;
+  for (let slot = 1; slot <= MAX_SLOTS; slot++) {
+    const widget = getWidget(node, `switch_${slot}`);
+    if (!widget) continue;
+    const shouldBeActive =
+      slot <= slotCount && activeSlot > 0 && slot === activeSlot;
+    if (widget.value !== shouldBeActive) {
+      widget.value = shouldBeActive;
+    }
+  }
+  node._AUN_batchToggle = false;
+  node.__AUN_executeInstant?.();
+};
+
 const attachSwitchHandlers = (node) => {
   for (let slot = 1; slot <= MAX_SLOTS; slot++) {
     const widget = getWidget(node, `switch_${slot}`);
@@ -1622,6 +1694,10 @@ const attachSwitchHandlers = (node) => {
     widget.callback = function callback(value) {
       if (node.__AUN_useAllGroups && node.__AUN_isGroupNode) {
         widget.value = false;
+        return;
+      }
+      if (isIndexDrivenMode(node)) {
+        applyExternalIndexSelection(node);
         return;
       }
       if (original) original.call(widget, value);
@@ -1767,7 +1843,7 @@ const decorateNode = (node, nodeData) => {
   node.refreshGroupDropdowns = refreshGroupDropdowns.bind(node);
   node.syncTogglesWithGraph = syncTogglesWithGraph.bind(node);
   node.__AUN_executeInstant = executeInstant.bind(node);
-  node.__AUN_toggleCompactMode = (nextState) => {
+  node.__AUN_toggleCompactMode = (nextState, { force = false } = {}) => {
     // Guard against double-invocation from multiple extensions handling the same node
     if (node.__AUN_toggleInProgress) return;
 
@@ -1785,7 +1861,7 @@ const decorateNode = (node, nodeData) => {
     const interactingWidget =
       canvas?.interacting_widget || canvas?.active_widget;
 
-    if (isWidgetInput || interactingWidget) {
+    if (!force && (isWidgetInput || interactingWidget)) {
       return;
     }
 
@@ -1844,6 +1920,8 @@ const decorateNode = (node, nodeData) => {
   };
 
   const trackedWidgets = [
+    "control_mode",
+    "Index",
     "slot_count",
     "toggle_restriction",
     "mode",
@@ -1859,6 +1937,8 @@ const decorateNode = (node, nodeData) => {
       node.__AUN_refreshWidgets?.();
       if (name === "slot_count" || name === "use_all_groups")
         node.refreshGroupDropdowns?.(true);
+      if (name === "control_mode" || name === "Index" || name === "slot_count")
+        applyExternalIndexSelection(node);
       if (name === "mode" || name === "use_all_groups")
         node.__AUN_executeInstant?.();
     };
@@ -1867,6 +1947,7 @@ const decorateNode = (node, nodeData) => {
   setTimeout(() => {
     node.__AUN_refreshWidgets?.();
     node.refreshGroupDropdowns?.(true);
+    applyExternalIndexSelection(node);
   }, 250);
 
   const originalDraw = node.onDrawBackground;
@@ -1913,7 +1994,7 @@ const extendNodePrototype = (nodeType, nodeData) => {
     const compact = !!this.properties?._AUN_compactMode;
     options.push({
       content: compact ? "AUN: Show all controls" : "AUN: Compact mode",
-      callback: () => this.__AUN_toggleCompactMode?.(!compact),
+      callback: () => this.__AUN_toggleCompactMode?.(!compact, { force: true }),
     });
   };
 

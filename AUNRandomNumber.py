@@ -3,7 +3,7 @@ import time
 
 class AUNRandomNumber:
     def __init__(self):
-        pass
+        self._rng = random.SystemRandom()
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -28,7 +28,7 @@ class AUNRandomNumber:
     def random_number(self, minimum, maximum, number=None):
         if minimum > maximum:
             minimum = 0
-        number = random.randint(minimum, maximum)
+        number = self._rng.randint(minimum, maximum)
         
         return (number,)
        

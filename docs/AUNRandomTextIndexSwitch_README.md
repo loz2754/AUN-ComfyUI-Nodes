@@ -35,6 +35,7 @@ This node generates an index using one of three modes and uses that index to sel
 ## Usage Examples
 
 ### Random Prompt Selection
+
 1. Set **visible_inputs** to the number of slots you want (2–20)
 2. Connect up to 20 text nodes containing different prompts to the text inputs
 3. Set mode to "Random"
@@ -42,12 +43,14 @@ This node generates an index using one of three modes and uses that index to sel
 5. Use the text output for your generation workflow
 
 ### Sequential Prompt Cycling
+
 1. Connect prompt nodes to text inputs
 2. Set mode to "Increment"
 3. The node will cycle through prompts in order on each execution
 4. Useful for batch processing with varying prompts
 
 ### Fixed Prompt Selection
+
 1. Connect prompt nodes to text inputs
 2. Set mode to "Select" and choose the desired index
 3. The node will consistently output the selected prompt
@@ -66,8 +69,13 @@ The **label** output is determined like this:
 - Use the **index** output to track which input was selected or for conditional logic
 - The **label** output provides human-readable identification of the selected input
 
+## Visual Indicator
+
+After a workflow run, the node draws a subtle blue highlight and a **▶** arrow on the input row corresponding to the selected index. This makes it easy to see at a glance which text input was active without checking the index output.
+
 ## Notes
 
 - The node executes on workflow queue, ensuring the index is generated at the start of execution
 - Text inputs are optional - if an index points to an unconnected input, it outputs an empty string
-- Range validation ensures minimum ≤ maximum, and values are clamped to `visible_inputs`.
+- Range validation ensures minimum ≤ maximum, and values are clamped to `visible_inputs`
+- See `AUNRandomTextIndexSwitchV2` for an extended version that adds a **Range** selection mode.

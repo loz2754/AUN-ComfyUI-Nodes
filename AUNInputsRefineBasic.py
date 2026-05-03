@@ -195,7 +195,7 @@ class AUNInputsRefineBasic:
         width, height = self._resolve_dimensions(width, height, aspect_ratio)
 
         if aspect_mode == "Random":
-            if random.random() < 0.5:
+            if random.SystemRandom().random() < 0.5:
                 width, height = height, width
         elif aspect_mode == "Swap":
             width, height = height, width

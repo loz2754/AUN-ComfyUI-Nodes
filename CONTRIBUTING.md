@@ -91,3 +91,10 @@ Notes:
 - Keep code readable and consistent with adjacent files.
 - Prefer descriptive names over one-letter variables.
 - Avoid reformat-only changes.
+
+## Randomness Guidelines
+
+- Do not call global seeding inside nodes (`random.seed(...)`). It mutates shared RNG state and can affect unrelated nodes during partial workflow runs.
+- For deterministic seeded behavior, create a local generator per call (`rng = random.Random(seed)`) and use that instance.
+- For non-deterministic random mode behavior, prefer an instance-local RNG (for example `self._rng = random.SystemRandom()`) and use it instead of module-level `random.*` calls.
+- For dynamic random/iterate modes, use a time-based `IS_CHANGED` token (for example `time.time_ns()`) so re-execution stays predictable.

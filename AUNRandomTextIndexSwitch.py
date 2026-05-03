@@ -10,6 +10,7 @@ class AUNRandomTextIndexSwitch:
 
     def __init__(self):
         self.index = None
+        self._rng = random.SystemRandom()
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -77,6 +78,22 @@ class AUNRandomTextIndexSwitch:
         except Exception:
             pass
 
+    def _emit_selected_index(self, unique_id, index, mode):
+        if unique_id is None:
+            return
+        try:
+            from server import PromptServer
+            PromptServer.instance.send_sync(
+                "AUN_random_text_index_selected",
+                {
+                    "node_id": str(unique_id),
+                    "index": int(index),
+                    "mode": str(mode),
+                },
+            )
+        except Exception:
+            pass
+
     def _clamp_visible_inputs(self, visible_inputs):
         return max(self.MIN_VISIBLE_INPUTS, min(int(visible_inputs or self.MAX_INPUTS), self.MAX_INPUTS))
 
@@ -99,7 +116,7 @@ class AUNRandomTextIndexSwitch:
 
         # Generate the index based on mode
         if mode == "Random":
-            index = random.randint(min_val, max_val)
+            index = self._rng.randint(min_val, max_val)
         elif mode == "Increment":
             if self.index is None:
                 self.index = min_val - 1
@@ -153,6 +170,8 @@ class AUNRandomTextIndexSwitch:
                         break
 
         selected_text = kwargs[key]
+
+        self._emit_selected_index(kwargs.get('unique_id'), index, mode)
 
         self._record_pginfo(
             kwargs.get('extra_pnginfo'),

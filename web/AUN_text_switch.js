@@ -37,8 +37,8 @@ app.registerExtension({
         options.push(null);
         options.push({
           content: this.properties._AUN_compactMode
-            ? "Disable Compact Mode"
-            : "Enable Compact Mode",
+            ? "AUN: Show all controls"
+            : "AUN: Compact mode",
           callback: () => {
             this.properties._AUN_compactMode =
               !this.properties._AUN_compactMode;

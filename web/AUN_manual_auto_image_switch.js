@@ -264,9 +264,7 @@ app.registerExtension({
       originalMenu?.apply(this, arguments);
       const compact = !!this.properties?._AUN_compactMode;
       options.push({
-        content: compact
-          ? "AUN: Show overlay options"
-          : "AUN: Hide overlay options",
+        content: compact ? "AUN: Show all controls" : "AUN: Compact mode",
         callback: () => {
           this.properties = this.properties || {};
           this.properties._AUN_compactMode = !compact;

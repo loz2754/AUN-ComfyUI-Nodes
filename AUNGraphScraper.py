@@ -41,6 +41,7 @@ class AUNGraphScraper:
             "hidden": {
                 "prompt": "PROMPT",
                 "extra_pnginfo": "EXTRA_PNGINFO",
+                "unique_id": "UNIQUE_ID",
             },
         }
 
@@ -48,9 +49,49 @@ class AUNGraphScraper:
     def IS_CHANGED(cls, **kwargs):
         return float("nan")
 
-    def _get_value(self, identifier: str, widget_name: str, prompt, extra_pnginfo):
+    def _get_value(self, identifier: str, widget_name: str, prompt, extra_pnginfo, unique_id=None):
         ident = identifier.strip()
         wname = widget_name.strip().lower()
+
+        # Try to infer the current subgraph namespace from UNIQUE_ID (if present).
+        uid = str(unique_id or "").strip()
+        namespace = ""
+        if "." in uid:
+            namespace = uid.rsplit(".", 1)[0]
+
+        def key_in_namespace(key: str, ns: str) -> bool:
+            if not ns:
+                return False
+            return key == ns or key.startswith(ns + ".") or key.startswith(ns + ":") or key.startswith(ns + "/")
+
+        def id_matches_node_key(node_key: str, wanted: str) -> bool:
+            if not node_key or not wanted:
+                return False
+            if node_key == wanted:
+                return True
+            # Support common namespaced key formats, e.g. subgraph.node, subgraph:node, subgraph/node
+            if node_key.endswith("." + wanted) or node_key.endswith(":" + wanted) or node_key.endswith("/" + wanted):
+                return True
+            # Fallback: compare terminal token across arbitrary separators
+            tokens = re.split(r"[^A-Za-z0-9_]+", node_key)
+            return bool(tokens) and tokens[-1] == wanted
+
+        def find_node_in_prompt(node_id: str):
+            if not prompt:
+                return None
+            direct = prompt.get(node_id)
+            if direct:
+                return direct
+            matches = []
+            for nid, ninfo in prompt.items():
+                nid_str = str(nid)
+                if id_matches_node_key(nid_str, node_id):
+                    matches.append((nid_str, ninfo))
+            if namespace:
+                scoped = [m for m in matches if key_in_namespace(m[0], namespace)]
+                if scoped:
+                    return scoped[0][1]
+            return matches[0][1] if matches else None
         
         # Helper to find in inputs
         def find_val(inputs, name):
@@ -66,7 +107,7 @@ class AUNGraphScraper:
             if isinstance(val, list) and len(val) >= 2:
                 target_id = str(val[0])
                 # Find the linked node
-                target_node = prompt.get(target_id) if prompt else None
+                target_node = find_node_in_prompt(target_id)
                 if not target_node and extra_pnginfo:
                     wf = extra_pnginfo.get("workflow", {})
                     def search(nodes):
@@ -94,10 +135,21 @@ class AUNGraphScraper:
         if prompt:
             node = prompt.get(ident)
             if not node:
+                matches = []
                 for nid, ninfo in prompt.items():
-                    # Check for exact title or namespaced ID (for subgraphs)
-                    if ninfo.get("_meta", {}).get("title") == ident or (isinstance(nid, str) and nid.endswith("." + ident)):
-                        node = ninfo; break
+                    nid_str = str(nid)
+                    title_match = ninfo.get("_meta", {}).get("title") == ident
+                    id_suffix_match = id_matches_node_key(nid_str, ident)
+                    if title_match or id_suffix_match:
+                        matches.append((nid_str, ninfo))
+
+                # Prefer match in same subgraph namespace when possible.
+                if namespace:
+                    scoped = [m for m in matches if key_in_namespace(m[0], namespace)]
+                    if scoped:
+                        node = scoped[0][1]
+                if not node and matches:
+                    node = matches[0][1]
         
         # Check Workflow (UI/Nested)
         if not node and extra_pnginfo:
@@ -120,6 +172,13 @@ class AUNGraphScraper:
             if not node:
                 definitions = wf.get('definitions', {})
                 subgraphs = definitions.get('subgraphs', []) if isinstance(definitions, dict) else []
+                # If we have a namespace that matches a subgraph id, search it first.
+                if namespace and isinstance(subgraphs, list):
+                    for sg in subgraphs:
+                        if isinstance(sg, dict) and str(sg.get("id")) == namespace:
+                            node = search(sg.get('nodes'))
+                            if node:
+                                break
                 for sg in subgraphs:
                     if isinstance(sg, dict):
                         node = search(sg.get('nodes'))
@@ -142,14 +201,14 @@ class AUNGraphScraper:
         
         return s_val
 
-    def scrape(self, template, basename_if_path, prompt=None, extra_pnginfo=None):
+    def scrape(self, template, basename_if_path, prompt=None, extra_pnginfo=None, unique_id=None):
         self.basename_if_path = basename_if_path
         
         def replace_placeholder(match):
             content = match.group(1)
             if "." in content:
                 node_ident, widget_name = content.split(".", 1)
-                return self._get_value(node_ident, widget_name, prompt, extra_pnginfo)
+                return self._get_value(node_ident, widget_name, prompt, extra_pnginfo, unique_id)
             return match.group(0)
 
         result = re.sub(r"\{([^}]+)\}", replace_placeholder, template)

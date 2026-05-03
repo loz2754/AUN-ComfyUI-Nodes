@@ -4,23 +4,40 @@
 
 ### Added
 
+- `AUNRandomTextIndexSwitch` and `AUNRandomTextIndexSwitchV2` now display a blue row highlight and **▶** arrow on the selected text input slot after each workflow run, making it easy to see which input was active at a glance.
+
 ### Changed
 
 ### Fixed
 
 ### Notes
 
+- Added `AUNRandomModelBundleSwitch` as `Model and Text Selector`, with compact/micro UI, slot-status footer, and an `index` output that can drive other control nodes.
+- Added `AUNRandomLoraModelOnly`, a compact LoRA slot selector/loader with runtime footer updates and optional inline LoRA info display.
+- Added `AUNLoraLoaderModelOnlyFromString` for workflows that need to load a LoRA from a string path/name instead of a combo widget.
+- Added `AUNKSamplerPlusV2` for progressive two-pass sampling with latent/image upscale and optional final refinement.
 ## [2.1.6] - 2026-05-02
+- Added dedicated docs for the Model and Text Selector, Random LoRA Model Loader, and Random Text Index Switch V2.
 
 ### Added
 
+- `AUNMultiUniversal` and `AUNMultiGroupUniversal` now support `index-driven` control mode so an external `INT` can select the active slot directly.
+- Renamed `AUNRandomModelBundleSwitch` in the UI to `Model and Text Selector` and updated docs/readme coverage for the new naming and control patterns.
+- Standardized compact-mode menu wording across the updated compact-capable nodes.
+- Added contributor guidance for safer randomness patterns and release/update workflow expectations.
 - Added `AUNInputsDiffusersBasic` and `AUNInputsDiffusersRefineBasic` for lighter diffusion-model loading flows, including optional refine-model output for diffusion-only setups.
 - Added a `prefixed_label` output to `AUNRandomTextIndexSwitchV2` so workflows can use the combined slot prefix and connected title, such as `1-Beach`.
 
+- Restored compatibility for existing `AUNMultiUniversal` and `AUNMultiGroupUniversal` workflows by preserving the original serialized widget order while adding `control_mode` and `Index`.
+- Replaced several global `random.*` calls and global seeding patterns with local or system RNG usage so unrelated nodes do not interfere with each other.
+- Improved `AUNGraphScraper` resolution inside subgraphs by scoping prompt-node matching with `UNIQUE_ID` namespace data.
+- Fixed compact UI/runtime state issues across the new selector nodes, including persisted compact mode restore and reliable runtime-selected footer updates.
 ### Changed
 
+
+- `AUNMultiUniversal` and `AUNMultiGroupUniversal` now pair naturally with `AUNRandomModelBundleSwitch.index` when you want one selector to drive bypass/mute/collapse dashboards.
 - `AUNInputsRefine` and `AUNInputsRefineBasic` now use a dedicated `speed_lora_full_both` toggle instead of overloading `speed_lora_ratio`, so the ratio remains available for normal main/refine strength splitting.
-- Expanded docs and registry-facing node listings for the new diffusion basic/refine-basic nodes and for the current guidance around legacy full-input nodes.
+## [2.1.6] - 2026-05-02
 - `AUNExtractWidgetValue` can now optionally concatenate the widget name with the resolved value.
 
 ### Fixed

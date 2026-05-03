@@ -4,6 +4,7 @@ import time
 class AUNRandomIndexSwitch:
     def __init__(self):
         self.index = None
+        self._rng = random.SystemRandom()
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -35,7 +36,7 @@ class AUNRandomIndexSwitch:
         if mode == "Random":
             if minimum > maximum:
                 minimum = 0
-            return (random.randint(minimum, maximum),)
+            return (self._rng.randint(minimum, maximum),)
         elif mode == "Increment":
             if self.index is None:
                 self.index = minimum - 1
