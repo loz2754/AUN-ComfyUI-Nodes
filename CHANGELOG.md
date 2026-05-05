@@ -4,6 +4,16 @@
 
 ### Added
 
+### Changed
+
+### Fixed
+
+### Notes
+
+## [2.1.9] - 2026-05-05
+
+### Added
+
 - Added `AUNLoraStackWithTriggers` and `AUNLoraStackWithTriggersModelClip` for stacking multiple LoRAs with per-slot triggers, adjustable visible slot count, and compact frontend controls.
 - Added dedicated docs for the new LoRA stack nodes and shared LoRA-extraction helpers for downstream metadata/saver integrations.
 
@@ -17,7 +27,6 @@
 - Fixed the `AUNLoraStackWithTriggers` and `AUNLoraStackWithTriggersModelClip` frontend extensions so their load-time compact/layout restore logic only runs on their own node types, preventing unrelated node widget glitches and saved-size resets.
 
 ### Notes
-
 ## [2.1.8] - 2026-05-05
 
 ### Added
