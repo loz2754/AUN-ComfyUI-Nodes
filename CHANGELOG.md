@@ -8,10 +8,19 @@
 
 ### Fixed
 
+### Notes
+
+## [2.1.8] - 2026-05-05
+
+### Added
+
+### Changed
+
+### Fixed
+
 - Fixed the `AUNLoraStackWithTriggers` and `AUNLoraStackWithTriggersModelClip` frontend extensions so their load-time compact/layout restore logic only runs on their own node types, preventing unrelated node widget glitches and saved-size resets.
 
 ### Notes
-
 ## [2.1.7] - 2026-05-04
 
 ### Added
