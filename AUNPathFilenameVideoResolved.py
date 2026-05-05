@@ -281,7 +281,7 @@ class AUNPathFilenameVideoResolved:
         _loras_sidecar = ""
         if _lora_power_lines:
             _formatted = "\n".join(line.strip() for line in _lora_power_lines)
-            _loras_sidecar = f"PowerLoraLoader loras:\n{_formatted}".strip()
+            _loras_sidecar = _formatted.strip()
 
         sidecar_ctx = {
             "filename": f"{filename}",

@@ -23,6 +23,12 @@ from .model_utils import (
     SCHEDULER_SHORT_NAMES,
     LORA_SHORT_NAMES,
 )
+from .aun_lora_extraction_shared import (
+    BASIC_LORA_TARGET_NAMES,
+    STACK_LORA_NODE_NAMES,
+    coerce_bool,
+    extract_basic_loras_from_inputs,
+)
 
 # --- Constants ---
 
@@ -152,7 +158,6 @@ LORA_TAG_LOADER_NAMES = {
     "LoRA Tag Loader",
     "LoRA Tag Loader (LoraManager)",
 }
-
 
 def _looks_like_node_id(value: Any) -> bool:
     if isinstance(value, (int, float)):
@@ -408,23 +413,15 @@ def _extract_loras_from_inputs(inputs: Any,
                 entry['origin'] = origin_value
             items.append(entry)
 
-        # Handle rgthree's Power Lora Loader: lora_1, lora_2, etc. as dicts
-        for key, val in normalized_inputs.items():
-            k = str(key).lower()
-            if k.startswith('lora_') and isinstance(val, dict):
-                if val.get('on', False) and 'lora' in val:
-                    add_item(val.get('lora'), val.get('strength'), val.get('strengthTwo'))
-        # Handle standard ComfyUI LoraLoader: lora_name, strength_model, strength_clip
-        if not items:
-            lora_name = normalized_inputs.get('lora_name') or normalized_inputs.get('lora')
-            if lora_name and isinstance(lora_name, str):
-                add_item(
-                    lora_name,
-                    normalized_inputs.get('strength_model') or normalized_inputs.get('strength') or normalized_inputs.get('model_strength'),
-                    normalized_inputs.get('strength_clip') or normalized_inputs.get('clip_strength'),
-                )
+        basic_items = extract_basic_loras_from_inputs(normalized_inputs)
+        for entry in basic_items:
+            add_item(
+                entry.get('name'),
+                entry.get('strength'),
+                entry.get('strengthTwo'),
+            )
         # Handle multiple loras like lora_name_1, lora_name_2, etc. (for LoraManager or similar)
-        if not items:
+        if not items and node_type not in STACK_LORA_NODE_NAMES:
             for key, val in normalized_inputs.items():
                 k = str(key).lower()
                 if k.startswith('lora_name_') or k.startswith('lora_') and not isinstance(val, dict):
@@ -481,7 +478,7 @@ def _extract_loras_from_inputs(inputs: Any,
                     if isinstance(val, str):
                         for entry in _parse_lora_tag_text(val):
                             add_item(entry['name'], entry['strength'], entry['strengthTwo'], origin_override='TextBasedLoRA')
-        if not items and (not node_type or node_type not in LORA_TAG_LOADER_NAMES):
+        if not items and (not node_type or (node_type not in LORA_TAG_LOADER_NAMES and node_type not in STACK_LORA_NODE_NAMES)):
             source_to_search = inputs if isinstance(inputs, dict) else normalized_inputs
             items.extend(_find_lora_entries(source_to_search))
 
@@ -526,13 +523,8 @@ def extract_loras(prompt: Any = None, extra_pnginfo: Any = None) -> list[dict]:
     Returns a list of dicts with keys: name, strength, strengthTwo (clip).
     """
     target_names = {
-        "Power Lora Loader (rgthree)",
-        # Fallbacks in case of variations
-        "RgthreePowerLoraLoader",
-        "Power Lora Loader",
-        "LoraLoader",
+        *BASIC_LORA_TARGET_NAMES,
         "Lora Loader",
-        "LoraLoaderModelOnly",
         "LoraLoaderModelOnly (rgthree)",
         "Lora Loader (LoraManager)",
         "LoRA Text Loader (LoraManager)",
@@ -1488,7 +1480,7 @@ class AUNSaveImage:
             loras_group_raw = ""
             if lora_power_lines:
                 formatted = "\n".join(line.strip() for line in lora_power_lines)
-                loras_group_raw = f"PowerLoraLoader loras:\n{formatted}".strip()
+                loras_group_raw = formatted.strip()
             modelhash = self._get_model_hash(modelname)
             date_fmt = kwargs.get("date_format") or kwargs.get("time_format") or "%Y%m%d-%H%M%S"
             replacements = {

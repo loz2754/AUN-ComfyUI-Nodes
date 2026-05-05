@@ -8,13 +8,15 @@
 
 ### Fixed
 
+- Fixed the `AUNLoraStackWithTriggers` and `AUNLoraStackWithTriggersModelClip` frontend extensions so their load-time compact/layout restore logic only runs on their own node types, preventing unrelated node widget glitches and saved-size resets.
+
 ### Notes
 
 ## [2.1.7] - 2026-05-04
 
 ### Added
 
-- Added `AUNRandomModelBundleSwitch` as `Model and Text Selector`, with compact/micro UI, slot-status footer, and an `index` output that can drive other control nodes.
+- Added `AUNRandomModelBundleSwitch` as `Model and Text Selector`, with a compact UI, slot-status footer, and an `index` output that can drive other control nodes.
 - Added `AUNRandomLoraModelOnly`, a compact LoRA slot selector/loader with runtime footer updates and optional inline LoRA info display.
 - Added `AUNLoraLoaderModelOnlyFromString` for workflows that need to load a LoRA from a string path/name instead of a combo widget.
 - Added `AUNKSamplerPlusV2` for progressive two-pass sampling with latent/image upscale and optional final refinement.

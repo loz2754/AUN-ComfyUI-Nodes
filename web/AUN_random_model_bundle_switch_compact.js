@@ -61,7 +61,7 @@ function clampSlotCount(value) {
 function clampCompactLevel(value) {
   const num = Number(value);
   if (!Number.isFinite(num)) return 0;
-  return Math.max(0, Math.min(2, Math.floor(num)));
+  return Math.max(0, Math.min(1, Math.floor(num)));
 }
 
 function getCompactLevel(node) {
@@ -191,7 +191,7 @@ function pruneUnlinkedDynamicInputs(node) {
   return changed;
 }
 
-function applyDynamicSocketLabelMode(node, micro) {
+function applyDynamicSocketLabelMode(node, compact) {
   if (!node?.inputs?.length) return;
   for (const input of node.inputs) {
     const parsed = parseDynamicSlotInputName(input?.name);
@@ -199,7 +199,7 @@ function applyDynamicSocketLabelMode(node, micro) {
     if (input.__AUN_origLabel === undefined) {
       input.__AUN_origLabel = input.label;
     }
-    input.label = micro ? "" : input.__AUN_origLabel;
+    input.label = compact ? "" : input.__AUN_origLabel;
   }
 }
 
@@ -287,7 +287,6 @@ function scheduleAutoHeightUpdate(node, attempts = 3, delay = 0) {
 function applyVisibility(node) {
   const compactLevel = getCompactLevel(node);
   const compact = compactLevel > 0;
-  const micro = compactLevel >= 2;
   const slotCountWidget = getWidget(node, "slot_count");
   const slotCount = clampSlotCount(slotCountWidget?.value ?? 3);
 
@@ -301,17 +300,13 @@ function applyVisibility(node) {
   capIntWidgetBySlotCount(node, "maximum", slotCount);
 
   let resizedInputs = ensureSlotInputs(node, slotCount);
-  if (micro) {
+  if (compact) {
     resizedInputs = pruneUnlinkedDynamicInputs(node) || resizedInputs;
   }
 
   const modeValue = String(getWidget(node, "mode")?.value ?? "");
   const alwaysVisibleInCompact = new Set(
-    micro
-      ? modeValue === "Select"
-        ? ["mode", "select"]
-        : ["mode"]
-      : ["mode", "select"],
+    modeValue === "Select" ? ["mode", "select"] : ["mode"],
   );
   const baseWidgetNames = [
     "mode",
@@ -342,7 +337,7 @@ function applyVisibility(node) {
     }
   }
 
-  applyDynamicSocketLabelMode(node, micro);
+  applyDynamicSocketLabelMode(node, compact);
 
   updateAutoHeight(node);
   scheduleAutoHeightUpdate(node);
@@ -429,7 +424,7 @@ function setupNode(node) {
 
   node.properties = node.properties || {};
   if (typeof node.properties[LEVEL_KEY] !== "number") {
-    setCompactLevel(node, node.properties[PROP_KEY] ? 1 : 1);
+    setCompactLevel(node, node.properties[PROP_KEY] ? 1 : 0);
   }
 
   const originalDblClick = node.onDblClick;
@@ -447,20 +442,12 @@ function setupNode(node) {
     options,
   ) {
     originalMenu?.apply(this, arguments);
-    const level = getCompactLevel(this);
-    const compactContent =
-      level === 0
-        ? "AUN: Compact mode"
-        : level === 1
-          ? "AUN: Micro mode"
-          : "AUN: Show all controls";
     options.push({
-      content: compactContent,
-      callback: () => {
-        const next = (getCompactLevel(this) + 1) % 3;
-        setCompactLevel(this, next);
-        applyVisibility(this);
-      },
+      content:
+        getCompactLevel(this) > 0
+          ? "AUN: Show all controls"
+          : "AUN: Compact mode",
+      callback: () => toggleCompactMode(this, { force: true }),
     });
 
     options.push({

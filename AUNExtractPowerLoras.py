@@ -7,6 +7,7 @@ from .model_utils import (
     get_lora_short_name as get_lora_short_name_common,
     LORA_SHORT_NAMES,
 )
+from .aun_lora_extraction_shared import BASIC_LORA_TARGET_NAMES, extract_basic_loras_from_inputs
 
 class AUNExtractPowerLoras:
     """
@@ -55,43 +56,12 @@ class AUNExtractPowerLoras:
         s = re.sub(r"[_\-]{3,}", "--", s)
         return s
 
-    @staticmethod
     def _extract_loras_from_inputs(inputs: dict) -> list[dict]:
-        items = []
-        try:
-            # Handle rgthree's Power Lora Loader: lora_1, lora_2, etc. as dicts
-            for key, val in inputs.items():
-                k = str(key).lower()
-                if k.startswith('lora_') and isinstance(val, dict):
-                    if val.get('on', False) and 'lora' in val:
-                        items.append({
-                            'name': val.get('lora'),
-                            'strength': val.get('strength', None),
-                            'strengthTwo': val.get('strengthTwo', None),
-                        })
-            
-            # Handle standard ComfyUI LoraLoader: lora_name, strength_model, strength_clip
-            if not items:
-                lora_name = inputs.get('lora_name')
-                if lora_name and isinstance(lora_name, str):
-                    items.append({
-                        'name': lora_name,
-                        'strength': inputs.get('strength_model'),
-                        'strengthTwo': inputs.get('strength_clip'),
-                    })
-        except Exception:
-            pass
-        return items
+        return extract_basic_loras_from_inputs(inputs)
 
     @staticmethod
     def _extract_loras(prompt: Dict | None = None, extra_pnginfo: Dict | None = None) -> list[dict]:
-        target_names = {
-            "Power Lora Loader (rgthree)",
-            "RgthreePowerLoraLoader",
-            "Power Lora Loader",
-            "LoraLoader",
-            "LoraLoaderModelOnly",
-        }
+        target_names = set(BASIC_LORA_TARGET_NAMES)
         all_items: list[dict] = []
         seen: set[tuple] = set()
 

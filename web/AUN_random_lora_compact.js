@@ -43,6 +43,11 @@ function getWidget(node, name) {
   return node?.widgets?.find((w) => w?.name === name) ?? null;
 }
 
+function parsePositiveInt(value) {
+  const n = parseInt(value, 10);
+  return Number.isInteger(n) && n > 0 ? n : null;
+}
+
 function isCompact(node) {
   return !!node?.properties?.[PROP_KEY];
 }
@@ -69,10 +74,88 @@ function loraBasename(value) {
   return stripped.replace(/\.[^.]+$/, "");
 }
 
-function resolveLoraLabel(node) {
-  const last = node.__AUN_loraLastExecName;
-  if (last) return last;
+function normalizeNodeId(raw) {
+  if (raw == null) return null;
+  if (Array.isArray(raw)) return raw.length ? normalizeNodeId(raw[0]) : null;
+  if (typeof raw === "object") {
+    if (raw.node_id != null) return normalizeNodeId(raw.node_id);
+    if (raw.id != null) return normalizeNodeId(raw.id);
+  }
 
+  const text = String(raw).trim();
+  if (!text) return null;
+  if (/^\d+$/.test(text)) return Number(text);
+  return text;
+}
+
+function findGraphNodeByEventId(rawNodeId) {
+  const graph = app?.graph;
+  if (!graph) return null;
+
+  const normalized = normalizeNodeId(rawNodeId);
+  if (normalized == null) return null;
+
+  const direct = graph.getNodeById(normalized);
+  if (direct) return direct;
+
+  const numeric = Number(normalized);
+  if (Number.isFinite(numeric)) {
+    const byNumeric = graph.getNodeById(numeric);
+    if (byNumeric) return byNumeric;
+  }
+
+  const target = String(normalized);
+  const nodes = Array.isArray(graph._nodes) ? graph._nodes : [];
+  return nodes.find((n) => String(n?.id) === target) ?? null;
+}
+
+function forceRedraw(node) {
+  node?.setDirtyCanvas?.(true, true);
+  app?.graph?.setDirtyCanvas?.(true, true);
+  app?.canvas?.setDirty?.(true, true);
+}
+
+function isTargetNode(node) {
+  if (!node) return false;
+  return node.comfyClass === NODE_TYPE || node.type === NODE_TYPE;
+}
+
+function applyExecutionPayload(node, message) {
+  if (!isTargetNode(node) || !message) return;
+
+  const readFirst = (v) => {
+    if (v == null) return null;
+    if (Array.isArray(v)) return readFirst(v[0]);
+    return String(v);
+  };
+
+  const parsedIndex =
+    parsePositiveInt(readFirst(message?.index)) ??
+    parsePositiveInt(readFirst(message?.[2]));
+  if (parsedIndex != null) {
+    node.__AUN_loraLastExecIndex = parsedIndex;
+  }
+
+  const rawName =
+    readFirst(message?.selected_lora) ??
+    readFirst(message?.[1]) ??
+    readFirst(message?.prefixed_label) ??
+    readFirst(message?.[3]);
+  const parsedName = loraBasename(rawName);
+  if (parsedName) {
+    node.__AUN_loraLastExecName = parsedName;
+  }
+
+  const triggerWords =
+    readFirst(message?.trigger_words) ?? readFirst(message?.[4]);
+  if (triggerWords != null) {
+    node.__AUN_loraLastExecTrigger = String(triggerWords).trim();
+  }
+
+  forceRedraw(node);
+}
+
+function resolveLoraLabel(node) {
   const mode = getWidget(node, "mode")?.value ?? "";
   if (mode === "Select") {
     const selectW = getWidget(node, "select");
@@ -81,6 +164,16 @@ function resolveLoraLabel(node) {
     const base = loraBasename(loraW?.value);
     if (base) return base;
   }
+
+  const execIdx = parsePositiveInt(node?.__AUN_loraLastExecIndex);
+  if (execIdx != null) {
+    const loraW = getWidget(node, `lora_${execIdx}`);
+    const base = loraBasename(loraW?.value);
+    if (base) return base;
+  }
+
+  const last = node.__AUN_loraLastExecName;
+  if (last) return last;
   return null;
 }
 
@@ -195,6 +288,58 @@ function applyWidgetHiddenState(widget, hidden) {
   if (!widget) return;
   widget.hidden = hidden;
   widget.__AUN_visible = !hidden;
+}
+
+function hookWidgetRedraw(node, widgetName) {
+  const widget = getWidget(node, widgetName);
+  if (!widget || widget.__AUN_loraRedrawHooked) return;
+  const original = widget.callback;
+  widget.callback = function callback(value) {
+    original?.call(widget, value);
+    forceRedraw(node);
+  };
+  widget.__AUN_loraRedrawHooked = true;
+}
+
+function startSelectLiveMonitor(node) {
+  if (!node || node.__AUN_loraSelectMonitorId) return;
+  let lastSignature = "";
+
+  const readSignature = () => {
+    const mode = String(getWidget(node, "mode")?.value ?? "");
+    const select = String(getWidget(node, "select")?.value ?? "");
+    const idx = Number(select) || 1;
+    const selectedLora = String(getWidget(node, `lora_${idx}`)?.value ?? "");
+    return `${mode}|${select}|${selectedLora}`;
+  };
+
+  const check = () => {
+    if (!node || node.type === undefined) {
+      if (node?.__AUN_loraSelectMonitorId) {
+        clearInterval(node.__AUN_loraSelectMonitorId);
+        node.__AUN_loraSelectMonitorId = null;
+      }
+      return;
+    }
+
+    const signature = readSignature();
+    if (signature !== lastSignature) {
+      lastSignature = signature;
+      forceRedraw(node);
+    }
+  };
+
+  node.__AUN_loraSelectMonitorId = setInterval(check, 150);
+  setTimeout(check, 0);
+
+  const originalOnRemoved = node.onRemoved;
+  node.onRemoved = function onRemoved() {
+    if (node.__AUN_loraSelectMonitorId) {
+      clearInterval(node.__AUN_loraSelectMonitorId);
+      node.__AUN_loraSelectMonitorId = null;
+    }
+    return originalOnRemoved?.apply(this, arguments);
+  };
 }
 
 function updateAutoHeight(node) {
@@ -347,24 +492,6 @@ function setupNode(node) {
     });
   };
 
-  // Track last-executed LoRA name from execution payload.
-  const originalOnExecuted = node.onExecuted;
-  node.onExecuted = function onExecuted(message) {
-    originalOnExecuted?.apply(this, arguments);
-    const readFirst = (v) => {
-      if (v == null) return null;
-      if (Array.isArray(v)) return readFirst(v[0]);
-      return String(v);
-    };
-    const rawName =
-      readFirst(message?.selected_lora) ?? readFirst(message?.[1]);
-    const base = loraBasename(rawName);
-    if (base) {
-      this.__AUN_loraLastExecName = base;
-      this.setDirtyCanvas?.(true, true);
-    }
-  };
-
   // Draw compact status footer.
   const originalDrawFg = node.onDrawForeground;
   node.onDrawForeground = function onDrawForeground(ctx) {
@@ -373,14 +500,17 @@ function setupNode(node) {
 
     const mode = getWidget(this, "mode")?.value ?? "";
     const label = resolveLoraLabel(this);
+    const execIdx = parsePositiveInt(this.__AUN_loraLastExecIndex);
     let labelText;
     if (mode === "None") {
       labelText = "\u2014 passthrough \u2014";
     } else if (label) {
-      if (!this.__AUN_loraLastExecName && mode === "Select") {
+      if (mode === "Select") {
         const selectW = getWidget(this, "select");
         const idx = Number(selectW?.value) || 1;
         labelText = `${idx}: ${label}`;
+      } else if (execIdx != null) {
+        labelText = `${execIdx}: ${label}`;
       } else {
         labelText = label;
       }
@@ -430,6 +560,12 @@ function setupNode(node) {
     modeWidget.__AUN_loraHooked = true;
   }
 
+  hookWidgetRedraw(node, "select");
+  for (let i = 1; i <= 10; i += 1) {
+    hookWidgetRedraw(node, `lora_${i}`);
+  }
+  startSelectLiveMonitor(node);
+
   applyCompact(node);
 }
 
@@ -440,10 +576,8 @@ app.registerExtension({
     api.addEventListener("AUN_random_lora_selected", ({ detail }) => {
       if (!detail || !app?.graph) return;
 
-      const nodeId = detail.node_id;
-      const node =
-        app.graph.getNodeById(Number(nodeId)) || app.graph.getNodeById(nodeId);
-      if (!node || node.comfyClass !== NODE_TYPE) return;
+      const node = findGraphNodeByEventId(detail.node_id);
+      if (!isTargetNode(node)) return;
 
       node.__AUN_loraLastExecName = loraBasename(detail.selected_lora);
       node.__AUN_loraLastExecTrigger = String(
@@ -454,15 +588,31 @@ app.registerExtension({
         ? strength
         : null;
       node.__AUN_loraLastExecApplied = !!detail.apply_lora;
+      const detailIndex = parsePositiveInt(detail.index);
+      if (detailIndex != null) {
+        node.__AUN_loraLastExecIndex = detailIndex;
+      }
       if (detail.mode != null) {
         node.__AUN_loraLastExecMode = String(detail.mode);
       }
-      app.graph.setDirtyCanvas(true, true);
+      forceRedraw(node);
     });
   },
 
+  async beforeRegisterNodeDef(nodeType, nodeData) {
+    if (!nodeData || nodeData.name !== NODE_TYPE) return;
+    if (nodeType.prototype.__AUN_loraProtoExecHooked) return;
+
+    const originalOnExecuted = nodeType.prototype.onExecuted;
+    nodeType.prototype.onExecuted = function onExecuted(message) {
+      originalOnExecuted?.apply(this, arguments);
+      applyExecutionPayload(this, message);
+    };
+    nodeType.prototype.__AUN_loraProtoExecHooked = true;
+  },
+
   nodeCreated(node) {
-    if (node.comfyClass !== NODE_TYPE) return;
+    if (!isTargetNode(node)) return;
     setupNode(node);
   },
 

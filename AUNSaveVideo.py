@@ -46,6 +46,7 @@ from .model_utils import (
     SCHEDULER_SHORT_NAMES,
     LORA_SHORT_NAMES,
 )
+from .aun_lora_extraction_shared import BASIC_LORA_TARGET_NAMES, extract_basic_loras_from_inputs
 
 import numpy as np
 
@@ -595,41 +596,11 @@ class AUNSaveVideo():
 
     @staticmethod
     def _extract_loras_from_inputs(inputs: dict) -> list[dict]:
-        items = []
-        try:
-            # Handle rgthree's Power Lora Loader: lora_1, lora_2, etc. as dicts
-            for key, val in inputs.items():
-                k = str(key).lower()
-                if k.startswith('lora_') and isinstance(val, dict):
-                    if val.get('on', False) and 'lora' in val:
-                        items.append({
-                            'name': val.get('lora'),
-                            'strength': val.get('strength', None),
-                            'strengthTwo': val.get('strengthTwo', None),
-                        })
-            
-            # Handle standard ComfyUI LoraLoader: lora_name, strength_model, strength_clip
-            if not items:
-                lora_name = inputs.get('lora_name')
-                if lora_name and isinstance(lora_name, str):
-                    items.append({
-                        'name': lora_name,
-                        'strength': inputs.get('strength_model'),
-                        'strengthTwo': inputs.get('strength_clip'),
-                    })
-        except Exception:
-            pass
-        return items
+        return extract_basic_loras_from_inputs(inputs)
 
     @staticmethod
     def _extract_loras(prompt: Dict | None = None, extra_pnginfo: Dict | None = None) -> list[dict]:
-        target_names = {
-            "Power Lora Loader (rgthree)",
-            "RgthreePowerLoraLoader",
-            "Power Lora Loader",
-            "LoraLoader",
-            "LoraLoaderModelOnly",
-        }
+        target_names = set(BASIC_LORA_TARGET_NAMES)
         all_items: list[dict] = []
         seen: set[tuple] = set()
 
@@ -1007,7 +978,7 @@ class AUNSaveVideo():
         _loras_sidecar = ""
         if _lora_power_lines:
             _formatted = "\n".join(line.strip() for line in _lora_power_lines)
-            _loras_sidecar = f"PowerLoraLoader loras:\n{_formatted}".strip()
+            _loras_sidecar = _formatted.strip()
 
         # Extract positive/negative prompts for sidecar
         _pos_prompt, _neg_prompt = AUNSaveVideo._extract_text_prompts(prompt, extra_pnginfo)

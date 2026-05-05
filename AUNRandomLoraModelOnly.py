@@ -123,7 +123,7 @@ class AUNRandomLoraModelOnly:
         "MODEL",
         "selected_lora",
         "index",
-        "prefixed_label",
+        "label",
         "trigger_words",
         "prefixed_trigger_prompt",
     )
@@ -197,6 +197,19 @@ class AUNRandomLoraModelOnly:
     def _is_empty_slot(self, value):
         return not value or value == "None"
 
+    def _normalize_node_id(self, unique_id):
+        value = unique_id
+        if isinstance(value, (list, tuple)) and value:
+            value = value[0]
+        if isinstance(value, dict):
+            value = value.get("node_id", value.get("id", value))
+        text = str(value or "").strip()
+        if not text:
+            return None
+        if text.isdigit():
+            return int(text)
+        return text
+
     def _emit_selected_lora(
         self,
         unique_id,
@@ -212,11 +225,9 @@ class AUNRandomLoraModelOnly:
         try:
             from server import PromptServer  # type: ignore[import-not-found]
 
-            node_id = (
-                unique_id[0]
-                if isinstance(unique_id, (list, tuple)) and unique_id
-                else unique_id
-            )
+            node_id = self._normalize_node_id(unique_id)
+            if node_id is None:
+                return
             PromptServer.instance.send_sync(
                 "AUN_random_lora_selected",
                 {
@@ -301,7 +312,7 @@ class AUNRandomLoraModelOnly:
                     strength_model,
                     apply_lora,
                 )
-                return (model, "None", 0, "0-none", "", str(base_prompt or ""))
+                return (model, "None", 0, "none", "", str(base_prompt or ""))
 
         selected_name = slots[index - 1] if 1 <= index <= slot_count else "None"
         selected_trigger = triggers[index - 1] if 1 <= index <= len(triggers) else ""
@@ -316,7 +327,7 @@ class AUNRandomLoraModelOnly:
                 strength_model,
                 apply_lora,
             )
-            return (model, "None", 0, "0-none", "", str(base_prompt or ""))
+            return (model, "None", 0, "none", "", str(base_prompt or ""))
 
         base = selected_name.split("/")[-1].split("\\")[-1]
         for ext in (".safetensors", ".ckpt", ".pt", ".bin"):
@@ -324,7 +335,7 @@ class AUNRandomLoraModelOnly:
                 base = base[: -len(ext)]
                 break
 
-        prefixed_label = f"{index}-{base}"
+        label = base
         if not bool(apply_lora):
             self._emit_selected_lora(
                 unique_id,
@@ -339,7 +350,7 @@ class AUNRandomLoraModelOnly:
                 model,
                 selected_name,
                 index,
-                prefixed_label,
+                label,
                 selected_trigger,
                 composed_prompt,
             )
@@ -359,7 +370,7 @@ class AUNRandomLoraModelOnly:
                 model,
                 selected_name,
                 index,
-                f"{index}-missing",
+                "missing",
                 selected_trigger,
                 composed_prompt,
             )
@@ -387,7 +398,7 @@ class AUNRandomLoraModelOnly:
                 model,
                 selected_name,
                 index,
-                f"{index}-error",
+                "error",
                 selected_trigger,
                 composed_prompt,
             )
@@ -404,7 +415,7 @@ class AUNRandomLoraModelOnly:
             loaded_model,
             selected_name,
             index,
-            prefixed_label,
+            label,
             selected_trigger,
             composed_prompt,
         )

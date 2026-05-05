@@ -33,9 +33,9 @@ For each slot `N`:
 
 ## Compact UI notes
 
-- The node supports Normal / Compact / Micro display modes in the frontend.
-- Compact modes show a footer with the current slot and label.
-- In Micro mode, unlinked slot inputs are pruned from the canvas for a smaller footprint.
+- The node supports Normal and Compact display modes in the frontend.
+- Compact mode shows a footer with the current slot and label.
+- Compact mode also prunes unlinked slot inputs from the canvas and hides dynamic socket labels for a smaller footprint.
 
 ## Common setups
 
