@@ -1,4 +1,5 @@
 import { app } from "../../scripts/app.js";
+import { openLoraInfoDialog } from "./aun_lora_info_shared.js";
 
 const NODE_TYPE = "AUNLoraStackWithTriggersModelClip";
 const PROP_KEY = "_AUN_compactMode";
@@ -34,6 +35,10 @@ function isTargetNode(node) {
 
 function isCompact(node) {
   return !!node?.properties?.[PROP_KEY];
+}
+
+function isNodeCollapsed(node) {
+  return !!node?.flags?.collapsed;
 }
 
 function setCompact(node, compact) {
@@ -90,7 +95,7 @@ function ensureCompactRowStyles() {
       position: absolute;
       z-index: 12;
       display: none;
-      grid-template-columns: minmax(0, 1fr) 34px 34px 34px;
+      grid-template-columns: minmax(0, 1fr) 64px 64px 34px;
       gap: 4px;
       align-items: center;
       padding: 1px 0;
@@ -103,14 +108,16 @@ function ensureCompactRowStyles() {
       overflow: hidden;
     }
     .AUN-lora-stack-row[data-hide-clip="true"] {
-      grid-template-columns: minmax(0, 1fr) 38px 34px;
+      grid-template-columns: minmax(0, 1fr) 64px 34px;
     }
     .AUN-lora-stack-row .AUN-lora-label {
       width: 100%;
       min-width: 0;
       height: 20px;
-      display: flex;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 16px;
       align-items: center;
+      gap: 4px;
       padding: 0 6px;
       border: 1px solid rgba(255,255,255,0.12);
       border-radius: 5px;
@@ -123,6 +130,70 @@ function ensureCompactRowStyles() {
       white-space: nowrap;
       text-overflow: ellipsis;
     }
+    .AUN-lora-stack-row .AUN-lora-label-text {
+      min-width: 0;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+    .AUN-lora-stack-row .AUN-lora-info-btn {
+      width: 16px;
+      height: 16px;
+      padding: 0;
+      border: 1px solid rgba(150, 200, 255, 0.28);
+      border-radius: 999px;
+      background: rgba(110, 170, 240, 0.16);
+      color: #edf6ff;
+      font: 10px/1 sans-serif;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+      transition: background 120ms ease, border-color 120ms ease, transform 120ms ease;
+    }
+    .AUN-lora-stack-row .AUN-lora-info-btn:hover {
+      background: rgba(110, 170, 240, 0.24);
+      border-color: rgba(181, 218, 255, 0.38);
+      transform: translateY(-1px);
+    }
+    .AUN-lora-stack-row .AUN-lora-info-btn:focus-visible {
+      outline: 1px solid rgba(188, 220, 255, 0.9);
+      outline-offset: 1px;
+    }
+    .AUN-lora-stack-row .AUN-strength-control {
+      width: 100%;
+      min-width: 0;
+      height: 20px;
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+    }
+    .AUN-lora-stack-row .AUN-strength-btn {
+      width: 12px;
+      min-width: 12px;
+      height: 20px;
+      padding: 0;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 4px;
+      background: #242424;
+      color: #d8d8d8;
+      box-sizing: border-box;
+      font: 9px sans-serif;
+      line-height: 1;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+    }
+    .AUN-lora-stack-row .AUN-strength-btn:active {
+      background: #2d2d2d;
+    }
+    .AUN-lora-stack-row .AUN-model-input,
+    .AUN-lora-stack-row .AUN-clip-input,
     .AUN-lora-stack-row select,
     .AUN-lora-stack-row input[type="number"] {
       width: 100%;
@@ -191,7 +262,8 @@ function ensureCompactRowStyles() {
     .AUN-lora-stack-row .AUN-clip-input {
       display: block;
     }
-    .AUN-lora-stack-row[data-hide-clip="true"] .AUN-clip-input {
+    .AUN-lora-stack-row[data-hide-clip="true"] .AUN-clip-input,
+    .AUN-lora-stack-row[data-hide-clip="true"] .AUN-clip-control {
       display: none;
     }
   `;
@@ -203,6 +275,42 @@ function setWidgetValue(widget, value) {
   if (!widget) return;
   widget.value = value;
   widget.callback?.call(widget, value);
+}
+
+function appendTriggerWord(node, slotIndex, word) {
+  const widget = getWidget(node, `trigger_${slotIndex}`);
+  const text = String(word || "").trim();
+  if (!widget || !text) {
+    throw new Error("No trigger field available for this LoRA slot.");
+  }
+  const current = String(widget.value ?? "").trim();
+  const parts = current
+    ? current
+        .split(",")
+        .map((part) => part.trim())
+        .filter(Boolean)
+    : [];
+  if (parts.some((part) => part.toLowerCase() === text.toLowerCase())) {
+    return `"${text}" is already in the trigger words.`;
+  }
+  const nextValue = parts.length ? `${current}, ${text}` : text;
+  setWidgetValue(widget, nextValue);
+  applyCompact(node);
+  forceRedraw(node);
+  return `Inserted "${text}" into trigger words.`;
+}
+
+function syncHiddenClipStrengths(node) {
+  if (!isTargetNode(node) || showClipStrengthInCompact(node)) return;
+  for (let i = 1; i <= MAX_SLOTS; i += 1) {
+    const modelWidget = getWidget(node, `strength_model_${i}`);
+    const clipWidget = getWidget(node, `strength_clip_${i}`);
+    if (!modelWidget || !clipWidget) continue;
+    const nextValue = Number(modelWidget.value);
+    if (!Number.isFinite(nextValue)) continue;
+    if (Number(clipWidget.value) === nextValue) continue;
+    setWidgetValue(clipWidget, nextValue);
+  }
 }
 
 function formatCompactLoraLabel(value) {
@@ -223,6 +331,12 @@ function clampNumber(value, min, max) {
   return next;
 }
 
+function truncateToDecimals(value, decimals) {
+  if (!Number.isFinite(value)) return value;
+  const factor = Math.pow(10, decimals);
+  return Math.trunc(value * factor) / factor;
+}
+
 function roundToStep(value, step) {
   if (!Number.isFinite(step) || step <= 0) return value;
   return Math.round(value / step) * step;
@@ -238,59 +352,167 @@ function buildCompactRow(node, slotIndex) {
   loraLabel.className = "AUN-lora-label";
   loraLabel.title = `LoRA ${slotIndex}`;
 
+  const loraLabelText = document.createElement("span");
+  loraLabelText.className = "AUN-lora-label-text";
+
+  const infoButton = document.createElement("button");
+  infoButton.type = "button";
+  infoButton.className = "AUN-lora-info-btn";
+  infoButton.textContent = "i";
+  infoButton.title = `Show LoRA info ${slotIndex}`;
+
+  loraLabel.append(loraLabelText, infoButton);
+
+  const strengthModelControl = document.createElement("div");
+  strengthModelControl.className = "AUN-strength-control";
+
+  const strengthModelDec = document.createElement("button");
+  strengthModelDec.type = "button";
+  strengthModelDec.className = "AUN-strength-btn";
+  strengthModelDec.textContent = "-";
+  strengthModelDec.title = `Decrease model strength ${slotIndex}`;
+
   const strengthModel = document.createElement("input");
-  strengthModel.type = "number";
-  strengthModel.step = "0.01";
+  strengthModel.type = "text";
+  strengthModel.inputMode = "decimal";
+  strengthModel.pattern = "^\\d*(\\.\\d{0,2})?$";
   strengthModel.className = "AUN-model-input";
   strengthModel.title = `Model strength ${slotIndex}`;
 
+  const strengthModelInc = document.createElement("button");
+  strengthModelInc.type = "button";
+  strengthModelInc.className = "AUN-strength-btn";
+  strengthModelInc.textContent = "+";
+  strengthModelInc.title = `Increase model strength ${slotIndex}`;
+
+  strengthModelControl.append(
+    strengthModelDec,
+    strengthModel,
+    strengthModelInc,
+  );
+
+  const strengthClipControl = document.createElement("div");
+  strengthClipControl.className = "AUN-strength-control";
+
   const strengthClip = document.createElement("input");
-  strengthClip.type = "number";
-  strengthClip.step = "0.01";
+  strengthClip.type = "text";
+  strengthClip.inputMode = "decimal";
+  strengthClip.pattern = "^\\d*(\\.\\d{0,2})?$";
   strengthClip.className = "AUN-clip-input";
   strengthClip.title = `Clip strength ${slotIndex}`;
+
+  const strengthClipDec = document.createElement("button");
+  strengthClipDec.type = "button";
+  strengthClipDec.className = "AUN-strength-btn";
+  strengthClipDec.textContent = "-";
+  strengthClipDec.title = `Decrease clip strength ${slotIndex}`;
+
+  const strengthClipInc = document.createElement("button");
+  strengthClipInc.type = "button";
+  strengthClipInc.className = "AUN-strength-btn";
+  strengthClipInc.textContent = "+";
+  strengthClipInc.title = `Increase clip strength ${slotIndex}`;
+
+  strengthClipControl.append(strengthClipDec, strengthClip, strengthClipInc);
+  strengthClipControl.classList.add("AUN-clip-control");
 
   const enabled = document.createElement("input");
   enabled.type = "checkbox";
   enabled.title = `Enable slot ${slotIndex}`;
 
-  row.append(loraLabel, strengthModel, strengthClip, enabled);
+  row.append(loraLabel, strengthModelControl, strengthClipControl, enabled);
   document.body.appendChild(row);
 
-  for (const inputEl of [row, strengthModel, strengthClip, enabled]) {
-    for (const eventName of [
-      "pointerdown",
-      "pointerup",
-      "mousedown",
-      "mouseup",
-      "click",
-      "dblclick",
-      "contextmenu",
-      "wheel",
-    ]) {
-      inputEl.addEventListener(eventName, stopCanvasEvent);
-    }
+  // Only block pointer/mouse events on the row, not the input fields
+  for (const eventName of [
+    "pointerdown",
+    "pointerup",
+    "mousedown",
+    "mouseup",
+    "click",
+    "dblclick",
+    "contextmenu",
+    "wheel",
+  ]) {
+    row.addEventListener(eventName, stopCanvasEvent);
   }
 
+  const openInfo = async (event) => {
+    stopCanvasEvent(event);
+    event?.preventDefault?.();
+    const loraValue = String(
+      getWidget(node, `lora_${slotIndex}`)?.value ?? "None",
+    );
+    if (!loraValue || loraValue === "None") return;
+    await openLoraInfoDialog(loraValue, {
+      insertWord: (word) => appendTriggerWord(node, slotIndex, word),
+    });
+  };
+
+  infoButton.addEventListener("pointerdown", (event) => {
+    stopCanvasEvent(event);
+    event.preventDefault?.();
+  });
+  infoButton.addEventListener("click", openInfo);
+
   const bindNumberInput = (inputEl, widgetName) => {
+    // Format value to always show two decimals
+    function formatValue(val) {
+      const num = Number(val);
+      return Number.isFinite(num) ? num.toFixed(2) : "";
+    }
+
+    const adjustValue = (direction) => {
+      const widget = getWidget(node, widgetName);
+      const step = 0.01;
+      const min = Number(widget?.options?.min);
+      const max = Number(widget?.options?.max);
+      const currentValue = Number(widget?.value ?? inputEl.value ?? 0);
+      const baseValue = Number.isFinite(currentValue) ? currentValue : 0;
+      const nextValue = clampNumber(
+        truncateToDecimals(baseValue + step * direction, 2),
+        min,
+        max,
+      );
+      setWidgetValue(widget, nextValue);
+      inputEl.value = formatValue(nextValue);
+      applyCompact(node);
+    };
+
     const commitValue = (rawValue) => {
       const widget = getWidget(node, widgetName);
-      const parsed = Number(rawValue);
-      const step = Number(widget?.options?.step ?? inputEl.step ?? 0.01);
+      // Accept only valid float input (allow leading/trailing dot, but parse as float)
+      let parsed = parseFloat(rawValue);
+      const step = Number(widget?.options?.step ?? 0.01);
       const min = Number(widget?.options?.min);
       const max = Number(widget?.options?.max);
       const fallback = Number(widget?.value ?? 0);
-      const nextValue = Number.isFinite(parsed)
-        ? clampNumber(roundToStep(parsed, step), min, max)
+      // Truncate to two decimals instead of rounding
+      let nextValue = Number.isFinite(parsed)
+        ? clampNumber(truncateToDecimals(parsed, 2), min, max)
         : fallback;
       setWidgetValue(widget, nextValue);
-      inputEl.value = String(nextValue);
+      inputEl.value = formatValue(nextValue);
     };
 
     inputEl.addEventListener("input", () => {
-      const parsed = Number(inputEl.value);
-      if (!Number.isFinite(parsed)) return;
-      commitValue(inputEl.value);
+      // Allow any valid float input, including partials (".", ".5", etc.)
+      const val = inputEl.value;
+      // Only sanitize if truly invalid (multiple dots, letters, etc.)
+      if (/^\d*\.?\d*$/.test(val)) {
+        // Let user type freely; do not commit yet
+      } else {
+        // Remove invalid chars except first dot
+        let sanitized = val.replace(/[^\d.]/g, "");
+        // Only allow one dot
+        const firstDot = sanitized.indexOf(".");
+        if (firstDot !== -1) {
+          sanitized =
+            sanitized.slice(0, firstDot + 1) +
+            sanitized.slice(firstDot + 1).replace(/\./g, "");
+        }
+        inputEl.value = sanitized;
+      }
     });
 
     inputEl.addEventListener("change", () => {
@@ -299,12 +521,17 @@ function buildCompactRow(node, slotIndex) {
     });
 
     inputEl.addEventListener("keydown", (event) => {
-      stopCanvasEvent(event);
       if (event.key === "Enter") {
+        stopCanvasEvent(event);
         commitValue(inputEl.value);
         applyCompact(node);
         inputEl.blur();
       }
+      // Allow all other keys (digits, decimal, arrows, backspace, etc.)
+    });
+
+    inputEl.addEventListener("blur", () => {
+      commitValue(inputEl.value);
     });
 
     inputEl.addEventListener("focus", () => {
@@ -372,6 +599,8 @@ function buildCompactRow(node, slotIndex) {
       window.addEventListener("blur", onCancel);
       inputEl.addEventListener("lostpointercapture", onCancel);
     });
+
+    return { adjustValue };
   };
 
   enabled.addEventListener("change", () => {
@@ -379,13 +608,38 @@ function buildCompactRow(node, slotIndex) {
     applyCompact(node);
   });
 
-  bindNumberInput(strengthModel, `strength_model_${slotIndex}`);
-  bindNumberInput(strengthClip, `strength_clip_${slotIndex}`);
+  const modelBinding = bindNumberInput(
+    strengthModel,
+    `strength_model_${slotIndex}`,
+  );
+  const clipBinding = bindNumberInput(
+    strengthClip,
+    `strength_clip_${slotIndex}`,
+  );
+
+  const bindStepButton = (button, handler) => {
+    button.addEventListener("pointerdown", (event) => {
+      stopCanvasEvent(event);
+      event.preventDefault?.();
+    });
+    button.addEventListener("click", (event) => {
+      stopCanvasEvent(event);
+      event.preventDefault?.();
+      handler();
+    });
+  };
+
+  bindStepButton(strengthModelDec, () => modelBinding.adjustValue(-1));
+  bindStepButton(strengthModelInc, () => modelBinding.adjustValue(1));
+  bindStepButton(strengthClipDec, () => clipBinding.adjustValue(-1));
+  bindStepButton(strengthClipInc, () => clipBinding.adjustValue(1));
 
   return {
     slotIndex,
     root: row,
     loraLabel,
+    loraLabelText,
+    infoButton,
     strengthModel,
     strengthClip,
     enabled,
@@ -415,12 +669,24 @@ function syncCompactRow(node, row, showClipStrength) {
   const strengthClipWidget = getWidget(node, `strength_clip_${slotIndex}`);
   const enabledWidget = getWidget(node, `enabled_${slotIndex}`);
   const loraValue = String(loraWidget?.value ?? "None");
+  const hasLora = !!loraValue && loraValue !== "None";
 
   row.root.dataset.hideClip = showClipStrength ? "false" : "true";
-  row.loraLabel.textContent = formatCompactLoraLabel(loraValue);
+  row.loraLabelText.textContent = formatCompactLoraLabel(loraValue);
   row.loraLabel.title = loraValue;
-  row.strengthModel.value = String(strengthModelWidget?.value ?? "1");
-  row.strengthClip.value = String(strengthClipWidget?.value ?? "1");
+  row.infoButton.title = hasLora
+    ? `Show LoRA info for ${loraValue}`
+    : "No LoRA selected";
+  row.infoButton.style.visibility = hasLora ? "visible" : "hidden";
+  // Only update value if input is not focused (prevents overwriting user typing)
+  if (document.activeElement !== row.strengthModel) {
+    row.strengthModel.value = Number(strengthModelWidget?.value ?? 1).toFixed(
+      2,
+    );
+  }
+  if (document.activeElement !== row.strengthClip) {
+    row.strengthClip.value = Number(strengthClipWidget?.value ?? 1).toFixed(2);
+  }
   row.enabled.checked = !!enabledWidget?.value;
 }
 
@@ -428,11 +694,12 @@ function positionCompactRows(node, ctx) {
   if (!isTargetNode(node)) return;
   const rows = ensureCompactRows(node);
   const compact = isCompact(node);
+  const collapsed = isNodeCollapsed(node);
   const numSlots = getNumSlots(node);
   const showClipStrength = showClipStrengthInCompact(node);
   const currentWidth = node.size?.[0] ?? 360;
 
-  if (!compact || !ctx?.canvas) {
+  if (!compact || collapsed || !ctx?.canvas) {
     for (const row of rows) {
       row.root.style.display = "none";
     }
@@ -709,7 +976,9 @@ function applyCompact(node) {
   reorderWidgets(node);
   const compact = isCompact(node);
   const numSlots = getNumSlots(node);
-  const showClipStrength = !compact || showClipStrengthInCompact(node);
+  const showClipStrength = showClipStrengthInCompact(node);
+
+  syncHiddenClipStrengths(node);
 
   for (const name of STATIC_WIDGETS) {
     const widget = getWidget(node, name);
@@ -913,8 +1182,8 @@ function setupNode(node) {
     });
     options.push({
       content: showClipStrengthInCompact(this)
-        ? "AUN: Hide clip strength in compact"
-        : "AUN: Show clip strength in compact",
+        ? "AUN: Hide clip strength"
+        : "AUN: Show clip strength",
       callback: () => toggleCompactClipStrength(this),
     });
   };

@@ -121,11 +121,11 @@ class AUNRandomLoraModelOnly:
     RETURN_TYPES = ("MODEL", "STRING", "INT", "STRING", "STRING", "STRING")
     RETURN_NAMES = (
         "MODEL",
-        "selected_lora",
+        "selected lora",
         "index",
         "label",
-        "trigger_words",
-        "prefixed_trigger_prompt",
+        "trigger words",
+        "trigger + prompt",
     )
     FUNCTION = "load_random_lora"
     CATEGORY = "AUN Nodes/Utility"

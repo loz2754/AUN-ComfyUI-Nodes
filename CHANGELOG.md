@@ -10,6 +10,25 @@
 
 ### Notes
 
+## [2.1.10] - 2026-05-05
+
+### Added
+
+- Added LoRA info lookup support with a backend metadata endpoint and shared frontend dialog that can show local sidecar metadata, previews, trained words, and live Civitai hash matches.
+- Added compact-mode LoRA info buttons for `AUNRandomLoraModelOnly`, `AUNLoraStackWithTriggers`, and `AUNLoraStackWithTriggersModelClip`, including one-click insertion of trained words into trigger fields.
+
+### Changed
+
+- Renamed the trigger-related outputs on the LoRA loader/stack nodes to cleaner UI labels such as `trigger words`, `trigger + prompt`, and `prompt`.
+- Updated the stack compact UIs so model strength editing, row sizing, and compact layout restoration behave more reliably after load and resize events.
+
+### Fixed
+
+- Fixed compact LoRA stack controls so collapsed nodes hide overlay rows correctly and hidden clip-strength behavior stays in sync.
+- Fixed random LoRA compact state tracking so the frontend keeps the selected LoRA value available for runtime status and info lookup.
+
+### Notes
+
 ## [2.1.9] - 2026-05-05
 
 ### Added

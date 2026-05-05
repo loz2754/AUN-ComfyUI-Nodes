@@ -1,5 +1,6 @@
 import { api } from "../../scripts/api.js";
 import { app } from "../../scripts/app.js";
+import { openLoraInfoDialog } from "./aun_lora_info_shared.js";
 
 const NODE_TYPE = "AUNRandomLoraModelOnly";
 const PROP_KEY = "_AUN_compactMode";
@@ -7,6 +8,7 @@ const INFO_PROP_KEY = "_AUN_showLoraInfo";
 const BASE_PROMPT_MIN_HEIGHT = 96;
 const COMPACT_LABEL_HEIGHT = 28;
 const COMPACT_INFO_HEIGHT = 20;
+const INFO_BUTTON_SIZE = 18;
 
 const ALL_WIDGETS = [
   "mode",
@@ -50,6 +52,10 @@ function parsePositiveInt(value) {
 
 function isCompact(node) {
   return !!node?.properties?.[PROP_KEY];
+}
+
+function isNodeCollapsed(node) {
+  return !!node?.flags?.collapsed;
 }
 
 function setCompact(node, compact) {
@@ -145,6 +151,9 @@ function applyExecutionPayload(node, message) {
   if (parsedName) {
     node.__AUN_loraLastExecName = parsedName;
   }
+  if (rawName) {
+    node.__AUN_loraLastExecValue = rawName;
+  }
 
   const triggerWords =
     readFirst(message?.trigger_words) ?? readFirst(message?.[4]);
@@ -175,6 +184,24 @@ function resolveLoraLabel(node) {
   const last = node.__AUN_loraLastExecName;
   if (last) return last;
   return null;
+}
+
+function resolveSelectedLoraValue(node) {
+  const mode = getWidget(node, "mode")?.value ?? "";
+  if (mode === "Select") {
+    const selectW = getWidget(node, "select");
+    const idx = Number(selectW?.value) || 1;
+    return String(getWidget(node, `lora_${idx}`)?.value ?? "None");
+  }
+
+  const execIdx = parsePositiveInt(node?.__AUN_loraLastExecIndex);
+  if (execIdx != null) {
+    const value = String(getWidget(node, `lora_${execIdx}`)?.value ?? "None");
+    if (value && value !== "None") return value;
+  }
+
+  const last = String(node?.__AUN_loraLastExecValue ?? "").trim();
+  return last || "None";
 }
 
 function resolveTriggerWords(node) {
@@ -233,10 +260,168 @@ function resolveInfoText(node) {
 }
 
 function getCompactFooterHeight(node) {
-  if (!isCompact(node)) return 0;
+  if (!isCompact(node) || isNodeCollapsed(node)) return 0;
   return (
     COMPACT_LABEL_HEIGHT + (resolveInfoText(node) ? COMPACT_INFO_HEIGHT : 0)
   );
+}
+
+function setWidgetValue(widget, value) {
+  if (!widget) return;
+  widget.value = value;
+  widget.callback?.call(widget, value);
+}
+
+function resolveSelectedTriggerWidget(node) {
+  const mode = getWidget(node, "mode")?.value ?? "";
+  if (mode === "Select") {
+    const selectW = getWidget(node, "select");
+    const idx = Number(selectW?.value) || 1;
+    return getWidget(node, `trigger_${idx}`);
+  }
+
+  const execIdx = parsePositiveInt(node?.__AUN_loraLastExecIndex);
+  if (execIdx != null) {
+    const widget = getWidget(node, `trigger_${execIdx}`);
+    if (widget) return widget;
+  }
+  return null;
+}
+
+function appendTriggerWord(node, word) {
+  const widget = resolveSelectedTriggerWidget(node);
+  const text = String(word || "").trim();
+  if (!widget || !text) {
+    throw new Error(
+      "No trigger field is available for the current LoRA selection.",
+    );
+  }
+  const current = String(widget.value ?? "").trim();
+  const parts = current
+    ? current
+        .split(",")
+        .map((part) => part.trim())
+        .filter(Boolean)
+    : [];
+  if (parts.some((part) => part.toLowerCase() === text.toLowerCase())) {
+    return `"${text}" is already in the trigger words.`;
+  }
+  const nextValue = parts.length ? `${current}, ${text}` : text;
+  setWidgetValue(widget, nextValue);
+  applyCompact(node);
+  forceRedraw(node);
+  return `Inserted "${text}" into trigger words.`;
+}
+
+function ensureInfoButtonStyles() {
+  if (window.__AUNRandomLoraInfoButtonStyle) return;
+  const style = document.createElement("style");
+  style.textContent = `
+    .AUN-random-lora-info-btn {
+      position: absolute;
+      z-index: 12;
+      display: none;
+      width: ${INFO_BUTTON_SIZE}px;
+      height: ${INFO_BUTTON_SIZE}px;
+      padding: 0;
+      border: 1px solid rgba(150, 200, 255, 0.28);
+      border-radius: 999px;
+      background: rgba(110, 170, 240, 0.16);
+      color: #edf6ff;
+      font: 10px/1 sans-serif;
+      font-weight: 700;
+      cursor: pointer;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+      transition: background 120ms ease, border-color 120ms ease, transform 120ms ease;
+    }
+    .AUN-random-lora-info-btn:hover {
+      background: rgba(110, 170, 240, 0.24);
+      border-color: rgba(181, 218, 255, 0.38);
+      transform: translateY(-1px);
+    }
+    .AUN-random-lora-info-btn:focus-visible {
+      outline: 1px solid rgba(188, 220, 255, 0.9);
+      outline-offset: 1px;
+    }
+  `;
+  document.head.appendChild(style);
+  window.__AUNRandomLoraInfoButtonStyle = style;
+}
+
+function ensureInfoButton(node) {
+  ensureInfoButtonStyles();
+  if (node.__AUN_randomLoraInfoButton) return node.__AUN_randomLoraInfoButton;
+
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "AUN-random-lora-info-btn";
+  button.textContent = "i";
+  button.title = "Show LoRA info";
+
+  const stopEvent = (event) => {
+    event?.stopPropagation?.();
+    event?.preventDefault?.();
+  };
+
+  button.addEventListener("pointerdown", stopEvent);
+  button.addEventListener("click", async (event) => {
+    stopEvent(event);
+    const value = resolveSelectedLoraValue(node);
+    if (!value || value === "None") return;
+    await openLoraInfoDialog(value, {
+      insertWord: (word) => appendTriggerWord(node, word),
+    });
+  });
+
+  document.body.appendChild(button);
+  node.__AUN_randomLoraInfoButton = button;
+  return button;
+}
+
+function positionInfoButton(node, ctx) {
+  const button = ensureInfoButton(node);
+  const compact = isCompact(node);
+  const collapsed = isNodeCollapsed(node);
+  const selectedLora = resolveSelectedLoraValue(node);
+  const hasLora = !!selectedLora && selectedLora !== "None";
+  if (!compact || collapsed || !ctx?.canvas || !hasLora) {
+    button.style.display = "none";
+    return;
+  }
+
+  const footerHeight = getCompactFooterHeight(node);
+  if (!footerHeight) {
+    button.style.display = "none";
+    return;
+  }
+
+  const canvasRect = ctx.canvas.getBoundingClientRect();
+  const matrix = new DOMMatrix()
+    .scaleSelf(
+      canvasRect.width / ctx.canvas.width,
+      canvasRect.height / ctx.canvas.height,
+    )
+    .multiplySelf(ctx.getTransform());
+
+  const localLeft = (node.size?.[0] ?? 220) - INFO_BUTTON_SIZE - 10;
+  const localTop = (node.size?.[1] ?? 120) - footerHeight + 6;
+  const topLeft = new DOMPoint(localLeft, localTop).matrixTransform(matrix);
+  const bottomRight = new DOMPoint(
+    localLeft + INFO_BUTTON_SIZE,
+    localTop + INFO_BUTTON_SIZE,
+  ).matrixTransform(matrix);
+
+  button.title = `Show LoRA info for ${loraBasename(selectedLora) ?? selectedLora}`;
+  Object.assign(button.style, {
+    display: "flex",
+    left: `${canvasRect.left + topLeft.x}px`,
+    top: `${canvasRect.top + topLeft.y}px`,
+    width: `${Math.max(INFO_BUTTON_SIZE, bottomRight.x - topLeft.x)}px`,
+    height: `${Math.max(INFO_BUTTON_SIZE, bottomRight.y - topLeft.y)}px`,
+  });
 }
 
 // Make a widget return height 0 when hidden.
@@ -338,36 +523,55 @@ function startSelectLiveMonitor(node) {
       clearInterval(node.__AUN_loraSelectMonitorId);
       node.__AUN_loraSelectMonitorId = null;
     }
+    node.__AUN_randomLoraInfoButton?.remove?.();
+    node.__AUN_randomLoraInfoButton = null;
     return originalOnRemoved?.apply(this, arguments);
   };
+}
+
+function computeVisibleNodeHeight(node, width) {
+  if (!node) return null;
+  const targetWidth = Number.isFinite(width) ? width : (node.size?.[0] ?? 200);
+  const computeTarget = [targetWidth, 0];
+
+  if (typeof node.computeSize !== "function") {
+    return null;
+  }
+
+  let computed = null;
+  const allWidgets = node.widgets;
+  if (Array.isArray(allWidgets) && allWidgets.length) {
+    const visible = allWidgets.filter((widget) => !widget?.hidden);
+    if (visible.length !== allWidgets.length) {
+      node.widgets = visible;
+      try {
+        computed = node.computeSize(computeTarget);
+      } finally {
+        node.widgets = allWidgets;
+      }
+    } else {
+      computed = node.computeSize(computeTarget);
+    }
+  } else {
+    computed = node.computeSize(computeTarget);
+  }
+
+  const height = Number.isFinite(computed?.[1])
+    ? computed[1]
+    : (node.size?.[1] ?? globalThis.LiteGraph?.NODE_TITLE_HEIGHT ?? 60);
+  return Number.isFinite(height) ? height : null;
+}
+
+function getMinimumCompactHeight(node, width) {
+  const visibleHeight = computeVisibleNodeHeight(node, width);
+  if (!Number.isFinite(visibleHeight)) return null;
+  return visibleHeight + getCompactFooterHeight(node);
 }
 
 function updateAutoHeight(node) {
   if (!node) return;
   const currentWidth = node.size?.[0] ?? 200;
-  const computeTarget = [currentWidth, 0];
-  let computed = null;
-  if (typeof node.computeSize === "function") {
-    const allWidgets = node.widgets;
-    if (Array.isArray(allWidgets) && allWidgets.length) {
-      const visible = allWidgets.filter((w) => !w?.hidden);
-      if (visible.length !== allWidgets.length) {
-        node.widgets = visible;
-        try {
-          computed = node.computeSize(computeTarget);
-        } finally {
-          node.widgets = allWidgets;
-        }
-      } else {
-        computed = node.computeSize(computeTarget);
-      }
-    } else {
-      computed = node.computeSize(computeTarget);
-    }
-  }
-  const height = Number.isFinite(computed?.[1])
-    ? computed[1]
-    : (node.size?.[1] ?? globalThis.LiteGraph?.NODE_TITLE_HEIGHT ?? 60);
+  const height = computeVisibleNodeHeight(node, currentWidth);
   if (!Number.isFinite(height)) return;
 
   const finalHeight = height + getCompactFooterHeight(node);
@@ -492,11 +696,43 @@ function setupNode(node) {
     });
   };
 
+  const originalOnResize = node.onResize;
+  node.onResize = function onResize(...args) {
+    const result = originalOnResize?.apply(this, args);
+    if (this.__AUN_internalResize || !isCompact(this)) {
+      return result;
+    }
+
+    const currentWidth = Number(this.size?.[0]) || 200;
+    const currentHeight = Number(this.size?.[1]);
+    const minimumHeight = getMinimumCompactHeight(this, currentWidth);
+    if (!Number.isFinite(minimumHeight) || !Number.isFinite(currentHeight)) {
+      return result;
+    }
+
+    if (currentHeight < minimumHeight) {
+      this.__AUN_internalResize = true;
+      if (typeof this.setSize === "function") {
+        this.setSize([currentWidth, minimumHeight]);
+      } else {
+        this.size = Array.isArray(this.size)
+          ? this.size
+          : [currentWidth, minimumHeight];
+        this.size[0] = currentWidth;
+        this.size[1] = minimumHeight;
+      }
+      this.__AUN_internalResize = false;
+    }
+
+    return result;
+  };
+
   // Draw compact status footer.
   const originalDrawFg = node.onDrawForeground;
   node.onDrawForeground = function onDrawForeground(ctx) {
     originalDrawFg?.apply(this, arguments);
-    if (!isCompact(this)) return;
+    positionInfoButton(this, ctx);
+    if (!isCompact(this) || isNodeCollapsed(this)) return;
 
     const mode = getWidget(this, "mode")?.value ?? "";
     const label = resolveLoraLabel(this);
@@ -580,6 +816,7 @@ app.registerExtension({
       if (!isTargetNode(node)) return;
 
       node.__AUN_loraLastExecName = loraBasename(detail.selected_lora);
+      node.__AUN_loraLastExecValue = String(detail.selected_lora ?? "None");
       node.__AUN_loraLastExecTrigger = String(
         detail.trigger_words ?? "",
       ).trim();

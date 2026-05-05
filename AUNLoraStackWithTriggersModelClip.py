@@ -118,9 +118,9 @@ class AUNLoraStackWithTriggersModelClip:
         "MODEL",
         "CLIP",
         "labels",
-        "trigger_words",
-        "trigger_prompt",
-        "prompt_without_triggers",
+        "trigger words",
+        "trigger + prompt",
+        "prompt",
     )
     FUNCTION = "load_stack"
     CATEGORY = "AUN Nodes/Utility"
