@@ -39,9 +39,11 @@ For each slot `i` (1–20):
 - When a group appears in multiple slots, **Active wins** over inactive.
 - `toggle_restriction` can override your switches at run-time for iterate/random use cases.
 - In `index-driven` mode, the external `Index` input determines the active slot and the visible toggles mirror that state.
+- When switching back to `manual`, any connected `Index` link is forcibly disconnected so the manual slot/group controls fully take over again.
 - `toggle_restriction` only applies in `manual` mode.
 - `use_all_groups` is a manual-mode workflow; it is disabled when `control_mode = index-driven`.
 - This node drives updates through ComfyUI’s frontend so changes are applied immediately to the canvas.
+- Compact mode now keeps connected widget-backed inputs aligned correctly, so external `Index` control and promoted group inputs stay attached to the intended sockets.
 
 ## Tips
 

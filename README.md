@@ -14,7 +14,7 @@ _AUN Node state controllers orchestrate bypass, mute, and collapse states so you
 
 - AUN Node Controller (`AUNMultiUniversal`) is a universal bypass/mute/collapse controller (1–20 slots). Nodes are chosen by ID or titles. It can take on the role of any of the more specific Node Control nodes.
 - AUN Group Controller (`AUNMultiGroupUniversal`) targets ComfyUI Groups (by group name) rather than individual nodes, with various filtering options.
-- Both AUN Node Controller and AUN Group Controller can also run in `index-driven` mode, so another node can select the active slot via an `INT` output.
+- Both AUN Node Controller and AUN Group Controller can also run in `index-driven` mode, so another node can select the active slot via an `INT` output. Switching back to `manual` drops any existing `Index` link so the manual controls fully take over again.
 - Bypass By Title (`AUNSetBypassByTitle`) sets bypass state for nodes whose titles match any of the provided titles (one per line)
 - Mute By Title (`AUNSetMuteByTitle`) same as Bypass By Title but mute instead of bypass.
 - Group Bypasser (Multi) (`AUNSetBypassStateGroup`) set the bypass state of all nodes in groups selected from the graph.
@@ -147,7 +147,7 @@ Deprecation note: the full input-style nodes (`AUNInputs`, `AUNInputsDiffusers`,
 - Model Name Shorten (`AUNModelShorten`) takes a full model name string and outputs a shortened version suitable for filenames.
 - Model and Text Selector (`AUNRandomModelBundleSwitch`) selects one model slot and optional text/label pair using None, Select, Increment, Random, or Range modes, and also outputs the active slot index for downstream control nodes.
 - Random Any Switch (`AUNRandomAnySwitch`) randomly selects one of several connected inputs of any type and outputs it, along with the index of the selected input.
-- Random LoRA Model Loader (`AUNRandomLoraModelOnly`) selects one LoRA from up to 10 slots using Select, Increment, Random, or Range modes, applies it to the incoming model, and outputs the selected LoRA name plus trigger text.
+- Random LoRA Model Loader (`AUNRandomLoraModelOnly`) selects one LoRA from up to 10 slots using Select, Increment, Random, or Range modes, applies it to the incoming model, and outputs the selected LoRA name plus trigger text. Its `base_prompt` is available as an optional external input for prompt chaining without cluttering compact mode.
 - Random Number (`AUNRandomNumber`) generates random integers within specified range. Useful for seed variation and randomization in workflows.
 - Random Text Index Switch (`AUNRandomTextIndexSwitch`) generates an index based on the selected mode (Select: fixed value, Increment: cycling through range, Random: random within range) and uses it to select from up to 20 text inputs.
 - Random/Select INT (`AUNRandomIndexSwitch`) outputs an integer based on mode: Select for fixed value, Increment for cycling through range, Random for random value within range.

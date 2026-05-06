@@ -10,6 +10,23 @@
 
 ### Notes
 
+## [2.1.11] - 2026-05-06
+
+### Added
+
+### Changed
+
+- `AUNRandomLoraModelOnly` now exposes `base_prompt` as an optional external input instead of a required inline widget, matching the LoRA stack nodes more closely.
+- `AUNMultiUniversal` and `AUNMultiGroupUniversal` now switch cleanly between `manual` and `index-driven` control, with the frontend promoting the correct mode-specific control socket at runtime.
+
+### Fixed
+
+- Fixed the compact-mode `AUNRandomLoraModelOnly` UI so the hidden `base_prompt` no longer leaves a stray connection target outside the node body.
+- Fixed `AUNMultiUniversal` and `AUNMultiGroupUniversal` compact/widget-backed input handling so connected converted inputs stay aligned correctly in compact mode instead of jumping to the top-left or exposing unrelated hidden slot widgets.
+- Fixed `AUNMultiUniversal` and `AUNMultiGroupUniversal` mode switching so the `Index` control exposes as an `INT`, accepts external links correctly in `index-driven` mode, and forcibly disconnects when switching back to `manual`.
+
+### Notes
+
 ## [2.1.10] - 2026-05-05
 
 ### Added
@@ -46,6 +63,7 @@
 - Fixed the `AUNLoraStackWithTriggers` and `AUNLoraStackWithTriggersModelClip` frontend extensions so their load-time compact/layout restore logic only runs on their own node types, preventing unrelated node widget glitches and saved-size resets.
 
 ### Notes
+
 ## [2.1.8] - 2026-05-05
 
 ### Added

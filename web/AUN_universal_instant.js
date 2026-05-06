@@ -111,6 +111,185 @@ const ensureWidgetTracking = (node) => {
 const getAllTrackedWidgets = (node) =>
   node?.__AUN_allWidgets || node?.widgets || [];
 
+const hasNamedConnectedConvertedInput = (node, widgetName) => {
+  if (!node || !widgetName) return false;
+  const inputs = Array.isArray(node.inputs) ? node.inputs : [];
+  return inputs.some((input) => {
+    if (!input || input.name !== widgetName) return false;
+    return !!input.widget && input.link != null;
+  });
+};
+
+const normalizeNamedWidgetInputType = (node, widgetName, type) => {
+  if (!node || !widgetName || !type) return;
+  const inputs = Array.isArray(node.inputs) ? node.inputs : [];
+  inputs.forEach((input) => {
+    if (!input || input.name !== widgetName || !input.widget) return;
+    input.type = type;
+  });
+};
+
+const syncWidgetBackedInputVisibility = (node) => {
+  if (!node) return;
+  const inputs = Array.isArray(node.inputs) ? node.inputs : [];
+  inputs.forEach((input) => {
+    if (!input?.widget) return;
+    const hidden = !!input.widget.hidden;
+    input.hidden = hidden;
+    input.disabled = hidden;
+    if (hidden) {
+      if (input.__AUN_savedType == null) {
+        input.__AUN_savedType = input.type;
+      }
+      if (input.link == null) {
+        input.type = "__AUN_HIDDEN__";
+      }
+      return;
+    }
+    if (input.__AUN_savedType != null) {
+      input.type = input.__AUN_savedType;
+    }
+  });
+};
+
+const syncModeDrivenControlInputs = (node, indexDriven) => {
+  if (!node) return;
+  const inputs = Array.isArray(node.inputs) ? node.inputs : [];
+  inputs.forEach((input) => {
+    if (!input?.widget || !input?.name) return;
+
+    let shouldHide = null;
+    let visibleType = null;
+
+    if (input.name === "AllSwitch") {
+      shouldHide = !!indexDriven;
+      visibleType = "BOOLEAN";
+    } else if (input.name === "Index") {
+      shouldHide = !indexDriven;
+      visibleType = "INT";
+    }
+
+    if (shouldHide == null) return;
+
+    input.hidden = shouldHide;
+    input.disabled = shouldHide;
+    if (shouldHide) {
+      if (input.link == null) {
+        input.type = "__AUN_HIDDEN__";
+      }
+      return;
+    }
+
+    input.type = visibleType;
+  });
+};
+
+const syncModeDrivenControlInputOrder = (node) => {
+  if (!node || !Array.isArray(node.inputs)) return;
+  const originalOrder = node.inputs.slice();
+  const getOrderRank = (input, fallbackIndex) => {
+    const hidden = !!input?.hidden || !!input?.disabled;
+    const widgetOrder = input?.widget?.__AUN_order;
+    return {
+      hiddenRank: hidden ? 1 : 0,
+      widgetOrder: Number.isFinite(widgetOrder) ? widgetOrder : fallbackIndex,
+    };
+  };
+
+  node.inputs.sort((left, right) => {
+    const leftIndex = originalOrder.indexOf(left);
+    const rightIndex = originalOrder.indexOf(right);
+    const leftRank = getOrderRank(left, leftIndex);
+    const rightRank = getOrderRank(right, rightIndex);
+    if (leftRank.hiddenRank !== rightRank.hiddenRank) {
+      return leftRank.hiddenRank - rightRank.hiddenRank;
+    }
+    if (leftRank.widgetOrder !== rightRank.widgetOrder) {
+      return leftRank.widgetOrder - rightRank.widgetOrder;
+    }
+    return leftIndex - rightIndex;
+  });
+
+  const changed = originalOrder.some(
+    (input, index) => node.inputs[index] !== input,
+  );
+  if (!changed) return;
+  node.setDirtyCanvas?.(true, true);
+  node.graph?.setDirtyCanvas?.(true, true);
+  if (typeof node.updateConnectionsPos === "function") {
+    node.updateConnectionsPos();
+  }
+  if (node.graph && typeof node.graph._version === "number") {
+    node.graph._version += 1;
+  }
+};
+
+const forceDisconnectNamedInput = (node, inputName) => {
+  if (!node || !inputName || !Array.isArray(node.inputs)) return false;
+  const inputIndex = node.inputs.findIndex(
+    (input) => input?.name === inputName,
+  );
+  if (inputIndex < 0) return false;
+  const input = node.inputs[inputIndex];
+  if (input?.link == null) return false;
+
+  let disconnected = false;
+  if (typeof node.disconnectInput === "function") {
+    try {
+      disconnected = !!node.disconnectInput(inputIndex);
+    } catch (_) {
+      disconnected = false;
+    }
+  }
+
+  if (
+    !disconnected &&
+    node.graph &&
+    typeof node.graph.removeLink === "function"
+  ) {
+    try {
+      node.graph.removeLink(input.link);
+      disconnected = true;
+    } catch (_) {
+      disconnected = false;
+    }
+  }
+
+  if (!disconnected) return false;
+  node.setDirtyCanvas?.(true, true);
+  node.graph?.setDirtyCanvas?.(true, true);
+  return true;
+};
+
+const scheduleNamedWidgetInputTypeNormalization = (
+  node,
+  widgetName,
+  type,
+  delay = 0,
+  attempts = 1,
+) => {
+  if (!node || !widgetName || !type) return;
+  node.__AUN_inputTypeTimers = node.__AUN_inputTypeTimers || new Map();
+  const existing = node.__AUN_inputTypeTimers.get(widgetName);
+  if (existing) clearTimeout(existing);
+  const handle = setTimeout(() => {
+    node.__AUN_inputTypeTimers?.delete(widgetName);
+    normalizeNamedWidgetInputType(node, widgetName, type);
+    node.setDirtyCanvas?.(true, true);
+    node.graph?.setDirtyCanvas?.(true, true);
+    if (attempts > 1) {
+      scheduleNamedWidgetInputTypeNormalization(
+        node,
+        widgetName,
+        type,
+        50,
+        attempts - 1,
+      );
+    }
+  }, delay);
+  node.__AUN_inputTypeTimers.set(widgetName, handle);
+};
+
 const ensureHiddenAwareWidget = (widget) => {
   if (!widget || widget.__AUN_hiddenAware) return;
   const originalCompute =
@@ -563,6 +742,24 @@ const scheduleAutoHeightUpdate = (node, attempts = 3, delay = 0) => {
     node.__AUN_autoHeightTimer = null;
     node.__AUN_updateAutoHeight?.();
     if (attempts > 1) scheduleAutoHeightUpdate(node, attempts - 1, 50);
+  }, delay);
+};
+
+const scheduleCompactLayoutStabilization = (node, attempts = 2, delay = 0) => {
+  if (!node) return;
+  if (node.__AUN_compactLayoutTimer) {
+    clearTimeout(node.__AUN_compactLayoutTimer);
+    node.__AUN_compactLayoutTimer = null;
+  }
+  node.__AUN_compactLayoutTimer = setTimeout(() => {
+    node.__AUN_compactLayoutTimer = null;
+    node.__AUN_refreshWidgets?.();
+    node.__AUN_updateAutoHeight?.();
+    node.setDirtyCanvas?.(true, true);
+    node.graph?.setDirtyCanvas?.(true, true);
+    if (attempts > 1) {
+      scheduleCompactLayoutStabilization(node, attempts - 1, 50);
+    }
   }, delay);
 };
 
@@ -1223,6 +1420,18 @@ const refreshWidgets = function refreshWidgets() {
       : splitList(targetWidget?.value, { lowercase: targetType !== "ID" })
           .length > 0;
     const slotActive = slotSelected && slotHasTargets;
+    const hasConnectedLabelInput = hasNamedConnectedConvertedInput(
+      this,
+      `label_${slot}`,
+    );
+    const hasConnectedTargetsInput = hasNamedConnectedConvertedInput(
+      this,
+      `targets_${slot}`,
+    );
+    const hasConnectedGroupInput = hasNamedConnectedConvertedInput(
+      this,
+      `group_name_${slot}`,
+    );
     if (slotActive) activeSlotCount += 1;
     const showSlotDetails =
       withinRange &&
@@ -1259,12 +1468,22 @@ const refreshWidgets = function refreshWidgets() {
       }
     }
     if (labelWidget)
-      applyWidgetHiddenState(labelWidget, !showSlotDetails || isGroupNode);
+      applyWidgetHiddenState(
+        labelWidget,
+        (!showSlotDetails && !hasConnectedLabelInput) || isGroupNode,
+      );
     if (targetWidget)
-      applyWidgetHiddenState(targetWidget, !showSlotDetails || isGroupNode);
+      applyWidgetHiddenState(
+        targetWidget,
+        (!showSlotDetails && !hasConnectedTargetsInput) || isGroupNode,
+      );
     if (typeWidget)
       applyWidgetHiddenState(typeWidget, !showSlotDetails || isGroupNode);
-    if (groupWidget) applyWidgetHiddenState(groupWidget, !showGroupSlot);
+    if (groupWidget)
+      applyWidgetHiddenState(
+        groupWidget,
+        !showGroupSlot && !hasConnectedGroupInput,
+      );
     if (comboWidget) applyWidgetHiddenState(comboWidget, !showGroupSlot);
   }
 
@@ -1328,6 +1547,10 @@ const refreshWidgets = function refreshWidgets() {
   if (!useAllGroups) this.refreshGroupDropdowns?.();
   this.setDirtyCanvas?.(true, true);
   this.__AUN_syncWidgetVisibility?.();
+  syncWidgetBackedInputVisibility(this);
+  syncModeDrivenControlInputs(this, indexDriven);
+  syncModeDrivenControlInputOrder(this);
+  normalizeNamedWidgetInputType(this, "Index", "INT");
   this.__AUN_updateAutoHeight?.();
   scheduleAutoHeightUpdate(this);
 };
@@ -1875,6 +2098,7 @@ const decorateNode = (node, nodeData) => {
       node.__AUN_refreshWidgets?.();
       node.__AUN_updateAutoHeight?.();
       scheduleAutoHeightUpdate(node);
+      scheduleCompactLayoutStabilization(node, 2, 0);
       node.setDirtyCanvas?.(true, true);
     } finally {
       // Clear the flag after a short delay to allow the event loop to complete
@@ -1897,6 +2121,14 @@ const decorateNode = (node, nodeData) => {
     if (this.__AUN_autoHeightTimer) {
       clearTimeout(this.__AUN_autoHeightTimer);
       this.__AUN_autoHeightTimer = null;
+    }
+    if (this.__AUN_compactLayoutTimer) {
+      clearTimeout(this.__AUN_compactLayoutTimer);
+      this.__AUN_compactLayoutTimer = null;
+    }
+    if (this.__AUN_inputTypeTimers) {
+      this.__AUN_inputTypeTimers.forEach((handle) => clearTimeout(handle));
+      this.__AUN_inputTypeTimers.clear();
     }
     return originalOnRemoved?.apply(this, args);
   };
@@ -1934,9 +2166,15 @@ const decorateNode = (node, nodeData) => {
     const original = widget.callback;
     widget.callback = function callback(value) {
       if (original) original.call(widget, value);
+      if (name === "control_mode" && !isIndexDrivenMode(node)) {
+        forceDisconnectNamedInput(node, "Index");
+      }
       node.__AUN_refreshWidgets?.();
       if (name === "slot_count" || name === "use_all_groups")
         node.refreshGroupDropdowns?.(true);
+      if (name === "control_mode" || name === "Index") {
+        scheduleNamedWidgetInputTypeNormalization(node, "Index", "INT", 0, 4);
+      }
       if (name === "control_mode" || name === "Index" || name === "slot_count")
         applyExternalIndexSelection(node);
       if (name === "mode" || name === "use_all_groups")
@@ -1946,6 +2184,7 @@ const decorateNode = (node, nodeData) => {
 
   setTimeout(() => {
     node.__AUN_refreshWidgets?.();
+    scheduleNamedWidgetInputTypeNormalization(node, "Index", "INT", 0, 4);
     node.refreshGroupDropdowns?.(true);
     applyExternalIndexSelection(node);
   }, 250);

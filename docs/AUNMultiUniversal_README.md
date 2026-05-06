@@ -47,8 +47,10 @@ Each slot has:
 - Slot processing is limited to `slot_count`; higher-numbered slots are ignored and output `False`.
 - In `iterate` and `random` modes, the node forces re-execution and also asks the frontend to update visible switches.
 - In `index-driven` mode, the frontend mirrors the external `Index` value onto the visible slot toggles so it remains obvious which slot is active.
+- When switching back to `manual`, any connected `Index` link is forcibly disconnected so the manual dashboard state becomes authoritative again.
 - `toggle_restriction` only matters in `manual` mode.
 - `AllSwitch` is a manual-mode control; it is suppressed when `control_mode = index-driven`.
+- Compact mode now keeps connected widget-backed inputs aligned correctly, so external `Index` control and any promoted slot inputs stay on the intended socket instead of drifting to stale hidden targets.
 - If a target is included in multiple slots, “active” wins over “inactive” when resolving overlaps.
 
 ## Common setups

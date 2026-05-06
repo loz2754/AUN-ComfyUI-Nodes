@@ -15,7 +15,7 @@ Purpose: Pick one LoRA from up to 10 configured slots, apply it to the incoming 
 - `range` (STRING): Comma-separated values or ranges such as `1,3,5-6`.
 - `apply_lora` (BOOLEAN): If off, the node still resolves the slot and metadata but returns the input model unchanged.
 - `strength_model` (FLOAT): LoRA strength applied to the model.
-- `base_prompt` (STRING): Optional text appended after trigger words.
+- `base_prompt` (STRING, optional external input): Optional text appended after trigger words. This is exposed as a force-input style connection so prompt chaining stays available without leaving an always-visible multiline widget in compact mode.
 
 ### Per-slot inputs
 
@@ -39,6 +39,7 @@ For each slot `N`:
 - Compact mode shows the current LoRA in a footer.
 - A right-click option can enable extra LoRA info in the footer, showing strength and trigger words.
 - Runtime footer updates for `Random`, `Increment`, and `Range` are driven by backend events, so the compact display follows the actually selected LoRA.
+- The optional `base_prompt` input no longer leaves a stray compact-mode connection target outside the node body.
 
 ## Common setups
 

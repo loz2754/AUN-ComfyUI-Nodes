@@ -88,11 +88,14 @@ class AUNRandomLoraModelOnly:
                     "tooltip": "LoRA strength applied to the model.",
                 },
             ),
+        }
+        optional = {
             "base_prompt": (
                 "STRING",
                 {
                     "default": "",
                     "multiline": True,
+                    "forceInput": True,
                     "tooltip": "Optional prompt text appended after trigger words.",
                 },
             ),
@@ -116,7 +119,7 @@ class AUNRandomLoraModelOnly:
         hidden = {
             "unique_id": "UNIQUE_ID",
         }
-        return {"required": required, "hidden": hidden}
+        return {"required": required, "optional": optional, "hidden": hidden}
 
     RETURN_TYPES = ("MODEL", "STRING", "INT", "STRING", "STRING", "STRING")
     RETURN_NAMES = (
@@ -288,10 +291,10 @@ class AUNRandomLoraModelOnly:
         range,
         apply_lora,
         strength_model,
-        base_prompt,
         unique_id=None,
         **kwargs,
     ):
+        base_prompt = kwargs.get("base_prompt", "")
         slots = self._build_slot_values(kwargs)
         triggers = self._build_trigger_values(kwargs)
         slot_count = len(slots)
