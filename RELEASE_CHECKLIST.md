@@ -27,68 +27,37 @@
 
 ## Branch Strategy
 
-1. Treat `main` as the stable public branch for users who clone directly from GitHub.
-2. Do active development on a separate `dev` branch instead of committing unfinished work to `main`.
-3. Use short-lived feature branches off `dev` for larger or riskier changes.
-4. Merge `dev` into `main` only when the changes are tested and ready for users.
-5. If unfinished work must stay private, do not push that branch to the public repo; keep it local-only or use a private fork.
-
-### Example Commands
-
-Create a dev branch:
-
-```powershell
-git switch -c dev
-git push -u origin dev
-```
-
-Start a feature branch from dev:
-
-```powershell
-git switch dev
-git pull
-git switch -c feature/short-description
-```
-
-Merge a feature branch back into dev:
-
-```powershell
-git switch dev
-git merge feature/short-description
-git push
-```
-
-Promote tested changes from dev to main:
-
-```powershell
-git switch main
-git pull
-git merge dev
-git push
-```
+1. Use `main` as the only public branch for users who clone directly from GitHub.
+2. Test all changes locally in the dev portable ComfyUI instance before pushing.
+3. Keep main stable by committing only tested, working changes.
+4. Push deliberately when ready for release; do not push WIP (work-in-progress) changes.
+5. Use git tags for releases to mark stable points; do not rely on branch names alone.
 
 ## Release Day Sequence
 
-1. Confirm `dev` contains the final tested changes.
-2. Switch to `main` and pull the latest remote state.
-3. Merge `dev` into `main`.
-4. Update `pyproject.toml` if this is a user-facing release.
-5. Commit the version bump if needed.
-6. Push `main` to GitHub.
-7. Create and push a tag if you want a stable release point for clone users.
-8. Update/publish any registry-facing metadata needed for ComfyUI Manager.
-9. In the user portable install, test the update path a user will actually use.
+1. Confirm all changes are tested and working in the dev portable ComfyUI instance.
+2. Commit all tested changes to `main` with descriptive message(s).
+3. Push to `main` on GitHub.
+4. Update `pyproject.toml` version if this is a user-facing release.
+5. Commit the version bump.
+6. Push the version bump commit to `main`.
+7. Create and push a git tag (e.g., `v2.2.1`) to mark the release point.
+8. A push of a `v*` tag triggers the GitHub Release workflow (release notes auto-populated from CHANGELOG).
+9. A push to `main` that changes `pyproject.toml` triggers the Comfy registry publish workflow.
 10. Verify both surfaces:
 
-- GitHub shows the expected branch/tag state
+- GitHub shows the expected tag/release with notes
 - ComfyUI Manager shows the expected version/update behavior
 
 ## Release Automation
 
-1. Use `tools/release.ps1` from the dev repo when you want a consistent version bump, changelog update, commit, tag, and push flow.
-2. A push to `main` that changes `pyproject.toml` triggers the Comfy registry publish workflow.
-3. A push of a `v*` tag triggers the GitHub Release workflow.
-4. Keep the script as the local entry point and let GitHub Actions handle the remote publication side.
+1. Use `tools/release.ps1` from the repo when you want a consistent version bump, changelog update, commit, tag, and push flow.
+2. Alternatively, manually update:
+   - `pyproject.toml` version
+   - `CHANGELOG.md` (mark version with `## [VERSION] - YYYY-MM-DD` and keep `## [Unreleased]` at the top)
+3. A push to `main` that changes `pyproject.toml` triggers the Comfy registry publish workflow.
+4. A push of a `v*` tag triggers the GitHub Release workflow (auto-extracts release notes from CHANGELOG).
+5. Keep the script/process as your local entry point; let GitHub Actions handle remote publication.
 
 ### Example Automation Commands
 
@@ -130,12 +99,13 @@ powershell -ExecutionPolicy Bypass -File .\tools\release.ps1 -Version 2.1.1 -NoT
 1. `git` operates on the nearest parent `.git`, not necessarily the current folder.
 2. Do not mix dev edits, Manager updates, and Git pulls in the same install folder.
 3. Git history controls source changes.
-4. Version/registry metadata controls what ComfyUI Manager can detect as a published update.
+4. Version/registry metadata in `pyproject.toml` controls what ComfyUI Manager detects as a published update.
 5. Keep dev and user installs separate.
-6. A Git-clone user and a Manager user may legitimately see different update timing unless you release both surfaces together.
+6. Test all changes locally before pushing to GitHub.
 
 ## Quick Decision Rule
 
-- If coding, testing, committing, or pushing: use the dev portable folder.
+- If coding and testing: use the dev portable folder, commit locally when confident.
+- If pushing to GitHub: make sure it's tested and you intend to release it.
 - If verifying the user experience: use the user portable folder.
-- If Manager shows no update: check version and registry metadata before assuming Git is wrong.
+- If Manager shows no update: check `pyproject.toml` version and registry metadata before assuming Git is wrong.
