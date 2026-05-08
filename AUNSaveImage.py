@@ -482,6 +482,40 @@ def _extract_loras_from_inputs(inputs: Any,
             source_to_search = inputs if isinstance(inputs, dict) else normalized_inputs
             items.extend(_find_lora_entries(source_to_search))
 
+        # Specialized handling for AUNRandomLoraModelOnly: extract only the selected lora
+        if node_type and 'AUNRandomLoraModelOnly' in node_type:
+            try:
+                mode = str(normalized_inputs.get('mode', 'Random') or 'Random')
+                
+                # Only extract if we can determine statically (Select mode with direct value)
+                if mode == 'Select':
+                    # Try to get select_idx, but handle external connections gracefully
+                    select_val = normalized_inputs.get('select', 1)
+                    select_idx = None
+                    try:
+                        # If it's a direct value, convert to int
+                        if not isinstance(select_val, (dict, list)):
+                            select_idx = int(select_val or 1)
+                    except Exception:
+                        pass
+                    
+                    # Only extract if we have a deterministic select_idx
+                    if select_idx is not None:
+                        lora_key = f'lora_{select_idx}'
+                        selected_lora = normalized_inputs.get(lora_key)
+                        
+                        if isinstance(selected_lora, str) and selected_lora and selected_lora != 'None':
+                            add_item(
+                                selected_lora,
+                                normalized_inputs.get('strength_model', 1.0),
+                                normalized_inputs.get('strength_clip', 1.0),
+                                origin_override='AUNRandomLoraModelOnly'
+                            )
+                # For Random/Increment/Range modes or external select connections, don't extract statically.
+                # User should connect the selected_lora output to capture the actual runtime value.
+            except Exception:
+                pass
+
         # Specialized handling for LoraTagLoader text inputs
         if node_type and node_type in LORA_TAG_LOADER_NAMES:
             candidate_texts: list[str] = []
@@ -536,6 +570,11 @@ def extract_loras(prompt: Any = None, extra_pnginfo: Any = None) -> list[dict]:
         "LoraManager",
         "Lora Manager",
         "LoraManagerLoader",
+        "AUNLoraLoaderModelOnlyFromString",
+        "AUNLoraStackWithTriggers",
+        "AUNLoraStackWithTriggersModelClip",
+        "AUNRandomLoraModelOnly",
+        "AUNExtractPowerLoras",
     }
     all_items = []
     prompt_nodes_map: dict[str, dict] | None = None
@@ -1258,6 +1297,7 @@ class AUNSaveImage:
                 "save_image": ("BOOLEAN", {"default": True, "tooltip": "True: save images to output path. False: only generate previews (saved into temp directory)."}),
                 "positive_prompt": ("STRING", {"forceInput": True, "default": "", "tooltip": "Positive prompt text to embed in metadata."}),
                 "negative_prompt": ("STRING", {"forceInput": True, "default": "", "tooltip": "Negative prompt text to embed in metadata."}),
+                "selected_lora": ("STRING", {"forceInput": True, "default": "", "tooltip": "Selected LoRA name from AUNRandomLoraModelOnly or similar nodes to include in sidecar metadata."}),
                 "date_format": ("STRING", {"default": "%Y%m%d-%H%M%S", "tooltip": "Date format for %date and %time placeholders. Explicit %date:<format>% / %time:<format>% placeholders override this per token."}),
                 # Sidecar export / output option (updated)
                 # New options (2025-10): user always gets an output (node return) and can select format; optionally also save per-image sidecar files.
@@ -1282,7 +1322,7 @@ class AUNSaveImage:
     FUNCTION = "save_files"
     OUTPUT_NODE = True
     CATEGORY = "AUN Nodes/Image"
-    DESCRIPTION = "Legacy image saver for workflows that provide separate path and filename inputs. Supports advanced filename customization and metadata embedding. Use Save Image V2 for new single path_filename workflows."
+    DESCRIPTION = "Legacy image saver for workflows that provide separate path and filename inputs. Supports advanced filename customization, metadata embedding, and LoRA tracking via selected_lora input. Use Save Image V2 for new single path_filename workflows."
 
     def _get_model_hash(self, modelname):
         """Calculates the SHA256 hash of the model file."""
@@ -1391,6 +1431,20 @@ class AUNSaveImage:
                     return None
 
             lora_items = extract_loras(kwargs.get("prompt"), kwargs.get("extra_pnginfo"))
+
+            # Add selected_lora from input if provided (e.g., from AUNRandomLoraModelOnly output)
+            selected_lora_input = kwargs.get("selected_lora", "").strip()
+            if selected_lora_input and selected_lora_input.lower() not in ("none", ""):
+                # Check if this lora is already in the items
+                existing_names = {item.get('name', '').lower() for item in lora_items if isinstance(item, dict)}
+                if selected_lora_input.lower() not in existing_names:
+                    # Add it to lora_items with strength 1.0
+                    lora_items.append({
+                        'name': selected_lora_input,
+                        'strength': 1.0,
+                        'strengthTwo': 1.0,
+                        'origin': 'Selected'
+                    })
 
             prompt_lora_names: set[str] = set()
 

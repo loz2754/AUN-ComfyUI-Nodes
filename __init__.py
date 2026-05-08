@@ -53,6 +53,7 @@ from .AUNFilenameResolverPreviewV2 import AUNFilenameResolverPreviewV2
 from .AUNRandomAnySwitch import AUNRandomAnySwitch
 from .AUNRandomIndexSwitch import AUNRandomIndexSwitch
 from .AUNRandomLoraModelOnly import AUNRandomLoraModelOnly
+from .AUNRandomLoraModelOnlyMulti import AUNRandomLoraModelOnlyMulti
 from .AUNRandomModelBundleSwitch import AUNRandomModelBundleSwitch
 from .AUNRandomNumber import AUNRandomNumber
 from .AUNRandomTextIndexSwitch import AUNRandomTextIndexSwitch
@@ -134,6 +135,7 @@ NODE_CLASS_MAPPINGS = {
     "AUNRandomAnySwitch": AUNRandomAnySwitch,
     "AUNRandomIndexSwitch": AUNRandomIndexSwitch,
     "AUNRandomLoraModelOnly": AUNRandomLoraModelOnly,
+    "AUNRandomLoraModelOnlyMulti": AUNRandomLoraModelOnlyMulti,
     "AUNRandomModelBundleSwitch": AUNRandomModelBundleSwitch,
     "AUNRandomNumber": AUNRandomNumber,
     "AUNRandomTextIndexSwitch": AUNRandomTextIndexSwitch,
@@ -211,6 +213,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "AUNRandomAnySwitch": "Random Any Switch",
     "AUNRandomIndexSwitch": "Random/Select INT",
     "AUNRandomLoraModelOnly": "Random LoRA Model Loader (Compact)",
+    "AUNRandomLoraModelOnlyMulti": "Random Multi-LoRA Model Loader (Experimental)",
     "AUNRandomModelBundleSwitch": "Model and Text Selector",
     "AUNRandomNumber": "Random Number",
     "AUNRandomTextIndexSwitch": "Random Text Index Switch",
