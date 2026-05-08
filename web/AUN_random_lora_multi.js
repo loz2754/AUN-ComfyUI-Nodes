@@ -1048,6 +1048,20 @@ function buildCompactRow(node, promptIdx, slotIdx) {
   };
 }
 
+function disposeCompactRows(node) {
+  const rows = node.__AUN_loraMultiCompactRows;
+  if (!Array.isArray(rows)) return;
+
+  // Remove all DOM elements from the document
+  for (const row of rows) {
+    if (row?.root?.parentNode) {
+      row.root.remove();
+    }
+  }
+
+  node.__AUN_loraMultiCompactRows = null;
+}
+
 function ensureCompactRows(node) {
   if (Array.isArray(node.__AUN_loraMultiCompactRows)) {
     return node.__AUN_loraMultiCompactRows;
@@ -1119,7 +1133,11 @@ function positionCompactRows(node, ctx) {
   const clipStrengthEnabled = showClipStrength(node);
   const currentWidth = node.size?.[0] ?? 200;
 
-  if (!compact || collapsed || !ctx?.canvas) {
+  // Hide all rows if: not compact, collapsed, no canvas, node being dragged, or graph inactive
+  const nodeDragging = node.__AUN_nodeBeingDragged;
+  const graphActive = app?.canvas?.canvas && document.hasFocus?.();
+
+  if (!compact || collapsed || !ctx?.canvas || nodeDragging || !graphActive) {
     for (const row of rows) {
       row.root.style.display = "none";
     }
@@ -1376,12 +1394,36 @@ function startCompactLiveMonitor(node) {
   node.__AUN_loraMultiMonitorId = setInterval(check, 150);
   setTimeout(check, 0);
 
+  const hideAllRows = () => {
+    if (node?.__AUN_loraMultiCompactRows) {
+      for (const row of node.__AUN_loraMultiCompactRows) {
+        row.root.style.display = "none";
+      }
+    }
+  };
+
+  // Hide overlays when window loses focus (switching tabs)
+  const onBlur = () => hideAllRows();
+  window.addEventListener("blur", onBlur);
+
+  // Hide overlays when visibility changes (minimizing window, switching tabs, etc.)
+  const onVisibilityChange = () => {
+    if (document.hidden) {
+      hideAllRows();
+    }
+  };
+  document.addEventListener("visibilitychange", onVisibilityChange);
+
   const originalOnRemoved = node.onRemoved;
   node.onRemoved = function onRemoved() {
+    // Properly dispose DOM elements
+    disposeCompactRows(node);
     if (node.__AUN_loraMultiMonitorId) {
       clearInterval(node.__AUN_loraMultiMonitorId);
       node.__AUN_loraMultiMonitorId = null;
     }
+    window.removeEventListener("blur", onBlur);
+    document.removeEventListener("visibilitychange", onVisibilityChange);
     return originalOnRemoved?.apply(this, arguments);
   };
 }
@@ -1396,6 +1438,33 @@ function setupNode(node) {
   }
   if (typeof node.properties[CLIP_STRENGTH_PROP_KEY] !== "boolean") {
     setShowClipStrength(node, true);
+  }
+
+  // Set up global drag monitoring (once per canvas)
+  const canvas = app?.canvas;
+  if (canvas && !canvas.__AUN_dragMonitorSetup) {
+    canvas.__AUN_dragMonitorSetup = true;
+    const origOnNodeDragStart = canvas.onNodeDragStart;
+    canvas.onNodeDragStart = function onNodeDragStart(
+      event,
+      node_being_dragged,
+    ) {
+      if (node_being_dragged) {
+        node_being_dragged.__AUN_nodeBeingDragged = true;
+      }
+      return origOnNodeDragStart?.apply(this, arguments);
+    };
+
+    const origOnNodeDragEnd = canvas.onNodeDragEnd;
+    canvas.onNodeDragEnd = function onNodeDragEnd(event) {
+      // Clear the flag for all nodes in the graph
+      if (canvas.graph?._nodes) {
+        for (const n of canvas.graph._nodes) {
+          n.__AUN_nodeBeingDragged = false;
+        }
+      }
+      return origOnNodeDragEnd?.apply(this, arguments);
+    };
   }
 
   const originalDblClick = node.onDblClick;
@@ -1621,7 +1690,6 @@ function setupNode(node) {
   hookPromptIndexChange(node);
   hookNumPromptsChange(node);
   hookLoraChange(node);
-  hookStrengthModelChange(node);
   startCompactLiveMonitor(node);
 
   applyCompact(node);

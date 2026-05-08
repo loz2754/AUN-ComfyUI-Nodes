@@ -825,7 +825,11 @@ function positionCompactRows(node, ctx) {
   const showClipStrength = showClipStrengthInCompact(node);
   const currentWidth = node.size?.[0] ?? 360;
 
-  if (!compact || collapsed || !ctx?.canvas) {
+  // Hide all rows if: not compact, collapsed, no canvas, node being dragged, or graph inactive
+  const nodeDragging = node.__AUN_nodeBeingDragged;
+  const graphActive = app?.canvas?.canvas && document.hasFocus?.();
+
+  if (!compact || collapsed || !ctx?.canvas || nodeDragging || !graphActive) {
     for (const row of rows) {
       row.root.style.display = "none";
     }
@@ -1222,6 +1226,27 @@ function startLiveMonitor(node) {
   };
   node.__AUN_stackMonitorId = setInterval(check, 200);
   setTimeout(check, 50);
+
+  const hideAllRows = () => {
+    if (node?.__AUN_compactRows) {
+      for (const row of node.__AUN_compactRows) {
+        row.root.style.display = "none";
+      }
+    }
+  };
+
+  // Hide overlays when window loses focus (switching tabs)
+  const onBlur = () => hideAllRows();
+  window.addEventListener("blur", onBlur);
+
+  // Hide overlays when visibility changes (minimizing window, switching tabs, etc.)
+  const onVisibilityChange = () => {
+    if (document.hidden) {
+      hideAllRows();
+    }
+  };
+  document.addEventListener("visibilitychange", onVisibilityChange);
+
   const originalOnRemoved = node.onRemoved;
   node.onRemoved = function onRemoved() {
     disposeCompactRows(node);
@@ -1238,6 +1263,9 @@ function startLiveMonitor(node) {
       clearInterval(node.__AUN_stackMonitorId);
       node.__AUN_stackMonitorId = null;
     }
+    window.removeEventListener("blur", onBlur);
+    document.removeEventListener("visibilitychange", onVisibilityChange);
+    hideAllRows();
     return originalOnRemoved?.apply(this, arguments);
   };
 }
@@ -1280,6 +1308,33 @@ function setupNode(node) {
     setShowClipStrengthInCompact(node, true);
   }
   ensureCompactRows(node);
+
+  // Set up global drag monitoring (once per canvas)
+  const canvas = app?.canvas;
+  if (canvas && !canvas.__AUN_dragMonitorSetup) {
+    canvas.__AUN_dragMonitorSetup = true;
+    const origOnNodeDragStart = canvas.onNodeDragStart;
+    canvas.onNodeDragStart = function onNodeDragStart(
+      event,
+      node_being_dragged,
+    ) {
+      if (node_being_dragged) {
+        node_being_dragged.__AUN_nodeBeingDragged = true;
+      }
+      return origOnNodeDragStart?.apply(this, arguments);
+    };
+
+    const origOnNodeDragEnd = canvas.onNodeDragEnd;
+    canvas.onNodeDragEnd = function onNodeDragEnd(event) {
+      // Clear the flag for all nodes in the graph
+      if (canvas.graph?._nodes) {
+        for (const n of canvas.graph._nodes) {
+          n.__AUN_nodeBeingDragged = false;
+        }
+      }
+      return origOnNodeDragEnd?.apply(this, arguments);
+    };
+  }
 
   const originalDblClick = node.onDblClick;
   node.onDblClick = function onDblClick(event, pos) {
