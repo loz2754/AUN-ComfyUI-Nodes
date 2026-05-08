@@ -6,9 +6,29 @@
 
 ### Added
 
+- Added footer display in compact mode for LoRA nodes showing trigger words with smart text wrapping (AUNRandomLoraModelOnly, AUNRandomLoraModelOnlyMulti, AUNLoraStackWithTriggersModelClip).
+- Added node property toggle to show/hide footer in LoRA nodes, allowing users to control footer visibility via right-click menu.
+- Added drag-to-reorder support for LoRA slots in compact mode overlays (AUNLoraStackWithTriggersModelClip, AUNRandomLoraModelOnlyMulti, AUNLoraStackWithTriggers).
+- Added `selected_lora` input to AUNSaveImage for LoRA metadata tracking from output nodes (e.g., AUNRandomLoraModelOnly).
+- New experimental node: Random Multi-LoRA Model Loader (AUNRandomLoraModelOnlyMulti) supporting up to 20 prompts with 3 LoRA slots per prompt.
+
 ### Changed
 
+- Enhanced AUNRandomLoraModelOnly with CLIP support: now accepts optional CLIP input for per-slot clip strength control.
+- Made "Hide clip strength" setting apply globally in both full and compact modes for all LoRA nodes.
+- Improved compact mode height calculation in LoRA nodes to shrink to minimum when footer is hidden.
+- Updated node descriptions to document double-click toggles, right-click menu options, and property controls.
+- Enhanced AUNRandomLoraModelOnly compact mode to show apply_lora switch visibility in Select mode.
+- Improved select mode handling in AUNRandomLoraModelOnly to better track execution index vs widget value.
+- **DEPRECATION**: AUNLoraStackWithTriggers is now marked for removal in favor of AUNLoraStackWithTriggersModelClip, which provides superior CLIP support, compact mode with overlay UI, drag-to-reorder, and footer display.
+
 ### Fixed
+
+- Fixed footer text truncation in LoRA nodes by removing canvas clipping rect during rendering.
+- Fixed footer height calculation to account for text wrapping and ensure proper descender space.
+- Fixed node height adjustment when toggling footer visibility to properly resize to minimum.
+- Fixed LoRA stack compact mode initialization to properly set COMPACT_LABEL_HEIGHT constant.
+- Fixed clip strength synchronization to maintain value parity when hidden across all LoRA nodes.
 
 ### Notes
 
