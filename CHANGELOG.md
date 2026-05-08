@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+## [2.2.3] - 2026-05-08
+
+### Fixed
+
+- Fixed overlay widget duplication glitch in compact mode LoRA nodes (AUNRandomLoraModelOnlyMulti, AUNLoraStackWithTriggersModelClip) by properly managing DOM element lifecycle and preventing element accumulation.
+- Fixed overlay widgets persisting on screen when dragging nodes or switching tabs by implementing global drag monitoring and visibility change detection.
+- Fixed overlay widget visibility detection to properly track when nodes are being dragged (drag-to-reorder vs canvas drag) and when window loses focus.
+
 ## [2.2.2] - 2026-05-08
 
 ### Fixed
