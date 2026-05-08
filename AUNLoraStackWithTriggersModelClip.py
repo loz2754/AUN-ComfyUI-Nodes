@@ -117,10 +117,10 @@ class AUNLoraStackWithTriggersModelClip:
     RETURN_NAMES = (
         "MODEL",
         "CLIP",
+        "selected LoRAs",
         "labels",
         "trigger words",
         "trigger + prompt",
-        "prompt",
     )
     FUNCTION = "load_stack"
     CATEGORY = "AUN Nodes/Utility"
@@ -128,8 +128,8 @@ class AUNLoraStackWithTriggersModelClip:
     DESCRIPTION = (
         "Stacks multiple LoRAs with per-slot trigger words and optional CLIP support. "
         "Use this when you want separate model and clip strengths per slot. "
-        "Double-click the node or use the right-click menu to return to full view "
-        "when you need to choose LoRAs or edit triggers."
+        "Double-click the node or use the right-click menu to toggle between compact and full view. "
+        "In compact mode, right-click menu: Hide/Show clip strength, Hide/Show footer with trigger words."
     )
 
     def _normalize_slot_count(self, num_slots):
@@ -213,7 +213,7 @@ class AUNLoraStackWithTriggersModelClip:
         base_prompt_text = str(base_prompt or "")
 
         if not bool(apply_stack) or not active_slots:
-            return (model, clip, "", "", base_prompt_text, base_prompt_text)
+            return (model, clip, "", "", "", base_prompt_text)
 
         trigger_parts = [item["trigger"] for item in active_slots if item["trigger"]]
         trigger_parts = self._dedupe_trigger_parts(trigger_parts, bool(dedupe_triggers))
@@ -225,6 +225,7 @@ class AUNLoraStackWithTriggersModelClip:
             else base_prompt_text
         )
         labels = " + ".join(item["label"] for item in active_slots if item["label"])
+        selected_loras = ", ".join(item["lora"] for item in active_slots if item["lora"] != "None")
 
         loaded_model = model
         loaded_clip = clip
@@ -247,10 +248,10 @@ class AUNLoraStackWithTriggersModelClip:
         return (
             loaded_model,
             loaded_clip,
+            selected_loras,
             labels,
             trigger_words,
             trigger_prompt,
-            base_prompt_text,
         )
 
     @classmethod

@@ -4,7 +4,9 @@ import { openLoraInfoDialog } from "./aun_lora_info_shared.js";
 const NODE_TYPE = "AUNLoraStackWithTriggersModelClip";
 const PROP_KEY = "_AUN_compactMode";
 const PROP_SHOW_CLIP_STRENGTH = "_AUN_showClipStrengthInCompact";
+const PROP_SHOW_FOOTER = "_AUN_showFooter";
 const BASE_PROMPT_MIN_HEIGHT = 96;
+const COMPACT_LABEL_HEIGHT = 28;
 const MAX_SLOTS = 10;
 const COMPACT_ROW_HEIGHT = 24;
 const COMPACT_ROW_GAP = 3;
@@ -55,6 +57,16 @@ function setShowClipStrengthInCompact(node, show) {
   if (!node) return;
   node.properties = node.properties || {};
   node.properties[PROP_SHOW_CLIP_STRENGTH] = !!show;
+}
+
+function showFooter(node) {
+  return node?.properties?.[PROP_SHOW_FOOTER] !== false;
+}
+
+function setShowFooter(node, show) {
+  if (!node) return;
+  node.properties = node.properties || {};
+  node.properties[PROP_SHOW_FOOTER] = !!show;
 }
 
 function isRestoringLayout(node) {
@@ -265,6 +277,18 @@ function ensureCompactRowStyles() {
     .AUN-lora-stack-row[data-hide-clip="true"] .AUN-clip-input,
     .AUN-lora-stack-row[data-hide-clip="true"] .AUN-clip-control {
       display: none;
+    }
+    .AUN-lora-stack-row {
+      transition: opacity 80ms ease, background-color 100ms ease;
+    }
+    .AUN-lora-stack-row.dragging {
+      background-color: rgba(100, 170, 255, 0.08);
+    }
+    .AUN-lora-stack-row[draggable="true"] .AUN-lora-label {
+      cursor: grab;
+    }
+    .AUN-lora-stack-row[draggable="true"] .AUN-lora-label:active {
+      cursor: grabbing;
     }
   `;
   document.head.appendChild(style);
@@ -634,6 +658,108 @@ function buildCompactRow(node, slotIndex) {
   bindStepButton(strengthClipDec, () => clipBinding.adjustValue(-1));
   bindStepButton(strengthClipInc, () => clipBinding.adjustValue(1));
 
+  // Drag-to-reorder support
+  row.draggable = true;
+  row.addEventListener("dragstart", (event) => {
+    stopCanvasEvent(event);
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", JSON.stringify({ slotIndex }));
+    row.classList.add("dragging");
+    row.style.opacity = "0.5";
+    row.style.cursor = "grabbing";
+  });
+
+  row.addEventListener("dragend", (event) => {
+    stopCanvasEvent(event);
+    row.classList.remove("dragging");
+    row.style.opacity = "1";
+    row.style.cursor = "grab";
+  });
+
+  row.addEventListener("dragover", (event) => {
+    stopCanvasEvent(event);
+    event.dataTransfer.dropEffect = "move";
+    event.preventDefault?.();
+    row.style.borderTop = "2px solid rgba(100,200,255,0.6)";
+  });
+
+  row.addEventListener("dragenter", (event) => {
+    stopCanvasEvent(event);
+    event.preventDefault?.();
+  });
+
+  row.addEventListener("dragleave", (event) => {
+    stopCanvasEvent(event);
+    row.style.borderTop = "none";
+  });
+
+  row.addEventListener("drop", (event) => {
+    stopCanvasEvent(event);
+    event.preventDefault?.();
+    row.style.borderTop = "none";
+
+    try {
+      const draggedData = JSON.parse(event.dataTransfer.getData("text/plain"));
+      if (draggedData.slotIndex !== slotIndex) {
+        // Swap LoRA values between slots
+        const fields = [
+          "lora",
+          "strength_model",
+          "strength_clip",
+          "trigger",
+          "enabled",
+        ];
+        let swapped = false;
+
+        for (const field of fields) {
+          const fromWidgetName = `${field}_${draggedData.slotIndex}`;
+          const toWidgetName = `${field}_${slotIndex}`;
+          const fromWidget = getWidget(node, fromWidgetName);
+          const toWidget = getWidget(node, toWidgetName);
+
+          if (fromWidget && toWidget) {
+            const fromValue = fromWidget.value;
+            const toValue = toWidget.value;
+
+            // Perform the swap
+            setWidgetValue(fromWidget, toValue);
+            setWidgetValue(toWidget, fromValue);
+            swapped = true;
+          }
+        }
+
+        if (swapped) {
+          applyCompact(node);
+          const rows = node.__AUN_compactRows;
+          if (rows && Array.isArray(rows)) {
+            for (const r of rows) {
+              syncCompactRow(node, r);
+            }
+          }
+          forceRedraw(node);
+          updateAutoHeight(node);
+        }
+      }
+    } catch (err) {
+      console.error("Error during LoRA reorder:", err);
+    }
+  });
+
+  // Visual feedback on hover
+  row.addEventListener("mouseenter", () => {
+    if (!row.classList.contains("dragging")) {
+      row.style.cursor = "grab";
+      row.style.opacity = "0.85";
+    }
+  });
+
+  row.addEventListener("mouseleave", () => {
+    if (!row.classList.contains("dragging")) {
+      row.style.opacity = "1";
+      row.style.cursor = "default";
+    }
+  });
+
   return {
     slotIndex,
     root: row,
@@ -774,8 +900,34 @@ function getNumSlots(node) {
   return Math.max(1, Math.min(MAX_SLOTS, Math.floor(raw)));
 }
 
-function getCompactFooterHeight() {
-  return 0;
+function resolveStackTriggersForDisplay(node) {
+  const numSlots = getNumSlots(node);
+  const triggers = [];
+  for (let i = 1; i <= numSlots; i++) {
+    const enabledWidget = getWidget(node, `enabled_${i}`);
+    const triggerWidget = getWidget(node, `trigger_${i}`);
+    if (!enabledWidget?.value || !triggerWidget) continue;
+    const triggerValue = String(triggerWidget.value ?? "").trim();
+    if (triggerValue) {
+      triggers.push(triggerValue);
+    }
+  }
+  return triggers.length > 0 ? triggers : null;
+}
+
+function getCompactFooterHeight(node) {
+  if (!isCompact(node) || isNodeCollapsed(node) || !showFooter(node)) return 0;
+  const triggers = resolveStackTriggersForDisplay(node);
+  if (!triggers || triggers.length === 0) {
+    return COMPACT_LABEL_HEIGHT;
+  }
+  const triggersText = triggers.join(", ");
+  const availableWidth = (node.size?.[0] ?? 240) - 20;
+  const avgCharWidth = 6.5;
+  const estLineCount = Math.ceil(
+    triggersText.length / (availableWidth / avgCharWidth),
+  );
+  return Math.max(COMPACT_LABEL_HEIGHT, Math.max(1, estLineCount) * 16 + 28);
 }
 
 function getWidgetBottomY(widget) {
@@ -812,10 +964,12 @@ function getCompactLayoutMetrics(node) {
 function getMinimumCompactHeight(node) {
   const firstCompactRowY = getCompactLayoutMetrics(node).firstCompactRowY;
   const numSlots = getNumSlots(node);
+  const footerHeight = getCompactFooterHeight(node);
   return (
     firstCompactRowY +
     numSlots * COMPACT_ROW_HEIGHT +
     Math.max(0, numSlots - 1) * COMPACT_ROW_GAP +
+    footerHeight +
     10
   );
 }
@@ -967,7 +1121,7 @@ function updateAutoHeight(node) {
   const height = Number.isFinite(computed?.[1])
     ? computed[1]
     : (node.size?.[1] ?? globalThis.LiteGraph?.NODE_TITLE_HEIGHT ?? 60);
-  const finalHeight = height + getCompactFooterHeight();
+  const finalHeight = height + getCompactFooterHeight(node);
   setNodeSize(node, currentWidth, finalHeight);
 }
 
@@ -1186,12 +1340,108 @@ function setupNode(node) {
         : "AUN: Show clip strength",
       callback: () => toggleCompactClipStrength(this),
     });
+    options.push({
+      content: showFooter(this) ? "AUN: Hide footer" : "AUN: Show footer",
+      callback: () => {
+        setShowFooter(this, !showFooter(this));
+        updateAutoHeight(this);
+        forceRedraw(this);
+      },
+    });
   };
 
   const originalDrawBg = node.onDrawBackground;
   node.onDrawBackground = function onDrawBackground(ctx) {
     originalDrawBg?.apply(this, arguments);
     positionCompactRows(this, ctx);
+  };
+
+  const originalDrawFg = node.onDrawForeground;
+  node.onDrawForeground = function onDrawForeground(ctx) {
+    originalDrawFg?.apply(this, arguments);
+
+    if (!isCompact(this) || isNodeCollapsed(this) || !showFooter(this)) return;
+
+    const triggers = resolveStackTriggersForDisplay(this);
+    let headerText;
+    let triggerText;
+    if (triggers && triggers.length > 0) {
+      headerText = "Stack trigger words: ";
+      triggerText = triggers.join(", ");
+    } else {
+      headerText = "Stack trigger words (none)";
+      triggerText = "";
+    }
+
+    const footerHeight = getCompactFooterHeight(this);
+    const w = this.size[0];
+    const h = this.size[1];
+    const y0 = h - footerHeight + 3;
+    const y1 = h - 6;
+    const x0 = 8;
+    const x1 = w - 8;
+
+    ctx.save();
+    ctx.fillStyle = "rgba(255,255,255,0.07)";
+    ctx.beginPath();
+    ctx.roundRect(x0, y0, x1 - x0, y1 - y0, 4);
+    ctx.fill();
+    ctx.fillStyle = "rgba(220,220,220,0.9)";
+    ctx.font = "bold 11px sans-serif";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+
+    const lineHeight = 16;
+    const startX = x0 + 6;
+    const startY = y0 + 2;
+    const maxWidth = x1 - x0 - 12;
+
+    const wrapText = (text) => {
+      const lines = [];
+      let currentLine = "";
+      const words = text.split(", ");
+
+      for (const word of words) {
+        const testLine = currentLine ? currentLine + ", " + word : word;
+        const metrics = ctx.measureText(testLine);
+
+        if (metrics.width > maxWidth && currentLine) {
+          lines.push(currentLine);
+          currentLine = word;
+        } else {
+          currentLine = testLine;
+        }
+      }
+
+      if (currentLine) lines.push(currentLine);
+      return lines;
+    };
+
+    if (triggerText) {
+      const fullText = headerText + triggerText;
+      const headerMetrics = ctx.measureText(headerText);
+
+      if (
+        headerMetrics.width + ctx.measureText(triggerText).width <=
+        maxWidth
+      ) {
+        ctx.fillText(fullText, startX, startY);
+      } else {
+        ctx.fillText(headerText, startX, startY);
+        const wrappedTriggers = wrapText(triggerText);
+        for (let i = 0; i < wrappedTriggers.length; i++) {
+          ctx.fillText(
+            wrappedTriggers[i],
+            startX,
+            startY + (i + 1) * lineHeight,
+          );
+        }
+      }
+    } else {
+      ctx.fillText(headerText, startX, startY);
+    }
+
+    ctx.restore();
   };
 
   hookWidgetRedraw(node, "num_slots", () => applyCompact(node));

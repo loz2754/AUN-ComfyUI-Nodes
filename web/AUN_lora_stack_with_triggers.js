@@ -238,6 +238,18 @@ function ensureCompactRowStyles() {
       outline: 1px solid rgba(180, 210, 255, 0.8);
       outline-offset: 1px;
     }
+    .AUN-lora-stack-row-basic {
+      transition: opacity 80ms ease, background-color 100ms ease;
+    }
+    .AUN-lora-stack-row-basic.dragging {
+      background-color: rgba(100, 170, 255, 0.08);
+    }
+    .AUN-lora-stack-row-basic[draggable="true"] .AUN-lora-label-basic {
+      cursor: grab;
+    }
+    .AUN-lora-stack-row-basic[draggable="true"] .AUN-lora-label-basic:active {
+      cursor: grabbing;
+    }
   `;
   document.head.appendChild(style);
   window.__AUNLoraStackCompactRowStyleBasic = style;
@@ -569,6 +581,102 @@ function buildCompactRow(node, slotIndex) {
 
   bindStepButton(strengthDec, () => strengthBinding.adjustValue(-1));
   bindStepButton(strengthInc, () => strengthBinding.adjustValue(1));
+
+  // Drag-to-reorder support
+  row.draggable = true;
+  row.addEventListener("dragstart", (event) => {
+    stopCanvasEvent(event);
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", JSON.stringify({ slotIndex }));
+    row.classList.add("dragging");
+    row.style.opacity = "0.5";
+    row.style.cursor = "grabbing";
+  });
+
+  row.addEventListener("dragend", (event) => {
+    stopCanvasEvent(event);
+    row.classList.remove("dragging");
+    row.style.opacity = "1";
+    row.style.cursor = "grab";
+  });
+
+  row.addEventListener("dragover", (event) => {
+    stopCanvasEvent(event);
+    event.dataTransfer.dropEffect = "move";
+    event.preventDefault?.();
+    row.style.borderTop = "2px solid rgba(100,200,255,0.6)";
+  });
+
+  row.addEventListener("dragenter", (event) => {
+    stopCanvasEvent(event);
+    event.preventDefault?.();
+  });
+
+  row.addEventListener("dragleave", (event) => {
+    stopCanvasEvent(event);
+    row.style.borderTop = "none";
+  });
+
+  row.addEventListener("drop", (event) => {
+    stopCanvasEvent(event);
+    event.preventDefault?.();
+    row.style.borderTop = "none";
+
+    try {
+      const draggedData = JSON.parse(event.dataTransfer.getData("text/plain"));
+      if (draggedData.slotIndex !== slotIndex) {
+        // Swap LoRA values between slots
+        const fields = ["lora", "strength", "trigger", "enabled"];
+        let swapped = false;
+
+        for (const field of fields) {
+          const fromWidgetName = `${field}_${draggedData.slotIndex}`;
+          const toWidgetName = `${field}_${slotIndex}`;
+          const fromWidget = getWidget(node, fromWidgetName);
+          const toWidget = getWidget(node, toWidgetName);
+
+          if (fromWidget && toWidget) {
+            const fromValue = fromWidget.value;
+            const toValue = toWidget.value;
+
+            // Perform the swap
+            setWidgetValue(fromWidget, toValue);
+            setWidgetValue(toWidget, fromValue);
+            swapped = true;
+          }
+        }
+
+        if (swapped) {
+          applyCompact(node);
+          const rows = node.__AUN_compactRows;
+          if (rows && Array.isArray(rows)) {
+            for (const r of rows) {
+              syncCompactRow(node, r);
+            }
+          }
+          forceRedraw(node);
+          updateAutoHeight(node);
+        }
+      }
+    } catch (err) {
+      console.error("Error during LoRA reorder:", err);
+    }
+  });
+
+  // Visual feedback on hover
+  row.addEventListener("mouseenter", () => {
+    if (!row.classList.contains("dragging")) {
+      row.style.cursor = "grab";
+      row.style.opacity = "0.85";
+    }
+  });
+
+  row.addEventListener("mouseleave", () => {
+    if (!row.classList.contains("dragging")) {
+      row.style.opacity = "1";
+      row.style.cursor = "default";
+    }
+  });
 
   return {
     slotIndex,

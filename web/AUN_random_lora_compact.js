@@ -5,6 +5,7 @@ import { openLoraInfoDialog } from "./aun_lora_info_shared.js";
 const NODE_TYPE = "AUNRandomLoraModelOnly";
 const PROP_KEY = "_AUN_compactMode";
 const INFO_PROP_KEY = "_AUN_showLoraInfo";
+const CLIP_STRENGTH_PROP_KEY = "_AUN_showClipStrength";
 const BASE_PROMPT_MIN_HEIGHT = 96;
 const COMPACT_LABEL_HEIGHT = 28;
 const COMPACT_INFO_HEIGHT = 20;
@@ -18,6 +19,7 @@ const ALL_WIDGETS = [
   "range",
   "apply_lora",
   "strength_model",
+  "strength_clip",
   "base_prompt",
   "lora_1",
   "lora_2",
@@ -72,6 +74,28 @@ function setInfoEnabled(node, enabled) {
   if (!node) return;
   node.properties = node.properties || {};
   node.properties[INFO_PROP_KEY] = !!enabled;
+}
+
+function showClipStrength(node) {
+  return node?.properties?.[CLIP_STRENGTH_PROP_KEY] !== false;
+}
+
+function setShowClipStrength(node, show) {
+  if (!node) return;
+  node.properties = node.properties || {};
+  node.properties[CLIP_STRENGTH_PROP_KEY] = !!show;
+}
+
+function syncHiddenClipStrength(node) {
+  if (!isTargetNode(node) || showClipStrength(node)) return;
+  const modelWidget = getWidget(node, "strength_model");
+  const clipWidget = getWidget(node, "strength_clip");
+  if (!modelWidget || !clipWidget) return;
+  const nextValue = Number(modelWidget.value);
+  if (!Number.isFinite(nextValue)) return;
+  if (Number(clipWidget.value) === nextValue) return;
+  clipWidget.value = nextValue;
+  clipWidget.callback?.call(clipWidget, nextValue);
 }
 
 function loraBasename(value) {
@@ -166,12 +190,25 @@ function applyExecutionPayload(node, message) {
 
 function resolveLoraLabel(node) {
   const mode = getWidget(node, "mode")?.value ?? "";
+
+  // For Select mode, always prioritize execution index (which reflects actual execution)
+  // Only use widget value if it's a direct (not externally connected) selection
   if (mode === "Select") {
+    const execIdx = parsePositiveInt(node?.__AUN_loraLastExecIndex);
+    if (execIdx != null) {
+      const loraW = getWidget(node, `lora_${execIdx}`);
+      const base = loraBasename(loraW?.value);
+      if (base) return base;
+    }
+
+    // Fallback to widget value only if no execution index yet
     const selectW = getWidget(node, "select");
-    const idx = Number(selectW?.value) || 1;
-    const loraW = getWidget(node, `lora_${idx}`);
-    const base = loraBasename(loraW?.value);
-    if (base) return base;
+    const idx = parsePositiveInt(selectW?.value);
+    if (idx != null) {
+      const loraW = getWidget(node, `lora_${idx}`);
+      const base = loraBasename(loraW?.value);
+      if (base) return base;
+    }
   }
 
   const execIdx = parsePositiveInt(node?.__AUN_loraLastExecIndex);
@@ -190,8 +227,10 @@ function resolveSelectedLoraValue(node) {
   const mode = getWidget(node, "mode")?.value ?? "";
   if (mode === "Select") {
     const selectW = getWidget(node, "select");
-    const idx = Number(selectW?.value) || 1;
-    return String(getWidget(node, `lora_${idx}`)?.value ?? "None");
+    const idx = parsePositiveInt(selectW?.value);
+    if (idx != null) {
+      return String(getWidget(node, `lora_${idx}`)?.value ?? "None");
+    }
   }
 
   const execIdx = parsePositiveInt(node?.__AUN_loraLastExecIndex);
@@ -211,8 +250,10 @@ function resolveTriggerWords(node) {
   const mode = getWidget(node, "mode")?.value ?? "";
   if (mode === "Select") {
     const selectW = getWidget(node, "select");
-    const idx = Number(selectW?.value) || 1;
-    return String(getWidget(node, `trigger_${idx}`)?.value ?? "").trim();
+    const idx = parsePositiveInt(selectW?.value);
+    if (idx != null) {
+      return String(getWidget(node, `trigger_${idx}`)?.value ?? "").trim();
+    }
   }
   return "";
 }
@@ -276,8 +317,10 @@ function resolveSelectedTriggerWidget(node) {
   const mode = getWidget(node, "mode")?.value ?? "";
   if (mode === "Select") {
     const selectW = getWidget(node, "select");
-    const idx = Number(selectW?.value) || 1;
-    return getWidget(node, `trigger_${idx}`);
+    const idx = parsePositiveInt(selectW?.value);
+    if (idx != null) {
+      return getWidget(node, `trigger_${idx}`);
+    }
   }
 
   const execIdx = parsePositiveInt(node?.__AUN_loraLastExecIndex);
@@ -493,8 +536,11 @@ function startSelectLiveMonitor(node) {
   const readSignature = () => {
     const mode = String(getWidget(node, "mode")?.value ?? "");
     const select = String(getWidget(node, "select")?.value ?? "");
-    const idx = Number(select) || 1;
-    const selectedLora = String(getWidget(node, `lora_${idx}`)?.value ?? "");
+    const idx = parsePositiveInt(getWidget(node, "select")?.value);
+    const loraIdx = idx ?? parsePositiveInt(node?.__AUN_loraLastExecIndex) ?? 1;
+    const selectedLora = String(
+      getWidget(node, `lora_${loraIdx}`)?.value ?? "",
+    );
     return `${mode}|${select}|${selectedLora}`;
   };
 
@@ -607,15 +653,27 @@ function applyCompact(node) {
   const mode = getWidget(node, "mode")?.value ?? "";
 
   const alwaysVisible = new Set(
-    !compact ? ALL_WIDGETS : mode === "Select" ? ["mode", "select"] : ["mode"],
+    !compact
+      ? ALL_WIDGETS
+      : mode === "Select"
+        ? ["mode", "select", "apply_lora"]
+        : ["mode", "apply_lora"],
   );
+
+  // Hide strength_clip if the setting is off (applies in both compact and full modes)
+  if (!showClipStrength(node)) {
+    alwaysVisible.delete("strength_clip");
+  }
 
   for (const name of ALL_WIDGETS) {
     const widget = getWidget(node, name);
     if (!widget) continue;
     ensureHiddenAwareWidget(widget);
-    applyWidgetHiddenState(widget, compact && !alwaysVisible.has(name));
+    applyWidgetHiddenState(widget, !alwaysVisible.has(name));
   }
+
+  // Sync hidden clip strength to model strength
+  syncHiddenClipStrength(node);
 
   updateAutoHeight(node);
   scheduleAutoHeightUpdate(node);
@@ -661,6 +719,9 @@ function setupNode(node) {
   if (typeof node.properties[INFO_PROP_KEY] !== "boolean") {
     setInfoEnabled(node, false);
   }
+  if (typeof node.properties[CLIP_STRENGTH_PROP_KEY] !== "boolean") {
+    setShowClipStrength(node, true);
+  }
 
   const originalDblClick = node.onDblClick;
   node.onDblClick = function onDblClick(event, pos) {
@@ -691,6 +752,15 @@ function setupNode(node) {
         : "AUN: Show LoRA info",
       callback: () => {
         setInfoEnabled(this, !isInfoEnabled(this));
+        applyCompact(this);
+      },
+    });
+    options.push({
+      content: showClipStrength(this)
+        ? "AUN: Hide clip strength"
+        : "AUN: Show clip strength",
+      callback: () => {
+        setShowClipStrength(this, !showClipStrength(this));
         applyCompact(this);
       },
     });
@@ -743,8 +813,18 @@ function setupNode(node) {
     } else if (label) {
       if (mode === "Select") {
         const selectW = getWidget(this, "select");
-        const idx = Number(selectW?.value) || 1;
-        labelText = `${idx}: ${label}`;
+        // Always prefer execution index for Select mode (reflects actual execution)
+        if (execIdx != null) {
+          labelText = `${execIdx}: ${label}`;
+        } else {
+          // Fallback to widget value if no execution index yet
+          const idx = parsePositiveInt(selectW?.value);
+          if (idx != null) {
+            labelText = `${idx}: ${label}`;
+          } else {
+            labelText = label;
+          }
+        }
       } else if (execIdx != null) {
         labelText = `${execIdx}: ${label}`;
       } else {
@@ -796,7 +876,19 @@ function setupNode(node) {
     modeWidget.__AUN_loraHooked = true;
   }
 
+  // Sync strength_clip when strength_model changes (if hidden).
+  const strengthModelWidget = getWidget(node, "strength_model");
+  if (strengthModelWidget && !strengthModelWidget.__AUN_loraHooked) {
+    const origCb = strengthModelWidget.callback;
+    strengthModelWidget.callback = function callback(value) {
+      origCb?.call(strengthModelWidget, value);
+      syncHiddenClipStrength(node);
+    };
+    strengthModelWidget.__AUN_loraHooked = true;
+  }
+
   hookWidgetRedraw(node, "select");
+  hookWidgetRedraw(node, "apply_lora");
   for (let i = 1; i <= 10; i += 1) {
     hookWidgetRedraw(node, `lora_${i}`);
   }

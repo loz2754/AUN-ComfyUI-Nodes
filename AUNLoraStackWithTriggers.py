@@ -114,7 +114,9 @@ class AUNLoraStackWithTriggers:
     CATEGORY = "AUN Nodes/Utility"
     OUTPUT_NODE = False
     DESCRIPTION = (
-        "Stacks multiple LoRAs with per-slot trigger words. "
+        "[DEPRECATED] Stacks multiple LoRAs with per-slot trigger words. "
+        "This node will be removed in a future release. Please use AUNLoraStackWithTriggersModelClip instead, "
+        "which provides CLIP support, compact mode with overlay UI, and additional features. "
         "Use num_slots to show only the slots you need, and compact mode to keep the node small."
     )
 

@@ -88,8 +88,19 @@ class AUNRandomLoraModelOnly:
                     "tooltip": "LoRA strength applied to the model.",
                 },
             ),
+            "strength_clip": (
+                "FLOAT",
+                {
+                    "default": 1.0,
+                    "min": -20.0,
+                    "max": 20.0,
+                    "step": 0.01,
+                    "tooltip": "LoRA strength applied to the clip when CLIP is connected.",
+                },
+            ),
         }
         optional = {
+            "clip": ("CLIP",),
             "base_prompt": (
                 "STRING",
                 {
@@ -121,9 +132,10 @@ class AUNRandomLoraModelOnly:
         }
         return {"required": required, "optional": optional, "hidden": hidden}
 
-    RETURN_TYPES = ("MODEL", "STRING", "INT", "STRING", "STRING", "STRING")
+    RETURN_TYPES = ("MODEL", "CLIP", "STRING", "INT", "STRING", "STRING", "STRING")
     RETURN_NAMES = (
         "MODEL",
+        "CLIP",
         "selected lora",
         "index",
         "label",
@@ -135,7 +147,9 @@ class AUNRandomLoraModelOnly:
     OUTPUT_NODE = False
     DESCRIPTION = (
         "Compact all-in-one random LoRA model loader with multiple selectable LoRA slots. "
-        "TIP: Double-click the node or right-click and select 'Compact mode' to hide configuration widgets."
+        "Supports both model-only and model+clip loading. Optional CLIP input enables per-slot clip strength control. "
+        "Double-click the node or right-click and select 'Compact mode' to hide configuration widgets. "
+        "Right-click menu: Hide/Show clip strength, Hide/Show footer with trigger words."
     )
 
     def _clamp_range(self, minimum, maximum, slot_count):
@@ -221,6 +235,7 @@ class AUNRandomLoraModelOnly:
         mode,
         trigger_words="",
         strength_model=1.0,
+        strength_clip=0.0,
         apply_lora=True,
     ):
         if unique_id is None:
@@ -240,6 +255,7 @@ class AUNRandomLoraModelOnly:
                     "mode": str(mode),
                     "trigger_words": str(trigger_words or ""),
                     "strength_model": float(strength_model),
+                    "strength_clip": float(strength_clip),
                     "apply_lora": bool(apply_lora),
                 },
             )
@@ -291,7 +307,9 @@ class AUNRandomLoraModelOnly:
         range,
         apply_lora,
         strength_model,
+        strength_clip,
         unique_id=None,
+        clip=None,
         **kwargs,
     ):
         base_prompt = kwargs.get("base_prompt", "")
@@ -313,9 +331,10 @@ class AUNRandomLoraModelOnly:
                     mode,
                     "",
                     strength_model,
+                    strength_clip,
                     apply_lora,
                 )
-                return (model, "None", 0, "none", "", str(base_prompt or ""))
+                return (model, clip, "None", 0, "none", "", str(base_prompt or ""))
 
         selected_name = slots[index - 1] if 1 <= index <= slot_count else "None"
         selected_trigger = triggers[index - 1] if 1 <= index <= len(triggers) else ""
@@ -328,9 +347,10 @@ class AUNRandomLoraModelOnly:
                 mode,
                 "",
                 strength_model,
+                strength_clip,
                 apply_lora,
             )
-            return (model, "None", 0, "none", "", str(base_prompt or ""))
+            return (model, clip, "None", 0, "none", "", str(base_prompt or ""))
 
         base = selected_name.split("/")[-1].split("\\")[-1]
         for ext in (".safetensors", ".ckpt", ".pt", ".bin"):
@@ -347,10 +367,12 @@ class AUNRandomLoraModelOnly:
                 mode,
                 selected_trigger,
                 strength_model,
+                strength_clip,
                 apply_lora,
             )
             return (
                 model,
+                clip,
                 selected_name,
                 index,
                 label,
@@ -367,10 +389,12 @@ class AUNRandomLoraModelOnly:
                 mode,
                 selected_trigger,
                 strength_model,
+                strength_clip,
                 apply_lora,
             )
             return (
                 model,
+                clip,
                 selected_name,
                 index,
                 "missing",
@@ -380,12 +404,12 @@ class AUNRandomLoraModelOnly:
 
         try:
             lora_weights = comfy.utils.load_torch_file(lora_path, safe_load=True)
-            loaded_model, _ = comfy.sd.load_lora_for_models(
+            loaded_model, loaded_clip = comfy.sd.load_lora_for_models(
                 model,
-                None,
+                clip,
                 lora_weights,
                 float(strength_model),
-                0.0,
+                float(strength_clip) if clip is not None else 0.0,
             )
         except Exception:
             self._emit_selected_lora(
@@ -395,10 +419,12 @@ class AUNRandomLoraModelOnly:
                 mode,
                 selected_trigger,
                 strength_model,
+                strength_clip,
                 apply_lora,
             )
             return (
                 model,
+                clip,
                 selected_name,
                 index,
                 "error",
@@ -412,10 +438,12 @@ class AUNRandomLoraModelOnly:
             mode,
             selected_trigger,
             strength_model,
+            strength_clip,
             apply_lora,
         )
         return (
             loaded_model,
+            loaded_clip,
             selected_name,
             index,
             label,
