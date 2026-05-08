@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [2.2.2] - 2026-05-08
+
+### Fixed
+
+- Fixed drag-to-adjust numeric values on strength inputs in compact mode by making only LoRA labels draggable instead of entire row (AUNLoraStackWithTriggersModelClip, AUNRandomLoraModelOnlyMulti).
+
 ## [2.2.1] - 2026-05-08
 
 ### Added
