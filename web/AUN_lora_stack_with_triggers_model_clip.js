@@ -658,22 +658,22 @@ function buildCompactRow(node, slotIndex) {
   bindStepButton(strengthClipDec, () => clipBinding.adjustValue(-1));
   bindStepButton(strengthClipInc, () => clipBinding.adjustValue(1));
 
-  // Drag-to-reorder support
-  row.draggable = true;
-  row.addEventListener("dragstart", (event) => {
+  // Drag-to-reorder support: only label is draggable, not input fields
+  loraLabel.draggable = true;
+  loraLabel.addEventListener("dragstart", (event) => {
     stopCanvasEvent(event);
     event.dataTransfer.effectAllowed = "move";
     event.dataTransfer.setData("text/plain", JSON.stringify({ slotIndex }));
     row.classList.add("dragging");
     row.style.opacity = "0.5";
-    row.style.cursor = "grabbing";
+    loraLabel.style.cursor = "grabbing";
   });
 
-  row.addEventListener("dragend", (event) => {
+  loraLabel.addEventListener("dragend", (event) => {
     stopCanvasEvent(event);
     row.classList.remove("dragging");
     row.style.opacity = "1";
-    row.style.cursor = "grab";
+    loraLabel.style.cursor = "grab";
   });
 
   row.addEventListener("dragover", (event) => {
@@ -746,17 +746,17 @@ function buildCompactRow(node, slotIndex) {
   });
 
   // Visual feedback on hover
-  row.addEventListener("mouseenter", () => {
+  loraLabel.addEventListener("mouseenter", () => {
     if (!row.classList.contains("dragging")) {
-      row.style.cursor = "grab";
-      row.style.opacity = "0.85";
+      loraLabel.style.cursor = "grab";
+      loraLabel.style.opacity = "0.85";
     }
   });
 
-  row.addEventListener("mouseleave", () => {
+  loraLabel.addEventListener("mouseleave", () => {
     if (!row.classList.contains("dragging")) {
-      row.style.opacity = "1";
-      row.style.cursor = "default";
+      loraLabel.style.opacity = "1";
+      loraLabel.style.cursor = "default";
     }
   });
 
