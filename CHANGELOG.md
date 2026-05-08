@@ -30,8 +30,6 @@
 - Fixed LoRA stack compact mode initialization to properly set COMPACT_LABEL_HEIGHT constant.
 - Fixed clip strength synchronization to maintain value parity when hidden across all LoRA nodes.
 
-### Notes
-
 ## [2.1.11] - 2026-05-06
 
 ### Added
