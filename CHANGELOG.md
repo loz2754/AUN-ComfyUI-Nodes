@@ -1,5 +1,11 @@
 # AUN Custom Nodes Changelog
 
+## [2.2.4] - 2026-05-09
+
+### Fixed
+
+- Muting/unmuting a group no longer affects the collapsed/expanded state of nodes in that group. Only the intended node states are changed. (JS logic respects state_changes)
+
 ## [Unreleased]
 
 ## [2.2.3] - 2026-05-08
