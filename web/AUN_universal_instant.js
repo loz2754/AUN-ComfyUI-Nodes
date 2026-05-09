@@ -884,7 +884,7 @@ const evaluateNodeTargets = (predicate, mode) => {
   return { total, disabled };
 };
 
-const setNodeStateForMode = (node, mode, isActive) => {
+const setNodeStateForMode = (node, mode, isActive, stateChanges) => {
   if (!node) return;
   let changed = false;
   const ensureFlags = () => {
@@ -905,34 +905,28 @@ const setNodeStateForMode = (node, mode, isActive) => {
     }
   };
 
+  // Only update states that are present in stateChanges
+  const updateMode =
+    stateChanges?.includes("mute") || stateChanges?.includes("bypass");
+  const updateCollapse = stateChanges?.includes("collapse");
+
   if (isActive) {
-    // When mode is "Collapse", only manage collapse state, not bypass/mute
-    if (mode === "Collapse") {
-      setCollapsed(false);
-    } else {
+    if (updateMode) {
       setModeValue(NODE_MODE_VALUES.ALWAYS);
-      if (mode === "Bypass+Collapse") {
-        setCollapsed(false);
-      } else if (mode === "Mute") {
-        setCollapsed(false);
-      }
+    }
+    if (updateCollapse) {
+      setCollapsed(false);
     }
   } else {
-    switch (mode) {
-      case "Mute":
+    if (updateMode) {
+      if (mode === "Mute") {
         setModeValue(NODE_MODE_VALUES.NEVER);
-        break;
-      case "Collapse":
-        // When mode is "Collapse", only manage collapse state, not bypass/mute
-        setCollapsed(true);
-        break;
-      case "Bypass+Collapse":
+      } else {
         setModeValue(NODE_MODE_VALUES.BYPASS);
-        setCollapsed(true);
-        break;
-      default:
-        setModeValue(NODE_MODE_VALUES.BYPASS);
-        break;
+      }
+    }
+    if (updateCollapse) {
+      setCollapsed(true);
     }
   }
 
@@ -942,7 +936,7 @@ const setNodeStateForMode = (node, mode, isActive) => {
   }
 };
 
-const applyUniversalUpdate = (mode, groupsPayload) => {
+const applyUniversalUpdate = (mode, groupsPayload, stateChanges) => {
   if (!Array.isArray(groupsPayload) || !groupsPayload.length) return;
   console.log(
     `[AUN_universal] applyUniversalUpdate called with mode="${mode}", ${groupsPayload.length} groups`,
@@ -992,7 +986,7 @@ const applyUniversalUpdate = (mode, groupsPayload) => {
       nodes.forEach((node) => {
         if (isNodeInsideGroup(node, group, cache)) {
           forEachNodeAndInnerNodes(node, (target) =>
-            setNodeStateForMode(target, mode, isActive),
+            setNodeStateForMode(target, mode, isActive, stateChanges),
           );
         }
       });
@@ -1006,7 +1000,7 @@ const applyUniversalUpdate = (mode, groupsPayload) => {
       nodesById.get(normalized) || nodesById.get(String(Number(normalized)));
     if (!node) return;
     forEachNodeAndInnerNodes(node, (target) =>
-      setNodeStateForMode(target, mode, isActive),
+      setNodeStateForMode(target, mode, isActive, stateChanges),
     );
   };
 
@@ -1038,7 +1032,7 @@ const applyUniversalUpdate = (mode, groupsPayload) => {
         Array.from(excludes).some((needle) => title.includes(needle));
       if (excluded) return;
       forEachNodeAndInnerNodes(node, (target) =>
-        setNodeStateForMode(target, mode, isActive),
+        setNodeStateForMode(target, mode, isActive, stateChanges),
       );
     });
   };
@@ -1705,6 +1699,20 @@ const executeInstant = function executeInstant() {
     : !!getWidget(this, "AllSwitch")?.value;
   const groupsPayload = [];
 
+  // Determine which states should be changed based on mode
+  let stateChanges = [];
+  if (mode === "Mute") {
+    stateChanges = ["mute", "bypass"];
+  } else if (mode === "Bypass") {
+    stateChanges = ["bypass", "mute"];
+  } else if (mode === "Collapse") {
+    stateChanges = ["collapse"];
+  } else if (mode === "Bypass+Collapse") {
+    stateChanges = ["bypass", "mute", "collapse"];
+  } else {
+    stateChanges = ["bypass", "mute"];
+  }
+
   if (this.__AUN_isGroupNode) {
     if (this.__AUN_useAllGroups) {
       const map = collectGroupsByTitle();
@@ -1835,10 +1843,15 @@ const executeInstant = function executeInstant() {
   }
 
   if (!groupsPayload.length) return;
-  applyUniversalUpdate(mode, groupsPayload);
+  applyUniversalUpdate(mode, groupsPayload, stateChanges);
   api.dispatchEvent(
     new CustomEvent("AUN_universal_update", {
-      detail: { mode, groups: groupsPayload, __AUN_alreadyApplied: true },
+      detail: {
+        mode,
+        groups: groupsPayload,
+        state_changes: stateChanges,
+        __AUN_alreadyApplied: true,
+      },
     }),
   );
   this._AUN_lastInstantExecution = Date.now();
@@ -1849,8 +1862,9 @@ api?.addEventListener?.("AUN_universal_update", (event) => {
   if (!detail || detail.__AUN_alreadyApplied) return;
   const mode = detail.mode;
   const groups = detail.groups;
+  const stateChanges = detail.state_changes;
   if (typeof mode !== "string" || !Array.isArray(groups)) return;
-  applyUniversalUpdate(mode, groups);
+  applyUniversalUpdate(mode, groups, stateChanges);
 });
 
 const enforceRestriction = (node, slot, value) => {
