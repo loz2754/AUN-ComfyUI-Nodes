@@ -225,7 +225,13 @@ class AUNLoraStackWithTriggersModelClip:
             else base_prompt_text
         )
         labels = " + ".join(item["label"] for item in active_slots if item["label"])
-        selected_loras = ", ".join(item["lora"] for item in active_slots if item["lora"] != "None")
+        # Format: filename:model_strength:clip_strength, filename2:model_strength2:clip_strength2
+        lora_tags = []
+        for item in active_slots:
+            if item["lora"] != "None":
+                basename = item["lora"].split("/")[-1].split("\\")[-1]
+                lora_tags.append(f"{basename}:{item['strength_model']:.2f}:{item['strength_clip']:.2f}")
+        selected_loras = ", ".join(lora_tags)
 
         loaded_model = model
         loaded_clip = clip

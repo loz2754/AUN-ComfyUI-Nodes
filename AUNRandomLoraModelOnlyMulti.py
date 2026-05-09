@@ -283,7 +283,18 @@ class AUNRandomLoraModelOnlyMulti:
                 all_triggers.append(trigger)
 
         # Compose output strings
-        selected_loras_str = ", ".join(selected_loras)
+        # Format: <lora:filename:model_strength:clip_strength>, <lora:filename2:model_strength2:clip_strength2>
+        # (comma-separated with tags, so SaveImage doesn't wrap them as a single entry)
+        lora_tags = []
+        for name, strength_m, strength_c in zip(
+            selected_loras,
+            selected_strengths_model,
+            selected_strengths_clip,
+        ):
+            # Extract just the filename without path
+            basename = name.split("/")[-1].split("\\")[-1]
+            lora_tags.append(f"<lora:{basename}:{strength_m:.2f}:{strength_c:.2f}>")
+        selected_loras_str = ", ".join(lora_tags)
         lora_labels_str = ", ".join(lora_labels)
         combined_triggers = ", ".join([t for t in all_triggers if t])
         composed_prompt = self._compose_trigger_prompt(combined_triggers, base_prompt)

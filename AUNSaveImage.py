@@ -1435,16 +1435,60 @@ class AUNSaveImage:
             # Add selected_lora from input if provided (e.g., from AUNRandomLoraModelOnly output)
             selected_lora_input = kwargs.get("selected_lora", "").strip()
             if selected_lora_input and selected_lora_input.lower() not in ("none", ""):
-                # Check if this lora is already in the items
-                existing_names = {item.get('name', '').lower() for item in lora_items if isinstance(item, dict)}
-                if selected_lora_input.lower() not in existing_names:
-                    # Add it to lora_items with strength 1.0
-                    lora_items.append({
-                        'name': selected_lora_input,
-                        'strength': 1.0,
-                        'strengthTwo': 1.0,
-                        'origin': 'Selected'
-                    })
+                # Build set of existing LoRA basenames (case-insensitive) to prevent duplicates
+                existing_basenames = set()
+                for item in lora_items:
+                    if isinstance(item, dict) and item.get('name'):
+                        basename = os.path.splitext(os.path.basename(item['name']))[0].lower()
+                        if basename:
+                            existing_basenames.add(basename)
+                
+                # Check if the input contains LoRA tags (e.g., from AUNRandomLoraModelOnlyMulti)
+                if "<lora:" in selected_lora_input.lower():
+                    # Parse the tags directly
+                    parsed_tags = _parse_lora_tag_text(selected_lora_input)
+                    for tag in parsed_tags:
+                        if isinstance(tag, dict) and tag.get('name'):
+                            tag_basename = os.path.splitext(tag['name'])[0].lower()
+                            # Only add if not already present
+                            if tag_basename not in existing_basenames:
+                                lora_items.append({
+                                    'name': tag['name'],
+                                    'strength': tag.get('strength', 1.0),
+                                    'strengthTwo': tag.get('strengthTwo', 1.0),
+                                    'origin': 'Selected'
+                                })
+                else:
+                    # Plain LoRA name or comma-separated list without tags
+                    for lora_entry in selected_lora_input.split(','):
+                        lora_entry = lora_entry.strip()
+                        if not lora_entry or lora_entry.lower() == "none":
+                            continue
+                        # Try to parse strength from "filename:model:clip" format
+                        parts = lora_entry.split(':')
+                        lora_name = parts[0].strip()
+                        strength_m = 1.0
+                        strength_c = 1.0
+                        if len(parts) >= 2:
+                            try:
+                                strength_m = float(parts[1])
+                            except ValueError:
+                                pass
+                        if len(parts) >= 3:
+                            try:
+                                strength_c = float(parts[2])
+                            except ValueError:
+                                pass
+                        
+                        lora_basename = os.path.splitext(os.path.basename(lora_name))[0].lower()
+                        if lora_basename not in existing_basenames:
+                            lora_items.append({
+                                'name': lora_name,
+                                'strength': strength_m,
+                                'strengthTwo': strength_c,
+                                'origin': 'Selected'
+                            })
+                            existing_basenames.add(lora_basename)
 
             prompt_lora_names: set[str] = set()
 

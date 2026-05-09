@@ -359,6 +359,7 @@ class AUNRandomLoraModelOnly:
                 break
 
         label = base
+        selected_lora_output = f"{base}:{strength_model:.2f}:{strength_clip:.2f}"
         if not bool(apply_lora):
             self._emit_selected_lora(
                 unique_id,
@@ -373,7 +374,7 @@ class AUNRandomLoraModelOnly:
             return (
                 model,
                 clip,
-                selected_name,
+                selected_lora_output,
                 index,
                 label,
                 selected_trigger,
@@ -395,7 +396,7 @@ class AUNRandomLoraModelOnly:
             return (
                 model,
                 clip,
-                selected_name,
+                selected_lora_output,
                 index,
                 "missing",
                 selected_trigger,
@@ -425,7 +426,7 @@ class AUNRandomLoraModelOnly:
             return (
                 model,
                 clip,
-                selected_name,
+                selected_lora_output,
                 index,
                 "error",
                 selected_trigger,
@@ -444,7 +445,7 @@ class AUNRandomLoraModelOnly:
         return (
             loaded_model,
             loaded_clip,
-            selected_name,
+            selected_lora_output,
             index,
             label,
             selected_trigger,

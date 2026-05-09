@@ -1,3 +1,9 @@
+## [2.2.5] - 2026-05-09
+
+### Changed
+
+- Version bump for new release. (No user-facing changes listed in this entry.)
+
 # AUN Custom Nodes Changelog
 
 ## [2.2.4] - 2026-05-09
