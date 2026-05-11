@@ -13,10 +13,11 @@ class AUNTextIndexSwitch3:
             "tooltip": "Number of visible text slots",
             }),
         }
-        optional = {}
+        # Move text widgets to required so ComfyUI always saves their values
         for i in range(1, cls.MAX_SLOTS + 1):
-            optional[f"text{i}"] = ("STRING", {"multiline": True, "default": "", "dynamicPrompts": True})
-        return {"required": required, "optional": optional, "hidden": {"unique_id": "UNIQUE_ID", "extra_pnginfo": "EXTRA_PNGINFO"}} 
+            required[f"text{i}"] = ("STRING", {"multiline": True, "default": f"Slot {i}", "dynamicPrompts": True})
+            
+        return {"required": required, "optional": {}, "hidden": {"unique_id": "UNIQUE_ID", "extra_pnginfo": "EXTRA_PNGINFO"}} 
 
     RETURN_TYPES = ("STRING", "STRING","INT",)
     RETURN_NAMES = ("text", "label", "index")
@@ -33,6 +34,17 @@ class AUNTextIndexSwitch3:
     def index_switch(self, index, slot_count, unique_id=None, extra_pnginfo=None, **kwargs):
         # Clamp slot_count to valid range
         slot_count = max(1, min(20, int(slot_count)))
+        
+        # Store slot_count and index in extra_pnginfo for persistence
+        self._record_pginfo(
+            extra_pnginfo,
+            unique_id,
+            {
+                "node": "AUNTextIndexSwitch3",
+                "slot_count": slot_count,
+                "index": int(index),
+            }
+        )
         
         # Build text list from only the active slots
         texts = [kwargs.get(f"text{i}", "") for i in range(1, slot_count + 1)]
@@ -117,6 +129,18 @@ class AUNTextIndexSwitch3:
                         texts[idx] = '\n'.join(lines[1:]).lstrip()
 
         return (texts[idx], selected_label, clamped_index)
+    
+    def _record_pginfo(self, extra_pnginfo, unique_id, payload):
+        if not isinstance(extra_pnginfo, dict) or unique_id is None:
+            return
+        try:
+            pginfo = extra_pnginfo.setdefault("aun_pginfo", {})
+            if not isinstance(pginfo, dict):
+                pginfo = {}
+                extra_pnginfo["aun_pginfo"] = pginfo
+            pginfo[str(unique_id)] = payload
+        except Exception:
+            pass
 
 NODE_CLASS_MAPPINGS = {
     "AUNTextIndexSwitch3": AUNTextIndexSwitch3,
