@@ -369,7 +369,7 @@ function getEffectiveText(node, slotIndex) {
   return "";
 }
 
-function updateCompactOverlay(node, overrideIndex) {
+function updateCompactOverlay(node, overrideIndex, force = false) {
   if (!node || !isCompact(node)) {
     const ov = compactOverlays.get(node);
     if (ov) ov.overlay.style.display = "none";
@@ -384,8 +384,20 @@ function updateCompactOverlay(node, overrideIndex) {
       ? overrideIndex
       : getEffectiveIndex(node);
 
+  // Optimization: Only update DOM if index or node position changed, or if forced
+  const lastIdx = node.__AUN_lastOverlayIdx;
+  const lastPos = node.__AUN_lastOverlayPos;
+  const currentPos = node.pos ? `${node.pos[0]},${node.pos[1]}` : "";
+
+  if (!force && lastIdx === effectiveIndex && lastPos === currentPos) {
+    return;
+  }
+  node.__AUN_lastOverlayIdx = effectiveIndex;
+  node.__AUN_lastOverlayPos = currentPos;
+
   // Get text using effective index - traces external links if present
   const effectiveText = getEffectiveText(node, effectiveIndex);
+
 
   // Check if this text slot is externally linked
   const isLinked = isTextSlotLinked(node, effectiveIndex);
@@ -477,19 +489,6 @@ if (!window.__AUN_compactOverlayUpdateLoop) {
     const nodes = app.graph._nodes || app.graph.nodes || [];
     for (const node of nodes) {
       if (isTargetNode(node)) {
-        // Re-apply input slot visibility for compact nodes every frame
-        // This prevents stray dots from reappearing after widget changes
-        if (isCompact(node) && node.inputs) {
-          for (const input of node.inputs) {
-            if (!input) continue;
-            if (input.name && input.name.startsWith("text")) {
-              input.hidden = true;
-            }
-            if (input.name === "index") {
-              input.hidden = true;
-            }
-          }
-        }
         const effectiveIdx = getEffectiveIndex(node);
         updateCompactOverlay(node, effectiveIdx);
       }
@@ -1322,8 +1321,7 @@ function patchTargetNode(node) {
       setTimeout(() => {
         if (node && node.widgets) {
           setCompact(node, false);
-          syncSlotVisibility(node);
-          applyCompact(node);
+          updateNodeVisualState(node);
         }
       }, 300);
     };
@@ -1423,8 +1421,7 @@ function patchTargetNode(node) {
       }
 
       // ALWAYS re-apply visibility after restoring slot_count
-      syncSlotVisibility(node);
-      applyCompact(node);
+      updateNodeVisualState(node);
     }
   };
 
@@ -1500,8 +1497,7 @@ function patchTargetNode(node) {
   };
 
   // Run sync on initial load
-  syncSlotVisibility(node);
-  applyCompact(node);
+  updateNodeVisualState(node);
 
   // Set up double-click handlers for text widget editing
   setupTextEditHandlers(node);
@@ -1535,30 +1531,34 @@ function ensureTextWidgetsExist(node, slotCount) {
   }
 }
 
-function syncSlotVisibility(node) {
+function updateNodeVisualState(node) {
   if (!node) return;
 
   const slotCountWidget = getWidget(node, "slot_count");
   if (!slotCountWidget) return;
 
-  // Use the current slot_count value - NEVER correct it
   const slotCount = Math.max(
     1,
     Math.min(20, Math.floor(Number(slotCountWidget.value) || 2)),
   );
 
-  // Hide/show text widgets based on slot_count (unless in compact mode)
+  const compact = isCompact(node);
+
+  // Hide slot_count widget in compact mode
+  applyWidgetHiddenState(slotCountWidget, compact);
+
+  // Update text widgets
   for (let i = 1; i <= 20; i++) {
     const textWidget = getWidget(node, `text${i}`);
     if (textWidget) {
       applyWidgetHiddenState(
         textWidget,
-        isCompact(node) ? true : i > slotCount,
+        compact || i > slotCount,
       );
     }
   }
 
-  // Also update the index widget's min/max values to match slot_count.
+  // Update index widget
   const indexWidget = getWidget(node, "index");
   if (indexWidget) {
     const options =
@@ -1595,90 +1595,22 @@ function syncSlotVisibility(node) {
     }
   }
 
-  // Mark widgets as dirty so ComfyUI recalculates layout
-  node.widgets_dirty = true;
-
-  // Resize using ComfyUI's built-in computeSize with extra bottom padding
-  if (
-    typeof node.computeSize === "function" &&
-    typeof node.setSize === "function"
-  ) {
-    try {
-      const newSize = node.computeSize();
-      if (newSize && Array.isArray(newSize) && newSize.length >= 2) {
-        // Add extra padding at the bottom (15px)
-        node.setSize([newSize[0], newSize[1] + 15]);
-      }
-    } catch (e) {
-      // ignore
-    }
-  }
-
-  if (typeof node.setDirtyCanvas === "function") {
-    node.setDirtyCanvas(true, true);
-  }
-  if (typeof app?.graph?.setDirtyCanvas === "function") {
-    app.graph.setDirtyCanvas(true, true);
-  }
-
-  // Schedule a few more resize attempts to catch any late updates
-  scheduleAutoHeightUpdate(node, 5, 50);
-}
-
-function applyCompact(node) {
-  if (!isTargetNode(node)) return;
-
-  // Preserve current compact state
-  const wasCompact = isCompact(node);
-
-  const slotCountWidget = getWidget(node, "slot_count");
-  if (!slotCountWidget) return;
-
-  // Use the current slot_count value without correcting it
-  const slotCount = Math.max(
-    1,
-    Math.min(20, Math.floor(Number(slotCountWidget.value) || 2)),
-  );
-
-  // In compact mode, hide all text widgets
-  // In normal mode, show based on slot_count
-  for (let i = 1; i <= 20; i++) {
-    const textWidget = getWidget(node, `text${i}`);
-    if (textWidget) {
-      applyWidgetHiddenState(textWidget, wasCompact || i > slotCount);
-    }
-  }
-
-  // In compact mode, hide all text and index input slots
-  // Non-compact: only hide slots beyond slot_count
+  // Update input slots
   if (node.inputs) {
     for (const input of node.inputs) {
       if (!input) continue;
       if (input.name && input.name.startsWith("text")) {
-        if (wasCompact) {
-          input.hidden = true;
-        } else if (parseInt(input.name.replace("text", ""), 10) > slotCount) {
-          input.hidden = true;
-        } else {
-          input.hidden = false;
-        }
+        const slotIdx = parseInt(input.name.replace("text", ""), 10);
+        input.hidden = compact || slotIdx > slotCount;
       }
       if (input.name === "index") {
-        input.hidden = wasCompact;
+        input.hidden = compact;
       }
     }
   }
 
-  // Force canvas redraw to ensure slot visibility changes take effect
-  node.setDirtyCanvas?.(true, true);
-  if (typeof app?.graph?.setDirtyCanvas === "function") {
-    app.graph.setDirtyCanvas(true, true);
-  }
-
-  // Mark widgets as dirty so ComfyUI recalculates layout
   node.widgets_dirty = true;
 
-  // Resize using ComfyUI's built-in computeSize with extra bottom padding
   if (
     typeof node.computeSize === "function" &&
     typeof node.setSize === "function"
@@ -1693,12 +1625,9 @@ function applyCompact(node) {
     }
   }
 
-  // Restore compact state if it changed
-  if (isCompact(node) !== wasCompact) {
-    setCompact(node, wasCompact);
-  }
+  node.setDirtyCanvas?.(true, true);
+  app.graph?.setDirtyCanvas?.(true, true);
 
-  // Schedule a few more resize attempts to catch any late updates
   scheduleAutoHeightUpdate(node, 5, 50);
 }
 
@@ -1706,9 +1635,13 @@ function applyCompact(node) {
 function toggleCompactMode(node) {
   if (!node) return;
   setCompact(node, !isCompact(node));
-  applyCompact(node);
+  updateNodeVisualState(node);
   startCompactLiveMonitor(node);
   scheduleAutoHeightUpdate(node);
+
+  // Force overlay update to prevent "disappearing" on toggle
+  const idx = getEffectiveIndex(node);
+  updateCompactOverlay(node, idx, true);
 }
 
 function getActiveSlotTitle(node) {
@@ -1813,7 +1746,7 @@ function startCompactLiveMonitor(node) {
       clearInterval(node.__AUN_textIndexSwitch3MonitorId);
       node.__AUN_textIndexSwitch3MonitorId = null;
     }
-    // Remove overlay from DOM
+    // Remove overlay from DOM and WeakMap
     const ov = compactOverlays.get(node);
     if (ov) {
       ov.overlay.remove();
@@ -1874,7 +1807,7 @@ try {
             : "AUN: Compact mode",
           callback: () => {
             setCompact(this, !this.properties?.[PROP_KEY]);
-            applyCompact(this);
+            updateNodeVisualState(this);
             startCompactLiveMonitor(this);
             scheduleAutoHeightUpdate(this);
           },
