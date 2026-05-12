@@ -115,6 +115,388 @@ let currentPopup = null;
 let currentTooltip = null;
 let tooltipTimer = null;
 
+// Compact label overlay management
+const compactOverlays = new WeakMap();
+
+// Track links that should be hidden (links going to hidden inputs on compact nodes)
+const hiddenLinks = new Set();
+
+function shouldHideLink(linkId) {
+  return hiddenLinks.has(linkId);
+}
+
+// Hook into ComfyUI's canvas drawing to skip hidden links
+if (!window.__AUN_linkFilterHook) {
+  window.__AUN_linkFilterHook = true;
+  const origDrawConnections = app.canvas?.drawConnections;
+  if (origDrawConnections) {
+    app.canvas.drawConnections = function (...args) {
+      // Filter out links that should be hidden
+      const originalLinks = app.graph.links;
+      const tempHidden = new Map();
+
+      // Temporarily remove hidden links
+      for (const linkId of hiddenLinks) {
+        const link = originalLinks.get?.(linkId);
+        if (link) {
+          tempHidden.set(linkId, link);
+          originalLinks.delete(linkId);
+        }
+      }
+
+      // Draw connections
+      const result = origDrawConnections.apply(this, args);
+
+      // Restore hidden links
+      for (const [linkId, link] of tempHidden) {
+        originalLinks.set(linkId, link);
+      }
+
+      return result;
+    };
+  }
+
+  // Also hook into drawSlotHints to hide slot dots for compact nodes
+  const origDrawSlotHints = app.canvas?.drawSlotHints;
+  if (origDrawSlotHints) {
+    app.canvas.drawSlotHints = function (...args) {
+      origDrawSlotHints.apply(this, args);
+    };
+  }
+}
+
+// Update hidden links set based on compact mode state
+function updateHiddenLinks() {
+  hiddenLinks.clear();
+
+  if (!app?.graph) return;
+
+  const nodes = app.graph._nodes || app.graph.nodes || [];
+  for (const node of nodes) {
+    if (!isTargetNode(node)) continue;
+
+    if (!node.inputs) continue;
+
+    for (const input of node.inputs) {
+      if (!input || !input.link) continue;
+
+      // Hide links to text inputs in compact mode
+      if (input.name && input.name.startsWith("text")) {
+        if (isCompact(node)) {
+          hiddenLinks.add(input.link);
+        }
+      }
+
+      // Hide link to index input in compact mode
+      if (input.name === "index" && isCompact(node)) {
+        hiddenLinks.add(input.link);
+      }
+    }
+  }
+}
+
+function getCompactOverlay(node) {
+  if (compactOverlays.has(node)) return compactOverlays.get(node);
+
+  const overlay = document.createElement("div");
+  overlay.style.cssText = `
+    position: fixed;
+    z-index: 11;
+    pointer-events: none;
+    display: none;
+  `;
+
+  const label = document.createElement("div");
+  label.style.cssText = `
+    padding: 2px 6px;
+    background: rgba(0,0,0,0.55);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 8px;
+    color: rgba(240,240,240,0.98);
+    font: 11px sans-serif;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 115px;
+  `;
+
+  const hint = document.createElement("span");
+  hint.style.cssText = `
+    display: inline-block;
+    margin-left: 4px;
+    color: rgba(200,200,200,0.6);
+    font: 9px sans-serif;
+    white-space: nowrap;
+  `;
+  hint.textContent = "(dbl-click to view)";
+
+  const container = document.createElement("div");
+  container.style.cssText = `
+    display: flex;
+    align-items: center;
+  `;
+  container.appendChild(label);
+  container.appendChild(hint);
+  overlay.appendChild(container);
+  document.body.appendChild(overlay);
+
+  const ov = { overlay, label, hint, container };
+  compactOverlays.set(node, ov);
+  return ov;
+}
+
+// Helper to get effective index for a node (from source if linked, otherwise widget)
+function getEffectiveIndex(node) {
+  if (!node) return 1;
+
+  // Check if index input is linked
+  const indexInput = node.inputs?.find((i) => i.name === "index");
+  if (indexInput?.link) {
+    const link = app.graph.links?.get?.(indexInput.link);
+    if (link?.origin_id) {
+      const srcNode = app.graph.getNodeById?.(link.origin_id);
+      if (srcNode) {
+        // Check AUNRandomIndexSwitch
+        const selectWidget = srcNode.widgets?.find((w) => w.name === "select");
+        if (selectWidget !== undefined) return selectWidget.value;
+
+        // Check int constant nodes
+        const valueWidget = srcNode.widgets?.find(
+          (w) =>
+            w.type === "NUMBER" || w.name === "value" || w.name === "number",
+        );
+        if (valueWidget !== undefined) return Number(valueWidget.value);
+
+        // Check other index switches
+        const idxWidget = srcNode.widgets?.find(
+          (w) => w.name === "index" || w.name === "idx" || w.name === "i",
+        );
+        if (idxWidget !== undefined) return Number(idxWidget.value);
+      }
+    }
+  }
+
+  // Fallback to widget value
+  const indexWidget = getWidget(node, "index");
+  return Number(indexWidget?.value ?? 1);
+}
+
+// Update overlay position only (no content refresh) for real-time drag tracking
+function updateCompactOverlayPosition(node) {
+  if (!node || !isCompact(node)) {
+    return;
+  }
+
+  const ov = compactOverlays.get(node);
+  if (!ov || ov.overlay.style.display === "none") {
+    return;
+  }
+
+  const canvas = app.canvas;
+  if (!canvas || !canvas.canvas) {
+    return;
+  }
+
+  try {
+    const canvasRect = canvas.canvas.getBoundingClientRect();
+    const ds = canvas.ds;
+    if (!ds) {
+      return;
+    }
+
+    const scale = ds.scale;
+    const panOffsetX = ds.offset[0];
+    const panOffsetY = ds.offset[1];
+
+    // Convert node position to screen coordinates
+    const screenX = canvasRect.left + (node.pos[0] + panOffsetX) * scale;
+    const screenY = canvasRect.top + (node.pos[1] + panOffsetY) * scale;
+
+    // Label position: 6px from left, 28px from top (in node-local coordinates, scaled)
+    const labelX = screenX + 6 * scale;
+    const labelY = screenY + 28 * scale;
+
+    ov.overlay.style.left = `${labelX}px`;
+    ov.overlay.style.top = `${labelY}px`;
+  } catch (e) {
+    // ignore position errors during drag
+  }
+}
+
+// Helper to get effective text for a slot (traces external links to source node)
+function getEffectiveText(node, slotIndex) {
+  if (!node) return "";
+
+  const textName = `text${slotIndex}`;
+
+  // Check if this text input is linked externally
+  const textInput = node.inputs?.find((i) => i.name === textName);
+  if (textInput?.link) {
+    const link = app.graph.links?.get?.(textInput.link);
+    if (link?.origin_id) {
+      const srcNode = app.graph.getNodeById?.(link.origin_id);
+      if (srcNode) {
+        // Try to find a text/string widget on the source node
+        const textWidget = srcNode.widgets?.find((w) => {
+          const type = (w.type || "").toUpperCase();
+          const name = (w.name || "").toLowerCase();
+          return (
+            type === "TEXT" ||
+            type === "STRING" ||
+            name === "value" ||
+            name === "prompt" ||
+            name === "text" ||
+            name === "conditioning"
+          );
+        });
+
+        if (textWidget && typeof textWidget.value === "string") {
+          return textWidget.value;
+        }
+
+        // Fallback: use node title if no text widget found
+        if (srcNode.title) return srcNode.title;
+        if (srcNode.type) return srcNode.type;
+      }
+    }
+  }
+
+  // Fallback to local widget value
+  const localWidget = getWidget(node, textName);
+  if (localWidget && typeof localWidget.value === "string") {
+    return localWidget.value;
+  }
+  return "";
+}
+
+function updateCompactOverlay(node, overrideIndex) {
+  if (!node || !isCompact(node)) {
+    const ov = compactOverlays.get(node);
+    if (ov) ov.overlay.style.display = "none";
+    return;
+  }
+
+  const ov = getCompactOverlay(node);
+
+  // Use overrideIndex if provided, otherwise trace for effective index
+  const effectiveIndex =
+    overrideIndex !== undefined && overrideIndex !== null
+      ? overrideIndex
+      : getEffectiveIndex(node);
+
+  // Get text using effective index - traces external links if present
+  const effectiveText = getEffectiveText(node, effectiveIndex);
+
+  // Check if this text slot is externally linked
+  const isLinked = isTextSlotLinked(node, effectiveIndex);
+
+  let title = "";
+  let hasMoreLines = false;
+
+  if (isLinked) {
+    // For linked inputs, show the source node's title
+    const textName = `text${effectiveIndex}`;
+    const textInput = node.inputs?.find((i) => i.name === textName);
+    if (textInput?.link) {
+      const link = app.graph.links?.get?.(textInput.link);
+      if (link?.origin_id) {
+        const srcNode = app.graph.getNodeById?.(link.origin_id);
+        if (srcNode) {
+          title = srcNode.title || srcNode.type || "";
+        }
+      }
+    }
+    // Linked inputs show "more lines" hint if there's text content to preview
+    if (typeof effectiveText === "string") {
+      const text = effectiveText || "";
+      const lines = text.split("\n");
+      hasMoreLines = lines.length > 1 && lines.slice(1).some((l) => l.trim());
+    }
+  } else {
+    // For non-linked inputs, show the first line of text
+    if (typeof effectiveText === "string") {
+      title = effectiveText.split("\n")[0].trim();
+      const lines = effectiveText.split("\n");
+      hasMoreLines = lines.length > 1 && lines.slice(1).some((l) => l.trim());
+    }
+  }
+
+  if (!title) {
+    ov.overlay.style.display = "none";
+    return;
+  }
+
+  ov.label.textContent = title;
+  ov.hint.style.display = hasMoreLines ? "inline-block" : "none";
+
+  // Position overlay - use the same approach as LoRA stacker
+  const canvas = app.canvas;
+  if (!canvas || !canvas.canvas) {
+    ov.overlay.style.display = "none";
+    return;
+  }
+
+  try {
+    const canvasRect = canvas.canvas.getBoundingClientRect();
+    const ds = canvas.ds;
+    if (!ds) {
+      ov.overlay.style.display = "none";
+      return;
+    }
+
+    const scale = ds.scale;
+    const panOffsetX = ds.offset[0];
+    const panOffsetY = ds.offset[1];
+
+    // Convert node position to screen coordinates
+    // Node position is in graph coordinates, need to apply zoom and pan
+    const screenX = canvasRect.left + (node.pos[0] + panOffsetX) * scale;
+    const screenY = canvasRect.top + (node.pos[1] + panOffsetY) * scale;
+
+    // Label position: 6px from left, 28px from top (in node-local coordinates, scaled)
+    const labelX = screenX + 6 * scale;
+    const labelY = screenY + 28 * scale;
+
+    ov.overlay.style.display = "block";
+    ov.overlay.style.left = `${labelX}px`;
+    ov.overlay.style.top = `${labelY}px`;
+  } catch (e) {
+    console.warn("[AUNTextIndexSwitch3] Failed to position overlay:", e);
+    ov.overlay.style.display = "none";
+  }
+}
+
+// Global update loop for all compact overlays
+if (!window.__AUN_compactOverlayUpdateLoop) {
+  window.__AUN_compactOverlayUpdateLoop = setInterval(() => {
+    if (!app?.graph) return;
+
+    // Update hidden links set
+    updateHiddenLinks();
+
+    const nodes = app.graph._nodes || app.graph.nodes || [];
+    for (const node of nodes) {
+      if (isTargetNode(node)) {
+        // Re-apply input slot visibility for compact nodes every frame
+        // This prevents stray dots from reappearing after widget changes
+        if (isCompact(node) && node.inputs) {
+          for (const input of node.inputs) {
+            if (!input) continue;
+            if (input.name && input.name.startsWith("text")) {
+              input.hidden = true;
+            }
+            if (input.name === "index") {
+              input.hidden = true;
+            }
+          }
+        }
+        const effectiveIdx = getEffectiveIndex(node);
+        updateCompactOverlay(node, effectiveIdx);
+      }
+    }
+  }, 100);
+}
+
 // Show tooltip with text preview (omit first line, show all remaining)
 function showTextTooltip(widget, text) {
   hideTextTooltip();
@@ -190,6 +572,287 @@ function hideTextTooltip() {
     currentTooltip.remove();
     currentTooltip = null;
   }
+}
+
+// Check if a text slot is linked externally
+function isTextSlotLinked(node, slotIndex) {
+  const textName = `text${slotIndex}`;
+  const textInput = node.inputs?.find((i) => i.name === textName);
+  return !!(textInput && textInput.link);
+}
+
+// Show popup for compact label (shows all text content)
+function showCompactLabelPopup(node) {
+  if (!node || !isCompact(node)) return;
+
+  // Use effective index (traces external links)
+  const effectiveIndex = getEffectiveIndex(node);
+
+  // Use effective text (traces external links)
+  const text = getEffectiveText(node, effectiveIndex);
+  if (!text.trim()) return;
+
+  // Check if this slot is externally linked
+  const isExternallyLinked = isTextSlotLinked(node, effectiveIndex);
+
+  // Get the display title for the header
+  let displayTitle;
+  if (isExternallyLinked) {
+    // For linked inputs, show the source node's title
+    const textName = `text${effectiveIndex}`;
+    const textInput = node.inputs?.find((i) => i.name === textName);
+    if (textInput?.link) {
+      const link = app.graph.links?.get?.(textInput.link);
+      if (link?.origin_id) {
+        const srcNode = app.graph.getNodeById?.(link.origin_id);
+        if (srcNode) {
+          displayTitle = srcNode.title || srcNode.type || "";
+        }
+      }
+    }
+    if (!displayTitle) {
+      displayTitle = text.split("\n")[0].trim();
+    }
+  } else {
+    // For non-linked inputs, show the first line as the header title
+    displayTitle = text.split("\n")[0].trim();
+  }
+
+  // For the popup body:
+  // - If linked: show ALL text (the header shows node title, not text content)
+  // - If not linked: show all lines EXCEPT the first (already shown in header)
+  let preview;
+  if (isExternallyLinked) {
+    preview = text; // Show full text
+  } else {
+    const lines = text.split("\n");
+    const remainingLines = lines.length > 1 ? lines.slice(1) : [];
+    if (remainingLines.length === 0 || remainingLines.every((l) => !l.trim())) {
+      return; // Nothing to show beyond first line
+    }
+    preview = remainingLines.join("\n");
+  }
+
+  // Create popup container
+  const popup = document.createElement("div");
+  popup.id = "AUN-compact-label-popup";
+  popup.style.cssText = `
+    position: fixed;
+    z-index: 10001;
+    background: #1a1a1a;
+    border: 2px solid #224a22;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.8);
+    padding: 12px;
+    min-width: 300px;
+    max-width: 500px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  `;
+
+  // Title bar
+  const titleBar = document.createElement("div");
+  titleBar.style.cssText = `
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 8px;
+    background: #224a22;
+    border-radius: 4px 4px 0 0;
+    cursor: move;
+  `;
+
+  const title = document.createElement("span");
+  title.textContent = `Slot ${effectiveIndex}: ${displayTitle}`;
+  title.style.cssText = `
+    color: #d8d8d8;
+    font: bold 12px sans-serif;
+  `;
+
+  const closeBtn = document.createElement("button");
+  closeBtn.textContent = "×";
+  closeBtn.style.cssText = `
+    background: #ff4444;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+  `;
+  closeBtn.onclick = (e) => {
+    e.stopPropagation();
+    popup.remove();
+  };
+
+  titleBar.appendChild(title);
+  titleBar.appendChild(closeBtn);
+  popup.appendChild(titleBar);
+
+  // Text content (read-only)
+  const textDiv = document.createElement("div");
+  textDiv.textContent = preview;
+  textDiv.style.cssText = `
+    padding: 8px;
+    background: #242424;
+    color: #d8d8d8;
+    border: 1px solid #444;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 13px;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 300px;
+    overflow-y: auto;
+  `;
+  popup.appendChild(textDiv);
+
+  // Button bar
+  const buttonBar = document.createElement("div");
+  buttonBar.style.cssText = `
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  `;
+
+  const closeBtn2 = document.createElement("button");
+  closeBtn2.textContent = "Close";
+  closeBtn2.style.cssText = `
+    padding: 6px 12px;
+    background: #444;
+    color: #d8d8d8;
+    border: 1px solid #555;
+    border-radius: 4px;
+    cursor: pointer;
+  `;
+  closeBtn2.onclick = (e) => {
+    e.stopPropagation();
+    popup.remove();
+  };
+
+  buttonBar.appendChild(closeBtn2);
+
+  // Only show Edit button if the slot is NOT externally linked
+  if (!isExternallyLinked) {
+    const textWidget = getWidget(node, `text${effectiveIndex}`);
+    if (textWidget) {
+      const editBtn = document.createElement("button");
+      editBtn.textContent = "Edit";
+      editBtn.style.cssText = `
+        padding: 6px 12px;
+        background: #4a90d9;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      `;
+      editBtn.onclick = (e) => {
+        e.stopPropagation();
+        popup.remove();
+        // Open edit popup centered on screen since widget is hidden in compact mode
+        showTextEditPopupCentered(node, `text${effectiveIndex}`, textWidget);
+      };
+      buttonBar.appendChild(editBtn);
+    }
+  } else {
+    // Show a label indicating the text is externally linked
+    const linkedLabel = document.createElement("span");
+    linkedLabel.textContent = "(externally linked)";
+    linkedLabel.style.cssText = `
+      padding: 6px 8px;
+      color: #888;
+      font-size: 11px;
+      font-style: italic;
+    `;
+    buttonBar.insertBefore(linkedLabel, closeBtn2);
+  }
+
+  popup.appendChild(buttonBar);
+
+  // Position popup near the node
+  const graphRect = app.canvas?.canvas?.getBoundingClientRect?.();
+  if (graphRect && node.pos) {
+    // Convert node position to screen coordinates
+    const scale = app.canvas.ds?.scale || 1;
+    const nodeLeft = graphRect.left + node.pos[0] * scale;
+    const nodeTop = graphRect.top + node.pos[1] * scale;
+    const nodeWidth = (node.size?.[0] || 300) * scale;
+    const nodeHeight = (node.size?.[1] || 100) * scale;
+
+    // Position to the right of the node, or below if not enough space
+    let left = nodeLeft + nodeWidth + 10;
+    let top = nodeTop;
+
+    // Keep popup within viewport
+    const popupWidth = 400;
+    const popupHeight = 300;
+    const margin = 10;
+
+    // If popup would go off right edge, position below the node
+    if (left + popupWidth > window.innerWidth - margin) {
+      left = nodeLeft;
+      top = nodeTop + nodeHeight + 10;
+    }
+
+    // Clamp to viewport
+    if (left < margin) left = margin;
+    if (top < margin) top = margin;
+    if (left + popupWidth > window.innerWidth - margin) {
+      left = window.innerWidth - popupWidth - margin;
+    }
+    if (top + popupHeight > window.innerHeight - margin) {
+      top = window.innerHeight - popupHeight - margin;
+    }
+
+    popup.style.left = `${left}px`;
+    popup.style.top = `${top}px`;
+  } else {
+    // Fallback: center on screen
+    popup.style.left = `${window.innerWidth / 2 - 200}px`;
+    popup.style.top = `${window.innerHeight / 2 - 150}px`;
+  }
+
+  document.body.appendChild(popup);
+
+  // Make draggable
+  let isDragging = false;
+  let dragOffsetX = 0;
+  let dragOffsetY = 0;
+
+  titleBar.addEventListener("mousedown", (e) => {
+    isDragging = true;
+    dragOffsetX = e.clientX - popup.offsetLeft;
+    dragOffsetY = e.clientY - popup.offsetTop;
+    e.preventDefault();
+  });
+
+  document.addEventListener("mousemove", (e) => {
+    if (!isDragging) return;
+    popup.style.left = `${e.clientX - dragOffsetX}px`;
+    popup.style.top = `${e.clientY - dragOffsetY}px`;
+  });
+
+  document.addEventListener("mouseup", () => {
+    isDragging = false;
+  });
+
+  // Close on Escape key
+  function escHandler(e) {
+    if (e.key === "Escape") {
+      popup.remove();
+      document.removeEventListener("keydown", escHandler);
+    }
+  }
+  document.addEventListener("keydown", escHandler);
+
+  // Close when clicking outside
+  popup.addEventListener("mousedown", (e) => {
+    e.stopPropagation();
+  });
 }
 
 // Create and show a floating textarea popup for editing
@@ -403,6 +1066,189 @@ function hideTextEditPopup() {
   }
 }
 
+// Show edit popup centered on screen (for when widget is hidden in compact mode)
+function showTextEditPopupCentered(node, widgetName, widget) {
+  // Close any existing popup
+  hideTextEditPopup();
+
+  // Create popup container
+  const popup = document.createElement("div");
+  popup.id = "AUN-text-edit-popup";
+  popup.style.cssText = `
+    position: fixed;
+    z-index: 10000;
+    background: #1a1a1a;
+    border: 2px solid #4a90d9;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.8);
+    padding: 12px;
+    min-width: 400px;
+    max-width: 600px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  `;
+
+  // Title bar
+  const titleBar = document.createElement("div");
+  titleBar.style.cssText = `
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 8px;
+    background: #2a2a2a;
+    border-radius: 4px 4px 0 0;
+    cursor: move;
+  `;
+
+  const title = document.createElement("span");
+  title.textContent = `Edit ${widgetName}`;
+  title.style.cssText = `
+    color: #d8d8d8;
+    font: bold 12px sans-serif;
+  `;
+
+  const closeBtn = document.createElement("button");
+  closeBtn.textContent = "×";
+  closeBtn.style.cssText = `
+    background: #ff4444;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+  `;
+  closeBtn.onclick = (e) => {
+    e.stopPropagation();
+    hideTextEditPopup();
+  };
+
+  titleBar.appendChild(title);
+  titleBar.appendChild(closeBtn);
+  popup.appendChild(titleBar);
+
+  // Textarea
+  const textarea = document.createElement("textarea");
+  textarea.value = widget.value || "";
+  textarea.style.cssText = `
+    width: 100%;
+    min-height: 200px;
+    max-height: 400px;
+    padding: 8px;
+    background: #242424;
+    color: #d8d8d8;
+    border: 1px solid #444;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 12px;
+    line-height: 1.4;
+    resize: vertical;
+    box-sizing: border-box;
+  `;
+  popup.appendChild(textarea);
+
+  // Button bar
+  const buttonBar = document.createElement("div");
+  buttonBar.style.cssText = `
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  `;
+
+  const cancelBtn = document.createElement("button");
+  cancelBtn.textContent = "Cancel";
+  cancelBtn.style.cssText = `
+    padding: 6px 12px;
+    background: #444;
+    color: #d8d8d8;
+    border: 1px solid #555;
+    border-radius: 4px;
+    cursor: pointer;
+  `;
+  cancelBtn.onclick = (e) => {
+    e.stopPropagation();
+    hideTextEditPopup();
+  };
+
+  const saveBtn = document.createElement("button");
+  saveBtn.textContent = "Save";
+  saveBtn.style.cssText = `
+    padding: 6px 12px;
+    background: #4a90d9;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  `;
+  saveBtn.onclick = (e) => {
+    e.stopPropagation();
+    // Save the value
+    widget.value = textarea.value;
+    if (widget.callback) {
+      widget.callback.call(widget, widget.value);
+    }
+    node.setDirtyCanvas?.(true, true);
+    hideTextEditPopup();
+  };
+
+  buttonBar.appendChild(cancelBtn);
+  buttonBar.appendChild(saveBtn);
+  popup.appendChild(buttonBar);
+
+  // Center on screen
+  popup.style.left = `${window.innerWidth / 2 - 300}px`;
+  popup.style.top = `${window.innerHeight / 2 - 200}px`;
+  popup.style.width = `600px`;
+
+  document.body.appendChild(popup);
+  currentPopup = { popup, widget, widgetName };
+
+  // Focus textarea
+  setTimeout(() => {
+    textarea.focus();
+    textarea.select();
+  }, 100);
+
+  // Make draggable
+  let isDragging = false;
+  let dragOffsetX = 0;
+  let dragOffsetY = 0;
+
+  titleBar.addEventListener("mousedown", (e) => {
+    isDragging = true;
+    dragOffsetX = e.clientX - popup.offsetLeft;
+    dragOffsetY = e.clientY - popup.offsetTop;
+    popup.style.transform = "none";
+    e.preventDefault();
+  });
+
+  document.addEventListener("mousemove", (e) => {
+    if (!isDragging) return;
+    popup.style.left = `${e.clientX - dragOffsetX}px`;
+    popup.style.top = `${e.clientY - dragOffsetY}px`;
+  });
+
+  document.addEventListener("mouseup", () => {
+    isDragging = false;
+  });
+
+  // Close on Escape key
+  document.addEventListener("keydown", function escHandler(e) {
+    if (e.key === "Escape") {
+      hideTextEditPopup();
+      document.removeEventListener("keydown", escHandler);
+    }
+  });
+
+  // Close when clicking outside
+  popup.addEventListener("mousedown", (e) => {
+    e.stopPropagation();
+  });
+}
+
 // Set up double-click handlers for text widgets
 function setupTextEditHandlers(node) {
   if (node.__AUN_textEditHandlersSetup) return;
@@ -499,6 +1345,35 @@ function patchTargetNode(node) {
     if (Array.isArray(pos) && typeof pos[1] === "number" && pos[1] < 0) {
       return;
     }
+
+    // Check if this is a compact node and click is on the label
+    if (isCompact(this) && pos && pos.length >= 2) {
+      const [mouseX, mouseY] = pos;
+      const padding = 6;
+      const textPadding = 6;
+      const labelY = 28;
+      const labelHeight = 18;
+
+      // Check if click is in the label area (below title bar)
+      if (mouseY >= labelY && mouseY <= labelY + labelHeight) {
+        const title = getActiveSlotTitle(this);
+        if (title) {
+          // Approximate box width (max text width + padding)
+          const maxTextWidth = Math.min(
+            this.size[0] - 2 * padding - 2 * textPadding,
+            115,
+          );
+          const boxWidth = maxTextWidth + 2 * textPadding;
+
+          if (mouseX >= padding && mouseX <= padding + boxWidth) {
+            // Double-clicked on the label - show full text popup
+            showCompactLabelPopup(this);
+            return; // Don't toggle compact mode
+          }
+        }
+      }
+    }
+
     toggleCompactMode(this);
   };
 
@@ -550,6 +1425,77 @@ function patchTargetNode(node) {
       // ALWAYS re-apply visibility after restoring slot_count
       syncSlotVisibility(node);
       applyCompact(node);
+    }
+  };
+
+  // Hook onMouseDown/onMouseUp to track overlay position during drag
+  const originalOnMouseDown = node.onMouseDown;
+  node.onMouseDown = function (event) {
+    const result = originalOnMouseDown?.apply(this, arguments);
+    // Start tracking overlay position during drag
+    if (isCompact(this) && !this.__AUN_dragOverlayRAF) {
+      const trackOverlay = () => {
+        if (!isCompact(this)) {
+          this.__AUN_dragOverlayRAF = null;
+          return;
+        }
+        updateCompactOverlayPosition(this);
+        this.__AUN_dragOverlayRAF = requestAnimationFrame(trackOverlay);
+      };
+      this.__AUN_dragOverlayRAF = requestAnimationFrame(trackOverlay);
+    }
+    return result;
+  };
+
+  const originalOnMouseUp = node.onMouseUp;
+  node.onMouseUp = function (event) {
+    // Stop tracking overlay position when drag ends
+    if (this.__AUN_dragOverlayRAF) {
+      cancelAnimationFrame(this.__AUN_dragOverlayRAF);
+      this.__AUN_dragOverlayRAF = null;
+      // Do one final update to ensure position is correct
+      updateCompactOverlayPosition(this);
+    }
+    return originalOnMouseUp?.apply(this, arguments);
+  };
+
+  // Override onDrawForeground to hide input slot dots in compact mode
+  const originalOnDrawForeground = node.onDrawForeground;
+  node.onDrawForeground = function (ctx) {
+    // Call original first
+    originalOnDrawForeground?.apply(this, arguments);
+
+    if (!isCompact(this)) return;
+
+    // In compact mode, draw over ALL input slot dots to hide them
+    const slotRadius = 8; // Larger radius to ensure full coverage
+
+    for (let i = 0; i < this.inputs.length; i++) {
+      const input = this.inputs[i];
+      if (!input) continue;
+
+      // Only cover text* and index inputs
+      if (
+        input.name &&
+        (input.name.startsWith("text") || input.name === "index")
+      ) {
+        const pos = this.getInputPos(i);
+
+        // Draw a filled circle matching node background to cover the slot dot
+        ctx.save();
+        ctx.fillStyle = "#1a1a1a";
+        ctx.beginPath();
+        ctx.arc(pos[0], pos[1], slotRadius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Draw outer ring to match slot style but without the colored center
+        ctx.strokeStyle = "#1a1a1a";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(pos[0], pos[1], slotRadius, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
     }
   };
 
@@ -703,6 +1649,32 @@ function applyCompact(node) {
     }
   }
 
+  // In compact mode, hide all text and index input slots
+  // Non-compact: only hide slots beyond slot_count
+  if (node.inputs) {
+    for (const input of node.inputs) {
+      if (!input) continue;
+      if (input.name && input.name.startsWith("text")) {
+        if (wasCompact) {
+          input.hidden = true;
+        } else if (parseInt(input.name.replace("text", ""), 10) > slotCount) {
+          input.hidden = true;
+        } else {
+          input.hidden = false;
+        }
+      }
+      if (input.name === "index") {
+        input.hidden = wasCompact;
+      }
+    }
+  }
+
+  // Force canvas redraw to ensure slot visibility changes take effect
+  node.setDirtyCanvas?.(true, true);
+  if (typeof app?.graph?.setDirtyCanvas === "function") {
+    app.graph.setDirtyCanvas(true, true);
+  }
+
   // Mark widgets as dirty so ComfyUI recalculates layout
   node.widgets_dirty = true;
 
@@ -714,7 +1686,6 @@ function applyCompact(node) {
     try {
       const newSize = node.computeSize();
       if (newSize && Array.isArray(newSize) && newSize.length >= 2) {
-        // Add extra padding at the bottom (15px)
         node.setSize([newSize[0], newSize[1] + 15]);
       }
     } catch (e) {
@@ -726,9 +1697,6 @@ function applyCompact(node) {
   if (isCompact(node) !== wasCompact) {
     setCompact(node, wasCompact);
   }
-
-  node.setDirtyCanvas?.(true, true);
-  app.graph?.setDirtyCanvas(true, true);
 
   // Schedule a few more resize attempts to catch any late updates
   scheduleAutoHeightUpdate(node, 5, 50);
@@ -745,11 +1713,28 @@ function toggleCompactMode(node) {
 
 function getActiveSlotTitle(node) {
   if (!node) return "";
-  const indexWidget = getWidget(node, "index");
-  const index = Number(indexWidget?.value ?? 1);
-  const textWidget = getWidget(node, `text${index}`);
-  if (textWidget && typeof textWidget.value === "string") {
-    const firstLine = textWidget.value.split("\n")[0].trim();
+  const index = getEffectiveIndex(node);
+
+  // Check if this slot is externally linked
+  if (isTextSlotLinked(node, index)) {
+    // For linked inputs, show the source node's title
+    const textName = `text${index}`;
+    const textInput = node.inputs?.find((i) => i.name === textName);
+    if (textInput?.link) {
+      const link = app.graph.links?.get?.(textInput.link);
+      if (link?.origin_id) {
+        const srcNode = app.graph.getNodeById?.(link.origin_id);
+        if (srcNode) {
+          return srcNode.title || srcNode.type || "";
+        }
+      }
+    }
+  }
+
+  // For non-linked inputs, show the first line of text
+  const text = getEffectiveText(node, index);
+  if (text && typeof text === "string") {
+    const firstLine = text.split("\n")[0].trim();
     return firstLine;
   }
   return "";
@@ -796,18 +1781,8 @@ function startCompactLiveMonitor(node) {
     clearInterval(node.__AUN_textIndexSwitch3MonitorId);
     node.__AUN_textIndexSwitch3MonitorId = null;
   }
-  let lastSignature = null;
-  function readSignature() {
-    const indexWidget = getWidget(node, "index");
-    const slotCountWidget = getWidget(node, "slot_count");
-    const indexValue = String(indexWidget?.value ?? "");
-    const slotCount = String(slotCountWidget?.value ?? "");
-    // Try to get the first line of the active text slot
-    const textWidget = getWidget(node, `text${indexValue}`);
-    const textValue = String(textWidget?.value ?? "").trim();
-    const firstLine = textValue.split("\n")[0].trim();
-    return `${indexValue}|${slotCount}|${firstLine}`;
-  }
+  let lastIndex = null;
+
   function check() {
     if (!node || node.type === undefined) {
       if (node?.__AUN_textIndexSwitch3MonitorId) {
@@ -817,21 +1792,32 @@ function startCompactLiveMonitor(node) {
       return;
     }
     if (!isCompact(node)) return;
-    const signature = readSignature();
-    if (signature !== lastSignature) {
-      lastSignature = signature;
-      node.setDirtyCanvas?.(true, true);
-      app.canvas?.setDirty?.(true);
+
+    // Get effective index (from source if linked, otherwise widget)
+    const currentIndex = getEffectiveIndex(node);
+
+    // If index changed, update overlay immediately
+    if (currentIndex !== lastIndex) {
+      lastIndex = currentIndex;
+      updateCompactOverlay(node, currentIndex);
     }
   }
-  node.__AUN_textIndexSwitch3MonitorId = setInterval(check, 100);
+
+  node.__AUN_textIndexSwitch3MonitorId = setInterval(check, 50);
   check();
+
   // Clean up when node is removed
   const originalOnRemoved = node.onRemoved;
   node.onRemoved = function onRemoved() {
     if (node.__AUN_textIndexSwitch3MonitorId) {
       clearInterval(node.__AUN_textIndexSwitch3MonitorId);
       node.__AUN_textIndexSwitch3MonitorId = null;
+    }
+    // Remove overlay from DOM
+    const ov = compactOverlays.get(node);
+    if (ov) {
+      ov.overlay.remove();
+      compactOverlays.delete(node);
     }
     return originalOnRemoved?.apply(this, arguments);
   };
@@ -874,53 +1860,7 @@ try {
       const originalOnDrawFg = nodeType.prototype.onDrawForeground;
       nodeType.prototype.onDrawForeground = function onDrawForeground(ctx) {
         originalOnDrawFg?.apply(this, arguments);
-
-        // Draw compact overlay
-        if (!isCompact(this)) return;
-
-        const title = getActiveSlotTitle(this);
-        if (!title) return;
-
-        const w = this.size?.[0] ?? 200;
-        const padding = 6;
-        const x = padding;
-        const y = 28; // Below title bar and aligned left
-        const textPadding = 6;
-
-        ctx.save();
-        ctx.font = "11px sans-serif";
-        const maxTextWidth = Math.min(w - 2 * padding - 2 * textPadding, 115);
-        let displayTitle = title;
-        let textWidth = ctx.measureText(displayTitle).width;
-        if (textWidth > maxTextWidth) {
-          const ellipsis = "…";
-          let len = displayTitle.length;
-          while (
-            len > 0 &&
-            ctx.measureText(displayTitle.slice(0, len) + ellipsis).width >
-              maxTextWidth
-          ) {
-            len -= 1;
-          }
-          displayTitle = `${displayTitle.slice(0, len)}${ellipsis}`;
-          textWidth = ctx.measureText(displayTitle).width;
-        }
-        const boxWidth = textWidth + 2 * textPadding;
-        const boxHeight = 18;
-
-        ctx.fillStyle = "rgba(0,0,0,0.55)";
-        ctx.strokeStyle = "rgba(255,255,255,0.15)";
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.roundRect(x, y, boxWidth, boxHeight, 8);
-        ctx.fill();
-        ctx.stroke();
-
-        ctx.fillStyle = "rgba(240,240,240,0.98)";
-        ctx.textAlign = "left";
-        ctx.textBaseline = "middle";
-        ctx.fillText(displayTitle, x + textPadding, y + boxHeight / 2);
-        ctx.restore();
+        // Compact label is rendered as HTML overlay, not on canvas
       };
 
       const originalGetMenuOptions = nodeType.prototype.getMenuOptions;
