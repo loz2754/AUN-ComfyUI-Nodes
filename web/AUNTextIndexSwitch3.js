@@ -398,7 +398,6 @@ function updateCompactOverlay(node, overrideIndex, force = false) {
   // Get text using effective index - traces external links if present
   const effectiveText = getEffectiveText(node, effectiveIndex);
 
-
   // Check if this text slot is externally linked
   const isLinked = isTextSlotLinked(node, effectiveIndex);
 
@@ -1551,10 +1550,7 @@ function updateNodeVisualState(node) {
   for (let i = 1; i <= 20; i++) {
     const textWidget = getWidget(node, `text${i}`);
     if (textWidget) {
-      applyWidgetHiddenState(
-        textWidget,
-        compact || i > slotCount,
-      );
+      applyWidgetHiddenState(textWidget, compact || i > slotCount);
     }
   }
 
@@ -1618,7 +1614,8 @@ function updateNodeVisualState(node) {
     try {
       const newSize = node.computeSize();
       if (newSize && Array.isArray(newSize) && newSize.length >= 2) {
-        node.setSize([newSize[0], newSize[1] + 15]);
+        // Only adjust height, preserve current width
+        node.setSize([node.size[0], newSize[1] + 15]);
       }
     } catch (e) {
       // ignore
@@ -1691,8 +1688,9 @@ function scheduleAutoHeightUpdate(node, tries = 8, delay = 30) {
           const paddedHeight = newSize[1] + 15;
 
           // Only resize if height differs by more than 5px
+          // Preserve current width, only adjust height
           if (Math.abs(node.size[1] - paddedHeight) > 5) {
-            node.setSize([newSize[0], paddedHeight]);
+            node.setSize([node.size[0], paddedHeight]);
             node.setDirtyCanvas?.(true, true);
           }
         }
