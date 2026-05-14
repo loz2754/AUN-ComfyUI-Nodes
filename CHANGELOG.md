@@ -14,6 +14,8 @@
 
 ## [Unreleased]
 
+## [2.2.6] - 2026-05-14
+
 ### Added
 
 - New node: Text Index Switch 4 (`AUNTextIndexSwitch4`) with built-in mode selection (Select, Increment, Random, Range). Combines index generation and text switching in a single node, supporting up to 20 text slots with compact mode support.
