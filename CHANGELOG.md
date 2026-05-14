@@ -14,6 +14,21 @@
 
 ## [Unreleased]
 
+### Added
+
+- New node: Text Index Switch 4 (`AUNTextIndexSwitch4`) with built-in mode selection (Select, Increment, Random, Range). Combines index generation and text switching in a single node, supporting up to 20 text slots with compact mode support.
+
+### Changed
+
+- Enhanced `AUNTextIndexSwitch3` frontend with improved compact mode overlay handling and widget visibility management.
+- Enhanced `AUNStrip` with improved string cleaning capabilities.
+- Enhanced `AUNTextIndexSwitch3` Python backend with improved slot management.
+- Updated model utilities with enhanced functionality.
+
+### Fixed
+
+- Fixed unwanted optional input slots appearing on `AUNTextIndexSwitch4` when changing slot count. Root cause was `AUN_text_index_switch_labels.js` creating duplicate inputs via `node.addInput()` — resolved by removing `AUNTextIndexSwitch4` from the labels file `NODE_CONFIG` as it doesn't require label management.
+
 ## [2.2.3] - 2026-05-08
 
 ### Fixed

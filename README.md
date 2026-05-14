@@ -127,6 +127,7 @@ Deprecation note: the full input-style nodes (`AUNInputs`, `AUNInputsDiffusers`,
 - Strip (`AUNStrip`) trim digits and whitespace from the start and end of a string. Simple cleaner for building filenames or labels.
 - Text Index Switch (`AUNTextIndexSwitch`) switch between up to 20 text inputs based on index number. Useful for dynamic prompt selection with control over how many sockets are visible on the node. Inputs take the title of the connected node, which is also used as the label.
 - Text Index Switch 3 (`AUNTextIndexSwitch3`) select one of ten text inputs based on an index. Also outputs the label of the selected input.
+- Text Index Switch 4 (`AUNTextIndexSwitch4`) switch between up to 20 text inputs with built-in mode selection (Select, Increment, Random, Range). Combines index generation and text switching in a single node, eliminating the need for a separate Random/Select INT node. Also outputs the label of the selected input and the active index.
 - Text Switch 2 Input With Text Output (`TextSwitch2InputWithTextOutput`) allows you to choose between 2 text inputs, or none, with text output. Labels can be customized.
   TIP: Double-click the node or right-click and select 'Compact mode' to hide configuration widgets.
 
