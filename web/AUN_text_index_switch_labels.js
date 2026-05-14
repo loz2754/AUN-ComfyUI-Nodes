@@ -68,7 +68,8 @@ function clampInputCount(value) {
 }
 
 function getVisibleWidget(node) {
-  return node.widgets?.find((w) => w.name === "visible_inputs");
+  // Look for either visible_inputs (older nodes) or slot_count (newer nodes like AUNTextIndexSwitch4)
+  return node.widgets?.find((w) => w.name === "visible_inputs" || w.name === "slot_count");
 }
 
 function getWidgetByName(node, name) {
@@ -204,9 +205,27 @@ function updateTrackedTextNodes() {
       node.__aun_visible_inputs = desired;
       applyVisibleInputs(node, desired);
       syncBoundedWidgets(node, desired);
+      protectNonTextWidgets(node);
+      cleanupUnwantedInputs(node);
     }
 
     node.__aun_pending_visible = undefined;
+  }
+
+  // Also check for nodes that have slot_count but haven't been tracked yet
+  if (app?.graph?.getNodes) {
+    for (const node of app.graph.getNodes()) {
+      if (!node || !TEXT_SWITCH_CLASSES.has(node.comfyClass)) continue;
+      if (trackedTextNodes.has(node)) continue;
+      
+      const widget = getVisibleWidget(node);
+      if (widget) {
+        trackedTextNodes.add(node);
+        const desired = clampInputCount(widget.value);
+        node.__aun_visible_inputs = desired;
+        syncBoundedWidgets(node, desired);
+      }
+    }
   }
 
   requestAnimationFrame(updateTrackedTextNodes);
@@ -225,11 +244,12 @@ function syncBoundedWidgets(node, maxVisible) {
 
   if (
     node.comfyClass === "AUNRandomTextIndexSwitch" ||
-    node.comfyClass === "AUNRandomTextIndexSwitchV2"
+    node.comfyClass === "AUNRandomTextIndexSwitchV2" ||
+    node.comfyClass === "AUNTextIndexSwitch4"
   ) {
     const minWidget = getWidgetByName(node, "minimum");
     const maxWidget = getWidgetByName(node, "maximum");
-    const selectWidget = getWidgetByName(node, "select");
+    const indexWidget = getWidgetByName(node, "index");
 
     const minVal = clampValue(minWidget?.value ?? 1);
     const maxValRaw = clampValue(maxWidget?.value ?? maxVisible, minVal);
@@ -238,10 +258,16 @@ function syncBoundedWidgets(node, maxVisible) {
     updateWidget(minWidget, minVal, maxVisible);
     updateWidget(maxWidget, maxVal, maxVisible);
 
-    if (node.comfyClass === "AUNRandomTextIndexSwitchV2") {
+    if (node.comfyClass === "AUNTextIndexSwitch4") {
+      // For AUNTextIndexSwitch4, also update index widget to match slot_count
+      const indexVal = clampValue(indexWidget?.value ?? 1, 1, maxVisible);
+      updateWidget(indexWidget, indexVal, maxVisible, 1);
+    } else if (node.comfyClass === "AUNRandomTextIndexSwitchV2") {
+      const selectWidget = getWidgetByName(node, "select");
       const selectVal = clampValue(selectWidget?.value ?? 1, 1, maxVisible);
       updateWidget(selectWidget, selectVal, maxVisible, 1);
     } else {
+      const selectWidget = getWidgetByName(node, "select");
       const selectVal = clampValue(
         selectWidget?.value ?? minVal,
         minVal,
@@ -266,15 +292,36 @@ function updateWidget(widget, value, maxVisible, minValue = 1) {
   if (!widget) {
     return;
   }
-  const options =
-    typeof widget.options === "object" ? { ...widget.options } : {};
+  // Mutate existing options object instead of replacing it
+  // Replacing widget.options can break ComfyUI internal references
+  if (!widget.options || typeof widget.options !== "object") {
+    widget.options = {};
+  }
+  const options = widget.options;
   options.max = maxVisible;
   if (options.min == null || options.min < minValue) {
     options.min = minValue;
   }
-  widget.options = options;
+  
+  // Update the HTML input element's max/min attributes if it exists
+  if (widget.inputEl) {
+    if (typeof widget.inputEl.max !== "undefined") {
+      widget.inputEl.max = maxVisible;
+    }
+    if (typeof widget.inputEl.min !== "undefined") {
+      widget.inputEl.min = minValue;
+    }
+    if (typeof widget.inputEl.setAttribute === "function") {
+      widget.inputEl.setAttribute("max", maxVisible);
+      widget.inputEl.setAttribute("min", minValue);
+    }
+  }
+  
   if (widget.value !== value) {
     widget.value = value;
+    if (widget.inputEl && typeof widget.inputEl.value !== "undefined") {
+      widget.inputEl.value = value;
+    }
     if (typeof widget.callback === "function") {
       widget.callback.call(widget, value);
     }
@@ -299,11 +346,56 @@ function hasLinkedTextInputsAbove(node, target) {
   return false;
 }
 
+function protectNonTextWidgets(node) {
+  if (!node || !node.widgets) return;
+
+  const widgetsToProtect = ["index", "slot_count", "minimum", "maximum", "mode", "range", "visible_inputs"];
+  for (const name of widgetsToProtect) {
+    const w = getWidgetByName(node, name);
+    if (w) {
+      // Use getter that always returns false - prevents widget-to-input conversion UI
+      try {
+        Object.defineProperty(w, "convertableToInput", {
+          get: () => false,
+          set: () => {},
+          configurable: true,
+          enumerable: true
+        });
+      } catch (e) {
+        w.convertableToInput = false;
+      }
+      delete w.linkType;
+    }
+  }
+}
+
+function cleanupUnwantedInputs(node) {
+  if (!node || !node.inputs) return;
+
+  const widget = getVisibleWidget(node);
+  const slotCount = widget ? clampInputCount(widget.value) : MIN_INPUTS;
+  const valuePrefix = getValuePrefix(node);
+
+  const validInputs = new Set();
+  for (let i = 1; i <= slotCount; i++) {
+    validInputs.add(`${valuePrefix}${i}`);
+  }
+
+  for (let i = node.inputs.length - 1; i >= 0; i--) {
+    const input = node.inputs[i];
+    if (input && input.name && !validInputs.has(input.name)) {
+      node.removeInput(i);
+    }
+  }
+}
+
 function setupTextSwitch(node) {
   if (!node || !TEXT_SWITCH_CLASSES.has(node.comfyClass)) {
     return;
   }
   ensureWidgetHook(node);
+  protectNonTextWidgets(node);
+  cleanupUnwantedInputs(node);
   node.__aun_visible_inputs = undefined;
   const widgetValue = clampInputCount(
     getVisibleWidget(node)?.value ?? MIN_INPUTS,
@@ -364,6 +456,8 @@ app.registerExtension({
   loadedGraphNode(node) {
     if (TEXT_SWITCH_CLASSES.has(node.comfyClass)) {
       setupTextSwitch(node);
+      protectNonTextWidgets(node);
+      cleanupUnwantedInputs(node);
     }
     updateInputLabels(node);
   },

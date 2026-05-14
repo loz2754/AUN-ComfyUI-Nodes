@@ -1,6 +1,6 @@
 import { app } from "../../scripts/app.js";
 
-const NODE_TYPE = "AUNTextIndexSwitch3";
+const NODE_TYPES = ["AUNTextIndexSwitch3", "AUNTextIndexSwitch4"];
 const PROP_KEY = "_AUN_compactMode";
 
 function getWidget(node, name) {
@@ -28,22 +28,22 @@ function isTargetNode(node) {
     return false;
   }
 
-  const target = normalizeIdentifier(NODE_TYPE);
+  const targets = NODE_TYPES.map((name) => normalizeIdentifier(name));
   const comfyClass = normalizeIdentifier(node.comfyClass);
   const type = normalizeIdentifier(node.type);
   const name = normalizeIdentifier(node.name);
   const title = normalizeIdentifier(node.title);
 
-  const result =
+  return targets.some((target) =>
     comfyClass === target ||
     type === target ||
     name === target ||
+    title === target ||
     comfyClass.includes(target) ||
     type.includes(target) ||
     name.includes(target) ||
-    title.includes(target);
-
-  return result;
+    title.includes(target)
+  );
 }
 
 function ensureHiddenAwareWidget(widget) {
@@ -86,7 +86,7 @@ function applyWidgetHiddenState(widget, hidden) {
   widget.hidden = hidden;
   widget.flags = widget.flags || {};
   widget.flags.hidden = hidden;
-  widget.flags.collapsed = hidden;
+  
   widget.options = typeof widget.options === "object" ? widget.options : {};
   widget.options.noDraw = hidden;
 
@@ -163,6 +163,70 @@ if (!window.__AUN_linkFilterHook) {
       origDrawSlotHints.apply(this, args);
     };
   }
+
+  // Hook into canvas transformations (pan/zoom) to update overlay positions
+  const origSetCanvas = app.canvas?.setCanvas;
+  if (origSetCanvas) {
+    app.canvas.setCanvas = function (...args) {
+      const result = origSetCanvas.apply(this, args);
+      // Update overlay positions after canvas transformation
+      scheduleOverlayUpdate();
+      return result;
+    };
+  }
+
+  // Hook into canvas draw to update overlays
+  const origDraw = app.canvas?.draw;
+  if (origDraw) {
+    app.canvas.draw = function (...args) {
+      const result = origDraw.apply(this, args);
+      // Update overlay positions during draw (catches zoom/pan changes)
+      scheduleOverlayUpdate();
+      return result;
+    };
+  }
+
+  // Hook into canvas mouse events that might trigger transformations
+  const origProcessMouseMove = app.canvas?.processMouseMove;
+  if (origProcessMouseMove) {
+    app.canvas.processMouseMove = function (...args) {
+      const result = origProcessMouseMove.apply(this, args);
+      // Update overlay positions after mouse move (catches panning)
+      scheduleOverlayUpdate();
+      return result;
+    };
+  }
+
+  // Hook into canvas mouse wheel for zoom
+  const origProcessMouseWheel = app.canvas?.processMouseWheel;
+  if (origProcessMouseWheel) {
+    app.canvas.processMouseWheel = function (...args) {
+      const result = origProcessMouseWheel.apply(this, args);
+      // Update overlay positions after zoom
+      scheduleOverlayUpdate();
+      return result;
+    };
+  }
+
+  // Hook into canvas viewport changes
+  const origSetZoom = app.canvas?.setZoom;
+  if (origSetZoom) {
+    app.canvas.setZoom = function (...args) {
+      const result = origSetZoom.apply(this, args);
+      scheduleOverlayUpdate();
+      return result;
+    };
+  }
+
+  // Hook into canvas pan method if it exists
+  const origSetOffset = app.canvas?.setOffset;
+  if (origSetOffset) {
+    app.canvas.setOffset = function (...args) {
+      const result = origSetOffset.apply(this, args);
+      scheduleOverlayUpdate();
+      return result;
+    };
+  }
 }
 
 // Update hidden links set based on compact mode state
@@ -191,6 +255,67 @@ function updateHiddenLinks() {
       if (input.name === "index" && isCompact(node)) {
         hiddenLinks.add(input.link);
       }
+    }
+  }
+}
+
+let pendingOverlayUpdate = null;
+let compactOverlayRAF = null;
+
+function hasCompactNodes() {
+  if (!app?.graph) return false;
+  const nodes = app.graph._nodes || app.graph.nodes || [];
+  return nodes.some((node) => isTargetNode(node) && isCompact(node));
+}
+
+function startOverlayRAF() {
+  if (compactOverlayRAF) return;
+  function rafLoop() {
+    compactOverlayRAF = requestAnimationFrame(rafLoop);
+    if (!app?.graph) return;
+    updateHiddenLinks();
+    updateAllCompactOverlayPositions();
+    if (!hasCompactNodes()) {
+      cancelAnimationFrame(compactOverlayRAF);
+      compactOverlayRAF = null;
+    }
+  }
+  rafLoop();
+}
+
+function stopOverlayRAF() {
+  if (compactOverlayRAF) {
+    cancelAnimationFrame(compactOverlayRAF);
+    compactOverlayRAF = null;
+  }
+}
+
+function scheduleOverlayUpdate() {
+  if (!compactOverlayRAF) {
+    startOverlayRAF();
+  }
+  if (pendingOverlayUpdate) return;
+  if (typeof requestAnimationFrame === "function") {
+    pendingOverlayUpdate = requestAnimationFrame(() => {
+      pendingOverlayUpdate = null;
+      updateAllCompactOverlayPositions();
+    });
+  } else {
+    pendingOverlayUpdate = setTimeout(() => {
+      pendingOverlayUpdate = null;
+      updateAllCompactOverlayPositions();
+    }, 16);
+  }
+}
+
+// Update all compact overlay positions (called during canvas transformations)
+function updateAllCompactOverlayPositions() {
+  if (!app?.graph) return;
+
+  const nodes = app.graph._nodes || app.graph.nodes || [];
+  for (const node of nodes) {
+    if (isTargetNode(node) && isCompact(node)) {
+      updateCompactOverlayPosition(node);
     }
   }
 }
@@ -479,6 +604,8 @@ function updateCompactOverlay(node, overrideIndex, force = false) {
 
 // Global update loop for all compact overlays
 if (!window.__AUN_compactOverlayUpdateLoop) {
+  let lastCanvasTransform = null;
+
   window.__AUN_compactOverlayUpdateLoop = setInterval(() => {
     if (!app?.graph) return;
 
@@ -492,7 +619,65 @@ if (!window.__AUN_compactOverlayUpdateLoop) {
         updateCompactOverlay(node, effectiveIdx);
       }
     }
-  }, 100);
+
+    // Check if canvas transform has changed and update overlay positions
+    if (app?.canvas?.ds) {
+      const currentTransform = `${app.canvas.ds.scale},${app.canvas.ds.offset[0]},${app.canvas.ds.offset[1]}`;
+      if (currentTransform !== lastCanvasTransform) {
+        lastCanvasTransform = currentTransform;
+        scheduleOverlayUpdate();
+      }
+    }
+
+    // Also update overlay positions less frequently as fallback
+    scheduleOverlayUpdate();
+  }, 200); // fallback polling only
+}
+
+// Set up mutation observer to detect canvas transform changes
+if (!window.__AUN_canvasObserver && app?.canvas?.canvas) {
+  const canvasElement = app.canvas.canvas;
+  const observer = new MutationObserver((mutations) => {
+    let transformChanged = false;
+    for (const mutation of mutations) {
+      if (mutation.type === 'attributes' && 
+          (mutation.attributeName === 'style' || mutation.attributeName === 'transform')) {
+        transformChanged = true;
+        break;
+      }
+    }
+    if (transformChanged) {
+      scheduleOverlayUpdate();
+    }
+  });
+
+  observer.observe(canvasElement, {
+    attributes: true,
+    attributeFilter: ['style', 'transform'],
+  });
+
+  canvasElement.addEventListener(
+    'pointermove',
+    scheduleOverlayUpdate,
+    { passive: true },
+  );
+  canvasElement.addEventListener(
+    'wheel',
+    scheduleOverlayUpdate,
+    { passive: true },
+  );
+  canvasElement.addEventListener(
+    'pointerdown',
+    scheduleOverlayUpdate,
+    { passive: true },
+  );
+  canvasElement.addEventListener(
+    'pointerup',
+    scheduleOverlayUpdate,
+    { passive: true },
+  );
+
+  window.__AUN_canvasObserver = observer;
 }
 
 // Show tooltip with text preview (omit first line, show all remaining)
@@ -1298,6 +1483,21 @@ function patchTargetNode(node) {
     };
   }
 
+  // Add callback to mode widget for AUNTextIndexSwitch4
+  const modeWidget = getWidget(node, "mode");
+  if (modeWidget && node.comfyClass === "AUNTextIndexSwitch4") {
+    const origCb = modeWidget.callback;
+    modeWidget.callback = function callback(value) {
+      origCb?.call(modeWidget, value);
+      // Update widget visibility when mode changes
+      setTimeout(() => {
+        if (node && node.widgets) {
+          updateNodeVisualState(node);
+        }
+      }, 10);
+    };
+  }
+
   const slotCountWidget = getWidget(node, "slot_count");
   if (slotCountWidget) {
     // Save initial slot_count before anything else happens
@@ -1317,12 +1517,14 @@ function patchTargetNode(node) {
       }
 
       node.setDirtyCanvas?.(true, true);
+      
+      // Update visual state
       setTimeout(() => {
         if (node && node.widgets) {
           setCompact(node, false);
           updateNodeVisualState(node);
         }
-      }, 300);
+      }, 10);
     };
 
     if (slotCountWidget.inputEl) {
@@ -1543,8 +1745,36 @@ function updateNodeVisualState(node) {
 
   const compact = isCompact(node);
 
+  // Get mode widget for AUNTextIndexSwitch4
+  const modeWidget = getWidget(node, "mode");
+  const mode = modeWidget?.value || "Random";
+
   // Hide slot_count widget in compact mode
   applyWidgetHiddenState(slotCountWidget, compact);
+
+  // For AUNTextIndexSwitch4, show/hide widgets based on mode when in compact mode
+  if (node.comfyClass === "AUNTextIndexSwitch4" && compact) {
+    const minimumWidget = getWidget(node, "minimum");
+    const maximumWidget = getWidget(node, "maximum");
+    const indexWidget = getWidget(node, "index");
+    const rangeWidget = getWidget(node, "range");
+
+    // Hide all mode-specific widgets by default
+    applyWidgetHiddenState(minimumWidget, true);
+    applyWidgetHiddenState(maximumWidget, true);
+    applyWidgetHiddenState(indexWidget, true);
+    applyWidgetHiddenState(rangeWidget, true);
+
+    // Show only the widgets needed for the current mode
+    if (mode === "Select") {
+      applyWidgetHiddenState(indexWidget, false);
+    } else if (mode === "Increment" || mode === "Random") {
+      applyWidgetHiddenState(minimumWidget, false);
+      applyWidgetHiddenState(maximumWidget, false);
+    } else if (mode === "Range") {
+      applyWidgetHiddenState(rangeWidget, false);
+    }
+  }
 
   // Update text widgets
   for (let i = 1; i <= 20; i++) {
@@ -1554,9 +1784,9 @@ function updateNodeVisualState(node) {
     }
   }
 
-  // Update index widget
+  // Update index widget (for non-compact mode or other node types)
   const indexWidget = getWidget(node, "index");
-  if (indexWidget) {
+  if (indexWidget && (node.comfyClass !== "AUNTextIndexSwitch4" || !compact)) {
     const options =
       typeof indexWidget.options === "object" ? { ...indexWidget.options } : {};
     options.max = slotCount;
@@ -1782,8 +2012,8 @@ try {
         return;
       }
       const normalizedNodeName = normalizeIdentifier(nodeData.name);
-      const normalizedTarget = normalizeIdentifier(NODE_TYPE);
-      if (!normalizedNodeName.includes(normalizedTarget)) {
+      const normalizedTargets = NODE_TYPES.map((name) => normalizeIdentifier(name));
+      if (!normalizedTargets.some((target) => normalizedNodeName.includes(target))) {
         return;
       }
       if (nodeType.prototype.__AUN_textIndexSwitch3ProtoInit) return;
@@ -1825,7 +2055,7 @@ try {
       const pginfo = app.globalData?.aun_pginfo || {};
       const nodeData = pginfo?.[String(node.id)];
 
-      if (nodeData && nodeData.node === NODE_TYPE) {
+      if (nodeData && NODE_TYPES.includes(nodeData.node)) {
         const slotCountWidget = getWidget(node, "slot_count");
         const indexWidget = getWidget(node, "index");
 
@@ -1860,7 +2090,7 @@ if (typeof app?.extensionLib?.registerCallback === "function") {
     if (app.globalData?.aun_pginfo) {
       const pginfo = app.globalData.aun_pginfo;
       for (const nodeId in pginfo) {
-        if (pginfo[nodeId]?.node === NODE_TYPE) {
+        if (NODE_TYPES.includes(pginfo[nodeId]?.node)) {
           const node = app.graph?.getNodeById?.(parseInt(nodeId));
           if (node) {
             const slotCountWidget = getWidget(node, "slot_count");
@@ -1928,3 +2158,37 @@ const scheduleFn =
     ? requestAnimationFrame
     : (fn) => setTimeout(fn, 100);
 scheduleFn(scanExistingNodes);
+
+// Hook into canvas node addition to patch new nodes
+if (app && app.canvas) {
+  const origAddNode = app.canvas.ds?.addNode || app.canvas.addNode;
+  if (origAddNode) {
+    app.canvas.ds.addNode = function(node, skipUpdate) {
+      const result = origAddNode.apply(this, arguments);
+      if (node) {
+        setTimeout(() => patchTargetNode(node), 50);
+        setTimeout(() => {
+          if (node && isTargetNode(node)) {
+            updateNodeVisualState(node);
+          }
+        }, 100);
+      }
+      return result;
+    };
+  }
+}
+
+// Also hook graph events
+if (app && app.graph) {
+  app.graph.addEventListener("node-added", (e) => {
+    const node = e.detail.node || e.node;
+    if (node) {
+      setTimeout(() => patchTargetNode(node), 50);
+      setTimeout(() => {
+        if (node && isTargetNode(node)) {
+          updateNodeVisualState(node);
+        }
+      }, 100);
+    }
+  });
+}

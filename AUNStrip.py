@@ -13,7 +13,7 @@ class AUNStrip:
 
     def strip_text(self, text):
         
-        text = text.strip("0123456789 ")               
+        text = text.strip("-0123456789 ")               
 
         return (text,)
     

@@ -73,6 +73,7 @@ from .AUNStrip import AUNStrip
 from .AUNSwitchFloat import AUNSwitchFloat
 from .AUNTextIndexSwitch import AUNTextIndexSwitch
 from .AUNTextIndexSwitch3 import AUNTextIndexSwitch3
+from .AUNTextIndexSwitch4 import AUNTextIndexSwitch4
 from .AUNTitleImagePreview import AUNTitleImagePreview
 from .AUNWildcardAddToPrompt import AUNWildcardAddToPrompt
 from .KSamplerInputs import KSamplerInputs
@@ -155,6 +156,7 @@ NODE_CLASS_MAPPINGS = {
     "AUNSwitchFloat": AUNSwitchFloat,
     "AUNTextIndexSwitch": AUNTextIndexSwitch,
     "AUNTextIndexSwitch3": AUNTextIndexSwitch3,
+    "AUNTextIndexSwitch4": AUNTextIndexSwitch4,
     "AUNTitleImagePreview": AUNTitleImagePreview,
     "AUNWildcardAddToPrompt": AUNWildcardAddToPrompt,
     "KSamplerInputs": KSamplerInputs,
@@ -233,6 +235,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "AUNSwitchFloat": "Switch Float",
     "AUNTextIndexSwitch": "Text Index Switch",
     "AUNTextIndexSwitch3": "Text Index Switch 3",
+    "AUNTextIndexSwitch4": "Text Index Switch 4",
     "AUNTitleImagePreview": "Image Preview With Title",
     "AUNWildcardAddToPrompt": "AUN Wildcard Add-To-Prompt",
     "KSamplerInputs": "KSampler Inputs",

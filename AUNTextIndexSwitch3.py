@@ -7,17 +7,26 @@ class AUNTextIndexSwitch3:
     @classmethod
     def INPUT_TYPES(cls):
         required= {
-            "index": ("INT", {"default": 1, "min": 1, "max": cls.MAX_SLOTS, "step": 1, "tooltip": "Selects which text input to output."}),
+            "index": ("INT", {
+                "default": 1, "min": 1, "max": cls.MAX_SLOTS, "step": 1, 
+                "tooltip": "Selects which text input to output."
+            }),
             "slot_count": ("INT", {
-            "default": 2, "min": 1, "max": cls.MAX_SLOTS, "step": 1,
-            "tooltip": "Number of visible text slots",
+                "default": 2, "min": 1, "max": cls.MAX_SLOTS, "step": 1,
+                "tooltip": "Number of visible text slots",
             }),
         }
         # Move text widgets to required so ComfyUI always saves their values
         for i in range(1, cls.MAX_SLOTS + 1):
-            required[f"text{i}"] = ("STRING", {"multiline": True, "default": f"Slot {i}", "dynamicPrompts": True})
+            required[f"text{i}"] = ("STRING", {
+                "multiline": True, 
+                "default": f"Slot {i}", 
+                "dynamicPrompts": True})
             
-        return {"required": required, "optional": {}, "hidden": {"unique_id": "UNIQUE_ID", "extra_pnginfo": "EXTRA_PNGINFO"}} 
+        return {
+            "required": required, 
+            "optional": {}, 
+            "hidden": {"unique_id": "UNIQUE_ID", "extra_pnginfo": "EXTRA_PNGINFO"}} 
 
     RETURN_TYPES = ("STRING", "STRING","INT",)
     RETURN_NAMES = ("text", "label", "index")
