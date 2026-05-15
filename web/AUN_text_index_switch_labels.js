@@ -133,12 +133,21 @@ function resizeNode(node) {
         typeof node.size.length === "number" &&
         node.size.length >= 2
       ) {
+        node.size[0] = newSize[0];
         node.size[1] = newSize[1];
       } else {
         node.size = newSize;
       }
     } catch (err) {
       console.warn("AUNTextIndexSwitch: computeSize failed", err);
+    }
+  }
+  // Also call setSize if available to ensure ComfyUI picks up the change
+  if (typeof node?.setSize === "function") {
+    try {
+      node.setSize(node.size);
+    } catch (err) {
+      // ignore
     }
   }
   const graph = node.graph ?? app.graph;
@@ -400,8 +409,16 @@ function setupTextSwitch(node) {
   const widgetValue = clampInputCount(
     getVisibleWidget(node)?.value ?? MIN_INPUTS,
   );
-  scheduleTextNodeUpdate(node, widgetValue);
+  // Apply inputs immediately so the node renders at the correct height
+  // on first load, rather than waiting for requestAnimationFrame.
+  node.__aun_visible_inputs = widgetValue;
+  applyVisibleInputs(node, widgetValue);
   syncBoundedWidgets(node, widgetValue);
+  // Always resize on initial setup to ensure correct height,
+  // even if no inputs changed (workflow may have saved with all inputs).
+  resizeNode(node);
+  // Still schedule for the tracking loop in case widget values change later.
+  scheduleTextNodeUpdate(node, widgetValue);
 }
 
 function updateInputLabels(node) {

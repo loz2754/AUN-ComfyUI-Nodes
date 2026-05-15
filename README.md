@@ -119,6 +119,7 @@ Deprecation note: the full input-style nodes (`AUNInputs`, `AUNInputsDiffusers`,
 #### Text
 
 - Add-To-Prompt (`AUNAddToPrompt`) add text to either before or after a prompt, with a choice of always, never or 50/50 random.
+- Add-To-Prompt Multi (`AUNAddToPromptMulti`) multi-addon prompt builder with up to 10 switchable addon slots. Each addon can be enabled/disabled individually and placed before or after the main prompt. Supports dynamic prompts and compact mode with overlay checkboxes and order selectors. TIP: Double-click the node or right-click and select 'Compact mode' to hide configuration widgets.
 - Manual/Auto Text Switch (`AUNManualAutoTextSwitch`) choose between an automatically generated filename and a manual name, and also output the mode boolean so related nodes can stay in sync.
 - Name Crop (`AUNNameCrop`) crops a string to a specified number of words.
 - Negative Prompt Selector (`AUNMultiNegPrompt`) selects one of the 10 preset negative prompts to use.
