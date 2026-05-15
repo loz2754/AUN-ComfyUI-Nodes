@@ -16,6 +16,10 @@ const NODE_CONFIG = {
     prefix: "text",
     boundedWidgets: ["minimum", "maximum", "select", "range"],
   },
+  AUNTextIndexSwitch4: {
+    prefix: "text",
+    boundedWidgets: ["minimum", "maximum", "index", "range"],
+  },
 };
 const TEXT_SWITCH_CLASSES = new Set(Object.keys(NODE_CONFIG));
 const trackedTextNodes = new Set();

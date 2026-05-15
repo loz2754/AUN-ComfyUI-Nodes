@@ -24,6 +24,16 @@
 
 ### Notes
 
+## [2.2.8] - 2026-05-15
+
+### Fixed
+
+- Fixed `AUNTextIndexSwitch3` compact overlay not updating in dynamic modes (Increment/Random/Range) — now reads the last executed index from WebSocket events instead of the static widget value.
+- Fixed `AUNTextIndexSwitch4` displaying the slot highlighter (blue strip + arrow) from `AUN_index_selected_indicator.js` — separated visual highlighter from index tracking so only Random Text Index Switch nodes receive the highlight.
+- Fixed compact label popup appearing far from the node when the canvas is panned — now correctly accounts for canvas offset (`ds.offset`) in screen coordinate conversion.
+
+### Changed
+
 ## [2.2.7] - 2026-05-15
 
 ### Added

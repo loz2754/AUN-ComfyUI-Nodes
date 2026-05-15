@@ -401,6 +401,17 @@ function getEffectiveIndex(node) {
     }
   }
 
+  // Check mode widget — in dynamic modes (Increment/Random/Range), use the last executed index
+  const modeWidget = getWidget(node, "mode");
+  const modeValue = String(modeWidget?.value || "");
+  if (modeValue && modeValue !== "Select") {
+    const lastExec = node?.__aun_last_exec_index;
+    if (lastExec != null) {
+      const parsed = parseInt(lastExec, 10);
+      if (Number.isInteger(parsed) && parsed > 0) return parsed;
+    }
+  }
+
   // Fallback to widget value
   const indexWidget = getWidget(node, "index");
   return Number(indexWidget?.value ?? 1);
@@ -959,10 +970,11 @@ function showCompactLabelPopup(node) {
   // Position popup near the node
   const graphRect = app.canvas?.canvas?.getBoundingClientRect?.();
   if (graphRect && node.pos) {
-    // Convert node position to screen coordinates
+    // Convert node position to screen coordinates (account for pan + zoom)
     const scale = app.canvas.ds?.scale || 1;
-    const nodeLeft = graphRect.left + node.pos[0] * scale;
-    const nodeTop = graphRect.top + node.pos[1] * scale;
+    const canvasOffset = app.canvas.ds?.offset || [0, 0];
+    const nodeLeft = graphRect.left + (node.pos[0] + canvasOffset[0]) * scale;
+    const nodeTop = graphRect.top + (node.pos[1] + canvasOffset[1]) * scale;
     const nodeWidth = (node.size?.[0] || 300) * scale;
     const nodeHeight = (node.size?.[1] || 100) * scale;
 

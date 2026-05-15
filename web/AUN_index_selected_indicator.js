@@ -4,6 +4,14 @@ import { api } from "../../scripts/api.js";
 const TARGET_CLASSES = new Set([
   "AUNRandomTextIndexSwitch",
   "AUNRandomTextIndexSwitchV2",
+  "AUNTextIndexSwitch4",
+]);
+
+// Only these nodes get the visual slot highlighter (blue strip + arrow).
+// AUNTextIndexSwitch4 uses its own compact overlay instead.
+const HIGHLIGHTER_CLASSES = new Set([
+  "AUNRandomTextIndexSwitch",
+  "AUNRandomTextIndexSwitchV2",
 ]);
 
 const getWidget = (node, names) => {
@@ -57,7 +65,7 @@ const getSelectedIndex = (node) => {
 
   // In Select mode, show the live selected value.
   if (modeValue === "Select") {
-    const selectWidget = getWidget(node, ["select"]);
+    const selectWidget = getWidget(node, ["select", "index"]);
     const selectValue = parsePositiveInt(selectWidget?.value);
     if (selectValue != null) return selectValue;
   }
@@ -99,7 +107,7 @@ const normalizeTitle = (node) => {
 };
 
 const installDrawBadge = (node) => {
-  if (!node || node.__aun_indicator_draw_hooked) return;
+  if (!node || node.__aun_indicator_draw_hooked || !HIGHLIGHTER_CLASSES.has(node.comfyClass)) return;
   const original = node.onDrawForeground;
 
   node.onDrawForeground = function (ctx) {

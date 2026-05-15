@@ -64,6 +64,7 @@ class AUNTextIndexSwitch4:
     RETURN_NAMES = ("text", "label", "index")
     FUNCTION = "text_index_switch"
     CATEGORY = "AUN Nodes/Text"
+    OUTPUT_NODE = True
     DESCRIPTION = ("Switch between up to 20 text inputs based on index number. Useful for dynamic prompt selection with control over how many sockets are visible on the node."
     " Inputs take the title of the connected node, which is also used as the label. Otherwise, the first line of the text input is used as the label and removed from the output."
     )
@@ -120,6 +121,22 @@ class AUNTextIndexSwitch4:
                 pginfo = {}
                 extra_pnginfo["aun_pginfo"] = pginfo
             pginfo[str(unique_id)] = payload
+        except Exception:
+            pass
+
+    def _emit_selected_index(self, unique_id, index, mode):
+        if unique_id is None:
+            return
+        try:
+            from server import PromptServer
+            PromptServer.instance.send_sync(
+                "AUN_random_text_index_selected",
+                {
+                    "node_id": str(unique_id),
+                    "index": int(index),
+                    "mode": str(mode),
+                },
+            )
         except Exception:
             pass
 
@@ -207,6 +224,8 @@ class AUNTextIndexSwitch4:
                 if first_line:
                     selected_label = first_line
                     selected_text = "\n".join(lines[1:]).lstrip()
+
+        self._emit_selected_index(unique_id, final_index, mode)
 
         self._record_pginfo(
             extra_pnginfo,
