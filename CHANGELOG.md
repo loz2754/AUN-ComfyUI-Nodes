@@ -16,6 +16,16 @@
 
 ### Added
 
+### Changed
+
+### Fixed
+
+### Notes
+
+## [2.2.7] - 2026-05-15
+
+### Added
+
 - Added JavaScript frontend for `AUNAddToPromptMulti` with dynamic addon visibility (hides inactive addon slots based on `num_addons`).
 - Added compact mode to `AUNAddToPromptMulti` via double-click or right-click menu, with overlay checkboxes for enabled toggles and Before/After order selectors.
 - Added minimum height enforcement on `AUNAddToPromptMulti` to prevent manual resize below usable thresholds.
@@ -23,7 +33,6 @@
 ### Changed
 
 - Enhanced `AUNAddToPromptMulti` node description to document compact mode and order controls.
-
 ## [2.2.6] - 2026-05-14
 
 ### Added
