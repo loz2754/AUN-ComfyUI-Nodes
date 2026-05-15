@@ -296,6 +296,22 @@ function cancelOverlayUpdate(node) {
 function positionOverlays(node) {
   if (!node || !node.__aun_atpm_rows || !isCompact(node)) return;
 
+  // Hide overlay when node is collapsed
+  if (node.collapsed) {
+    node.__aun_atpm_wasCollapsed = true;
+    for (let i = 0; i < node.__aun_atpm_rows.length; i++) {
+      const row = node.__aun_atpm_rows[i];
+      if (row) row.style.display = "none";
+    }
+    return;
+  }
+
+  // Node was collapsed and just expanded — restore overlay visibility
+  if (node.__aun_atpm_wasCollapsed) {
+    node.__aun_atpm_wasCollapsed = false;
+    updateOverlayVisibility(node);
+  }
+
   try {
     const canvas = app.canvas;
     if (!canvas || !canvas.canvas) return;

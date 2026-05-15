@@ -20,6 +20,8 @@
 
 ### Fixed
 
+- Fixed `AUNAddToPromptMulti` compact mode overlay so it hides when the node is collapsed and restores correctly on expand.
+
 ### Notes
 
 ## [2.2.7] - 2026-05-15
