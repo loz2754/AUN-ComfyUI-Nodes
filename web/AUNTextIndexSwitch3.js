@@ -1596,6 +1596,11 @@ function patchTargetNode(node) {
       originalOnConfigure.apply(this, arguments);
     }
 
+    // Save manual width from workflow data if available
+    if (info && info.size) {
+      node.__AUN_manualWidth = info.size[0];
+    }
+
     // Now restore slot_count from our saved value
     if (slotCountWidget) {
       let savedValue = null;
@@ -1692,19 +1697,19 @@ function patchTargetNode(node) {
         const pos = this.getInputPos(i);
 
         // Draw a filled circle matching node background to cover the slot dot
-        ctx.save();
-        ctx.fillStyle = "#1a1a1a";
-        ctx.beginPath();
-        ctx.arc(pos[0], pos[1], slotRadius, 0, Math.PI * 2);
-        ctx.fill();
+        // ctx.save();
+        // ctx.fillStyle = "#1a1a1a";
+        // ctx.beginPath();
+        // ctx.arc(pos[0], pos[1], slotRadius, 0, Math.PI * 2);
+        // ctx.fill();
 
-        // Draw outer ring to match slot style but without the colored center
-        ctx.strokeStyle = "#1a1a1a";
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(pos[0], pos[1], slotRadius, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.restore();
+        // // Draw outer ring to match slot style but without the colored center
+        // ctx.strokeStyle = "#1a1a1a";
+        // ctx.lineWidth = 2;
+        // ctx.beginPath();
+        // ctx.arc(pos[0], pos[1], slotRadius, 0, Math.PI * 2);
+        // ctx.stroke();
+        // ctx.restore();
       }
     }
   };
@@ -1856,8 +1861,9 @@ function updateNodeVisualState(node) {
     try {
       const newSize = node.computeSize();
       if (newSize && Array.isArray(newSize) && newSize.length >= 2) {
-        // Only adjust height, preserve current width
-        node.setSize([node.size[0], newSize[1] + 15]);
+        // Preserve manual width - use saved width if available, otherwise current width
+        const widthToUse = node.__AUN_manualWidth || node.size[0];
+        node.setSize([widthToUse, newSize[1] + 15]);
       }
     } catch (e) {
       // ignore
@@ -1930,9 +1936,10 @@ function scheduleAutoHeightUpdate(node, tries = 8, delay = 30) {
           const paddedHeight = newSize[1] + 15;
 
           // Only resize if height differs by more than 5px
-          // Preserve current width, only adjust height
+          // Preserve manual width - use saved width if available, otherwise current width
+          const widthToUse = node.__AUN_manualWidth || node.size[0];
           if (Math.abs(node.size[1] - paddedHeight) > 5) {
-            node.setSize([node.size[0], paddedHeight]);
+            node.setSize([widthToUse, paddedHeight]);
             node.setDirtyCanvas?.(true, true);
           }
         }

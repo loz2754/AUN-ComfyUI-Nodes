@@ -8,6 +8,20 @@ class AUNMultiGroupUniversal:
     def __init__(self):
         self._rng = random.SystemRandom()
 
+    @staticmethod
+    def _compute_state_changes(mode):
+        """Determine which node states to change based on the mode."""
+        if mode == "Mute":
+            return ["mute", "bypass"]
+        elif mode == "Bypass":
+            return ["bypass", "mute"]
+        elif mode == "Collapse":
+            return ["collapse"]
+        elif mode == "Bypass+Collapse":
+            return ["bypass", "mute", "collapse"]
+        else:
+            return ["bypass", "mute"]
+
     @classmethod
     def INPUT_TYPES(cls):
         # Define the base required inputs
@@ -151,9 +165,11 @@ class AUNMultiGroupUniversal:
                     target_groups.append({"type": "Group", "targets": inactive_names, "is_active": False})
 
                 if target_groups:
+                    state_changes = self._compute_state_changes(mode)
                     PromptServer.instance.send_sync("AUN_universal_update", {
                         "mode": mode,
-                        "groups": target_groups
+                        "groups": target_groups,
+                        "state_changes": state_changes
                     })
 
                 return (", ".join(active_names), *(False,) * 20)
@@ -224,9 +240,11 @@ class AUNMultiGroupUniversal:
 
             # Send updates to frontend
             if target_groups:
+                state_changes = self._compute_state_changes(mode)
                 PromptServer.instance.send_sync("AUN_universal_update", {
                     "mode": mode,
-                    "groups": target_groups
+                    "groups": target_groups,
+                    "state_changes": state_changes
                 })
 
             return (", ".join(list(set(active_groups))), *switch_states)

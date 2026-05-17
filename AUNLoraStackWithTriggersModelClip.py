@@ -109,6 +109,15 @@ class AUNLoraStackWithTriggersModelClip:
                     "tooltip": "Optional prompt text appended after all active trigger words.",
                 },
             ),
+            "selected_LoRAs": (   
+                "STRING",
+                {
+                    "default": "",
+                    "multiline": False,
+                    "forceInput": True,
+                    "tooltip": "Pass-through and concatenate selected_LoRAs text.",
+                },
+            ),
         }
 
         return {"required": required, "optional": optional}
@@ -129,7 +138,8 @@ class AUNLoraStackWithTriggersModelClip:
         "Stacks multiple LoRAs with per-slot trigger words and optional CLIP support. "
         "Use this when you want separate model and clip strengths per slot. "
         "Double-click the node or use the right-click menu to toggle between compact and full view. "
-        "In compact mode, right-click menu: Hide/Show clip strength, Hide/Show footer with trigger words."
+        "In compact mode, drag a LoRA label onto another to swap their values (LoRA, strengths, and triggers). "
+        "Right-click menu: Hide/Show clip strength, Hide/Show footer with trigger words."
     )
 
     def _normalize_slot_count(self, num_slots):
@@ -207,13 +217,15 @@ class AUNLoraStackWithTriggersModelClip:
         dedupe_triggers,
         clip=None,
         base_prompt=None,
+        selected_LoRAs="",
         **kwargs,
     ):
         active_slots = self._resolve_active_slots(num_slots, kwargs)
         base_prompt_text = str(base_prompt or "")
+        upstream_loras = str(selected_LoRAs or "").strip()
 
         if not bool(apply_stack) or not active_slots:
-            return (model, clip, "", "", "", base_prompt_text)
+            return (model, clip, upstream_loras, "", "", base_prompt_text)
 
         trigger_parts = [item["trigger"] for item in active_slots if item["trigger"]]
         trigger_parts = self._dedupe_trigger_parts(trigger_parts, bool(dedupe_triggers))
@@ -225,13 +237,19 @@ class AUNLoraStackWithTriggersModelClip:
             else base_prompt_text
         )
         labels = " + ".join(item["label"] for item in active_slots if item["label"])
-        # Format: filename:model_strength:clip_strength, filename2:model_strength2:clip_strength2
+        # Format: <lora:filename:model_strength:clip_strength>, <lora:filename2:model_strength2:clip_strength2>
         lora_tags = []
         for item in active_slots:
             if item["lora"] != "None":
                 basename = item["lora"].split("/")[-1].split("\\")[-1]
-                lora_tags.append(f"{basename}:{item['strength_model']:.2f}:{item['strength_clip']:.2f}")
-        selected_loras = ", ".join(lora_tags)
+                lora_tags.append(f"<lora:{basename}:{item['strength_model']:.2f}:{item['strength_clip']:.2f}>")
+        local_selected_loras = ", ".join(lora_tags)
+
+        # Concatenate with upstream selected_LoRAs input if provided
+        if upstream_loras:
+            selected_loras = upstream_loras + ", " + local_selected_loras
+        else:
+            selected_loras = local_selected_loras
 
         loaded_model = model
         loaded_clip = clip

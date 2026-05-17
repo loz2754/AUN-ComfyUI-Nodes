@@ -16,6 +16,7 @@ Purpose: Pick one LoRA from up to 10 configured slots, apply it to the incoming 
 - `apply_lora` (BOOLEAN): If off, the node still resolves the slot and metadata but returns the input model unchanged.
 - `strength_model` (FLOAT): LoRA strength applied to the model.
 - `base_prompt` (STRING, optional external input): Optional text appended after trigger words. This is exposed as a force-input style connection so prompt chaining stays available without leaving an always-visible multiline widget in compact mode.
+- `selected_LoRAs` (STRING, optional external input): Pass-through input that concatenates upstream `<lora:...>` tags with locally generated tags, enabling chained LoRA stacks.
 
 ### Per-slot inputs
 
@@ -27,11 +28,11 @@ For each slot `N`:
 ## Outputs
 
 - `MODEL`: Patched model.
-- `selected_lora` (STRING): Selected LoRA filename.
-- `index` (INT): Resolved slot index.
-- `prefixed_label` (STRING): Index plus shortened LoRA name.
-- `trigger_words` (STRING): Trigger text for the selected slot.
-- `prefixed_trigger_prompt` (STRING): Trigger text combined with `base_prompt`.
+- `selected LoRAs` (STRING): Generated `<lora:name:strength_model:strength_clip>` tags for active slots, concatenated with any upstream `selected_LoRAs` input. Passes through the upstream value unchanged when `apply_lora` is off or no LoRAs are selected.
+- `index` (INT): Resolved slot/index.
+- `labels` (STRING): LoRA labels joined with commas.
+- `trigger_words` (STRING): Trigger text for the selected slot(s).
+- `trigger + prompt` (STRING): Trigger text combined with `base_prompt`.
 
 ## Compact UI notes
 

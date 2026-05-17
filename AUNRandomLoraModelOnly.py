@@ -110,6 +110,15 @@ class AUNRandomLoraModelOnly:
                     "tooltip": "Optional prompt text appended after trigger words.",
                 },
             ),
+            "selected_LoRAs": (
+                "STRING",
+                {
+                    "default": "",
+                    "multiline": False,
+                    "forceInput": True,
+                    "tooltip": "Pass-through and concatenate selected_LoRAs text.",
+                },
+            ),
         }
         for i in range(1, cls.MAX_LORAS + 1):
             required[f"lora_{i}"] = (
@@ -136,7 +145,7 @@ class AUNRandomLoraModelOnly:
     RETURN_NAMES = (
         "MODEL",
         "CLIP",
-        "selected lora",
+        "selected LoRAs",
         "index",
         "label",
         "trigger words",
@@ -310,9 +319,11 @@ class AUNRandomLoraModelOnly:
         strength_clip,
         unique_id=None,
         clip=None,
+        selected_LoRAs="",
         **kwargs,
     ):
         base_prompt = kwargs.get("base_prompt", "")
+        upstream_loras = str(selected_LoRAs or "").strip()
         slots = self._build_slot_values(kwargs)
         triggers = self._build_trigger_values(kwargs)
         slot_count = len(slots)
@@ -334,7 +345,7 @@ class AUNRandomLoraModelOnly:
                     strength_clip,
                     apply_lora,
                 )
-                return (model, clip, "None", 0, "none", "", str(base_prompt or ""))
+                return (model, clip, upstream_loras, 0, "none", "", str(base_prompt or ""))
 
         selected_name = slots[index - 1] if 1 <= index <= slot_count else "None"
         selected_trigger = triggers[index - 1] if 1 <= index <= len(triggers) else ""
@@ -350,7 +361,7 @@ class AUNRandomLoraModelOnly:
                 strength_clip,
                 apply_lora,
             )
-            return (model, clip, "None", 0, "none", "", str(base_prompt or ""))
+            return (model, clip, upstream_loras, 0, "none", "", str(base_prompt or ""))
 
         base = selected_name.split("/")[-1].split("\\")[-1]
         for ext in (".safetensors", ".ckpt", ".pt", ".bin"):
@@ -359,7 +370,14 @@ class AUNRandomLoraModelOnly:
                 break
 
         label = base
-        selected_lora_output = f"{base}:{strength_model:.2f}:{strength_clip:.2f}"
+        selected_lora_output = f"<lora:{base}:{strength_model:.2f}:{strength_clip:.2f}>"
+
+        # Concatenate with upstream selected_LoRAs input if provided
+        if upstream_loras:
+            final_selected_lora = upstream_loras + ", " + selected_lora_output
+        else:
+            final_selected_lora = selected_lora_output
+
         if not bool(apply_lora):
             self._emit_selected_lora(
                 unique_id,
@@ -374,7 +392,7 @@ class AUNRandomLoraModelOnly:
             return (
                 model,
                 clip,
-                selected_lora_output,
+                upstream_loras,
                 index,
                 label,
                 selected_trigger,
@@ -396,7 +414,7 @@ class AUNRandomLoraModelOnly:
             return (
                 model,
                 clip,
-                selected_lora_output,
+                upstream_loras,
                 index,
                 "missing",
                 selected_trigger,
@@ -426,7 +444,7 @@ class AUNRandomLoraModelOnly:
             return (
                 model,
                 clip,
-                selected_lora_output,
+                upstream_loras,
                 index,
                 "error",
                 selected_trigger,
@@ -442,10 +460,11 @@ class AUNRandomLoraModelOnly:
             strength_clip,
             apply_lora,
         )
+
         return (
             loaded_model,
             loaded_clip,
-            selected_lora_output,
+            final_selected_lora,
             index,
             label,
             selected_trigger,

@@ -184,7 +184,7 @@ class AUNWildcardAddToPrompt(AUNAddToPrompt):
                 ),
             },
             "required": {
-                "text_to_add": (
+                "wildcards": (
                     "STRING",
                     {
                         "multiline": True,
@@ -263,7 +263,7 @@ class AUNWildcardAddToPrompt(AUNAddToPrompt):
 
     def add_wildcard_to_prompt(
         self,
-        text_to_add,
+        wildcards,
         wildcard_selector,
         delimiter,
         order,
@@ -272,7 +272,7 @@ class AUNWildcardAddToPrompt(AUNAddToPrompt):
         unique_id=None,
         extra_pnginfo=None,
     ):
-        source_text = text_to_add or ""
+        source_text = wildcards or ""
         processed_text = self._process_wildcards(source_text)
         result, addition_applied, order_normalized, mode_normalized = self._combine_prompt(
             prompt,
@@ -299,10 +299,10 @@ class AUNWildcardAddToPrompt(AUNAddToPrompt):
             },
         )
 
-        return (result, processed_text)
+        return {"ui": {"populated_text": [processed_text]}, "result": (result, processed_text)}
 
     @classmethod
-    def IS_CHANGED(cls, text_to_add, wildcard_selector, delimiter, order, mode, prompt=None, **kwargs):
+    def IS_CHANGED(cls, wildcards, wildcard_selector, delimiter, order, mode, prompt=None, **kwargs):
         return time.time()
 
 

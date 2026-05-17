@@ -94,19 +94,19 @@ function updateNodeVisibility(node) {
 
     // Addon widgets
     for (let i = 1; i <= MAX_ADDONS; i++) {
-      const enabledW = getWidget(node, `text_to_add${i}_enabled`);
+      const modeW = getWidget(node, `text_to_add${i}_mode`);
       const textW = getWidget(node, `text_to_add${i}`);
       const orderW = getWidget(node, `order${i}`);
 
       if (compact) {
         // In compact mode, hide all addon widgets
-        applyWidgetHiddenState(enabledW, true);
+        applyWidgetHiddenState(modeW, true);
         applyWidgetHiddenState(textW, true);
         applyWidgetHiddenState(orderW, true);
       } else {
         // In full mode, show only active slots
         const isActive = i <= numAddons;
-        applyWidgetHiddenState(enabledW, !isActive);
+        applyWidgetHiddenState(modeW, !isActive);
         applyWidgetHiddenState(textW, !isActive);
         applyWidgetHiddenState(orderW, !isActive);
       }
@@ -116,12 +116,13 @@ function updateNodeVisibility(node) {
     node.widgets_dirty = true;
     const [w, h] = node.computeSize();
     if (compact) {
-      // Compact mode: title bar (~36px) + padding + numAddons rows of checkboxes (~22px each)
+      // Compact mode: title bar (~36px) + padding + numAddons rows (~24px each)
+      // Only constrain height — preserve user's manual width
       const minH = 40 + numAddons * 24;
-      node.setSize([w, Math.max(h, minH)]);
+      node.setSize([node.size[0], Math.max(h, minH)]);
     } else {
-      // Full mode: ensure computed height is at least reasonable
-      node.setSize([w, Math.max(h, 120)]);
+      // Full mode: preserve user's manual width, ensure computed height is at least reasonable
+      node.setSize([node.size[0], Math.max(h, 120)]);
     }
     node.setDirtyCanvas(true, true);
 
@@ -146,7 +147,7 @@ function ensureStyles() {
       gap: 6px;
       padding: 2px 8px;
       pointer-events: none;
-      z-index: 11;
+      z-index: 1;
       font-size: 12px;
       font-family: var(--comfy-font-family, sans-serif);
       color: #ddd;
@@ -161,8 +162,28 @@ function ensureStyles() {
       max-width: 200px;
       user-select: none;
     }
-    .AUN-atpm-overlay-row input[type="checkbox"] {
-      accent-color: #0096cf;
+    .AUN-atpm-mode-select {
+      font-size: 11px;
+      font-family: var(--comfy-font-family, sans-serif);
+      color: #ddd;
+      background: #444;
+      border: 1px solid #666;
+      border-radius: 3px;
+      padding: 1px 2px;
+      cursor: pointer;
+      min-width: 38px;
+    }
+    .AUN-atpm-mode-select:hover {
+      border-color: #0096cf;
+    }
+    .AUN-atpm-mode-select option[value="on"] {
+      background: #2a6e3f;
+    }
+    .AUN-atpm-mode-select option[value="off"] {
+      background: #555;
+    }
+    .AUN-atpm-mode-select option[value="random"] {
+      background: #6e5a2a;
     }
     .AUN-atpm-order-select {
       font-size: 11px;
@@ -173,6 +194,7 @@ function ensureStyles() {
       border-radius: 3px;
       padding: 1px 4px;
       cursor: pointer;
+      margin-left: auto;
     }
     .AUN-atpm-order-select:hover {
       border-color: #0096cf;
@@ -188,6 +210,18 @@ function getAddonLabel(node, index) {
     return firstLine.length > 40 ? firstLine.slice(0, 40) + "…" : firstLine;
   }
   return `Addon ${index}`;
+}
+
+function applyModeSelectStyle(selectEl) {
+  if (!selectEl) return;
+  const val = selectEl.value;
+  if (val === "on") {
+    selectEl.style.background = "#2a6e3f";
+  } else if (val === "random") {
+    selectEl.style.background = "#6e5a2a";
+  } else {
+    selectEl.style.background = "#555";
+  }
 }
 
 function createOverlayRows(node) {
@@ -206,15 +240,22 @@ function createOverlayRows(node) {
     row.className = "AUN-atpm-overlay-row";
     row.style.display = "none";
 
-    const checkbox = document.createElement("input");
-    checkbox.type = "checkbox";
-    checkbox.addEventListener("change", () => {
-      const enabledW = getWidget(node, `text_to_add${i}_enabled`);
-      if (enabledW) {
-        enabledW.value = checkbox.checked;
-        if (enabledW.callback) enabledW.callback(checkbox.checked);
+    // Mode selector (on/off/random)
+    const modeSelect = document.createElement("select");
+    modeSelect.className = "AUN-atpm-mode-select";
+    modeSelect.innerHTML =
+      '<option value="on">on</option>' +
+      '<option value="off">off</option>' +
+      '<option value="random">rnd</option>';
+    modeSelect.title = "Mode: on=always add, off=never add, random=50/50 chance";
+    modeSelect.addEventListener("change", () => {
+      const modeW = getWidget(node, `text_to_add${i}_mode`);
+      if (modeW) {
+        modeW.value = modeSelect.value;
+        if (modeW.callback) modeW.callback(modeSelect.value);
         node.setDirtyCanvas(true, true);
       }
+      applyModeSelectStyle(modeSelect);
     });
 
     const label = document.createElement("label");
@@ -235,7 +276,7 @@ function createOverlayRows(node) {
       }
     });
 
-    row.appendChild(checkbox);
+    row.appendChild(modeSelect);
     row.appendChild(label);
     row.appendChild(orderSelect);
     document.body.appendChild(row);
@@ -256,11 +297,14 @@ function updateOverlayVisibility(node) {
     const row = node.__aun_atpm_rows[i - 1];
     if (!row) continue;
 
-    const enabledW = getWidget(node, `text_to_add${i}_enabled`);
-
     if (compact && i <= numAddons) {
       row.style.display = "flex";
-      row.querySelector("input[type=checkbox]").checked = !!enabledW?.value;
+      const modeW = getWidget(node, `text_to_add${i}_mode`);
+      const modeSelect = row.querySelector("select.AUN-atpm-mode-select");
+      if (modeSelect && modeW) {
+        modeSelect.value = modeW.value ?? "off";
+        applyModeSelectStyle(modeSelect);
+      }
       row.querySelector("label").textContent = getAddonLabel(node, i);
       const orderW = getWidget(node, `order${i}`);
       const orderSelect = row.querySelector("select.AUN-atpm-order-select");
@@ -327,6 +371,7 @@ function positionOverlays(node) {
     // Convert node position to screen coordinates
     const screenX = canvasRect.left + (node.pos[0] + panOffsetX) * scale;
     const screenY = canvasRect.top + (node.pos[1] + panOffsetY) * scale;
+    const nodeWidth = node.size[0] * scale;
 
     const numAddonsWidget = getWidget(node, "num_addons");
     const numAddons = clampAddons(numAddonsWidget?.value ?? 1);
@@ -341,6 +386,7 @@ function positionOverlays(node) {
 
       row.style.left = `${screenX + leftPad}px`;
       row.style.top = `${screenY + titleBarHeight + (i - 1) * lineHeight}px`;
+      row.style.width = `${nodeWidth - leftPad * 2}px`;
     }
   } catch (e) {
     // Ignore position errors during drag

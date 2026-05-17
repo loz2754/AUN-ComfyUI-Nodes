@@ -51,8 +51,8 @@ Each slot has:
 - `toggle_restriction` only matters in `manual` mode.
 - `AllSwitch` is a manual-mode control; it is suppressed when `control_mode = index-driven`.
 - Compact mode now keeps connected widget-backed inputs aligned correctly, so external `Index` control and any promoted slot inputs stay on the intended socket instead of drifting to stale hidden targets.
-- If a target is included in multiple slots, “active” wins over “inactive” when resolving overlaps.
-
+- If a target is included in multiple slots, “active” wins over “inactive” when resolving overlaps.- Frontend overlay inputs preserve connected links — a hidden input is only disabled (greyed out) when unconnected, preventing accidental disconnection when toggling compact mode.
+- The backend now sends explicit `state_changes` arrays with each update message, defining exactly which node states (mute, bypass, collapse) to modify. The frontend falls back to deriving the state changes from `mode` for backward compatibility.
 ## Common setups
 
 - Create 3–8 slots for major workflow regions (Loaders / Samplers / Refiners / Savers).

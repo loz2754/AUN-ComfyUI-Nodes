@@ -16,11 +16,25 @@
 
 ### Added
 
+- Added `selected_LoRAs` passthrough input/output to `AUNLoraStackWithTriggersModelClip` and `AUNRandomLoraModelOnly` — upstream `<lora:...>` tags are concatenated with locally generated tags, enabling chained LoRA stacks.
+- Added compact mode to `AUNWildcardAddToPrompt` via double-click node header toggle, hiding configuration widgets and showing only `mode` and `populated_text`.
+- Added per-addon mode selectors (`on`/`off`/`random`) to `AUNAddToPromptMulti` compact overlay, replacing simple checkboxes with dropdowns for probabilistic addon control.
+- Added `AUNAddToPromptMulti` documentation (`docs/AUNAddToPromptMulti_README.md`).
+
 ### Changed
+
+- `AUNAddToPromptMulti` compact overlay rows now use mode dropdowns instead of checkboxes, with color-coded backgrounds (green=on, gray=off, brown=random).
+- `AUNAddToPromptMulti` overlay z-index reduced from 11 to 1 to avoid overlapping UI elements incorrectly.
+- `AUNMultiUniversal` and `AUNMultiGroupUniversal` backends now send explicit `state_changes` arrays with each update message, defining exactly which node states (mute, bypass, collapse) to modify. Frontend falls back to deriving state changes from `mode` for backward compatibility.
+- `AUNMultiUniversal` and `AUNMultiGroupUniversal` compact mode overlay inputs preserve connected links — hidden inputs are only disabled (greyed out) when unconnected, preventing accidental disconnection when toggling compact mode.
+- `AUNTextIndexSwitch3` now preserves manual node width across workflow loads and auto-resize operations.
+- `AUNTextIndexSwitch3` hidden input slots are now visually hidden on the canvas (drawn over with background-colored circles).
+- `AUNRandomLoraModelOnly` output names updated: `selected_lora` → `selected LoRAs`, `index` → `index`, `prefixed_label` → `labels`, `trigger_words` → `trigger_words`, `prefixed_trigger_prompt` → `trigger + prompt`.
 
 ### Fixed
 
-- Fixed `AUNAddToPromptMulti` compact mode overlay so it hides when the node is collapsed and restores correctly on expand.
+- Fixed `AUNRandomLoraModelOnlyMulti` drag-to-swap causing overlay destruction — added guard flag to prevent LoRA widget callbacks from triggering `applyCompact()` mid-swap.
+- Fixed `AUNAddToPromptMulti` compact overlay not hiding when node is collapsed.
 
 ### Notes
 

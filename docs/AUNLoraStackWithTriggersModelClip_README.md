@@ -14,6 +14,7 @@ Purpose: Apply multiple LoRAs in order with per-slot trigger words, separate mod
 
 - `clip` (CLIP): Optional CLIP input. When connected, each active slot applies both model and clip strengths.
 - `base_prompt` (STRING): Optional text input appended after all active trigger words.
+- `selected_LoRAs` (STRING): Optional pass-through input. Upstream `<lora:...>` tags are concatenated with locally generated tags, enabling chained LoRA stacks.
 
 ### Per-slot inputs
 
@@ -29,6 +30,7 @@ For each slot `N` up to the internal maximum:
 
 - `MODEL`: Patched model after all active LoRAs are applied in slot order.
 - `CLIP`: Patched CLIP when connected, otherwise passthrough `None`.
+- `selected_LoRAs` (STRING): Generated `<lora:name:strength_model:strength_clip>` tags for active slots, concatenated with any upstream `selected_LoRAs` input. Passes through the upstream value unchanged when the stack is off or empty.
 - `labels` (STRING): Active LoRA labels joined with `+`. Blank when the stack is off or empty.
 - `trigger_words` (STRING): Joined trigger text from active slots. Blank when the stack is off, empty, or no active slot has trigger text.
 - `trigger_prompt` (STRING): Trigger text combined with `base_prompt`. When no active trigger words are present, this passes through `base_prompt` unchanged.
@@ -39,3 +41,4 @@ For each slot `N` up to the internal maximum:
 - The node supports Normal and Compact display modes.
 - Compact mode shows only `apply_stack` plus each active slot's `lora`, `strength_model`, `strength_clip`, and `enabled` widgets.
 - Slots above `num_slots` are hidden and ignored by the backend.
+- **Drag-to-swap**: In compact mode, drag a LoRA label onto another slot's label to swap their values (LoRA selection, model strength, clip strength, and trigger words). This provides a quick way to reorder LoRAs without manually editing each field.

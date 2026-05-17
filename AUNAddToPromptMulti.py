@@ -1,3 +1,6 @@
+import random
+
+
 class AUNAddToPromptMulti:
     MAX_ADDONS = 10
     
@@ -21,7 +24,11 @@ class AUNAddToPromptMulti:
         }
         
         for i in range(1, cls.MAX_ADDONS + 1):
-            inputs["required"][f"text_to_add{i}_enabled"] = ("BOOLEAN", {"default": False})
+            inputs["required"][f"text_to_add{i}_mode"] = ("COMBO", {
+                "options": ["on", "off", "random"],
+                "default": "off",
+                "tooltip": f"Mode for addon {i}: on=always add, off=never add, random=50/50 chance"
+            })
             inputs["required"][f"text_to_add{i}"] = ("STRING", {
                 "multiline": True,
                 "default": "",
@@ -42,7 +49,8 @@ class AUNAddToPromptMulti:
     FUNCTION = "AddonPrompter"
     CATEGORY = "AUN/Prompt Modifiers"
     DESCRIPTION = (
-        "Multi-addon prompt builder with switchable parts. Enable/disable each addon individually. "
+        "Multi-addon prompt builder with switchable parts. Set each addon to on/off/random individually. "
+        "Random mode gives a 50/50 chance of adding the text. "
         "Each addon can be placed before or after the main prompt via the order selector. "
         "Supports 1-10 addons and dynamic prompts. "
         "Double-click or right-click 'Compact mode' to hide configuration widgets and show overlay controls."
@@ -55,11 +63,19 @@ class AUNAddToPromptMulti:
         suffix_parts = []
 
         for i in range(1, num_addons + 1):
-            enabled = kwargs.get(f"text_to_add{i}_enabled", False)
+            mode = str(kwargs.get(f"text_to_add{i}_mode", "off") or "").strip().lower()
             text = str(kwargs.get(f"text_to_add{i}", "") or "").strip()
             order = str(kwargs.get(f"order{i}", "prompt_first") or "").strip().lower()
             
-            if not enabled or not text:
+            # Determine if addon should be applied based on mode
+            if mode == "on":
+                add_text = True
+            elif mode == "random":
+                add_text = random.SystemRandom().choice([True, False])
+            else:  # "off" or anything else
+                add_text = False
+            
+            if not add_text or not text:
                 continue
             
             # Strip the first line (used as label in compact mode) if multiple lines exist

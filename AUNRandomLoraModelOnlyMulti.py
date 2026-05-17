@@ -59,6 +59,15 @@ class AUNRandomLoraModelOnlyMulti:
                     "tooltip": "Optional prompt text appended after trigger words.",
                 },
             ),
+            "selected_LoRAs": (
+                "STRING",
+                {
+                    "default": "",
+                    "multiline": False,
+                    "forceInput": True,
+                    "tooltip": "Pass-through and concatenate selected_LoRAs text.",
+                },
+            ),
         }
         
         # Add slots for each prompt (1-20)
@@ -110,9 +119,9 @@ class AUNRandomLoraModelOnlyMulti:
     RETURN_NAMES = (
         "MODEL",
         "CLIP",
-        "selected loras",
-        "prompt_index",
-        "lora_labels",
+        "selected LoRAs",
+        "index",
+        "labels",
         "trigger words",
         "trigger + prompt",
     )
@@ -123,6 +132,7 @@ class AUNRandomLoraModelOnlyMulti:
         "Experimental multi-LoRA loader where prompt index determines which 1-3 LoRAs to apply. "
         "Each prompt can have different LoRAs and strengths applied sequentially to the same model+clip. "
         "Double-click to toggle compact mode for quick preview. "
+        "In compact mode, drag a LoRA label onto another to swap their values (LoRA, strengths, and triggers). "
         "Right-click menu: Hide/Show clip strength, Hide/Show footer with trigger words."
     )
 
@@ -187,12 +197,14 @@ class AUNRandomLoraModelOnlyMulti:
         apply_lora,
         unique_id=None,
         clip=None,
+        selected_LoRAs="",
         **kwargs,
     ):
         base_prompt = kwargs.get("base_prompt", "")
         
         # Clamp prompt index
         prompt_idx = max(1, min(int(prompt_index or 1), self.MAX_PROMPTS))
+        upstream_loras = str(selected_LoRAs or "").strip()
         
         # If apply_lora is disabled, return early
         if not bool(apply_lora):
@@ -204,7 +216,7 @@ class AUNRandomLoraModelOnlyMulti:
                 [],
                 apply_lora,
             )
-            return (model, clip, "None", prompt_idx, "", "", str(base_prompt or ""))
+            return (model, clip, upstream_loras, prompt_idx, "", "", str(base_prompt or ""))
 
         # Gather LoRAs for this prompt
         selected_loras = []
@@ -239,7 +251,7 @@ class AUNRandomLoraModelOnlyMulti:
                 [],
                 apply_lora,
             )
-            return (model, clip, "None", prompt_idx, "", "", str(base_prompt or ""))
+            return (model, clip, upstream_loras, prompt_idx, "", "", str(base_prompt or ""))
 
         # Apply LoRAs sequentially
         current_model = model
@@ -295,6 +307,12 @@ class AUNRandomLoraModelOnlyMulti:
             basename = name.split("/")[-1].split("\\")[-1]
             lora_tags.append(f"<lora:{basename}:{strength_m:.2f}:{strength_c:.2f}>")
         selected_loras_str = ", ".join(lora_tags)
+
+        # Concatenate with upstream selected_LoRAs input if provided
+        if upstream_loras:
+            final_selected_loras = upstream_loras + ", " + selected_loras_str
+        else:
+            final_selected_loras = selected_loras_str
         lora_labels_str = ", ".join(lora_labels)
         combined_triggers = ", ".join([t for t in all_triggers if t])
         composed_prompt = self._compose_trigger_prompt(combined_triggers, base_prompt)
@@ -311,7 +329,7 @@ class AUNRandomLoraModelOnlyMulti:
         return (
             current_model,
             current_clip,
-            selected_loras_str,
+            final_selected_loras,
             prompt_idx,
             lora_labels_str,
             combined_triggers,

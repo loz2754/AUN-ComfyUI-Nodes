@@ -975,6 +975,9 @@ function buildCompactRow(node, promptIdx, slotIdx) {
         const fields = ["lora", "strength_model", "strength_clip", "trigger"];
         let swapped = false;
 
+        // Guard flag: prevent lora widget callbacks from calling applyCompact mid-swap
+        node.__AUN_loraMultiSwapping = true;
+
         for (const field of fields) {
           const fromWidgetName = `p${promptIdx}_${field}${draggedData.slotIdx}`;
           const toWidgetName = `p${promptIdx}_${field}${slotIdx}`;
@@ -999,7 +1002,7 @@ function buildCompactRow(node, promptIdx, slotIdx) {
           node.__AUN_loraMultiLastSelectedLoras = null;
           node.__AUN_loraMultiLastTriggers = null;
 
-          // Force immediate updates
+          // Force immediate updates (once, after all swaps are done)
           applyCompact(node);
 
           // Ensure overlay rows are synced with new widget values
@@ -1013,6 +1016,8 @@ function buildCompactRow(node, promptIdx, slotIdx) {
           forceRedraw(node);
           scheduleAutoHeightUpdate(node, 1, 0);
         }
+
+        node.__AUN_loraMultiSwapping = false;
       }
     } catch (err) {
       console.error("Error during LoRA reorder:", err);
@@ -1348,6 +1353,8 @@ function hookLoraChange(node) {
       const origCb = loraW.callback;
       loraW.callback = function callback(value) {
         origCb?.call(loraW, value);
+        // Skip if a swap is in progress (swap handler will call applyCompact once)
+        if (node.__AUN_loraMultiSwapping) return;
         applyCompact(node);
         forceRedraw(node);
         scheduleAutoHeightUpdate(node, 1, 50);

@@ -28,3 +28,10 @@ Purpose: Randomize local wildcard syntax on every execution, then conditionally 
 - The selector dropdown is populated from discovered wildcard files and appends the chosen token into `text_to_add` for convenience.
 - Supported prompt syntax includes `__wildcard__`, quantified wildcard expansion like `2#__wildcard__`, and option groups like `{red|blue|2::green}`.
 - The node randomizes wildcard choices again on each execution and forces reevaluation so repeated generations do not stay cached.
+
+## Compact mode
+
+- Double-click the node header to toggle between Normal and Compact modes.
+- Compact mode hides configuration widgets (`wildcards`, `wildcard_selector`, `delimiter`, `order`) and shows only `mode` and `populated_text`.
+- Auto-height adjusts automatically to fit only the visible widgets.
+- Manual width is preserved — resizing the node wider will stick across mode toggles and workflow reloads.

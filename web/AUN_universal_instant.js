@@ -136,7 +136,7 @@ const syncWidgetBackedInputVisibility = (node) => {
     if (!input?.widget) return;
     const hidden = !!input.widget.hidden;
     input.hidden = hidden;
-    input.disabled = hidden;
+    input.disabled = hidden && input.link == null;
     if (hidden) {
       if (input.__AUN_savedType == null) {
         input.__AUN_savedType = input.type;
@@ -172,7 +172,7 @@ const syncModeDrivenControlInputs = (node, indexDriven) => {
     if (shouldHide == null) return;
 
     input.hidden = shouldHide;
-    input.disabled = shouldHide;
+    input.disabled = shouldHide && input.link == null;
     if (shouldHide) {
       if (input.link == null) {
         input.type = "__AUN_HIDDEN__";
@@ -1857,12 +1857,20 @@ const executeInstant = function executeInstant() {
   this._AUN_lastInstantExecution = Date.now();
 };
 
+const deriveStateChanges = (mode) => {
+  if (mode === "Mute") return ["mute", "bypass"];
+  if (mode === "Bypass") return ["bypass", "mute"];
+  if (mode === "Collapse") return ["collapse"];
+  if (mode === "Bypass+Collapse") return ["bypass", "mute", "collapse"];
+  return ["bypass", "mute"];
+};
+
 api?.addEventListener?.("AUN_universal_update", (event) => {
   const detail = event?.detail;
   if (!detail || detail.__AUN_alreadyApplied) return;
   const mode = detail.mode;
   const groups = detail.groups;
-  const stateChanges = detail.state_changes;
+  const stateChanges = detail.state_changes || deriveStateChanges(mode);
   if (typeof mode !== "string" || !Array.isArray(groups)) return;
   applyUniversalUpdate(mode, groups, stateChanges);
 });

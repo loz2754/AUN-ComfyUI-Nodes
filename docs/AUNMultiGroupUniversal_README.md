@@ -44,6 +44,7 @@ For each slot `i` (1–20):
 - `use_all_groups` is a manual-mode workflow; it is disabled when `control_mode = index-driven`.
 - This node drives updates through ComfyUI’s frontend so changes are applied immediately to the canvas.
 - Compact mode now keeps connected widget-backed inputs aligned correctly, so external `Index` control and promoted group inputs stay attached to the intended sockets.
+- The backend now sends explicit `state_changes` arrays with each update message, defining exactly which node states (mute, bypass, collapse) to modify. The frontend falls back to deriving the state changes from `mode` for backward compatibility.
 
 ## Tips
 

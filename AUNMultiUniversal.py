@@ -107,11 +107,27 @@ class AUNMultiUniversal:
             return time.time_ns()
         return False
 
+    @staticmethod
+    def _compute_state_changes(mode):
+        """Determine which node states to change based on the mode."""
+        if mode == "Mute":
+            return ["mute", "bypass"]
+        elif mode == "Bypass":
+            return ["bypass", "mute"]
+        elif mode == "Collapse":
+            return ["collapse"]
+        elif mode == "Bypass+Collapse":
+            return ["bypass", "mute", "collapse"]
+        else:
+            return ["bypass", "mute"]
+
     def execute(self, mode, slot_count, toggle_restriction, show_outputs, AllSwitch, control_mode="manual", Index=0, unique_id=None, **kwargs):
         try:
             # If only one slot is active, AllSwitch is redundant and hidden in UI
             if slot_count == 1:
                 AllSwitch = False
+
+            state_changes = self._compute_state_changes(mode)
 
             # Handle Iteration/Random Logic
             if unique_id is not None:
@@ -191,7 +207,8 @@ class AUNMultiUniversal:
             if target_groups:
                 PromptServer.instance.send_sync("AUN_universal_update", {
                     "mode": mode,
-                    "groups": target_groups
+                    "groups": target_groups,
+                    "state_changes": state_changes
                 })
 
             return (" ".join(active_labels), *switch_states)
