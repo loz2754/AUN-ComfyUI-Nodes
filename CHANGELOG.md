@@ -16,6 +16,16 @@
 
 ### Added
 
+### Changed
+
+### Fixed
+
+### Notes
+
+## [2.2.10] - 2026-05-17
+
+### Added
+
 - Added `selected_LoRAs` passthrough input/output to `AUNLoraStackWithTriggersModelClip` and `AUNRandomLoraModelOnly` — upstream `<lora:...>` tags are concatenated with locally generated tags, enabling chained LoRA stacks.
 - Added compact mode to `AUNWildcardAddToPrompt` via double-click node header toggle, hiding configuration widgets and showing only `mode` and `populated_text`.
 - Added per-addon mode selectors (`on`/`off`/`random`) to `AUNAddToPromptMulti` compact overlay, replacing simple checkboxes with dropdowns for probabilistic addon control.
@@ -37,7 +47,6 @@
 - Fixed `AUNAddToPromptMulti` compact overlay not hiding when node is collapsed.
 
 ### Notes
-
 ## [2.2.9] - 2026-05-15
 
 ### Fixed
