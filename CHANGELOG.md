@@ -1,16 +1,4 @@
-## [2.2.5] - 2026-05-09
-
-### Changed
-
-- Version bump for new release. (No user-facing changes listed in this entry.)
-
 # AUN Custom Nodes Changelog
-
-## [2.2.4] - 2026-05-09
-
-### Fixed
-
-- Muting/unmuting a group no longer affects the collapsed/expanded state of nodes in that group. Only the intended node states are changed. (JS logic respects state_changes)
 
 ## [Unreleased]
 
@@ -19,6 +7,8 @@
 ### Changed
 
 ### Fixed
+
+- Fixed unwanted optional input slots appearing on `AUNTextIndexSwitch4` when changing slot count. Root cause was `AUN_text_index_switch_labels.js` creating duplicate inputs via `node.addInput()` — resolved by removing `AUNTextIndexSwitch4` from the labels file `NODE_CONFIG` as it doesn't require label management.
 
 ### Notes
 
@@ -82,8 +72,6 @@
 - Updated model utilities with enhanced functionality.
 
 ### Fixed
-
-- Fixed unwanted optional input slots appearing on `AUNTextIndexSwitch4` when changing slot count. Root cause was `AUN_text_index_switch_labels.js` creating duplicate inputs via `node.addInput()` — resolved by removing `AUNTextIndexSwitch4` from the labels file `NODE_CONFIG` as it doesn't require label management.
 
 ## [2.2.3] - 2026-05-08
 
