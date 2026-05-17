@@ -8,9 +8,13 @@
 
 ### Fixed
 
-- Fixed unwanted optional input slots appearing on `AUNTextIndexSwitch4` when changing slot count. Root cause was `AUN_text_index_switch_labels.js` creating duplicate inputs via `node.addInput()` — resolved by removing `AUNTextIndexSwitch4` from the labels file `NODE_CONFIG` as it doesn't require label management.
-
 ### Notes
+
+## [2.2.11] - 2026-05-17
+
+### Fixed
+
+- Fixed unwanted optional input slots appearing on `AUNTextIndexSwitch4` when changing slot count. Root cause was `AUN_text_index_switch_labels.js` creating duplicate inputs via `node.addInput()` — resolved by removing `AUNTextIndexSwitch4` from the labels file `NODE_CONFIG` as it doesn't require label management.
 
 ## [2.2.10] - 2026-05-17
 
