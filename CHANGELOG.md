@@ -4,6 +4,16 @@
 
 ### Added
 
+### Changed
+
+### Fixed
+
+### Notes
+
+## [2.2.12] - 2026-05-23
+
+### Added
+
 - Added shared JavaScript utility modules (`constants.js`, `event-bus.js`, `graph-traversal.js`, `group-state.js`, `index.js`, `utils.js`, `widgets.js`) as a single source of truth for magic numbers, property keys, graph traversal, widget helpers, and compact-mode utilities.
 - Added optional `label` input/output to `AUNRandomLoraModelOnlyMulti` so an upstream node (e.g., TextIndexSwitch4) can supply a display label.
 - Added documentation for `AUNRandomLoraModelOnlyMulti` (`docs/AUNRandomLoraModelOnlyMulti_README.md`).
