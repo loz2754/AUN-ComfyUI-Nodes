@@ -1,4 +1,5 @@
 import { app } from "../../scripts/app.js";
+import { NODE_MODE } from "./index.js";
 
 const clampIndex = (value) => {
     let n = parseInt(value, 10);
@@ -28,12 +29,12 @@ const applyIndexState = (node, mode) => {
         idsByGroup.push(parseNodeIds(textWidget?.value ?? ""));
     }
 
-    const inactiveMode = mode === "mute" ? 2 : 4;
+    const inactiveMode = mode === "mute" ? NODE_MODE.MUTED : NODE_MODE.BYPASSED;
     let changed = false;
 
     for (let group = 1; group <= 10; group++) {
         const isActive = group === selectedIndex;
-        const targetMode = isActive ? 0 : inactiveMode;
+        const targetMode = isActive ? NODE_MODE.ACTIVE : inactiveMode;
         for (const nodeId of idsByGroup[group - 1]) {
             const target = graph.getNodeById(nodeId);
             if (!target) continue;

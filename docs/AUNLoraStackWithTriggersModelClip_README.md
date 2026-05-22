@@ -42,3 +42,7 @@ For each slot `N` up to the internal maximum:
 - Compact mode shows only `apply_stack` plus each active slot's `lora`, `strength_model`, `strength_clip`, and `enabled` widgets.
 - Slots above `num_slots` are hidden and ignored by the backend.
 - **Drag-to-swap**: In compact mode, drag a LoRA label onto another slot's label to swap their values (LoRA selection, model strength, clip strength, and trigger words). This provides a quick way to reorder LoRAs without manually editing each field.
+- Footer displays trigger words for active slots with smart text wrapping.
+- Right-click menu options:
+  - **Hide/Show clip strength**: Toggle visibility of clip strength inputs globally (applies in both full and compact modes).
+  - **Hide/Show footer**: Toggle the trigger words footer; hiding it shrinks the node to minimum height.

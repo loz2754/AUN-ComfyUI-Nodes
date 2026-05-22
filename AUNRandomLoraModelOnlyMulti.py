@@ -68,6 +68,15 @@ class AUNRandomLoraModelOnlyMulti:
                     "tooltip": "Pass-through and concatenate selected_LoRAs text.",
                 },
             ),
+            "label": (
+                "STRING",
+                {
+                    "default": "",
+                    "multiline": False,
+                    "forceInput": True,
+                    "tooltip": "Optional label displayed on the node (e.g. from TextIndexSwitch4 label output).",
+                },
+            ),
         }
         
         # Add slots for each prompt (1-20)
@@ -115,7 +124,7 @@ class AUNRandomLoraModelOnlyMulti:
         }
         return {"required": required, "optional": optional, "hidden": hidden}
 
-    RETURN_TYPES = ("MODEL", "CLIP", "STRING", "INT", "STRING", "STRING", "STRING")
+    RETURN_TYPES = ("MODEL", "CLIP", "STRING", "INT", "STRING", "STRING", "STRING",)
     RETURN_NAMES = (
         "MODEL",
         "CLIP",
@@ -198,6 +207,7 @@ class AUNRandomLoraModelOnlyMulti:
         unique_id=None,
         clip=None,
         selected_LoRAs="",
+        label="",
         **kwargs,
     ):
         base_prompt = kwargs.get("base_prompt", "")
@@ -216,7 +226,7 @@ class AUNRandomLoraModelOnlyMulti:
                 [],
                 apply_lora,
             )
-            return (model, clip, upstream_loras, prompt_idx, "", "", str(base_prompt or ""))
+            return (model, clip, upstream_loras, prompt_idx, "", "", str(base_prompt or ""), str(label or ""))
 
         # Gather LoRAs for this prompt
         selected_loras = []
@@ -251,7 +261,7 @@ class AUNRandomLoraModelOnlyMulti:
                 [],
                 apply_lora,
             )
-            return (model, clip, upstream_loras, prompt_idx, "", "", str(base_prompt or ""))
+            return (model, clip, upstream_loras, prompt_idx, "", "", str(base_prompt or ""), str(label or ""))
 
         # Apply LoRAs sequentially
         current_model = model
@@ -334,6 +344,7 @@ class AUNRandomLoraModelOnlyMulti:
             lora_labels_str,
             combined_triggers,
             composed_prompt,
+            str(label or ""),
         )
 
 

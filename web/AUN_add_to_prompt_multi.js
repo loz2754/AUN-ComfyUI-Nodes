@@ -244,9 +244,9 @@ function createOverlayRows(node) {
     const modeSelect = document.createElement("select");
     modeSelect.className = "AUN-atpm-mode-select";
     modeSelect.innerHTML =
-      '<option value="on">on</option>' +
-      '<option value="off">off</option>' +
-      '<option value="random">rnd</option>';
+      '<option value="on">On</option>' +
+      '<option value="off">Off</option>' +
+      '<option value="random">Rnd</option>';
     modeSelect.title = "Mode: on=always add, off=never add, random=50/50 chance";
     modeSelect.addEventListener("change", () => {
       const modeW = getWidget(node, `text_to_add${i}_mode`);
@@ -320,6 +320,103 @@ function updateOverlayVisibility(node) {
 // Debounced overlay position update (per-node, not global RAF loop)
 const overlayRAFMap = new WeakMap();
 
+/** Track all patched nodes so we can batch-update on canvas events */
+const trackedNodes = new Set();
+
+/** Periodic sync timer as a safety net for rapid pan / bookmark jumps */
+let overlaySyncInterval = null;
+
+function startOverlaySync() {
+  if (overlaySyncInterval) return;
+  // Every 100ms, reposition overlays for all compact nodes — catches any missed canvas events
+  overlaySyncInterval = setInterval(() => {
+    for (const node of trackedNodes) {
+      if (node && isCompact(node)) {
+        scheduleOverlayUpdate(node);
+      }
+    }
+  }, 100);
+}
+
+function stopOverlaySync() {
+  if (overlaySyncInterval) {
+    clearInterval(overlaySyncInterval);
+    overlaySyncInterval = null;
+  }
+}
+
+/** Register canvas-level listeners for view changes (runs once, not per-node) */
+let canvasListenersSetup = false;
+
+function setupCanvasListeners() {
+  if (canvasListenersSetup) return;
+  canvasListenersSetup = true;
+
+  const lgc = app.canvas;       // LGraphCanvas (not a DOM element)
+  const canvasEl = lgc?.canvas; // the actual <canvas> DOM element
+  if (!lgc || !canvasEl) return;
+
+  // "after" render hook — chain into existing onAfterRender so we don't clobber it
+  const prevAfter = lgc.onAfterRender;
+  lgc.onAfterRender = function () {
+    if (typeof prevAfter === "function") prevAfter.apply(this, arguments);
+    for (const node of trackedNodes) {
+      if (node && isCompact(node)) {
+        scheduleOverlayUpdate(node);
+      }
+    }
+  };
+
+  // Wheel zoom can shift overlays — listen on the actual DOM <canvas> element
+  const onWheel = () => {
+    for (const node of trackedNodes) {
+      if (node && isCompact(node)) {
+        scheduleOverlayUpdate(node);
+      }
+    }
+  };
+  canvasEl.addEventListener("wheel", onWheel, { passive: true });
+
+  lgc.__aun_atpm_wheel = onWheel;
+}
+
+/**
+ * Check if another node (with higher z-order / index) overlaps this node's bounding box.
+ * Returns true if the node is occluded and overlay rows should be hidden.
+ */
+function isNodeOccluded(node, canvasRect, scale, panOffsetX, panOffsetY) {
+  const nodes = app?.graph?._nodes;
+  if (!nodes) return false;
+
+  // Compute this node's screen-space bounding box
+  const selfScreenX = canvasRect.left + (node.pos[0] + panOffsetX) * scale;
+  const selfScreenY = canvasRect.top + (node.pos[1] + panOffsetY) * scale;
+  const selfRight = selfScreenX + (node.size?.[0] ?? 300) * scale;
+  const selfBottom = selfScreenY + (node.size?.[1] ?? 100) * scale;
+
+  for (const other of nodes) {
+    if (!other || other === node) continue;
+    // Only consider nodes drawn on top (higher index = higher z-order in ComfyUI)
+    if ((other.index ?? -1) <= (node.index ?? -2)) continue;
+    if (other.collapsed || other.flags?.collapsed) continue;
+
+    const otherScreenX = canvasRect.left + (other.pos[0] + panOffsetX) * scale;
+    const otherScreenY = canvasRect.top + (other.pos[1] + panOffsetY) * scale;
+    const otherRight = otherScreenX + (other.size?.[0] ?? 300) * scale;
+    const otherBottom = otherScreenY + (other.size?.[1] ?? 100) * scale;
+
+    // AABB overlap check — if any node above overlaps, this node is occluded
+    if (!(otherRight <= selfScreenX ||
+          otherScreenX >= selfRight ||
+          otherBottom <= selfScreenY ||
+          otherScreenY >= selfBottom)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 function scheduleOverlayUpdate(node) {
   if (overlayRAFMap.has(node)) return;
   const rafId = requestAnimationFrame(() => {
@@ -368,6 +465,18 @@ function positionOverlays(node) {
     const panOffsetX = ds.offset[0];
     const panOffsetY = ds.offset[1];
 
+    // Occlusion check — hide overlays if another node sits on top
+    if (isNodeOccluded(node, canvasRect, scale, panOffsetX, panOffsetY)) {
+      for (let i = 0; i < node.__aun_atpm_rows.length; i++) {
+        const row = node.__aun_atpm_rows[i];
+        if (row) row.style.display = "none";
+      }
+      return;
+    }
+
+    // No longer occluded — restore visibility so active rows reappear
+    updateOverlayVisibility(node);
+
     // Convert node position to screen coordinates
     const screenX = canvasRect.left + (node.pos[0] + panOffsetX) * scale;
     const screenY = canvasRect.top + (node.pos[1] + panOffsetY) * scale;
@@ -414,6 +523,11 @@ function patchNode(node) {
 
   // Create overlay rows
   createOverlayRows(node);
+
+  // Track this node for canvas-level updates
+  trackedNodes.add(node);
+  startOverlaySync();
+  setupCanvasListeners();
 
   // Hook num_addons callback
   const numAddonsWidget = getWidget(node, "num_addons");
@@ -492,12 +606,20 @@ function patchNode(node) {
   const origRemoved = node.onRemoved;
   node.onRemoved = function () {
     cancelOverlayUpdate(node);
+    trackedNodes.delete(node);
+
     if (node.__aun_atpm_rows) {
       for (const row of node.__aun_atpm_rows) {
         if (row?.parentNode) row.parentNode.removeChild(row);
       }
       delete node.__aun_atpm_rows;
     }
+
+    // Stop periodic sync if no more tracked nodes
+    if (trackedNodes.size === 0) {
+      stopOverlaySync();
+    }
+
     origRemoved?.apply(this, arguments);
   };
 

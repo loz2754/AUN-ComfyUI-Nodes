@@ -1,5 +1,6 @@
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
+import { getWidgetByNames, parsePositiveInt as sharedParsePositiveInt } from "./index.js";
 
 const TARGET_CLASSES = new Set([
   "AUNRandomTextIndexSwitch",
@@ -14,19 +15,8 @@ const HIGHLIGHTER_CLASSES = new Set([
   "AUNRandomTextIndexSwitchV2",
 ]);
 
-const getWidget = (node, names) => {
-  if (!node?.widgets) return null;
-  for (const name of names) {
-    const widget = node.widgets.find((w) => w.name === name);
-    if (widget) return widget;
-  }
-  return null;
-};
-
-const parsePositiveInt = (value) => {
-  const n = parseInt(value, 10);
-  return Number.isInteger(n) && n > 0 ? n : null;
-};
+const getWidget = (node, names) => getWidgetByNames(node, names);
+const parsePositiveInt = sharedParsePositiveInt;
 
 const extractExecutedIndex = (message) => {
   if (!message || typeof message !== "object") return null;

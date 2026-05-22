@@ -1,8 +1,8 @@
 // Minimal inline media preview for AUN save video nodes.
 // This mirrors the ComfyUI-JNodes behavior but is scoped to AUN nodes only.
 
-import { app } from "/scripts/app.js";
-import { api } from "/scripts/api.js";
+import { app } from "../../scripts/app.js";
+import { api } from "../../scripts/api.js";
 
 const PREVIEW_REGISTRY = new WeakMap();
 const SUPPORTED_NODE_NAMES = new Set(["AUNSaveVideo", "AUNSaveVideoV2"]);

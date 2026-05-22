@@ -30,7 +30,7 @@ For each addon slot `N`:
 
 ## Compact mode
 
-- Double-click the node header to toggle between Normal and Compact modes.
+- Double-click the node header or use the right-click menu to toggle between Normal and Compact modes.
 - Compact mode hides all addon text widgets and shows only a mode selector dropdown per active addon slot.
 - Each addon row displays a dropdown with `on`/`off`/`rnd` choices, color-coded for quick visual reference:
   - Green (`on`): always active
@@ -38,6 +38,7 @@ For each addon slot `N`:
   - Brown (`rnd`): random 50/50
 - Manual node width is preserved — resizing the node wider will stick across mode toggles and workflow reloads.
 - Auto-height adjusts to fit the number of active addon slots.
+- Minimum height enforcement prevents manual resize below usable thresholds.
 
 ## Common setups
 

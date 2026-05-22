@@ -424,6 +424,50 @@ function ensureInfoButton(node) {
   return button;
 }
 
+/**
+ * Check if another node (with higher z-order / index) overlaps this node's bounding box.
+ * Returns true if the node is occluded and overlay should be hidden.
+ */
+function isNodeOccluded(node, canvasRect, scale, ctxTransform) {
+  const nodes = app?.graph?._nodes;
+  if (!nodes) return false;
+
+  // Build a DOMMatrix from the canvas transform to convert local coords to screen space
+  const matrix = new DOMMatrix()
+    .scaleSelf(scale.x, scale.y)
+    .multiplySelf(ctxTransform);
+
+  // Compute this node's screen-space bounding box
+  const selfTopLeft = new DOMPoint(node.pos[0], node.pos[1]).matrixTransform(matrix);
+  const selfBottomRight = new DOMPoint(
+    node.pos[0] + (node.size?.[0] ?? 300),
+    node.pos[1] + (node.size?.[1] ?? 100)
+  ).matrixTransform(matrix);
+
+  for (const other of nodes) {
+    if (!other || other === node) continue;
+    // Only consider nodes drawn on top (higher index = higher z-order in ComfyUI)
+    if ((other.index ?? -1) <= (node.index ?? -2)) continue;
+    if (other.flags?.collapsed) continue;
+
+    const otherTopLeft = new DOMPoint(other.pos[0], other.pos[1]).matrixTransform(matrix);
+    const otherBottomRight = new DOMPoint(
+      other.pos[0] + (other.size?.[0] ?? 300),
+      other.pos[1] + (other.size?.[1] ?? 100)
+    ).matrixTransform(matrix);
+
+    // AABB overlap check — if any node above overlaps, this node is occluded
+    if (!(otherBottomRight.x <= selfTopLeft.x ||
+          otherTopLeft.x >= selfBottomRight.x ||
+          otherBottomRight.y <= selfTopLeft.y ||
+          otherTopLeft.y >= selfBottomRight.y)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 function positionInfoButton(node, ctx) {
   const button = ensureInfoButton(node);
   const compact = isCompact(node);
@@ -441,7 +485,16 @@ function positionInfoButton(node, ctx) {
     return;
   }
 
+  // Occlusion check — hide button if another node sits on top
   const canvasRect = ctx.canvas.getBoundingClientRect();
+  const scale = {
+    x: canvasRect.width / ctx.canvas.width,
+    y: canvasRect.height / ctx.canvas.height,
+  };
+  if (isNodeOccluded(node, canvasRect, scale, ctx.getTransform())) {
+    button.style.display = "none";
+    return;
+  }
   const matrix = new DOMMatrix()
     .scaleSelf(
       canvasRect.width / ctx.canvas.width,

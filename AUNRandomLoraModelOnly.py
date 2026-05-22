@@ -396,7 +396,7 @@ class AUNRandomLoraModelOnly:
                 index,
                 label,
                 selected_trigger,
-                composed_prompt,
+                str(base_prompt or ""),
             )
 
         lora_path = folder_paths.get_full_path("loras", selected_name)

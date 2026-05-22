@@ -837,13 +837,13 @@ const isNodeInsideGroup = (node, group, cache) => {
 const isNodeDisabled = (node, mode) => {
   switch (mode) {
     case "Mute":
-      return node.mode === 2;
+      return node.mode === NODE_MODE_VALUES.NEVER;
     case "Collapse":
       return !!node.flags?.collapsed;
     case "Bypass+Collapse":
-      return node.mode === 4 && !!node.flags?.collapsed;
+      return node.mode === NODE_MODE_VALUES.BYPASS && !!node.flags?.collapsed;
     default:
-      return node.mode === 4;
+      return node.mode === NODE_MODE_VALUES.BYPASS;
   }
 };
 

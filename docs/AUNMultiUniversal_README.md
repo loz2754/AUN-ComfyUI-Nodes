@@ -15,7 +15,7 @@ Purpose: A multi-slot “dashboard” that can Bypass, Mute, and/or Collapse set
 - `control_mode`:
   - `manual`: use the slot toggles directly
   - `index-driven`: activate the slot matching the external `Index` input
-- `Index` (INT 0–20): Used when `control_mode = index-driven`. `0` means no slot is active.
+- `Index` (INT 0–20): Used when `control_mode = index-driven`. Exposes as an `INT` socket that accepts external links. `0` means no slot is active.
 - `toggle_restriction`:
   - `default`: no extra rules
   - `max one`: allow at most one active slot

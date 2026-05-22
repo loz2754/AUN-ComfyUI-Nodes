@@ -4,9 +4,22 @@
 
 ### Added
 
+- Added shared JavaScript utility modules (`constants.js`, `event-bus.js`, `graph-traversal.js`, `group-state.js`, `index.js`, `utils.js`, `widgets.js`) as a single source of truth for magic numbers, property keys, graph traversal, widget helpers, and compact-mode utilities.
+- Added optional `label` input/output to `AUNRandomLoraModelOnlyMulti` so an upstream node (e.g., TextIndexSwitch4) can supply a display label.
+- Added documentation for `AUNRandomLoraModelOnlyMulti` (`docs/AUNRandomLoraModelOnlyMulti_README.md`).
+- Added documentation for `AUNTextIndexSwitch4` (`docs/AUNTextIndexSwitch4_README.md`).
+
 ### Changed
 
+- Refactored all compact-mode overlay frontend extensions to import shared utilities from the new module index instead of duplicating helpers inline. Affected files: bypass, mute, collapse state, set-bypass-state-group, set-mute-state-group, LoRA stackers, universal controllers, and add-to-prompt-multi.
+- Replaced broken `DOMMatrix`-based coordinate transformation (`buildCanvasMatrix`) with a simple `graphToScreen` formula across all overlay-positioning code, fixing device pixel ratio issues, wrong offset properties, and double-counting that caused compact overlays to not appear when the canvas was panned or zoomed.
+- Updated documentation for `AUNRandomLoraModelOnly`, `AUNLoraStackWithTriggersModelClip`, `AUNAddToPromptMulti`, and `AUNMultiUniversal` to reflect recent feature additions (CLIP input, footer toggles, right-click menus, INT socket exposure).
+- Added 5 missing entries (`AUNAddToPromptMulti`, `AUNRandomLoraModelOnlyMulti`, `AUNTextIndexSwitch4`, `AUNRandomTextIndexSwitchV2`, `AUNWildcardAddToPrompt`) to `docs/INDEX.md`.
+
 ### Fixed
+
+- Fixed `AUNRandomLoraModelOnly` returning the composed prompt instead of the raw `base_prompt` in its early-return path when no LoRA is selected.
+- Fixed missing space in `__init__.py` import (`from.` → `from .`) for `AUNKSamplerPlusv4`.
 
 ### Notes
 

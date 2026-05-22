@@ -1,4 +1,5 @@
 import { app } from "../../scripts/app.js";
+import { NODE_MODE } from "./index.js";
 
 const clampIndex = (value) => {
     let n = parseInt(value, 10);
@@ -34,7 +35,7 @@ const applyIndexState = (node) => {
     let changed = false;
     for (let group = 1; group <= 10; group++) {
         const isActive = group === selectedIndex;
-        const targetMode = isActive ? 0 : (useMute ? 2 : 4);
+        const targetMode = isActive ? NODE_MODE.ACTIVE : (useMute ? NODE_MODE.MUTED : NODE_MODE.BYPASSED);
         for (const nodeId of idsByGroup[group - 1]) {
             const target = graph.getNodeById(nodeId);
             if (!target) continue;

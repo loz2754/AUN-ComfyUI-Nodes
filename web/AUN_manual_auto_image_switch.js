@@ -1,4 +1,5 @@
 import { app } from "../../scripts/app.js";
+import { getWidget as sharedGetWidget } from "./index.js";
 
 const ADVANCED_WIDGETS = new Set([
   "show_overlay",
@@ -23,8 +24,7 @@ const normalizeHexColor = (value, fallback = "#000000") => {
   return fallback.toUpperCase();
 };
 
-const getWidget = (node, name) =>
-  (node.widgets || []).find((widget) => widget?.name === name);
+const getWidget = sharedGetWidget;
 
 const offsetColorInput = (inputEl, ctx, node, widget) => {
   if (!inputEl || !ctx || !node || !widget || !Number.isFinite(widget.last_y)) {

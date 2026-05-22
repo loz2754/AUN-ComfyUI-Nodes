@@ -5,6 +5,7 @@ Generated list of documentation files under `docs/`.
 ## Node Docs
 
 - [AUNAddToPrompt](./AUNAddToPrompt_README.md)
+- [AUNAddToPromptMulti](./AUNAddToPromptMulti_README.md)
 - [AUNAny](./AUNAny_README.md)
 - [AUNBookmark](./AUNBookmark_README.md)
 - [AUNBoolean](./AUNBoolean_README.md)
@@ -51,10 +52,12 @@ Generated list of documentation files under `docs/`.
 - [AUNPathFilenameVideoV2](./AUNPathFilenameVideoV2_README.md)
 - [AUNRandomAnySwitch](./AUNRandomAnySwitch_README.md)
 - [AUNRandomLoraModelOnly](./AUNRandomLoraModelOnly_README.md)
+- [AUNRandomLoraModelOnlyMulti](./AUNRandomLoraModelOnlyMulti_README.md)
 - [AUNRandomIndexSwitch](./AUNRandomIndexSwitch_README.md)
 - [AUNRandomNumber](./AUNRandomNumber_README.md)
 - [AUNRandomModelBundleSwitch](./AUNRandomModelBundleSwitch_README.md)
 - [AUNRandomTextIndexSwitch](./AUNRandomTextIndexSwitch_README.md)
+- [AUNRandomTextIndexSwitchV2](./AUNRandomTextIndexSwitchV2_README.md)
 - [AUNSaveImage](./AUNSaveImage_README.md)
 - [AUNSaveImageV2](./AUNSaveImageV2_README.md)
 - [AUNSaveVideo](./AUNSaveVideo_README.md)
@@ -70,7 +73,9 @@ Generated list of documentation files under `docs/`.
 - [AUNSwitchFloat](./AUNSwitchFloat_README.md)
 - [AUNTextIndexSwitch](./AUNTextIndexSwitch_README.md)
 - [AUNTextIndexSwitch3](./AUNTextIndexSwitch3_README.md)
+- [AUNTextIndexSwitch4](./AUNTextIndexSwitch4_README.md)
 - [AUNTitleImagePreview](./AUNTitleImagePreview_README.md)
+- [AUNWildcardAddToPrompt](./AUNWildcardAddToPrompt_README.md)
 - [TextSwitch2InputWithTextOutput](./TextSwitch2InputWithTextOutput_README.md)
 
 ## Guides

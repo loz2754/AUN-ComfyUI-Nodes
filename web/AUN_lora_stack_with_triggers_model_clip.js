@@ -816,33 +816,51 @@ function syncCompactRow(node, row, showClipStrength) {
   row.enabled.checked = !!enabledWidget?.value;
 }
 
-function positionCompactRows(node, ctx) {
-  if (!isTargetNode(node)) return;
-  const rows = ensureCompactRows(node);
-  const compact = isCompact(node);
-  const collapsed = isNodeCollapsed(node);
-  const numSlots = getNumSlots(node);
-  const showClipStrength = showClipStrengthInCompact(node);
-  const currentWidth = node.size?.[0] ?? 360;
+function graphToScreen(canvasRect, graphX, graphY, scale, offsetX, offsetY) {
+  return {
+    x: canvasRect.left + (graphX + offsetX) * scale,
+    y: canvasRect.top + (graphY + offsetY) * scale
+  };
+}
 
-  // Hide all rows if: not compact, collapsed, no canvas, node being dragged, or graph inactive
-  const nodeDragging = node.__AUN_nodeBeingDragged;
-  const graphActive = app?.canvas?.canvas && document.hasFocus?.();
+/**
+ * Check if another node (with higher z-order / index) overlaps this node's bounding box.
+ * Returns true if the node is occluded and overlay rows should be hidden.
+ */
+function isNodeOccluded(node, canvasRect, scale, offsetX, offsetY) {
+  const nodes = app?.graph?._nodes;
+  if (!nodes) return false;
 
-  if (!compact || collapsed || !ctx?.canvas || nodeDragging || !graphActive) {
-    for (const row of rows) {
-      row.root.style.display = "none";
+  // Compute this node's screen-space bounding box
+  const selfScreen = graphToScreen(canvasRect, node.pos[0], node.pos[1], scale, offsetX, offsetY);
+  const selfRight = selfScreen.x + (node.size?.[0] ?? 300) * scale;
+  const selfBottom = selfScreen.y + (node.size?.[1] ?? 100) * scale;
+
+  for (const other of nodes) {
+    if (!other || other === node) continue;
+    // Only consider nodes drawn on top (higher index = higher z-order in ComfyUI)
+    if ((other.index ?? -1) <= (node.index ?? -2)) continue;
+    if (other.flags?.collapsed) continue;
+
+    const otherScreen = graphToScreen(canvasRect, other.pos[0], other.pos[1], scale, offsetX, offsetY);
+    const otherRight = otherScreen.x + (other.size?.[0] ?? 300) * scale;
+    const otherBottom = otherScreen.y + (other.size?.[1] ?? 100) * scale;
+
+    // AABB overlap check — if any node above overlaps, this node is occluded
+    if (!(otherRight <= selfScreen.x ||
+          otherScreen.x >= selfRight ||
+          otherBottom <= selfScreen.y ||
+          otherScreen.y >= selfBottom)) {
+      return true;
     }
-    return;
   }
 
-  const canvasRect = ctx.canvas.getBoundingClientRect();
-  const matrix = new DOMMatrix()
-    .scaleSelf(
-      canvasRect.width / ctx.canvas.width,
-      canvasRect.height / ctx.canvas.height,
-    )
-    .multiplySelf(ctx.getTransform());
+  return false;
+}
+
+function positionCompactRowsCore(node, canvasRect, scale, offsetX, offsetY, numSlots, showClipStrength, occluded) {
+  const rows = ensureCompactRows(node);
+  const currentWidth = node.size?.[0] ?? 360;
   const runtimeRowY = getWidgetBottomY(getWidget(node, "apply_stack"));
   const baseY = Number.isFinite(runtimeRowY)
     ? runtimeRowY + 8
@@ -856,32 +874,166 @@ function positionCompactRows(node, ctx) {
     scheduleCompactHeightRefresh(node);
   }
   const innerWidth = currentWidth - COMPACT_SIDE_PADDING * 2;
-
+  const nodeX = node.pos?.[0] ?? 0;
+  const nodeY = node.pos?.[1] ?? 0;
+  let anyShown = false;
   for (const row of rows) {
-    if (row.slotIndex > numSlots) {
+    if (row.slotIndex > numSlots || occluded) {
       row.root.style.display = "none";
       continue;
     }
-
     syncCompactRow(node, row, showClipStrength);
     const localTop =
       baseY + (row.slotIndex - 1) * (COMPACT_ROW_HEIGHT + COMPACT_ROW_GAP);
-    const topLeft = new DOMPoint(
-      COMPACT_SIDE_PADDING,
-      localTop,
-    ).matrixTransform(matrix);
-    const bottomRight = new DOMPoint(
-      COMPACT_SIDE_PADDING + innerWidth,
-      localTop + COMPACT_ROW_HEIGHT,
-    ).matrixTransform(matrix);
-
+    const graphLeft = nodeX + COMPACT_SIDE_PADDING;
+    const graphTop = nodeY + localTop;
+    const screenPos = graphToScreen(canvasRect, graphLeft, graphTop, scale, offsetX, offsetY);
+    const screenBottomRight = graphToScreen(
+      canvasRect,
+      graphLeft + innerWidth,
+      graphTop + COMPACT_ROW_HEIGHT,
+      scale,
+      offsetX,
+      offsetY
+    );
     Object.assign(row.root.style, {
       display: "grid",
-      left: `${canvasRect.left + topLeft.x}px`,
-      top: `${canvasRect.top + topLeft.y}px`,
-      width: `${Math.max(80, bottomRight.x - topLeft.x)}px`,
-      height: `${Math.max(22, bottomRight.y - topLeft.y)}px`,
+      left: `${screenPos.x}px`,
+      top: `${screenPos.y}px`,
+      width: `${Math.max(80, screenBottomRight.x - screenPos.x)}px`,
+      height: `${Math.max(22, screenBottomRight.y - screenPos.y)}px`,
     });
+    anyShown = true;
+  }
+  return anyShown;
+}
+
+function positionCompactRows(node, ctx) {
+  if (!isTargetNode(node)) return;
+  const rows = ensureCompactRows(node);
+  const compact = isCompact(node);
+  const collapsed = isNodeCollapsed(node);
+
+  // Hide all rows if: not compact, collapsed, no canvas, node being dragged, graph inactive, or canvas unstable
+  const nodeDragging = node.__AUN_nodeBeingDragged;
+  const graphActive = app?.canvas?.canvas && document.hasFocus?.();
+  const stableFrames = app?.canvas?.__AUN_stableFrameCount ?? 0;
+  const canvasStable = stableFrames >= 3;
+
+  if (!compact || collapsed || !ctx?.canvas || nodeDragging || !graphActive || !canvasStable) {
+    for (const row of rows) {
+      row.root.style.display = "none";
+    }
+    return;
+  }
+
+  const canvasRect = ctx.canvas.getBoundingClientRect();
+  const ds = app?.canvas?.ds;
+  if (!ds) {
+    for (const row of rows) {
+      row.root.style.display = "none";
+    }
+    return;
+  }
+  const scale = ds.scale || 1;
+  const offsetX = ds.offset?.[0] ?? 0;
+  const offsetY = ds.offset?.[1] ?? 0;
+
+  // On-screen visibility check
+  const nodeScreen = graphToScreen(canvasRect, node.pos[0], node.pos[1], scale, offsetX, offsetY);
+  const nodeW = (node.size?.[0] ?? 300) * scale;
+  const nodeH = (node.size?.[1] ?? 100) * scale;
+  const padding = 20;
+  const nodeOnScreen =
+    nodeScreen.x + nodeW + padding > canvasRect.left &&
+    nodeScreen.x - padding < canvasRect.right &&
+    nodeScreen.y + nodeH + padding > canvasRect.top &&
+    nodeScreen.y - padding < canvasRect.bottom;
+
+  if (!nodeOnScreen) {
+    for (const row of rows) {
+      row.root.style.display = "none";
+    }
+    return;
+  }
+
+  const numSlots = getNumSlots(node);
+  const showClipStrength = showClipStrengthInCompact(node);
+  positionCompactRowsCore(node, canvasRect, scale, offsetX, offsetY, numSlots, showClipStrength, isNodeOccluded(node, canvasRect, scale, offsetX, offsetY));
+}
+
+function positionCompactRowsFromCanvas(node) {
+  if (!isTargetNode(node)) return;
+  const rows = ensureCompactRows(node);
+  const compact = isCompact(node);
+  const collapsed = isNodeCollapsed(node);
+  if (!compact || collapsed) {
+    for (const row of rows) row.root.style.display = "none";
+    return;
+  }
+  const canvas = app?.canvas;
+  if (!canvas || !canvas.canvas || !canvas.ds) {
+    for (const row of rows) row.root.style.display = "none";
+    return;
+  }
+  const canvasRect = canvas.canvas.getBoundingClientRect();
+  const scale = canvas.ds.scale || 1;
+  const offsetX = canvas.ds.offset?.[0] ?? 0;
+  const offsetY = canvas.ds.offset?.[1] ?? 0;
+  const nodeScreen = graphToScreen(canvasRect, node.pos[0], node.pos[1], scale, offsetX, offsetY);
+  const nodeW = (node.size?.[0] ?? 300) * scale;
+  const nodeH = (node.size?.[1] ?? 100) * scale;
+  const padding = 20;
+  const nodeOnScreen =
+    nodeScreen.x + nodeW + padding > canvasRect.left &&
+    nodeScreen.x - padding < canvasRect.right &&
+    nodeScreen.y + nodeH + padding > canvasRect.top &&
+    nodeScreen.y - padding < canvasRect.bottom;
+  if (!nodeOnScreen) {
+    for (const row of rows) row.root.style.display = "none";
+    return;
+  }
+  const numSlots = getNumSlots(node);
+  const showClipStrength = showClipStrengthInCompact(node);
+  positionCompactRowsCore(node, canvasRect, scale, offsetX, offsetY, numSlots, showClipStrength, isNodeOccluded(node, canvasRect, scale, offsetX, offsetY));
+}
+
+let compactRowsRAF = null;
+function hasCompactLoraNodes() {
+  if (!app?.graph) return false;
+  const nodes = app.graph._nodes || app.graph.nodes || [];
+  return nodes.some((n) => isTargetNode(n) && isCompact(n));
+}
+
+function startCompactRowsRAF() {
+  if (compactRowsRAF) return;
+  function rafLoop() {
+    compactRowsRAF = requestAnimationFrame(rafLoop);
+    if (!app?.graph) return;
+    const nodes = app.graph._nodes || app.graph.nodes || [];
+    for (const n of nodes) {
+      if (isTargetNode(n) && isCompact(n)) {
+        positionCompactRowsFromCanvas(n);
+      }
+    }
+    if (!hasCompactLoraNodes()) {
+      cancelAnimationFrame(compactRowsRAF);
+      compactRowsRAF = null;
+    }
+  }
+  rafLoop();
+}
+
+function stopCompactRowsRAF() {
+  if (compactRowsRAF) {
+    cancelAnimationFrame(compactRowsRAF);
+    compactRowsRAF = null;
+  }
+}
+
+function scheduleCompactRowsUpdate() {
+  if (!compactRowsRAF) {
+    startCompactRowsRAF();
   }
 }
 
@@ -1179,6 +1331,7 @@ function applyCompact(node) {
   updateAutoHeight(node);
   if (compact) {
     scheduleCompactHeightRefresh(node);
+    scheduleCompactRowsUpdate();
   }
   forceRedraw(node);
 }
@@ -1193,6 +1346,104 @@ function hookWidgetRedraw(node, widgetName, extraAction) {
     forceRedraw(node);
   };
   widget.__AUN_stackHooked = true;
+}
+
+function setupCanvasTransformMonitor() {
+  const canvas = app?.canvas;
+  if (!canvas || canvas.__AUN_transformMonitorSetup) return;
+  canvas.__AUN_transformMonitorSetup = true;
+
+  // Frame-based stabilization: rows only appear after N consecutive stable frames.
+  // This handles rapid panning, zooming, and programmatic jumps (bookmarks) robustly.
+  const STABLE_FRAMES_NEEDED = 3;
+  canvas.__AUN_stableFrameCount = 0;
+
+  // Hide ALL compact rows (both node types share this guard)
+  const hideAllCompactRows = () => {
+    const nodes = app?.graph?._nodes;
+    if (!nodes) return;
+    for (const n of nodes) {
+      for (const row of n.__AUN_compactRows ?? []) {
+        row.root.style.display = "none";
+      }
+      // Also hide AUNAddToPromptMulti overlay rows if present
+      for (const row of n.__aun_atpm_rows ?? []) {
+        if (row?.parentNode) row.style.display = "none";
+      }
+    }
+  };
+
+  // Reset stable frame counter and hide rows immediately
+  const markCanvasUnstable = () => {
+    canvas.__AUN_stableFrameCount = 0;
+    hideAllCompactRows();
+  };
+
+  // Use the actual DOM <canvas> element for event listeners (LGraphCanvas doesn't have addEventListener)
+  const domCanvas = canvas.canvas;
+
+  if (domCanvas) {
+    // Proactively mark unstable when canvas interaction starts
+    const onMouseDown = (e) => {
+      if (e.target === domCanvas || e.target === canvas) {
+        markCanvasUnstable();
+        scheduleCompactRowsUpdate();
+      }
+    };
+    domCanvas.addEventListener("mousedown", onMouseDown);
+
+    // Also hide rows on mousemove during pan (middle-click drag / right-click pan)
+    const onMouseMove = () => {
+      if (canvas.__AUN_stableFrameCount > 0) {
+        markCanvasUnstable();
+      }
+      scheduleCompactRowsUpdate();
+    };
+    domCanvas.addEventListener("mousemove", onMouseMove, { passive: true });
+
+    // Wheel zoom can also shift things
+    const onWheel = () => {
+      markCanvasUnstable();
+      scheduleCompactRowsUpdate();
+    };
+    domCanvas.addEventListener("wheel", onWheel, { passive: true });
+  }
+
+  // Monitor transform changes on every draw cycle
+  let lastTransform = null;
+  const JUMP_THRESHOLD = 50;
+
+  const originalDraw = canvas.draw;
+  canvas.draw = function drawTransformMonitor() {
+    const transform = this.getTransform?.();
+    const current = transform
+      ? `${transform.a.toFixed(2)},${transform.b.toFixed(2)},${transform.c.toFixed(2)},${transform.d.toFixed(2)},${transform.e.toFixed(2)},${transform.f.toFixed(2)}`
+      : null;
+
+    if (current && lastTransform) {
+      const prev = lastTransform.split(",").map(Number);
+      const curr = current.split(",").map(Number);
+      const dx = Math.abs(curr[4] - prev[4]);
+      const dy = Math.abs(curr[5] - prev[5]);
+      const ds = Math.abs(curr[0] - prev[0]); // scale change
+
+      if (dx > JUMP_THRESHOLD || dy > JUMP_THRESHOLD || ds > 0.01) {
+        markCanvasUnstable();
+        scheduleCompactRowsUpdate();
+      } else {
+        canvas.__AUN_stableFrameCount = (canvas.__AUN_stableFrameCount || 0) + 1;
+      }
+    } else {
+      // First frame or no transform — mark unstable
+      markCanvasUnstable();
+    }
+
+    lastTransform = current;
+
+    // Draw — positionCompactRows checks canvas.__AUN_stableFrameCount to decide
+    const result = originalDraw.apply(this, arguments);
+    return result;
+  };
 }
 
 function startLiveMonitor(node) {
@@ -1308,6 +1559,7 @@ function setupNode(node) {
     setShowClipStrengthInCompact(node, true);
   }
   ensureCompactRows(node);
+  setupCanvasTransformMonitor();
 
   // Set up global drag monitoring (once per canvas)
   const canvas = app?.canvas;
@@ -1336,168 +1588,8 @@ function setupNode(node) {
     };
   }
 
-  const originalDblClick = node.onDblClick;
-  node.onDblClick = function onDblClick(event, pos) {
-    originalDblClick?.apply(this, arguments);
-    if (Array.isArray(pos) && typeof pos[1] === "number" && pos[1] < 0) {
-      return;
-    }
-    toggleCompactMode(this);
-  };
-
-  const originalOnResize = node.onResize;
-  node.onResize = function onResize(...args) {
-    const result = originalOnResize?.apply(this, args);
-    if (!this.__AUN_internalResize) {
-      this.__AUN_manualResize = true;
-      if (isCompact(this)) {
-        const currentWidth = Number(this.size?.[0]) || 240;
-        const currentHeight = Number(this.size?.[1]);
-        const minimumCompactHeight = getMinimumCompactHeight(this);
-        const clampedHeight = Number.isFinite(currentHeight)
-          ? Math.max(currentHeight, minimumCompactHeight)
-          : minimumCompactHeight;
-        if (clampedHeight !== currentHeight) {
-          if (typeof this.setSize === "function") {
-            this.__AUN_internalResize = true;
-            this.setSize([currentWidth, clampedHeight]);
-            this.__AUN_internalResize = false;
-          } else {
-            this.size = Array.isArray(this.size)
-              ? this.size
-              : [currentWidth, clampedHeight];
-            this.size[0] = currentWidth;
-            this.size[1] = clampedHeight;
-          }
-        }
-        if (Number.isFinite(clampedHeight)) {
-          this.__AUN_manualCompactHeight = clampedHeight;
-          this.__AUN_manualCompactSlots = getNumSlots(this);
-        }
-      }
-    }
-    return result;
-  };
-
-  const originalMenu = node.getExtraMenuOptions;
-  node.getExtraMenuOptions = function getExtraMenuOptions(
-    graphcanvas,
-    options,
-  ) {
-    originalMenu?.apply(this, arguments);
-    options.push({
-      content: isCompact(this) ? "AUN: Show all controls" : "AUN: Compact mode",
-      callback: () => toggleCompactMode(this),
-    });
-    options.push({
-      content: showClipStrengthInCompact(this)
-        ? "AUN: Hide clip strength"
-        : "AUN: Show clip strength",
-      callback: () => toggleCompactClipStrength(this),
-    });
-    options.push({
-      content: showFooter(this) ? "AUN: Hide footer" : "AUN: Show footer",
-      callback: () => {
-        setShowFooter(this, !showFooter(this));
-        updateAutoHeight(this);
-        forceRedraw(this);
-      },
-    });
-  };
-
-  const originalDrawBg = node.onDrawBackground;
-  node.onDrawBackground = function onDrawBackground(ctx) {
-    originalDrawBg?.apply(this, arguments);
-    positionCompactRows(this, ctx);
-  };
-
-  const originalDrawFg = node.onDrawForeground;
-  node.onDrawForeground = function onDrawForeground(ctx) {
-    originalDrawFg?.apply(this, arguments);
-
-    if (!isCompact(this) || isNodeCollapsed(this) || !showFooter(this)) return;
-
-    const triggers = resolveStackTriggersForDisplay(this);
-    let headerText;
-    let triggerText;
-    if (triggers && triggers.length > 0) {
-      headerText = "Stack trigger words: ";
-      triggerText = triggers.join(", ");
-    } else {
-      headerText = "Stack trigger words (none)";
-      triggerText = "";
-    }
-
-    const footerHeight = getCompactFooterHeight(this);
-    const w = this.size[0];
-    const h = this.size[1];
-    const y0 = h - footerHeight + 3;
-    const y1 = h - 6;
-    const x0 = 8;
-    const x1 = w - 8;
-
-    ctx.save();
-    ctx.fillStyle = "rgba(255,255,255,0.07)";
-    ctx.beginPath();
-    ctx.roundRect(x0, y0, x1 - x0, y1 - y0, 4);
-    ctx.fill();
-    ctx.fillStyle = "rgba(220,220,220,0.9)";
-    ctx.font = "bold 11px sans-serif";
-    ctx.textAlign = "left";
-    ctx.textBaseline = "top";
-
-    const lineHeight = 16;
-    const startX = x0 + 6;
-    const startY = y0 + 2;
-    const maxWidth = x1 - x0 - 12;
-
-    const wrapText = (text) => {
-      const lines = [];
-      let currentLine = "";
-      const words = text.split(", ");
-
-      for (const word of words) {
-        const testLine = currentLine ? currentLine + ", " + word : word;
-        const metrics = ctx.measureText(testLine);
-
-        if (metrics.width > maxWidth && currentLine) {
-          lines.push(currentLine);
-          currentLine = word;
-        } else {
-          currentLine = testLine;
-        }
-      }
-
-      if (currentLine) lines.push(currentLine);
-      return lines;
-    };
-
-    if (triggerText) {
-      const fullText = headerText + triggerText;
-      const headerMetrics = ctx.measureText(headerText);
-
-      if (
-        headerMetrics.width + ctx.measureText(triggerText).width <=
-        maxWidth
-      ) {
-        ctx.fillText(fullText, startX, startY);
-      } else {
-        ctx.fillText(headerText, startX, startY);
-        const wrappedTriggers = wrapText(triggerText);
-        for (let i = 0; i < wrappedTriggers.length; i++) {
-          ctx.fillText(
-            wrappedTriggers[i],
-            startX,
-            startY + (i + 1) * lineHeight,
-          );
-        }
-      }
-    } else {
-      ctx.fillText(headerText, startX, startY);
-    }
-
-    ctx.restore();
-  };
+  // Instance-level handlers (onDblClick, getExtraMenuOptions, onResize, onDrawBackground, onDrawForeground)
+  // are now set on the prototype in beforeRegisterNodeDef — no need to duplicate here.
 
   hookWidgetRedraw(node, "num_slots", () => applyCompact(node));
   hookWidgetRedraw(node, "apply_stack");
@@ -1512,8 +1604,212 @@ function setupNode(node) {
   applyCompact(node);
 }
 
+function initExistingNodes() {
+  if (!app?.graph) return;
+  const nodes = app.graph._nodes || app.graph.nodes || [];
+  let initialized = false;
+  for (const node of nodes) {
+    if (isTargetNode(node) && !node.__AUN_stackInit) {
+      setupNode(node);
+      resetCompactRuntimeState(node);
+      node.__AUN_restoreLayoutPending = true;
+      applyCompact(node);
+      scheduleCompactLoadStabilization(node, 4, 50);
+      initialized = true;
+    }
+  }
+  return initialized;
+}
+
+// Persistent global scanner: catches nodes created after initial load
+// (e.g., via context menu reload, graph paste, dynamic node creation)
+let __AUN_stackScanTimer = null;
+function startStackScanner() {
+  if (__AUN_stackScanTimer) return;
+  __AUN_stackScanTimer = setInterval(() => {
+    initExistingNodes();
+  }, 2000);
+}
+
 app.registerExtension({
   name: "AUN.LoraStackWithTriggersModelClip",
+  async setup() {
+    initExistingNodes();
+    startStackScanner();
+  },
+
+  async beforeRegisterNodeDef(nodeType, nodeData) {
+    // --- Prototype-level handlers for target node type ---
+    // These persist across all instances, even when nodes are recreated via context menu reload.
+    if (nodeData?.name !== NODE_TYPE) return;
+
+    // onDblClick
+    const protoOrigDblClick = nodeType.prototype.onDblClick;
+    nodeType.prototype.onDblClick = function onDblClick(event, pos) {
+      protoOrigDblClick?.apply(this, arguments);
+      if (Array.isArray(pos) && typeof pos[1] === "number" && pos[1] < 0) {
+        return;
+      }
+      toggleCompactMode(this);
+    };
+
+    // getExtraMenuOptions
+    const protoOrigMenu = nodeType.prototype.getExtraMenuOptions;
+    nodeType.prototype.getExtraMenuOptions = function getExtraMenuOptions(
+      graphcanvas,
+      options,
+    ) {
+      protoOrigMenu?.apply(this, arguments);
+      options.push({
+        content: isCompact(this) ? "AUN: Show all controls" : "AUN: Compact mode",
+        callback: () => toggleCompactMode(this),
+      });
+      options.push({
+        content: showClipStrengthInCompact(this)
+          ? "AUN: Hide clip strength"
+          : "AUN: Show clip strength",
+        callback: () => toggleCompactClipStrength(this),
+      });
+      options.push({
+        content: showFooter(this) ? "AUN: Hide footer" : "AUN: Show footer",
+        callback: () => {
+          setShowFooter(this, !showFooter(this));
+          updateAutoHeight(this);
+          forceRedraw(this);
+        },
+      });
+    };
+
+    // onResize
+    const protoOrigOnResize = nodeType.prototype.onResize;
+    nodeType.prototype.onResize = function onResize(...args) {
+      const result = protoOrigOnResize?.apply(this, args);
+      if (this.__AUN_internalResize || !isCompact(this)) {
+        return result;
+      }
+      const currentWidth = Number(this.size?.[0]) || 240;
+      const currentHeight = Number(this.size?.[1]);
+      const minimumCompactHeight = getMinimumCompactHeight(this);
+      const clampedHeight = Number.isFinite(currentHeight)
+        ? Math.max(currentHeight, minimumCompactHeight)
+        : minimumCompactHeight;
+      if (clampedHeight !== currentHeight) {
+        this.__AUN_internalResize = true;
+        if (typeof this.setSize === "function") {
+          this.setSize([currentWidth, clampedHeight]);
+        } else {
+          this.size = Array.isArray(this.size)
+            ? this.size
+            : [currentWidth, clampedHeight];
+          this.size[0] = currentWidth;
+          this.size[1] = clampedHeight;
+        }
+        this.__AUN_internalResize = false;
+      }
+      if (Number.isFinite(clampedHeight)) {
+        this.__AUN_manualCompactHeight = clampedHeight;
+        this.__AUN_manualCompactSlots = getNumSlots(this);
+      }
+      return result;
+    };
+
+    // onDrawBackground
+    const protoOrigDrawBg = nodeType.prototype.onDrawBackground;
+    nodeType.prototype.onDrawBackground = function onDrawBackground(ctx) {
+      protoOrigDrawBg?.apply(this, arguments);
+      positionCompactRows(this, ctx);
+    };
+
+    // onDrawForeground
+    const protoOrigDrawFg = nodeType.prototype.onDrawForeground;
+    nodeType.prototype.onDrawForeground = function onDrawForeground(ctx) {
+      protoOrigDrawFg?.apply(this, arguments);
+
+      if (!isCompact(this) || isNodeCollapsed(this) || !showFooter(this)) return;
+
+      const triggers = resolveStackTriggersForDisplay(this);
+      let headerText;
+      let triggerText;
+      if (triggers && triggers.length > 0) {
+        headerText = "Stack trigger words: ";
+        triggerText = triggers.join(", ");
+      } else {
+        headerText = "Stack trigger words (none)";
+        triggerText = "";
+      }
+
+      const footerHeight = getCompactFooterHeight(this);
+      const w = this.size[0];
+      const h = this.size[1];
+      const y0 = h - footerHeight + 3;
+      const y1 = h - 6;
+      const x0 = 8;
+      const x1 = w - 8;
+
+      ctx.save();
+      ctx.fillStyle = "rgba(255,255,255,0.07)";
+      ctx.beginPath();
+      ctx.roundRect(x0, y0, x1 - x0, y1 - y0, 4);
+      ctx.fill();
+      ctx.fillStyle = "rgba(220,220,220,0.9)";
+      ctx.font = "bold 11px sans-serif";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "top";
+
+      const lineHeight = 16;
+      const startX = x0 + 6;
+      const startY = y0 + 2;
+      const maxWidth = x1 - x0 - 12;
+
+      const wrapText = (text) => {
+        const lines = [];
+        let currentLine = "";
+        const words = text.split(", ");
+
+        for (const word of words) {
+          const testLine = currentLine ? currentLine + ", " + word : word;
+          const metrics = ctx.measureText(testLine);
+
+          if (metrics.width > maxWidth && currentLine) {
+            lines.push(currentLine);
+            currentLine = word;
+          } else {
+            currentLine = testLine;
+          }
+        }
+
+        if (currentLine) lines.push(currentLine);
+        return lines;
+      };
+
+      if (triggerText) {
+        const fullText = headerText + triggerText;
+        const headerMetrics = ctx.measureText(headerText);
+
+        if (
+          headerMetrics.width + ctx.measureText(triggerText).width <=
+          maxWidth
+        ) {
+          ctx.fillText(fullText, startX, startY);
+        } else {
+          ctx.fillText(headerText, startX, startY);
+          const wrappedTriggers = wrapText(triggerText);
+          for (let i = 0; i < wrappedTriggers.length; i++) {
+            ctx.fillText(
+              wrappedTriggers[i],
+              startX,
+              startY + (i + 1) * lineHeight,
+            );
+          }
+        }
+      } else {
+        ctx.fillText(headerText, startX, startY);
+      }
+
+      ctx.restore();
+    };
+  },
+
   nodeCreated(node) {
     setupNode(node);
   },
