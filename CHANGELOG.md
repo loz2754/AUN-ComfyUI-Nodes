@@ -1,12 +1,15 @@
 # AUN Custom Nodes Changelog
 
-## [Unreleased]
+## [2.2.13] - 2026-05-25
 
 ### Fixed
 
 - Fixed `AUNAddToPromptMulti` compact overlay flickering and vanishing issues by optimizing DOM updates and ensuring correct element references during repositioning.
 
-## [2.2.12] - 2026-05-23
+## [Unreleased]
+
+### Fixed
+
 
 ### Added
 
