@@ -2,13 +2,9 @@
 
 ## [Unreleased]
 
-### Added
-
-### Changed
-
 ### Fixed
 
-### Notes
+- Fixed `AUNAddToPromptMulti` compact overlay flickering and vanishing issues by optimizing DOM updates and ensuring correct element references during repositioning.
 
 ## [2.2.12] - 2026-05-23
 

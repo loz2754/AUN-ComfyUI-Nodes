@@ -229,8 +229,8 @@ function createOverlayRows(node) {
 
   // Remove existing rows first
   if (node.__aun_atpm_rows) {
-    for (const row of node.__aun_atpm_rows) {
-      if (row?.parentNode) row.parentNode.removeChild(row);
+    for (const rowData of node.__aun_atpm_rows) {
+      if (rowData?.el?.parentNode) rowData.el.parentNode.removeChild(rowData.el);
     }
   }
 
@@ -280,7 +280,7 @@ function createOverlayRows(node) {
     row.appendChild(label);
     row.appendChild(orderSelect);
     document.body.appendChild(row);
-    rows.push(row);
+    rows.push({ el: row, modeSelect, label, orderSelect });
   }
 
   node.__aun_atpm_rows = rows;
@@ -294,25 +294,40 @@ function updateOverlayVisibility(node) {
   const numAddons = clampAddons(numAddonsWidget?.value ?? 1);
 
   for (let i = 1; i <= MAX_ADDONS; i++) {
-    const row = node.__aun_atpm_rows[i - 1];
-    if (!row) continue;
+    const rowData = node.__aun_atpm_rows[i - 1];
+    if (!rowData) continue;
+    const row = rowData.el;
 
     if (compact && i <= numAddons) {
-      row.style.display = "flex";
-      const modeW = getWidget(node, `text_to_add${i}_mode`);
-      const modeSelect = row.querySelector("select.AUN-atpm-mode-select");
-      if (modeSelect && modeW) {
-        modeSelect.value = modeW.value ?? "off";
-        applyModeSelectStyle(modeSelect);
+      if (row.style.display !== "flex") {
+        row.style.display = "flex";
       }
-      row.querySelector("label").textContent = getAddonLabel(node, i);
+      const modeW = getWidget(node, `text_to_add${i}_mode`);
+      const modeSelect = rowData.modeSelect;
+      if (modeSelect && modeW) {
+        const newVal = modeW.value ?? "off";
+        if (modeSelect.value !== newVal) {
+          modeSelect.value = newVal;
+          applyModeSelectStyle(modeSelect);
+        }
+      }
+      const label = rowData.label;
+      const newLabel = getAddonLabel(node, i);
+      if (label && label.textContent !== newLabel) {
+        label.textContent = newLabel;
+      }
       const orderW = getWidget(node, `order${i}`);
-      const orderSelect = row.querySelector("select.AUN-atpm-order-select");
+      const orderSelect = rowData.orderSelect;
       if (orderSelect && orderW) {
-        orderSelect.value = orderW.value ?? "prompt_first";
+        const newVal = orderW.value ?? "prompt_first";
+        if (orderSelect.value !== newVal) {
+          orderSelect.value = newVal;
+        }
       }
     } else {
-      row.style.display = "none";
+      if (row.style.display !== "none") {
+        row.style.display = "none";
+      }
     }
   }
 }
@@ -441,8 +456,8 @@ function positionOverlays(node) {
   if (node.collapsed) {
     node.__aun_atpm_wasCollapsed = true;
     for (let i = 0; i < node.__aun_atpm_rows.length; i++) {
-      const row = node.__aun_atpm_rows[i];
-      if (row) row.style.display = "none";
+      const rowData = node.__aun_atpm_rows[i];
+      if (rowData?.el) rowData.el.style.display = "none";
     }
     return;
   }
@@ -468,8 +483,8 @@ function positionOverlays(node) {
     // Occlusion check — hide overlays if another node sits on top
     if (isNodeOccluded(node, canvasRect, scale, panOffsetX, panOffsetY)) {
       for (let i = 0; i < node.__aun_atpm_rows.length; i++) {
-        const row = node.__aun_atpm_rows[i];
-        if (row) row.style.display = "none";
+        const rowData = node.__aun_atpm_rows[i];
+        if (rowData?.el) rowData.el.style.display = "none";
       }
       return;
     }
@@ -490,12 +505,12 @@ function positionOverlays(node) {
     const leftPad = 8 * scale;
 
     for (let i = 1; i <= MAX_ADDONS; i++) {
-      const row = node.__aun_atpm_rows[i - 1];
-      if (!row || row.style.display === "none") continue;
+      const rowData = node.__aun_atpm_rows[i - 1];
+      if (!rowData || rowData.el.style.display === "none") continue;
 
-      row.style.left = `${screenX + leftPad}px`;
-      row.style.top = `${screenY + titleBarHeight + (i - 1) * lineHeight}px`;
-      row.style.width = `${nodeWidth - leftPad * 2}px`;
+      rowData.el.style.left = `${screenX + leftPad}px`;
+      rowData.el.style.top = `${screenY + titleBarHeight + (i - 1) * lineHeight}px`;
+      rowData.el.style.width = `${nodeWidth - leftPad * 2}px`;
     }
   } catch (e) {
     // Ignore position errors during drag
