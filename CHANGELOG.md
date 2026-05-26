@@ -10,6 +10,8 @@
 
 ### Fixed
 
+- Fixed `AUNAddToPromptMulti` not re-executing when an addon is in `random` mode by adding an `IS_CHANGED` method that returns a unique timestamp for random-mode configurations, ensuring random decisions are re-evaluated on every queue.
+- Simplified `AUNAddToPromptMulti` compact overlay row management by replacing indirect rowData objects with direct element references, reducing DOM update complexity and improving maintainability.
 
 ### Added
 

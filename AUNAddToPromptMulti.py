@@ -1,4 +1,5 @@
 import random
+import time
 
 
 class AUNAddToPromptMulti:
@@ -73,8 +74,7 @@ class AUNAddToPromptMulti:
             elif mode == "random":
                 add_text = random.SystemRandom().choice([True, False])
             else:  # "off" or anything else
-                add_text = False
-            
+                add_text = False            
             if not add_text or not text:
                 continue
             
@@ -98,7 +98,39 @@ class AUNAddToPromptMulti:
 
         final_prompt = ", ".join(prompt_parts)
         return (final_prompt,)
+
+    @classmethod
+    def IS_CHANGED(cls, **kwargs):
+       # master_prompt = kwargs.get("master_prompt", "")
+        num_addons = max(1, min(int(kwargs.get("num_addons", 1) or 1), cls.MAX_ADDONS))
+        for i in range(1, num_addons + 1):
+            mode = str(kwargs.get(f"text_to_add{i}_mode", "off") or "").strip().lower()
+            if mode == "random":
+                return time.time()
+       # relevant_inputs = (master_prompt, num_addons)
+        # for i in range(1, cls.MAX_ADDONS + 1):
+        #     relevant_inputs += (kwargs.get(f"text_to_add{i}_mode", "off"),)
+        #     relevant_inputs += (kwargs.get(f"text_to_add{i}", ""),)
+        #     relevant_inputs += (kwargs.get(f"order{i}", "prompt_first"),)
+        # return hash(relevant_inputs)
     
+      #  def IS_CHANGED(cls, **kwargs):
+       # num_addons = max(1, min(int(kwargs.get("num_addons", 1) or 1), cls.MAX_ADDONS))
+        
+        # If ANY active addon is in random mode, force re-execution every run
+      #  for i in range(1, num_addons + 1):
+      #      mode = str(kwargs.get(f"text_to_add{i}_mode", "off") or "").strip().lower()
+      #      if mode == "random":
+      #          return time.time()
+                
+        # Deterministic cache key for non-random modes
+        cache_data = [kwargs.get("master_prompt", ""), num_addons]
+        for i in range(1, cls.MAX_ADDONS + 1):
+            cache_data.append(kwargs.get(f"text_to_add{i}_mode", "off"))
+            cache_data.append(kwargs.get(f"text_to_add{i}", ""))
+            cache_data.append(kwargs.get(f"order{i}", "prompt_first"))
+        return tuple(cache_data)
+
 NODE_CLASS_MAPPINGS = {
     "AUNAddToPromptMulti": AUNAddToPromptMulti,
 }
