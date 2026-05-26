@@ -8,6 +8,16 @@
 
 ## [Unreleased]
 
+### Added
+
+### Changed
+
+### Fixed
+
+### Notes
+
+## [2.2.14] - 2026-05-26
+
 ### Fixed
 
 - Fixed `AUNAddToPromptMulti` not re-executing when an addon is in `random` mode by adding an `IS_CHANGED` method that returns a unique timestamp for random-mode configurations, ensuring random decisions are re-evaluated on every queue.
@@ -33,7 +43,6 @@
 - Fixed missing space in `__init__.py` import (`from.` → `from .`) for `AUNKSamplerPlusv4`.
 
 ### Notes
-
 ## [2.2.11] - 2026-05-17
 
 ### Fixed
