@@ -14,6 +14,8 @@
 
 ### Fixed
 
+- Fixed `AUNTextIndexSwitch3` compact overlay hiding incorrectly — `isNodeCovered` now uses full-node AABB overlap with z-order (`index`) matching the proven approach in `AUNRandomLoraModelOnlyMulti`, and skips collapsed nodes so they no longer occlude the overlay.
+
 ### Notes
 
 ## [2.2.15] - 2026-05-29

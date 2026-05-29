@@ -506,30 +506,39 @@ function getEffectiveText(node, slotIndex) {
 }
 
 function isNodeCovered(node) {
-  // Check if any node with higher z-order overlaps this node's area
-  // In ComfyUI: order = drawing z-order (higher = on top), index = execution order
-  // Use order as primary, fall back to index if order is unavailable
+  // Check if any node with higher z-order overlaps any part of this node's bounding box.
+  // Returns true if the node is occluded and overlay should be hidden.
+  // Matches the approach in AUN_random_lora_multi.js isNodeOccluded.
   if (!app?.graph) return false;
   const nodes = app.graph._nodes || app.graph.nodes || [];
-  const nodeZ = node.order ?? node.index ?? -1;
-  const bounds = { x: node.pos[0], y: node.pos[1], w: node.size[0], h: node.size[1] };
+  const nodeZ = node.index ?? -2;
+
+  // Full node bounds in graph coordinates
+  const bx = node.pos[0];
+  const by = node.pos[1];
+  const bw = node.size?.[0] ?? 300;
+  const bh = node.size?.[1] ?? 100;
 
   for (const other of nodes) {
-    if (other.id === node.id) continue;
-    const otherZ = other.order ?? other.index ?? -1;
-    if (otherZ <= nodeZ) continue;
+    if (!other || other.id === node.id) continue;
+
+    // Only consider nodes drawn on top (higher index = higher z-order in ComfyUI)
+    if ((other.index ?? -1) <= nodeZ) continue;
+
+    // Skip collapsed nodes — they're visually minimized
+    if (other.flags?.collapsed) continue;
 
     const ox = other.pos[0];
     const oy = other.pos[1];
-    const ow = other.size[0];
-    const oh = other.size[1];
+    const ow = other.size?.[0] ?? 300;
+    const oh = other.size?.[1] ?? 100;
 
-    // AABB overlap check
-    if (bounds.x < ox + ow && bounds.x + bounds.w > ox &&
-        bounds.y < oy + oh && bounds.y + bounds.h > oy) {
+    // AABB overlap check — if any node above overlaps any part of this node, it's covered
+    if (!(ox + ow <= bx || ox >= bx + bw || oy + oh <= by || oy >= by + bh)) {
       return true;
     }
   }
+
   return false;
 }
 
