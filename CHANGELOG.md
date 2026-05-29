@@ -10,6 +10,16 @@
 
 ### Added
 
+### Changed
+
+### Fixed
+
+### Notes
+
+## [2.2.15] - 2026-05-29
+
+### Added
+
 - Added `AUNPromptCycler` node — cycles through an infinite number of prompts with support for sequential, random, manual, range (e.g. `1,2,4-8,11`), and search modes. Supports custom titles via `Title: Prompt text` format. Emits `AUN_prompt_cycler_selected` WebSocket events for downstream compact-mode overlays.
 
 ### Changed
@@ -27,7 +37,6 @@
 - Fixed `AUNRandomLoraModelOnlyMulti` label slot index check (`!= null` → `>= 0`) to correctly handle slot index `0`.
 
 ### Notes
-
 ## [2.2.14] - 2026-05-26
 
 ### Fixed
