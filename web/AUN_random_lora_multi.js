@@ -1711,6 +1711,7 @@ function startCompactLiveMonitor(node) {
     if (!srcNode) return "";
     if (srcNode.__AUN_lastOutput_label != null) return String(srcNode.__AUN_lastOutput_label);
     if (srcNode.__AUN_lastOutput_text != null) return String(srcNode.__AUN_lastOutput_text);
+    if (srcNode.__AUN_lastOutput_prompt_title != null) return String(srcNode.__AUN_lastOutput_prompt_title);
     const slotKey = `__AUN_lastOutput_${link.origin_slot}`;
     if (srcNode[slotKey] != null) return String(srcNode[slotKey]);
     if (srcNode.__AUN_lastOutput != null) return String(srcNode.__AUN_lastOutput);
@@ -1897,6 +1898,29 @@ app.registerExtension({
         switchNode.__AUN_lastOutput_text = textN.value;
         switchNode.__AUN_lastOutput = labelValue;
         console.log("[AUN] AUN_random_text_index_selected: node", nodeId, "index", idx, "label:", labelValue);
+      }
+
+      // Trigger redraw on all target nodes
+      scheduleGlobalRedraw();
+    });
+
+    // Listen for AUN_prompt_cycler_selected events from AUNPromptCycler nodes
+    // These fire when the cycler executes and selects a prompt
+    api.addEventListener("AUN_prompt_cycler_selected", ({ detail }) => {
+      if (!detail || !app?.graph) return;
+      const nodeId = detail?.node_id;
+      if (!nodeId) return;
+
+      // Find the cycler node
+      const cyclerNode = app.graph.getNodeById?.(nodeId) || app.graph.getNodeById?.(parseInt(nodeId, 10));
+      if (!cyclerNode) return;
+
+      const promptTitle = detail?.prompt_title;
+      if (promptTitle && typeof promptTitle === "string" && promptTitle) {
+        // Cache on the cycler node so traceLinkValue can find it
+        cyclerNode.__AUN_lastOutput_prompt_title = promptTitle;
+        cyclerNode.__AUN_lastOutput_label = promptTitle;
+        cyclerNode.__AUN_lastOutput = promptTitle;
       }
 
       // Trigger redraw on all target nodes
@@ -2150,8 +2174,9 @@ app.registerExtension({
           visited.add(n.id);
           if (n.__AUN_lastOutput_label != null) return String(n.__AUN_lastOutput_label);
           if (n.__AUN_lastOutput_text != null) return String(n.__AUN_lastOutput_text);
+          if (n.__AUN_lastOutput_prompt_title != null) return String(n.__AUN_lastOutput_prompt_title);
           const labelSlotIdx = n.outputs?.findIndex(o => o.name === "label");
-          const preferredSlot = labelSlotIdx != null ? labelSlotIdx : link.origin_slot;
+          const preferredSlot = labelSlotIdx >= 0 ? labelSlotIdx : link.origin_slot;
           const slotKey = `__AUN_lastOutput_${preferredSlot}`;
           if (n[slotKey] != null) return String(n[slotKey]);
           const connectedSlotKey = `__AUN_lastOutput_${link.origin_slot}`;

@@ -396,8 +396,11 @@ function isNodeOccluded(node, canvasRect, scale, panOffsetX, panOffsetY) {
 
   for (const other of nodes) {
     if (!other || other === node) continue;
-    // Only consider nodes drawn on top (higher index = higher z-order in ComfyUI)
-    if ((other.index ?? -1) <= (node.index ?? -2)) continue;
+    // Only consider nodes drawn on top (higher order = higher z-order in ComfyUI)
+    // order = drawing z-order, index = execution order (different!)
+    const otherZ = other.order ?? other.index ?? -1;
+    const selfZ = node.order ?? node.index ?? -2;
+    if (otherZ <= selfZ) continue;
     if (other.collapsed || other.flags?.collapsed) continue;
 
     const otherScreenX = canvasRect.left + (other.pos[0] + panOffsetX) * scale;

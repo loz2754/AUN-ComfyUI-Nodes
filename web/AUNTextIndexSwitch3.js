@@ -505,10 +505,46 @@ function getEffectiveText(node, slotIndex) {
   return "";
 }
 
+function isNodeCovered(node) {
+  // Check if any node with higher z-order overlaps this node's area
+  // In ComfyUI: order = drawing z-order (higher = on top), index = execution order
+  // Use order as primary, fall back to index if order is unavailable
+  if (!app?.graph) return false;
+  const nodes = app.graph._nodes || app.graph.nodes || [];
+  const nodeZ = node.order ?? node.index ?? -1;
+  const bounds = { x: node.pos[0], y: node.pos[1], w: node.size[0], h: node.size[1] };
+
+  for (const other of nodes) {
+    if (other.id === node.id) continue;
+    const otherZ = other.order ?? other.index ?? -1;
+    if (otherZ <= nodeZ) continue;
+
+    const ox = other.pos[0];
+    const oy = other.pos[1];
+    const ow = other.size[0];
+    const oh = other.size[1];
+
+    // AABB overlap check
+    if (bounds.x < ox + ow && bounds.x + bounds.w > ox &&
+        bounds.y < oy + oh && bounds.y + bounds.h > oy) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function updateCompactOverlay(node, overrideIndex, force = false) {
   if (!node || !isCompact(node)) {
     const ov = compactOverlays.get(node);
     if (ov) ov.overlay.style.display = "none";
+    return;
+  }
+
+  // Hide overlay if another node is visually on top of this one
+  if (isNodeCovered(node)) {
+    const ov = compactOverlays.get(node);
+    if (ov) ov.overlay.style.display = "none";
+    node.__AUN_lastOverlayCovered = true;
     return;
   }
 
@@ -520,16 +556,19 @@ function updateCompactOverlay(node, overrideIndex, force = false) {
       ? overrideIndex
       : getEffectiveIndex(node);
 
-  // Optimization: Only update DOM if index or node position changed, or if forced
+  // Optimization: Only update DOM if index, node position, or covered state changed, or if forced
   const lastIdx = node.__AUN_lastOverlayIdx;
   const lastPos = node.__AUN_lastOverlayPos;
+  const lastCovered = node.__AUN_lastOverlayCovered;
   const currentPos = node.pos ? `${node.pos[0]},${node.pos[1]}` : "";
+  const currentCovered = false; // we already returned above if covered
 
-  if (!force && lastIdx === effectiveIndex && lastPos === currentPos) {
+  if (!force && lastIdx === effectiveIndex && lastPos === currentPos && lastCovered === currentCovered) {
     return;
   }
   node.__AUN_lastOverlayIdx = effectiveIndex;
   node.__AUN_lastOverlayPos = currentPos;
+  node.__AUN_lastOverlayCovered = currentCovered;
 
   // Get text using effective index - traces external links if present
   const effectiveText = getEffectiveText(node, effectiveIndex);
@@ -1596,11 +1635,6 @@ function patchTargetNode(node) {
       originalOnConfigure.apply(this, arguments);
     }
 
-    // Save manual width from workflow data if available
-    if (info && info.size) {
-      node.__AUN_manualWidth = info.size[0];
-    }
-
     // Now restore slot_count from our saved value
     if (slotCountWidget) {
       let savedValue = null;
@@ -1861,8 +1895,8 @@ function updateNodeVisualState(node) {
     try {
       const newSize = node.computeSize();
       if (newSize && Array.isArray(newSize) && newSize.length >= 2) {
-        // Preserve manual width - use saved width if available, otherwise current width
-        const widthToUse = node.__AUN_manualWidth || node.size[0];
+        // Always preserve the user's current width
+        const widthToUse = node.size[0];
         node.setSize([widthToUse, newSize[1] + 15]);
       }
     } catch (e) {
@@ -1936,8 +1970,8 @@ function scheduleAutoHeightUpdate(node, tries = 8, delay = 30) {
           const paddedHeight = newSize[1] + 15;
 
           // Only resize if height differs by more than 5px
-          // Preserve manual width - use saved width if available, otherwise current width
-          const widthToUse = node.__AUN_manualWidth || node.size[0];
+          // Always preserve the user's current width
+          const widthToUse = node.size[0];
           if (Math.abs(node.size[1] - paddedHeight) > 5) {
             node.setSize([widthToUse, paddedHeight]);
             node.setDirtyCanvas?.(true, true);

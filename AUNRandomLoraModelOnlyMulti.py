@@ -124,13 +124,12 @@ class AUNRandomLoraModelOnlyMulti:
         }
         return {"required": required, "optional": optional, "hidden": hidden}
 
-    RETURN_TYPES = ("MODEL", "CLIP", "STRING", "INT", "STRING", "STRING", "STRING",)
+    RETURN_TYPES = ("MODEL", "CLIP", "STRING", "INT", "STRING", "STRING",)
     RETURN_NAMES = (
         "MODEL",
         "CLIP",
         "selected LoRAs",
         "index",
-        "labels",
         "trigger words",
         "trigger + prompt",
     )
@@ -173,7 +172,6 @@ class AUNRandomLoraModelOnlyMulti:
         unique_id,
         prompt_index,
         selected_loras,
-        lora_labels,
         trigger_words_list,
         apply_lora=True,
     ):
@@ -191,7 +189,6 @@ class AUNRandomLoraModelOnlyMulti:
                     "node_id": str(node_id),
                     "prompt_index": int(prompt_index or 0),
                     "selected_loras": [str(l or "None") for l in selected_loras],
-                    "lora_labels": [str(l or "none") for l in lora_labels],
                     "trigger_words_list": [str(t or "") for t in trigger_words_list],
                     "apply_lora": bool(apply_lora),
                 },
@@ -223,10 +220,9 @@ class AUNRandomLoraModelOnlyMulti:
                 prompt_idx,
                 [],
                 [],
-                [],
                 apply_lora,
             )
-            return (model, clip, upstream_loras, prompt_idx, "", "", str(base_prompt or ""), str(label or ""))
+            return (model, clip, upstream_loras, prompt_idx, "", str(base_prompt or ""))
 
         # Gather LoRAs for this prompt
         selected_loras = []
@@ -258,15 +254,13 @@ class AUNRandomLoraModelOnlyMulti:
                 prompt_idx,
                 [],
                 [],
-                [],
                 apply_lora,
             )
-            return (model, clip, upstream_loras, prompt_idx, "", "", str(base_prompt or ""), str(label or ""))
+            return (model, clip, upstream_loras, prompt_idx, "", str(base_prompt or ""))
 
         # Apply LoRAs sequentially
         current_model = model
         current_clip = clip
-        lora_labels = []
         all_triggers = []
 
         for i, (lora_name, strength_m, strength_c, trigger) in enumerate(
@@ -279,7 +273,6 @@ class AUNRandomLoraModelOnlyMulti:
         ):
             lora_path = folder_paths.get_full_path("loras", lora_name)
             if not lora_path:
-                lora_labels.append("missing")
                 all_triggers.append(trigger)
                 continue
 
@@ -292,16 +285,8 @@ class AUNRandomLoraModelOnlyMulti:
                     float(strength_m),
                     float(strength_c) if current_clip is not None else 0.0,
                 )
-                # Extract basename for label
-                base = lora_name.split("/")[-1].split("\\")[-1]
-                for ext in (".safetensors", ".ckpt", ".pt", ".bin"):
-                    if base.lower().endswith(ext):
-                        base = base[: -len(ext)]
-                        break
-                lora_labels.append(base)
                 all_triggers.append(trigger)
             except Exception:
-                lora_labels.append("error")
                 all_triggers.append(trigger)
 
         # Compose output strings
@@ -323,7 +308,6 @@ class AUNRandomLoraModelOnlyMulti:
             final_selected_loras = upstream_loras + ", " + selected_loras_str
         else:
             final_selected_loras = selected_loras_str
-        lora_labels_str = ", ".join(lora_labels)
         combined_triggers = ", ".join([t for t in all_triggers if t])
         composed_prompt = self._compose_trigger_prompt(combined_triggers, base_prompt)
 
@@ -331,7 +315,6 @@ class AUNRandomLoraModelOnlyMulti:
             unique_id,
             prompt_idx,
             selected_loras,
-            lora_labels,
             all_triggers,
             apply_lora,
         )
@@ -341,10 +324,8 @@ class AUNRandomLoraModelOnlyMulti:
             current_clip,
             final_selected_loras,
             prompt_idx,
-            lora_labels_str,
             combined_triggers,
             composed_prompt,
-            str(label or ""),
         )
 
 

@@ -10,9 +10,21 @@
 
 ### Added
 
+- Added `AUNPromptCycler` node — cycles through an infinite number of prompts with support for sequential, random, manual, range (e.g. `1,2,4-8,11`), and search modes. Supports custom titles via `Title: Prompt text` format. Emits `AUN_prompt_cycler_selected` WebSocket events for downstream compact-mode overlays.
+
 ### Changed
 
+- Moved `AUNAddToPromptMulti` category from `AUN/Prompt Modifiers` to `AUN Nodes/Text` for consistency.
+- Removed unused `labels` output from `AUNRandomLoraModelOnlyMulti` along with internal label-tracking logic, simplifying the return tuple and reducing overhead.
+- Added new model short names to `model_utils.py`: `damnIllustriousPony_v50Noobai`, `eventHorizonNexusNSFW_illustrious1DMD2`, `fucktasticRealCheckpointPony_10`, `novaAnimeXL_ilV190`.
+
 ### Fixed
+
+- Fixed `AUNTextIndexSwitch3` compact overlay not hiding when another node visually covers it — now performs AABB overlap detection using z-order (`order` property) to determine occlusion.
+- Fixed `AUNTextIndexSwitch3` width preservation by simplifying logic to always preserve the user's current width instead of relying on a separately tracked manual width value.
+- Fixed `AUNAddToPromptMulti` overlay occlusion detection using `order` (drawing z-order) instead of `index` (execution order), preventing incorrect hide/show behavior.
+- Fixed `AUNRandomLoraModelOnlyMulti` compact overlay not displaying labels from upstream `AUNPromptCycler` nodes — now reads `prompt_title` output and listens for `AUN_prompt_cycler_selected` WebSocket events.
+- Fixed `AUNRandomLoraModelOnlyMulti` label slot index check (`!= null` → `>= 0`) to correctly handle slot index `0`.
 
 ### Notes
 

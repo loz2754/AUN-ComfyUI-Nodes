@@ -48,7 +48,7 @@ class AUNAddToPromptMulti:
     RETURN_TYPES = ("STRING",)
     RETURN_NAMES = ("prompt",)
     FUNCTION = "AddonPrompter"
-    CATEGORY = "AUN/Prompt Modifiers"
+    CATEGORY = "AUN Nodes/Text"
     DESCRIPTION = (
         "Multi-addon prompt builder with switchable parts. Set each addon to on/off/random individually. "
         "Random mode gives a 50/50 chance of adding the text. "
