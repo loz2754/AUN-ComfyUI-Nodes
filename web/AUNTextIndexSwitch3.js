@@ -549,6 +549,14 @@ function updateCompactOverlay(node, overrideIndex, force = false) {
     return;
   }
 
+    // --- NEW CHECK: Hide overlay if the node itself is collapsed ---
+  if (node.flags?.collapsed) {
+    const ov = compactOverlays.get(node);
+    if (ov) ov.overlay.style.display = "none";
+    node.__AUN_lastOverlayCovered = true; 
+    return;
+  }
+
   // Hide overlay if another node is visually on top of this one
   if (isNodeCovered(node)) {
     const ov = compactOverlays.get(node);

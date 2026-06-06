@@ -1,23 +1,26 @@
 # AUN Custom Nodes Changelog
 
-## [2.2.13] - 2026-05-25
-
-### Fixed
-
-- Fixed `AUNAddToPromptMulti` compact overlay flickering and vanishing issues by optimizing DOM updates and ensuring correct element references during repositioning.
 
 ## [Unreleased]
 
 ### Added
 
-- Added `AUNPromptCycler` node — cycles through an infinite number of prompts with support for sequential, random, manual, range (e.g. `1,2,4-8,11`), and search modes. Supports custom titles via `Title: Prompt text` format. Emits `AUN_prompt_cycler_selected` WebSocket events for downstream compact-mode overlays.
+### Changed
+
+### Fixed
+
+### Notes
+
+## [2.2.18] - 2026-06-06
+
+### Added
 
 ### Changed
 
 - Updated `AUNPromptCycler` to use `"manual"` as the default cycle mode.
-- Refactored `AUNTextIndexSwitch4` to use a dictionary (`_node_states`) for persistent state management (index and range index) per node instance, replacing class-level variables.\\
-- Improved `AUNTextIndexSwitch3` compact overlay by using the widget's native `inputEl` in the edit popup, ensuring dynamic prompt features like autocomplete work correctly.\\
-- Updated model short names in `model_utils.py`, updated `"fucktasticRealCheckpointPony_10"` to `"FcktasticRealPny1"`, and added `"fucktasticRealCheckpointPony_52"` as `"FcktasticRealPny52"`.\\
+- Refactored `AUNTextIndexSwitch4` to use a dictionary (`_node_states`) for persistent state management (index and range index) per node instance, replacing class-level variables.
+- Improved `AUNTextIndexSwitch3` compact overlay by using the widget's native `inputEl` in the edit popup, ensuring dynamic prompt features like autocomplete work correctly.
+- Updated model short names in `model_utils.py`, updated `"fucktasticRealCheckpointPony_10"` to `"FcktasticRealPny1"`, and added `"fucktasticRealCheckpointPony_52"` as `"FcktasticRealPny52"`.
 
 ### Fixed
 
@@ -56,6 +59,12 @@
 
 ### Notes
 ## [2.2.14] - 2026-05-26
+
+## [2.2.13] - 2026-05-25
+
+### Fixed
+
+- Fixed `AUNAddToPromptMulti` compact overlay flickering and vanishing issues by optimizing DOM updates and ensuring correct element references during repositioning.
 
 ### Fixed
 

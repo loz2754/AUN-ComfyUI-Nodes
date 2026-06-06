@@ -95,7 +95,6 @@ To provide a fast, visually consistent understanding of node states, AUN nodes u
 
 #### Loaders+Inputs
 
-- AUNPromptCycler cycles through an infinite number of prompts with support for sequential, random, manual, range (e.g. `1,2,4-8,11`), and search modes. Supports custom titles via `Title: Prompt text` format. Emits `AUN_prompt_cycler_selected` WebSocket events for downstream compact-mode overlays.
 - Inputs (`AUNInputs`) a comprehensive 'all-in-one' node for setting up a generation pipeline. It loads a checkpoint, creates a latent image, and prepares various parameters for sampling and saving, all in one place.
 - Inputs Basic (`AUNInputsBasic`) is a lighter all-in-one setup node for loading a checkpoint, choosing sampler settings, and creating an empty latent batch.
 - Inputs Diffusers (`AUNInputsDiffusers`) loads a standalone diffusion UNet with separate CLIP and VAE files, while keeping the fuller AUN Inputs-style naming and save-prep outputs.
@@ -121,6 +120,7 @@ Deprecation note: the full input-style nodes (`AUNInputs`, `AUNInputsDiffusers`,
 
 - Add-To-Prompt (`AUNAddToPrompt`) add text to either before or after a prompt, with a choice of always, never or 50/50 random.
 - Add-To-Prompt Multi (`AUNAddToPromptMulti`) multi-addon prompt builder with up to 10 switchable addon slots. Each addon can be enabled/disabled individually and placed before or after the main prompt. Supports dynamic prompts and compact mode with overlay checkboxes and order selectors. TIP: Double-click the node or right-click and select 'Compact mode' to hide configuration widgets.
+- AUNPromptCycler cycles through an infinite number of prompts with support for sequential, random, manual, range (e.g. `1,2,4-8,11`), and search modes. Supports custom titles via `Title: Prompt text` format. Emits `AUN_prompt_cycler_selected` WebSocket events for downstream compact-mode overlays.
 - Manual/Auto Text Switch (`AUNManualAutoTextSwitch`) choose between an automatically generated filename and a manual name, and also output the mode boolean so related nodes can stay in sync.
 - Name Crop (`AUNNameCrop`) crops a string to a specified number of words.
 - Negative Prompt Selector (`AUNMultiNegPrompt`) selects one of the 10 preset negative prompts to use.

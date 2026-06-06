@@ -33,10 +33,10 @@ Purpose: All-in-one text switch with built-in index generation. Combines index s
 Uses the exact value in `index`. Deterministic and stable across executions.
 
 ### Increment
-Cycles through `[minimum, maximum]` sequentially on each execution. Wraps back to `minimum` after reaching `maximum`.
+Cycles through `[minimum, maximum]` sequentially on each execution. Wraps back to `minimum` after reaching `maximum`. This is now fully supported in batch runs; each node will maintain its own unique position in the cycle independently.
 
 ### Random
-Picks a random index within `[minimum, maximum]` using `SystemRandom()` (not affected by global seed). Each execution produces an independent result.
+Picks a random index within `[minimum, maximum]` using `SystemRandom()` (not affected by global seed). Each execution produces an independent result.  This is now fully supported in batch runs; each node will maintain its own unique position in the cycle independently.
 
 ### Range
 Cycles through the indices specified in the `range` field on each execution. Supports individual values (`1,3,5`) and sub-ranges (`5-8`). Invalid indices are filtered out automatically.
