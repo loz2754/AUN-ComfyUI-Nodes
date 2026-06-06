@@ -10,7 +10,14 @@
 
 ### Added
 
+- Added `AUNPromptCycler` node — cycles through an infinite number of prompts with support for sequential, random, manual, range (e.g. `1,2,4-8,11`), and search modes. Supports custom titles via `Title: Prompt text` format. Emits `AUN_prompt_cycler_selected` WebSocket events for downstream compact-mode overlays.
+
 ### Changed
+
+- Updated `AUNPromptCycler` to use `"manual"` as the default cycle mode.
+- Refactored `AUNTextIndexSwitch4` to use a dictionary (`_node_states`) for persistent state management (index and range index) per node instance, replacing class-level variables.\\
+- Improved `AUNTextIndexSwitch3` compact overlay by using the widget's native `inputEl` in the edit popup, ensuring dynamic prompt features like autocomplete work correctly.\\
+- Updated model short names in `model_utils.py`, updated `"fucktasticRealCheckpointPony_10"` to `"FcktasticRealPny1"`, and added `"fucktasticRealCheckpointPony_52"` as `"FcktasticRealPny52"`.\\
 
 ### Fixed
 

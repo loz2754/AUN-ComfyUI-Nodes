@@ -4,8 +4,9 @@ import time
 class AUNTextIndexSwitch4:
     MAX_SLOTS = 20
     _rng = random.SystemRandom()
-    index = None
-    range_index = 0
+    _node_states = {}
+    # index = None
+    # range_index = 0
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -142,6 +143,23 @@ class AUNTextIndexSwitch4:
 
     def text_index_switch(self, minimum, maximum, mode, index, slot_count, range, unique_id=None, extra_pnginfo=None, **kwargs):
         
+        # Ensure we have a persistent ID for this specific node instance
+        if unique_id is None:
+            # Fallback to a dummy ID if unique_id isn't provided (rare in ComfyUI)
+            unique_id = "default_node"
+        slot_count = self._clamp_slot_count(slot_count)
+        min_val, max_val = self._clamp_range(minimum, maximum, slot_count)
+        index_val = self._clamp_index(index, 1, slot_count)
+
+# Initialize state for this specific node if it doesn't exist
+        if unique_id not in self._node_states:
+            self._node_states[unique_id] = {
+                "index": None,
+                "range_index": 0
+            }
+        
+        state = self._node_states[unique_id]
+
         slot_count = self._clamp_slot_count(slot_count)
         min_val, max_val = self._clamp_range(minimum, maximum, slot_count)
         index_val = self._clamp_index(index, 1, slot_count)
@@ -149,20 +167,39 @@ class AUNTextIndexSwitch4:
         if mode == "Random":
             final_index = self._rng.randint(min_val, max_val)
         elif mode == "Increment":
-            if self.index is None:
-                self.index = min_val - 1
-            self.index += 1
-            if self.index > max_val:
-                self.index = min_val
-            final_index = self.index
+            # Use the state from our dictionary instead of class variables
+            if state["index"] is None:
+                state["index"] = min_val - 1
+            state["index"] += 1
+            if state["index"] > max_val:
+                state["index"] = min_val
+            final_index = state["index"]
         elif mode == "Range":
             valid_indices = self._parse_range_string(range, min_val, max_val)
-            if self.range_index >= len(valid_indices):
-                self.range_index = 0
-            final_index = valid_indices[self.range_index]
-            self.range_index = (self.range_index + 1) % len(valid_indices)
+            if state["range_index"] >= len(valid_indices):
+                state["range_index"] = 0
+            final_index = valid_indices[state["range_index"]]
+            state["range_index"] = (state["range_index"] + 1) % len(valid_indices)
         else:
             final_index = index_val
+
+        # if mode == "Random":
+        #     final_index = self._rng.randint(min_val, max_val)
+        # elif mode == "Increment":
+        #     if self.index is None:
+        #         self.index = min_val - 1
+        #     self.index += 1
+        #     if self.index > max_val:
+        #         self.index = min_val
+        #     final_index = self.index
+        # elif mode == "Range":
+        #     valid_indices = self._parse_range_string(range, min_val, max_val)
+        #     if self.range_index >= len(valid_indices):
+        #         self.range_index = 0
+        #     final_index = valid_indices[self.range_index]
+        #     self.range_index = (self.range_index + 1) % len(valid_indices)
+        # else:
+        #     final_index = index_val
 
         key = f"text{final_index}"
         selected_text = kwargs.get(key, "") or ""

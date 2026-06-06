@@ -1110,7 +1110,7 @@ function showTextEditPopup(node, widgetName, widget) {
   popup.id = "AUN-text-edit-popup";
   popup.style.cssText = `
     position: fixed;
-    z-index: 10000;
+    z-index: 9998;
     background: #1a1a1a;
     border: 2px solid #4a90d9;
     border-radius: 8px;
@@ -1121,6 +1121,7 @@ function showTextEditPopup(node, widgetName, widget) {
     display: flex;
     flex-direction: column;
     gap: 8px;
+    overflow: visible;
   `;
 
   // Title bar
@@ -1164,9 +1165,22 @@ function showTextEditPopup(node, widgetName, widget) {
   titleBar.appendChild(closeBtn);
   popup.appendChild(titleBar);
 
-  // Textarea
-  const textarea = document.createElement("textarea");
-  textarea.value = widget.value || "";
+  // Use the widget's native inputEl for dynamic prompt support
+  // This ensures the same behavior as normal ComfyUI text widgets
+  const textarea = widget.inputEl;
+  const originalParent = textarea.parentNode;
+  const originalStyles = {
+    cssText: textarea.style.cssText,
+    hidden: textarea.hidden,
+    display: textarea.style.display,
+    minHeight: textarea.style.minHeight,
+    height: textarea.style.height,
+  };
+
+  // Wrap textarea in a container with overflow:visible so autocomplete dropdowns can break out
+  const textareaContainer = document.createElement("div");
+  textareaContainer.style.cssText = `overflow: visible;`;
+
   textarea.style.cssText = `
     width: 100%;
     min-height: 200px;
@@ -1181,8 +1195,12 @@ function showTextEditPopup(node, widgetName, widget) {
     line-height: 1.4;
     resize: vertical;
     box-sizing: border-box;
+    display: block;
+    overflow: visible;
   `;
-  popup.appendChild(textarea);
+  textarea.hidden = false;
+  textareaContainer.appendChild(textarea);
+  popup.appendChild(textareaContainer);
 
   // Button bar
   const buttonBar = document.createElement("div");
@@ -1204,6 +1222,13 @@ function showTextEditPopup(node, widgetName, widget) {
   `;
   cancelBtn.onclick = (e) => {
     e.stopPropagation();
+    // Restore original inputEl state
+    textarea.style.cssText = originalStyles.cssText;
+    textarea.hidden = originalStyles.hidden;
+    textarea.style.display = originalStyles.display;
+    textarea.style.minHeight = originalStyles.minHeight;
+    textarea.style.height = originalStyles.height;
+    if (originalParent) originalParent.appendChild(textarea);
     hideTextEditPopup();
   };
 
@@ -1219,12 +1244,19 @@ function showTextEditPopup(node, widgetName, widget) {
   `;
   saveBtn.onclick = (e) => {
     e.stopPropagation();
-    // Save the value
+    // Sync value from inputEl back to widget
     widget.value = textarea.value;
     if (widget.callback) {
       widget.callback.call(widget, widget.value);
     }
     node.setDirtyCanvas?.(true, true);
+    // Restore original inputEl state
+    textarea.style.cssText = originalStyles.cssText;
+    textarea.hidden = originalStyles.hidden;
+    textarea.style.display = originalStyles.display;
+    textarea.style.minHeight = originalStyles.minHeight;
+    textarea.style.height = originalStyles.height;
+    if (originalParent) originalParent.appendChild(textarea);
     hideTextEditPopup();
   };
 
@@ -1233,7 +1265,7 @@ function showTextEditPopup(node, widgetName, widget) {
   popup.appendChild(buttonBar);
 
   // Position popup near the widget but keep within viewport
-  const rect = widget.inputEl?.getBoundingClientRect?.();
+  const rect = textarea.getBoundingClientRect?.();
   const popupWidth = Math.max(rect?.width || 400, 400);
   const popupHeight = 350; // Estimated height
 
@@ -1254,6 +1286,11 @@ function showTextEditPopup(node, widgetName, widget) {
   popup.style.left = `${left}px`;
   popup.style.top = `${top}px`;
   popup.style.width = `${popupWidth}px`;
+
+  // Store original state for cleanup
+  popup.__AUN_originalParent = originalParent;
+  popup.__AUN_originalStyles = originalStyles;
+  popup.__AUN_textarea = textarea;
 
   document.body.appendChild(popup);
   currentPopup = { popup, widget, widgetName };
@@ -1304,6 +1341,20 @@ function showTextEditPopup(node, widgetName, widget) {
 // Hide and remove the text edit popup
 function hideTextEditPopup() {
   if (currentPopup) {
+    // Restore original inputEl state if it was moved to the popup
+    const popup = currentPopup.popup;
+    if (popup && popup.__AUN_textarea && popup.__AUN_originalParent) {
+      const textarea = popup.__AUN_textarea;
+      const originalStyles = popup.__AUN_originalStyles;
+      const originalParent = popup.__AUN_originalParent;
+
+      textarea.style.cssText = originalStyles.cssText;
+      textarea.hidden = originalStyles.hidden;
+      textarea.style.display = originalStyles.display;
+      textarea.style.minHeight = originalStyles.minHeight;
+      textarea.style.height = originalStyles.height;
+      if (originalParent) originalParent.appendChild(textarea);
+    }
     currentPopup.popup?.remove?.();
     currentPopup = null;
   }
@@ -1319,7 +1370,7 @@ function showTextEditPopupCentered(node, widgetName, widget) {
   popup.id = "AUN-text-edit-popup";
   popup.style.cssText = `
     position: fixed;
-    z-index: 10000;
+    z-index: 9998;
     background: #1a1a1a;
     border: 2px solid #4a90d9;
     border-radius: 8px;
@@ -1330,6 +1381,7 @@ function showTextEditPopupCentered(node, widgetName, widget) {
     display: flex;
     flex-direction: column;
     gap: 8px;
+    overflow: visible;
   `;
 
   // Title bar
@@ -1373,9 +1425,22 @@ function showTextEditPopupCentered(node, widgetName, widget) {
   titleBar.appendChild(closeBtn);
   popup.appendChild(titleBar);
 
-  // Textarea
-  const textarea = document.createElement("textarea");
-  textarea.value = widget.value || "";
+  // Use the widget's native inputEl for dynamic prompt support
+  // This ensures the same behavior as normal ComfyUI text widgets
+  const textarea = widget.inputEl;
+  const originalParent = textarea.parentNode;
+  const originalStyles = {
+    cssText: textarea.style.cssText,
+    hidden: textarea.hidden,
+    display: textarea.style.display,
+    minHeight: textarea.style.minHeight,
+    height: textarea.style.height,
+  };
+
+  // Wrap textarea in a container with overflow:visible so autocomplete dropdowns can break out
+  const textareaContainer = document.createElement("div");
+  textareaContainer.style.cssText = `overflow: visible;`;
+
   textarea.style.cssText = `
     width: 100%;
     min-height: 200px;
@@ -1390,8 +1455,12 @@ function showTextEditPopupCentered(node, widgetName, widget) {
     line-height: 1.4;
     resize: vertical;
     box-sizing: border-box;
+    display: block;
+    overflow: visible;
   `;
-  popup.appendChild(textarea);
+  textarea.hidden = false;
+  textareaContainer.appendChild(textarea);
+  popup.appendChild(textareaContainer);
 
   // Button bar
   const buttonBar = document.createElement("div");
@@ -1413,6 +1482,13 @@ function showTextEditPopupCentered(node, widgetName, widget) {
   `;
   cancelBtn.onclick = (e) => {
     e.stopPropagation();
+    // Restore original inputEl state
+    textarea.style.cssText = originalStyles.cssText;
+    textarea.hidden = originalStyles.hidden;
+    textarea.style.display = originalStyles.display;
+    textarea.style.minHeight = originalStyles.minHeight;
+    textarea.style.height = originalStyles.height;
+    if (originalParent) originalParent.appendChild(textarea);
     hideTextEditPopup();
   };
 
@@ -1428,12 +1504,19 @@ function showTextEditPopupCentered(node, widgetName, widget) {
   `;
   saveBtn.onclick = (e) => {
     e.stopPropagation();
-    // Save the value
+    // Sync value from inputEl back to widget
     widget.value = textarea.value;
     if (widget.callback) {
       widget.callback.call(widget, widget.value);
     }
     node.setDirtyCanvas?.(true, true);
+    // Restore original inputEl state
+    textarea.style.cssText = originalStyles.cssText;
+    textarea.hidden = originalStyles.hidden;
+    textarea.style.display = originalStyles.display;
+    textarea.style.minHeight = originalStyles.minHeight;
+    textarea.style.height = originalStyles.height;
+    if (originalParent) originalParent.appendChild(textarea);
     hideTextEditPopup();
   };
 
@@ -1441,10 +1524,15 @@ function showTextEditPopupCentered(node, widgetName, widget) {
   buttonBar.appendChild(saveBtn);
   popup.appendChild(buttonBar);
 
-  // Center on screen
+  // Center on screen - position higher to leave room for autocomplete dropdown below
   popup.style.left = `${window.innerWidth / 2 - 300}px`;
-  popup.style.top = `${window.innerHeight / 2 - 200}px`;
+  popup.style.top = `${window.innerHeight / 2 - 250}px`;
   popup.style.width = `600px`;
+
+  // Store original state for cleanup
+  popup.__AUN_originalParent = originalParent;
+  popup.__AUN_originalStyles = originalStyles;
+  popup.__AUN_textarea = textarea;
 
   document.body.appendChild(popup);
   currentPopup = { popup, widget, widgetName };

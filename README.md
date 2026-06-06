@@ -95,6 +95,7 @@ To provide a fast, visually consistent understanding of node states, AUN nodes u
 
 #### Loaders+Inputs
 
+- AUNPromptCycler cycles through an infinite number of prompts with support for sequential, random, manual, range (e.g. `1,2,4-8,11`), and search modes. Supports custom titles via `Title: Prompt text` format. Emits `AUN_prompt_cycler_selected` WebSocket events for downstream compact-mode overlays.
 - Inputs (`AUNInputs`) a comprehensive 'all-in-one' node for setting up a generation pipeline. It loads a checkpoint, creates a latent image, and prepares various parameters for sampling and saving, all in one place.
 - Inputs Basic (`AUNInputsBasic`) is a lighter all-in-one setup node for loading a checkpoint, choosing sampler settings, and creating an empty latent batch.
 - Inputs Diffusers (`AUNInputsDiffusers`) loads a standalone diffusion UNet with separate CLIP and VAE files, while keeping the fuller AUN Inputs-style naming and save-prep outputs.

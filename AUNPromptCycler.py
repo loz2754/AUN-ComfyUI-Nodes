@@ -18,38 +18,38 @@ class AUNPromptCycler:
         self.search_index = 0
         self.execution_count = 0
         self.example_prompts = [
-            "A majestic mountain landscape at sunset with golden light",
-            "A futuristic city with flying cars and neon lights",
-            "A peaceful forest with sunlight filtering through trees",
-            "An underwater scene with colorful coral reefs and fish",
-            "A cozy cabin in the woods during winter snowfall",
-            "A space station orbiting a distant planet",
-            "A bustling marketplace in an ancient city",
-            "A serene lake with mountains reflected in the water",
-            "A steampunk laboratory with brass gears and steam",
-            "A magical garden with glowing flowers and butterflies"
+            "Mountain:A majestic mountain landscape at sunset with golden light.",
+            "City:A futuristic city with flying cars and neon lights.",
+            "Forest:A peaceful forest with sunlight filtering through trees.",
+            "Coral:An underwater scene with colorful coral reefs and fish.",
+            "Cabin:A cozy cabin in the woods during winter snowfall.",
+            "Space:A space station orbiting a distant planet.",
+            "Marketplace:A bustling marketplace in an ancient city.",
+            "Lake:A serene lake with mountains reflected in the water.",
+            "Laboratory:A steampunk laboratory with brass gears and steam.",
+            "Garden:A magical garden with glowing flowers and butterflies."
         ]
 
     @classmethod
     def INPUT_TYPES(cls):
         # Create default prompts string from example prompts
         default_prompts = "\n".join([
-            "A majestic mountain landscape at sunset with golden light",
-            "A futuristic city with flying cars and neon lights",
-            "A peaceful forest with sunlight filtering through trees",
-            "An underwater scene with colorful coral reefs and fish",
-            "A cozy cabin in the woods during winter snowfall",
-            "A space station orbiting a distant planet",
-            "A bustling marketplace in an ancient city",
-            "A serene lake with mountains reflected in the water",
-            "A steampunk laboratory with brass gears and steam",
-            "A magical garden with glowing flowers and butterflies"
+            "Mountain:A majestic mountain landscape at sunset with golden light.",
+            "City:A futuristic city with flying cars and neon lights.",
+            "Forest:A peaceful forest with sunlight filtering through trees.",
+            "Coral:An underwater scene with colorful coral reefs and fish.",
+            "Cabin:A cozy cabin in the woods during winter snowfall.",
+            "Space:A space station orbiting a distant planet.",
+            "Marketplace:A bustling marketplace in an ancient city.",
+            "Lake:A serene lake with mountains reflected in the water.",
+            "Laboratory:A steampunk laboratory with brass gears and steam.",
+            "Garden:A magical garden with glowing flowers and butterflies."
         ])
         
         return {
             "required": {
-                "cycle_mode": (["sequential", "random", "manual", "range", "search"], {
-                    "default": "sequential"
+                "cycle_mode": (["manual", "sequential", "random", "range", "search"], {
+                    "default": "manual"
                 }),
                 "manual_index": ("INT", {
                     "default": 1,
@@ -111,7 +111,7 @@ class AUNPromptCycler:
         Supports infinite number of prompts via custom_prompts input.
         
         Args:
-            cycle_mode: "sequential", "random", "manual", "range", or "search" cycling
+            cycle_mode: "manual", "sequential", "random", "range", or "search" cycling
             manual_index: Manually select a prompt by index (1-based), used when cycle_mode is "manual"
             range_indices: Comma-separated indices or ranges for range mode (1-based), e.g. '1,2,4-8,11'
             search_query: Search for prompts containing this text, used when cycle_mode is "search"
