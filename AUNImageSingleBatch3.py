@@ -8,6 +8,7 @@ import hashlib
 import json
 import re
 import fnmatch
+from nodes import PreviewImage
 from server import PromptServer  # already available in ComfyUI core
 
 def clean_filename_for_output(filename_without_ext, max_words=0):
@@ -138,7 +139,7 @@ def parse_indices(indices_str, num_files):
         return [0]
     return valid_indices
 
-class AUNImageSingleBatch3:
+class AUNImageSingleBatch3(PreviewImage):
     _node_states = {}
 
     @classmethod
@@ -186,7 +187,7 @@ class AUNImageSingleBatch3:
                 }),
             },
             "hidden": {
-                "prompt": "PROMPT", 
+                "prompt": "PROMPT",
                 "extra_pnginfo": "EXTRA_PNGINFO",
                 "unique_id": "UNIQUE_ID",
             },
@@ -195,10 +196,12 @@ class AUNImageSingleBatch3:
     RETURN_TYPES = ("IMAGE", "STRING", "STRING")
     RETURN_NAMES = ("image", "filename", "cleaned filename")
     FUNCTION = "load_image"
+    OUTPUT_NODE = True
     CATEGORY = "AUN Nodes/Image"
     DESCRIPTION = "Load a single uploaded image or cycle through a batch of images from a folder with multiple selection modes, including range and search filtering by filename patterns."
 
     def __init__(self):
+        super().__init__()
         self.current_index = 0
         self.last_folder_path = None
         self.image_files = []
@@ -229,7 +232,7 @@ class AUNImageSingleBatch3:
         else:
             return output_images[0]
 
-    def load_image(self, source_mode, path_mode, predefined_path, manual_path, batch_mode, range_or_pattern, image_upload, max_num_words=0, unique_id=None, **kwargs):
+    def load_image(self, source_mode, path_mode, predefined_path, manual_path, batch_mode, range_or_pattern, image_upload, max_num_words=0, hide_preview=False, unique_id=None, **kwargs):
         # Retrieve or initialize state for this node instance
         if unique_id is not None:
             if isinstance(unique_id, (list, tuple)):
@@ -340,7 +343,14 @@ class AUNImageSingleBatch3:
                 new_parts.append(p)
             filename = "".join(new_parts).rstrip("_ -")
         
-        return (tensor_image, filename, cleaned_filename)
+        if hide_preview:
+            return {"ui": {"images": [], "filename": filename}, "result": (tensor_image, filename, cleaned_filename)}
+        
+        # Save images and build preview UI (inherits from PreviewImage)
+        preview = self.save_images(tensor_image, "AUNImageSingleBatch", kwargs.get("prompt"), kwargs.get("extra_pnginfo"))
+        ui_data = preview.get("ui", {})
+        ui_data["filename"] = filename
+        return {"ui": ui_data, "result": (tensor_image, filename, cleaned_filename)}
 
     @classmethod  
     def IS_CHANGED(
