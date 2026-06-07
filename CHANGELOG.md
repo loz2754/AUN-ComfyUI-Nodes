@@ -5,16 +5,6 @@
 
 ### Added
 
-### Changed
-
-### Fixed
-
-### Notes
-
-## [2.2.19] - 2026-06-07
-
-### Added
-
 - Added `hide_preview` toggle to `AUNImageSingleBatch3` — when enabled, suppresses the image preview in the ComfyUI UI while still returning the image tensor for downstream nodes.
 - Added frontend extension `web/AUN_image_single_batch_hide_preview.js` to handle preview hiding and display the loaded filename in a styled text widget with ellipsis truncation.
 
