@@ -1,63 +1,58 @@
 import { app } from "../../scripts/app.js";
 
-// AUN Add To Prompt Multi - Dynamic visibility & compact mode
-// Hides addon slots beyond num_addons by default, supports compact mode via double-click or right-click menu.
-
 const NODE_CLASS = "AUNAddToPromptMulti";
 const MAX_ADDONS = 10;
 const PROP_COMPACT = "_AUN_compactMode";
 
-// --- Helpers ---
+const TITLE_H = 28;
+const ROW_H = 22;
+const ROW_GAP = 2;
+const SIDE_PAD = 8;
+const BADGE_PAD = 6;
+
+const MODE_CYCLE = { off: "on", on: "random", random: "off" };
+const ORDER_TOGGLE = { prompt_first: "addon_first", addon_first: "prompt_first" };
 
 function getWidget(node, name) {
-  if (!node || !node.widgets) return null;
-  return node.widgets.find((w) => w.name === name) ?? null;
+  return node?.widgets?.find((w) => w.name === name) ?? null;
 }
 
 function clampAddons(v) {
   const n = parseInt(v, 10);
-  if (isNaN(n)) return 1;
-  return Math.max(1, Math.min(MAX_ADDONS, n));
+  return isNaN(n) ? 1 : Math.max(1, Math.min(MAX_ADDONS, n));
 }
 
 function isCompact(node) {
   return node?.properties?.[PROP_COMPACT] === true;
 }
 
-function setCompact(node, value) {
+function setCompact(node, val) {
   if (!node.properties) node.properties = {};
-  node.properties[PROP_COMPACT] = !!value;
+  node.properties[PROP_COMPACT] = !!val;
 }
 
-// --- Hidden-aware widget (from AUN_multi_neg_prompt_visibility.js pattern) ---
+function getAddonLabel(node, index) {
+  const textW = getWidget(node, `text_to_add${index}`);
+  if (textW && textW.value && textW.value.trim()) {
+    return textW.value.trim().split("\n")[0];
+  }
+  return `Addon ${index}`;
+}
 
-function ensureHiddenAwareWidget(widget) {
-  if (!widget || widget.__aun_atpm_hiddenAware) return;
-  widget.__aun_atpm_hiddenAware = true;
-
-  const origComputeSize = widget.computeSize;
-  // ComfyUI multiline textareas have type "customtext" and options.multiline === true
+function ensureHiddenAware(widget) {
+  if (!widget || widget.__aun_hiddenAware) return;
+  widget.__aun_hiddenAware = true;
   const isMultiline =
-    widget.type === "customtext" ||
-    widget.type === "text" ||
-    widget.options?.multiline === true;
-
-  widget.computeSize = function (width) {
-    if (this.hidden) {
-      return [width, 0];
-    }
-    let [w, h] = origComputeSize
-      ? origComputeSize.apply(this, arguments)
-      : [width, this.comfyHeight ?? 20];
-    // Multiline textareas need a usable minimum height (but not so tall it overlaps the next widget)
-    if (isMultiline) {
-      h = Math.max(h, 100);
-      this.comfyHeight = h;
-    }
+    widget.type === "customtext" || widget.options?.multiline === true;
+  const orig = typeof widget.computeSize === "function" ? widget.computeSize : null;
+  widget.computeSize = function (...args) {
+    if (this.hidden) return [args[0] ?? 200, 0];
+    let [w, h] = orig
+      ? orig.apply(this, args)
+      : [args[0] ?? 200, this.comfyHeight ?? 20];
+    if (isMultiline) h = Math.max(h, 100);
     return [w, h];
   };
-
-  // Also enforce min-height on the textarea DOM element directly
   if (isMultiline && widget.inputEl) {
     widget.inputEl.style.minHeight = "80px";
   }
@@ -65,581 +60,249 @@ function ensureHiddenAwareWidget(widget) {
 
 function applyWidgetHiddenState(widget, hidden) {
   if (!widget) return;
-  ensureHiddenAwareWidget(widget);
+  ensureHiddenAware(widget);
   widget.hidden = !!hidden;
-  if (widget.flags) {
-    widget.flags.hidden = !!hidden;
-    widget.flags.collapsed = !!hidden;
-  }
-  if (widget.options) {
-    widget.options.noDraw = !!hidden;
-  }
-  if (widget.inputEl?.style) {
-    widget.inputEl.style.display = hidden ? "none" : "";
-  }
+  if (widget.flags) widget.flags.hidden = !!hidden;
+  if (widget.options) widget.options.noDraw = !!hidden;
+  if (widget.inputEl?.style) widget.inputEl.style.display = hidden ? "none" : "";
 }
-
-// --- Node visibility update ---
 
 function updateNodeVisibility(node) {
-  try {
-    const numAddonsWidget = getWidget(node, "num_addons");
-    const numAddons = clampAddons(numAddonsWidget?.value ?? 1);
-    const compact = isCompact(node);
+  const numAddons = clampAddons(getWidget(node, "num_addons")?.value ?? 1);
+  const compact = isCompact(node);
 
-    // Master prompt and num_addons visibility
-    const masterPromptWidget = getWidget(node, "master_prompt");
-    applyWidgetHiddenState(masterPromptWidget, compact);
-    applyWidgetHiddenState(numAddonsWidget, compact);
+  applyWidgetHiddenState(getWidget(node, "master_prompt"), compact);
+  applyWidgetHiddenState(getWidget(node, "num_addons"), compact);
 
-    // Addon widgets
-    for (let i = 1; i <= MAX_ADDONS; i++) {
-      const modeW = getWidget(node, `text_to_add${i}_mode`);
-      const textW = getWidget(node, `text_to_add${i}`);
-      const orderW = getWidget(node, `order${i}`);
-
-      if (compact) {
-        // In compact mode, hide all addon widgets
-        applyWidgetHiddenState(modeW, true);
-        applyWidgetHiddenState(textW, true);
-        applyWidgetHiddenState(orderW, true);
-      } else {
-        // In full mode, show only active slots
-        const isActive = i <= numAddons;
-        applyWidgetHiddenState(modeW, !isActive);
-        applyWidgetHiddenState(textW, !isActive);
-        applyWidgetHiddenState(orderW, !isActive);
-      }
-    }
-
-    // Trigger resize
-    node.widgets_dirty = true;
-    const [w, h] = node.computeSize();
-    if (compact) {
-      // Compact mode: title bar (~36px) + padding + numAddons rows (~24px each)
-      // Only constrain height — preserve user's manual width
-      const minH = 40 + numAddons * 24;
-      node.setSize([node.size[0], Math.max(h, minH)]);
-    } else {
-      // Full mode: preserve user's manual width, ensure computed height is at least reasonable
-      node.setSize([node.size[0], Math.max(h, 120)]);
-    }
-    node.setDirtyCanvas(true, true);
-
-    // Update overlay visibility
-    updateOverlayVisibility(node);
-  } catch (e) {
-    console.error("[AUNAddToPromptMulti] Error in updateNodeVisibility:", e);
-  }
-}
-
-// --- Compact mode overlay UI ---
-
-function ensureStyles() {
-  if (document.getElementById("aun-atpm-overlay-styles")) return;
-  const style = document.createElement("style");
-  style.id = "aun-atpm-overlay-styles";
-  style.textContent = `
-    .AUN-atpm-overlay-row {
-      position: fixed;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 2px 8px;
-      pointer-events: none;
-      z-index: 1;
-      font-size: 12px;
-      font-family: var(--comfy-font-family, sans-serif);
-      color: #ddd;
-      white-space: nowrap;
-    }
-    .AUN-atpm-overlay-row > * {
-      pointer-events: auto;
-    }
-    .AUN-atpm-overlay-row label {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 200px;
-      user-select: none;
-    }
-    .AUN-atpm-mode-select {
-      font-size: 11px;
-      font-family: var(--comfy-font-family, sans-serif);
-      color: #ddd;
-      background: #444;
-      border: 1px solid #666;
-      border-radius: 3px;
-      padding: 1px 2px;
-      cursor: pointer;
-      min-width: 38px;
-    }
-    .AUN-atpm-mode-select:hover {
-      border-color: #0096cf;
-    }
-    .AUN-atpm-mode-select option[value="on"] {
-      background: #2a6e3f;
-    }
-    .AUN-atpm-mode-select option[value="off"] {
-      background: #555;
-    }
-    .AUN-atpm-mode-select option[value="random"] {
-      background: #6e5a2a;
-    }
-    .AUN-atpm-order-select {
-      font-size: 11px;
-      font-family: var(--comfy-font-family, sans-serif);
-      color: #ddd;
-      background: #444;
-      border: 1px solid #666;
-      border-radius: 3px;
-      padding: 1px 4px;
-      cursor: pointer;
-      margin-left: auto;
-    }
-    .AUN-atpm-order-select:hover {
-      border-color: #0096cf;
-    }
-  `;
-  document.head.appendChild(style);
-}
-
-function getAddonLabel(node, index) {
-  const textW = getWidget(node, `text_to_add${index}`);
-  if (textW && textW.value && textW.value.trim()) {
-    const firstLine = textW.value.trim().split("\n")[0];
-    return firstLine.length > 40 ? firstLine.slice(0, 40) + "…" : firstLine;
-  }
-  return `Addon ${index}`;
-}
-
-function applyModeSelectStyle(selectEl) {
-  if (!selectEl) return;
-  const val = selectEl.value;
-  if (val === "on") {
-    selectEl.style.background = "#2a6e3f";
-  } else if (val === "random") {
-    selectEl.style.background = "#6e5a2a";
-  } else {
-    selectEl.style.background = "#555";
-  }
-}
-
-function createOverlayRows(node) {
-  ensureStyles();
-
-  // Remove existing rows first
-  if (node.__aun_atpm_rows) {
-    for (const row of node.__aun_atpm_rows) {
-      if (row?.parentNode) row.parentNode.removeChild(row);
-    }
-  }
-
-  const rows = [];
   for (let i = 1; i <= MAX_ADDONS; i++) {
-    const row = document.createElement("div");
-    row.className = "AUN-atpm-overlay-row";
-    row.style.display = "none";
-
-    // Mode selector (on/off/random)
-    const modeSelect = document.createElement("select");
-    modeSelect.className = "AUN-atpm-mode-select";
-    modeSelect.innerHTML =
-      '<option value="on">On</option>' +
-      '<option value="off">Off</option>' +
-      '<option value="random">Rnd</option>';
-    modeSelect.title = "Mode: on=always add, off=never add, random=50/50 chance";
-    modeSelect.addEventListener("change", () => {
-      const modeW = getWidget(node, `text_to_add${i}_mode`);
-      if (modeW) {
-        modeW.value = modeSelect.value;
-        if (modeW.callback) modeW.callback(modeSelect.value);
-        node.setDirtyCanvas(true, true);
-      }
-      applyModeSelectStyle(modeSelect);
-    });
-
-    const label = document.createElement("label");
-
-    // Order selector (before/after prompt)
-    const orderSelect = document.createElement("select");
-    orderSelect.className = "AUN-atpm-order-select";
-    orderSelect.innerHTML =
-      '<option value="prompt_first">After</option>' +
-      '<option value="addon_first">Before</option>';
-    orderSelect.title = "Place addon before or after the main prompt";
-    orderSelect.addEventListener("change", () => {
-      const orderW = getWidget(node, `order${i}`);
-      if (orderW) {
-        orderW.value = orderSelect.value;
-        if (orderW.callback) orderW.callback(orderSelect.value);
-        node.setDirtyCanvas(true, true);
-      }
-    });
-
-    row.appendChild(modeSelect);
-    row.appendChild(label);
-    row.appendChild(orderSelect);
-    document.body.appendChild(row);
-    rows.push(row);
+    const hiddenInFull = i > numAddons;
+    const hidden = compact || hiddenInFull;
+    applyWidgetHiddenState(getWidget(node, `text_to_add${i}_mode`), hidden);
+    applyWidgetHiddenState(getWidget(node, `text_to_add${i}`), hidden);
+    applyWidgetHiddenState(getWidget(node, `order${i}`), hidden);
   }
 
-  node.__aun_atpm_rows = rows;
+  updateNodeSize(node);
+  node.setDirtyCanvas(true, true);
 }
 
-function updateOverlayVisibility(node) {
-  if (!node.__aun_atpm_rows) return;
+function updateNodeSize(node) {
+  node.widgets_dirty = true;
+  let h;
+  try {
+    h = node.computeSize()?.[1];
+  } catch {
+    h = node.size?.[1] ?? 200;
+  }
+  if (typeof h !== "number" || !isFinite(h)) h = node.size?.[1] ?? 200;
 
   const compact = isCompact(node);
-  const numAddonsWidget = getWidget(node, "num_addons");
-  const numAddons = clampAddons(numAddonsWidget?.value ?? 1);
-
-  for (let i = 1; i <= MAX_ADDONS; i++) {
-    const row = node.__aun_atpm_rows[i - 1];
-    if (!row) continue;
-
-    if (compact && i <= numAddons) {
-      row.style.display = "flex";
-      const modeW = getWidget(node, `text_to_add${i}_mode`);
-      const modeSelect = row.querySelector("select.AUN-atpm-mode-select");
-      if (modeSelect && modeW) {
-        modeSelect.value = modeW.value ?? "off";
-        applyModeSelectStyle(modeSelect);
-      }
-      row.querySelector("label").textContent = getAddonLabel(node, i);
-      const orderW = getWidget(node, `order${i}`);
-      const orderSelect = row.querySelector("select.AUN-atpm-order-select");
-      if (orderSelect && orderW) {
-        orderSelect.value = orderW.value ?? "prompt_first";
-      }
-    } else {
-      row.style.display = "none";
-    }
+  if (compact) {
+    const numAddons = clampAddons(getWidget(node, "num_addons")?.value ?? 1);
+    const minH = TITLE_H + 4 + numAddons * (ROW_H + ROW_GAP) + 4;
+    node.setSize([node.size[0], Math.max(h, minH)]);
+  } else {
+    node.setSize([node.size[0], Math.max(h, 260)]);
   }
 }
 
-// Debounced overlay position update (per-node, not global RAF loop)
-const overlayRAFMap = new WeakMap();
-
-/** Track all patched nodes so we can batch-update on canvas events */
-const trackedNodes = new Set();
-
-/** Periodic sync timer as a safety net for rapid pan / bookmark jumps */
-let overlaySyncInterval = null;
-
-function startOverlaySync() {
-  if (overlaySyncInterval) return;
-  // Every 100ms, reposition overlays for all compact nodes — catches any missed canvas events
-  overlaySyncInterval = setInterval(() => {
-    for (const node of trackedNodes) {
-      if (node && isCompact(node)) {
-        scheduleOverlayUpdate(node);
-      }
-    }
-  }, 100);
-}
-
-function stopOverlaySync() {
-  if (overlaySyncInterval) {
-    clearInterval(overlaySyncInterval);
-    overlaySyncInterval = null;
+function ellipsizeText(ctx, text, maxWidth) {
+  if (ctx.measureText(text).width <= maxWidth) return text;
+  let s = text;
+  while (s.length > 1 && ctx.measureText(s + "...").width > maxWidth) {
+    s = s.slice(0, -1);
   }
+  return s + "...";
 }
 
-/** Register canvas-level listeners for view changes (runs once, not per-node) */
-let canvasListenersSetup = false;
+function drawCompactRows(ctx, node) {
+  const hitAreas = [];
+  const numAddons = clampAddons(getWidget(node, "num_addons")?.value ?? 1);
+  const nodeW = node.size[0] || 300;
 
-function setupCanvasListeners() {
-  if (canvasListenersSetup) return;
-  canvasListenersSetup = true;
+  for (let i = 1; i <= numAddons; i++) {
+    const rowY = TITLE_H + 4 + (i - 1) * (ROW_H + ROW_GAP);
 
-  const lgc = app.canvas;       // LGraphCanvas (not a DOM element)
-  const canvasEl = lgc?.canvas; // the actual <canvas> DOM element
-  if (!lgc || !canvasEl) return;
+    const modeW = getWidget(node, `text_to_add${i}_mode`);
+    const modeVal = modeW?.value || "off";
+    const modeLabel = modeVal === "on" ? "On" : modeVal === "random" ? "Rnd" : "Off";
 
-  // "after" render hook — chain into existing onAfterRender so we don't clobber it
-  const prevAfter = lgc.onAfterRender;
-  lgc.onAfterRender = function () {
-    if (typeof prevAfter === "function") prevAfter.apply(this, arguments);
-    for (const node of trackedNodes) {
-      if (node && isCompact(node)) {
-        scheduleOverlayUpdate(node);
-      }
+    const orderW = getWidget(node, `order${i}`);
+    const orderVal = orderW?.value || "prompt_first";
+    const orderLabel = orderVal === "addon_first" ? "Before" : "After";
+
+    ctx.save();
+    ctx.font = "bold 11px sans-serif";
+    const modeBadgeW = ctx.measureText(modeLabel).width + BADGE_PAD * 2;
+    ctx.font = "11px sans-serif";
+    const orderBadgeW = ctx.measureText(orderLabel).width + BADGE_PAD * 2;
+    ctx.restore();
+
+    const modeX = SIDE_PAD;
+    const modeY = rowY + (ROW_H - 16) / 2;
+    const orderX = nodeW - SIDE_PAD - orderBadgeW;
+    const orderY = rowY + (ROW_H - 16) / 2;
+    const labelX = modeX + modeBadgeW + 6;
+    const labelMaxW = orderX - 6 - labelX;
+
+    ctx.save();
+    ctx.fillStyle = modeVal === "on" ? "#2a6e3f" : modeVal === "random" ? "#6e5a2a" : "#555";
+    ctx.beginPath();
+    ctx.roundRect(modeX, modeY, modeBadgeW, 16, 3);
+    ctx.fill();
+    ctx.fillStyle = "#ddd";
+    ctx.font = "bold 11px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(modeLabel, modeX + modeBadgeW / 2, modeY + 8);
+    ctx.restore();
+    hitAreas.push({ type: "mode", index: i, x: modeX, y: modeY, w: modeBadgeW, h: 16 });
+
+    if (labelMaxW > 4) {
+      const labelText = getAddonLabel(node, i);
+      ctx.save();
+      ctx.font = "12px sans-serif";
+      const displayText = ellipsizeText(ctx, labelText, labelMaxW);
+      ctx.fillStyle = "#ccc";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      ctx.fillText(displayText, labelX, rowY + ROW_H / 2);
+      ctx.restore();
     }
-  };
 
-  // Wheel zoom can shift overlays — listen on the actual DOM <canvas> element
-  const onWheel = () => {
-    for (const node of trackedNodes) {
-      if (node && isCompact(node)) {
-        scheduleOverlayUpdate(node);
-      }
-    }
-  };
-  canvasEl.addEventListener("wheel", onWheel, { passive: true });
-
-  lgc.__aun_atpm_wheel = onWheel;
-}
-
-/**
- * Check if another node (with higher z-order / index) overlaps this node's bounding box.
- * Returns true if the node is occluded and overlay rows should be hidden.
- */
-function isNodeOccluded(node, canvasRect, scale, panOffsetX, panOffsetY) {
-  const nodes = app?.graph?._nodes;
-  if (!nodes) return false;
-
-  // Compute this node's screen-space bounding box
-  const selfScreenX = canvasRect.left + (node.pos[0] + panOffsetX) * scale;
-  const selfScreenY = canvasRect.top + (node.pos[1] + panOffsetY) * scale;
-  const selfRight = selfScreenX + (node.size?.[0] ?? 300) * scale;
-  const selfBottom = selfScreenY + (node.size?.[1] ?? 100) * scale;
-
-  for (const other of nodes) {
-    if (!other || other === node) continue;
-    // Only consider nodes drawn on top (higher order = higher z-order in ComfyUI)
-    // order = drawing z-order, index = execution order (different!)
-    const otherZ = other.order ?? other.index ?? -1;
-    const selfZ = node.order ?? node.index ?? -2;
-    if (otherZ <= selfZ) continue;
-    if (other.collapsed || other.flags?.collapsed) continue;
-
-    const otherScreenX = canvasRect.left + (other.pos[0] + panOffsetX) * scale;
-    const otherScreenY = canvasRect.top + (other.pos[1] + panOffsetY) * scale;
-    const otherRight = otherScreenX + (other.size?.[0] ?? 300) * scale;
-    const otherBottom = otherScreenY + (other.size?.[1] ?? 100) * scale;
-
-    // AABB overlap check — if any node above overlaps, this node is occluded
-    if (!(otherRight <= selfScreenX ||
-          otherScreenX >= selfRight ||
-          otherBottom <= selfScreenY ||
-          otherScreenY >= selfBottom)) {
-      return true;
-    }
+    ctx.save();
+    ctx.fillStyle = orderVal === "addon_first" ? "#5a4a7a" : "#3a6a8a";
+    ctx.beginPath();
+    ctx.roundRect(orderX, orderY, orderBadgeW, 16, 3);
+    ctx.fill();
+    ctx.fillStyle = "#ddd";
+    ctx.font = "11px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(orderLabel, orderX + orderBadgeW / 2, orderY + 8);
+    ctx.restore();
+    hitAreas.push({ type: "order", index: i, x: orderX, y: orderY, w: orderBadgeW, h: 16 });
   }
 
-  return false;
+  node.__aun_hitAreas = hitAreas;
 }
 
-function scheduleOverlayUpdate(node) {
-  if (overlayRAFMap.has(node)) return;
-  const rafId = requestAnimationFrame(() => {
-    overlayRAFMap.delete(node);
-    positionOverlays(node);
-  });
-  overlayRAFMap.set(node, rafId);
+function isOverHitArea(node, pos) {
+  if (!node.__aun_hitAreas) return false;
+  const [mx, my] = pos;
+  return node.__aun_hitAreas.some(
+    (a) => mx >= a.x && mx <= a.x + a.w && my >= a.y && my <= a.y + a.h
+  );
 }
-
-function cancelOverlayUpdate(node) {
-  const rafId = overlayRAFMap.get(node);
-  if (rafId) {
-    cancelAnimationFrame(rafId);
-    overlayRAFMap.delete(node);
-  }
-}
-
-function positionOverlays(node) {
-  if (!node || !node.__aun_atpm_rows || !isCompact(node)) return;
-
-  // Hide overlay when node is collapsed
-  if (node.collapsed) {
-    node.__aun_atpm_wasCollapsed = true;
-    for (let i = 0; i < node.__aun_atpm_rows.length; i++) {
-      const row = node.__aun_atpm_rows[i];
-      if (row) row.style.display = "none";
-    }
-    return;
-  }
-
-  // Node was collapsed and just expanded — restore overlay visibility
-  if (node.__aun_atpm_wasCollapsed) {
-    node.__aun_atpm_wasCollapsed = false;
-    updateOverlayVisibility(node);
-  }
-
-  try {
-    const canvas = app.canvas;
-    if (!canvas || !canvas.canvas) return;
-
-    const canvasRect = canvas.canvas.getBoundingClientRect();
-    const ds = canvas.ds;
-    if (!ds) return;
-
-    const scale = ds.scale;
-    const panOffsetX = ds.offset[0];
-    const panOffsetY = ds.offset[1];
-
-    // Occlusion check — hide overlays if another node sits on top
-    if (isNodeOccluded(node, canvasRect, scale, panOffsetX, panOffsetY)) {
-      for (let i = 0; i < node.__aun_atpm_rows.length; i++) {
-        const row = node.__aun_atpm_rows[i];
-        if (row) row.style.display = "none";
-      }
-      return;
-    }
-
-    // No longer occluded — restore visibility so active rows reappear
-    updateOverlayVisibility(node);
-
-    // Convert node position to screen coordinates
-    const screenX = canvasRect.left + (node.pos[0] + panOffsetX) * scale;
-    const screenY = canvasRect.top + (node.pos[1] + panOffsetY) * scale;
-    const nodeWidth = node.size[0] * scale;
-
-    const numAddonsWidget = getWidget(node, "num_addons");
-    const numAddons = clampAddons(numAddonsWidget?.value ?? 1);
-
-    const titleBarHeight = 28 * scale;
-    const lineHeight = 20 * scale;
-    const leftPad = 8 * scale;
-
-    for (let i = 1; i <= MAX_ADDONS; i++) {
-      const row = node.__aun_atpm_rows[i - 1];
-      if (!row || row.style.display === "none") continue;
-
-      row.style.left = `${screenX + leftPad}px`;
-      row.style.top = `${screenY + titleBarHeight + (i - 1) * lineHeight}px`;
-      row.style.width = `${nodeWidth - leftPad * 2}px`;
-    }
-  } catch (e) {
-    // Ignore position errors during drag
-  }
-}
-
-// --- Compact mode toggle ---
 
 function toggleCompact(node) {
-  const newVal = !isCompact(node);
-  setCompact(node, newVal);
+  setCompact(node, !isCompact(node));
   updateNodeVisibility(node);
 }
 
-// --- Node patching ---
-
 function patchNode(node) {
-  if (node.__aun_atpm_patched) return;
-  node.__aun_atpm_patched = true;
+  if (node.__aun_patched) return;
+  node.__aun_patched = true;
 
-  // Ensure all widgets are hidden-aware
-  for (const w of node.widgets || []) {
-    ensureHiddenAwareWidget(w);
+  if (typeof node.properties?.[PROP_COMPACT] !== "boolean") {
+    setCompact(node, true);
   }
 
-  // Create overlay rows
-  createOverlayRows(node);
+  for (const w of node.widgets || []) {
+    ensureHiddenAware(w);
+  }
 
-  // Track this node for canvas-level updates
-  trackedNodes.add(node);
-  startOverlaySync();
-  setupCanvasListeners();
-
-  // Hook num_addons callback
-  const numAddonsWidget = getWidget(node, "num_addons");
-  if (numAddonsWidget) {
-    const origCb = numAddonsWidget.callback;
-    numAddonsWidget.callback = function (value) {
+  const numAddonsW = getWidget(node, "num_addons");
+  if (numAddonsW) {
+    const origCb = numAddonsW.callback;
+    numAddonsW.callback = function (value) {
       const result = origCb?.apply(this, arguments);
-      setTimeout(() => updateNodeVisibility(node), 10);
+      updateNodeVisibility(node);
       return result;
     };
   }
 
-  // Hook onDrawForeground for overlay positioning
   const origDrawFg = node.onDrawForeground;
   node.onDrawForeground = function (ctx) {
-    const result = origDrawFg?.apply(this, arguments);
-    if (isCompact(this)) {
-      scheduleOverlayUpdate(this);
-    }
-    return result;
+    origDrawFg?.apply(this, arguments);
+    if (isCompact(this)) drawCompactRows(ctx, this);
   };
 
-  // Double-click to toggle compact
+  const origMouseDown = node.onMouseDown;
+  node.onMouseDown = function (event, pos) {
+    if (isCompact(this) && pos && pos.length >= 2 && this.__aun_hitAreas) {
+      const [mx, my] = pos;
+      for (const area of this.__aun_hitAreas) {
+        if (mx >= area.x && mx <= area.x + area.w && my >= area.y && my <= area.y + area.h) {
+          if (area.type === "mode") {
+            const w = getWidget(this, `text_to_add${area.index}_mode`);
+            if (!w) break;
+            w.value = MODE_CYCLE[w.value] || "off";
+            if (w.callback) w.callback(w.value);
+          } else if (area.type === "order") {
+            const w = getWidget(this, `order${area.index}`);
+            if (!w) break;
+            w.value = ORDER_TOGGLE[w.value] || "prompt_first";
+            if (w.callback) w.callback(w.value);
+          }
+          this.setDirtyCanvas(true, true);
+          return true;
+        }
+      }
+    }
+    return origMouseDown?.apply(this, arguments);
+  };
+
   const origDblClick = node.onDblClick;
-  node.onDblClick = function (...args) {
+  node.onDblClick = function (event, pos) {
     origDblClick?.apply(this, arguments);
+    if (app?.canvas?.active_widget) return;
+    if (isCompact(this) && pos && pos.length >= 2 && isOverHitArea(this, pos)) return;
     toggleCompact(this);
   };
 
-  // Right-click menu option
-  const origGetMenuOptions = node.getMenuOptions;
-  node.getMenuOptions = function () {
-    const options = origGetMenuOptions ? origGetMenuOptions.apply(this, arguments) : [];
+  const origExtraMenu = node.getExtraMenuOptions;
+  node.getExtraMenuOptions = function (graphcanvas, options) {
+    origExtraMenu?.apply(this, arguments);
     options.push({
       content: isCompact(this) ? "AUN: Show all controls" : "AUN: Compact mode",
       callback: () => toggleCompact(this),
     });
-    return options;
   };
 
-  // Override onConfigure to restore state on workflow load
   const origConfigure = node.onConfigure;
   node.onConfigure = function (info) {
-    if (origConfigure) origConfigure.apply(this, arguments);
-    // Restore compact mode from properties
-    setTimeout(() => {
-      updateNodeVisibility(node);
-    }, 50);
+    origConfigure?.apply(this, arguments);
+    updateNodeVisibility(this);
   };
 
-  // Enforce minimum height on manual resize
   const origResize = node.onResize;
   node.onResize = function () {
-    const numAddonsWidget = getWidget(node, "num_addons");
-    const numAddons = clampAddons(numAddonsWidget?.value ?? 1);
-    const compact = isCompact(node);
-
-    if (compact) {
-      // Compact mode: title bar + numAddons checkbox rows
-      const minH = 40 + numAddons * 24;
-      if (this.size[1] < minH) {
-        this.size[1] = minH;
-      }
-    } else {
-      // Full mode: master_prompt (100px) + num_addons (20px) + at least 1 addon slot (~140px)
-      const minH = 260;
-      if (this.size[1] < minH) {
-        this.size[1] = minH;
-      }
+    const result = origResize?.apply(this, arguments);
+    if (isCompact(this)) {
+      const numAddons = clampAddons(getWidget(this, "num_addons")?.value ?? 1);
+      const minH = TITLE_H + 4 + numAddons * (ROW_H + ROW_GAP) + 4;
+      if (this.size[1] < minH) this.size[1] = minH;
     }
-
-    if (origResize) origResize.apply(this, arguments);
+    return result;
   };
 
-  // Cleanup on node removal
   const origRemoved = node.onRemoved;
   node.onRemoved = function () {
-    cancelOverlayUpdate(node);
-    trackedNodes.delete(node);
-
-    if (node.__aun_atpm_rows) {
-      for (const row of node.__aun_atpm_rows) {
-        if (row?.parentNode) row.parentNode.removeChild(row);
-      }
-      delete node.__aun_atpm_rows;
-    }
-
-    // Stop periodic sync if no more tracked nodes
-    if (trackedNodes.size === 0) {
-      stopOverlaySync();
-    }
-
+    delete this.__aun_hitAreas;
+    delete this.__aun_patched;
     origRemoved?.apply(this, arguments);
   };
 
-  // Apply initial visibility
-  setTimeout(() => updateNodeVisibility(node), 100);
+  updateNodeVisibility(node);
 }
 
-// --- Extension registration ---
-
 app.registerExtension({
-  name: "AUN.AddToPromptMulti",
-
+  name: "AUN.AddToPromptMulti.Canvas",
   async nodeCreated(node) {
     if (node.comfyClass !== NODE_CLASS && node.type !== NODE_CLASS) return;
     patchNode(node);
   },
-
   async loadedGraphNode(node) {
     if (node.comfyClass !== NODE_CLASS && node.type !== NODE_CLASS) return;
     patchNode(node);

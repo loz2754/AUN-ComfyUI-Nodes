@@ -7,6 +7,8 @@
 
 ### Changed
 
+- **Completely rewrote `AUNAddToPromptMulti` compact mode overlay** from a DOM-based approach (HTML elements injected into the page) to a native canvas-based rendering system using `onDrawForeground`. This eliminates DOM overlay positioning issues, flickering, and synchronization problems with canvas pan/zoom operations. The new implementation draws mode badges, addon labels, and order badges directly on the node canvas with proper hit-area detection via `onMouseDown`.
+
 ### Fixed
 
 ### Notes
