@@ -4,6 +4,16 @@
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Fixed
+
+### Notes
+
+## [2.2.21] - 2026-06-10
+
+### Added
 - Added per-slot enable/disable toggles to `AUNRandomLoraModelOnlyMulti` compact mode — disabled slots are skipped during execution and their trigger words are excluded from the combined output.
 
 ### Changed
@@ -15,7 +25,6 @@
 - Fixed `AUNTextIndexSwitch3` compact mode index widget update so `AUNTextIndexSwitch4` nodes in compact mode now correctly update their index widget visual state.
 
 ### Notes
-
 ## [2.2.20] - 2026-06-09
 
 ### Added
