@@ -11,6 +11,13 @@
 
 ### Notes
 
+## [2.2.22] - 2026-06-10
+
+### Fixed
+- Fixed `AUNRandomLoraModelOnlyMulti` compact mode label overlay not updating during Random/Increment/Range execution — `traceLinkValue` now respects `__AUN_lastExecutedIndex` from the execution event rather than the stale widget value.
+
+### Notes
+
 ## [2.2.21] - 2026-06-10
 
 ### Added
