@@ -1956,11 +1956,20 @@ app.registerExtension({
       const textN = switchNode.widgets?.find(w => w.name === `text${idx}`);
       if (textN && typeof textN.value === "string" && textN.value) {
         const labelValue = textN.value.split("\n")[0].trim();
-        // Cache on the switch node so traceLinkValue can find it
-        switchNode.__AUN_lastOutput_label = labelValue;
-        switchNode.__AUN_lastOutput_text = textN.value;
-        switchNode.__AUN_lastOutput = labelValue;
+        // Cache the executed index so traceLinkValue uses it instead of stale widget value
+        switchNode.__AUN_lastExecutedIndex = idx;
         console.log("[AUN] AUN_random_text_index_selected: node", nodeId, "index", idx, "label:", labelValue);
+      }
+
+      // Hook index widget to clear __AUN_lastExecutedIndex on manual change
+      const indexW = switchNode.widgets?.find(w => w.name === "index");
+      if (indexW && !indexW.__AUN_execIdxHooked) {
+        indexW.__AUN_execIdxHooked = true;
+        const origCb = indexW.callback;
+        indexW.callback = function callback(value) {
+          origCb?.call(indexW, value);
+          delete switchNode.__AUN_lastExecutedIndex;
+        };
       }
 
       // Trigger redraw on all target nodes
@@ -2239,7 +2248,7 @@ app.registerExtension({
           if (nodeType.includes("SWITCH") || nodeType.includes("RANDOM")) {
             const idxW = n.widgets?.find(w => w.name === "index");
             if (idxW) {
-              const idx = parseInt(idxW.value) || 1;
+              const idx = n.__AUN_lastExecutedIndex ?? (parseInt(idxW.value) || 1);
               const textN = n.widgets?.find(w => w.name === `text${idx}`);
               if (textN && typeof textN.value === "string" && textN.value) {
                 return textN.value.split("\n")[0].trim();
