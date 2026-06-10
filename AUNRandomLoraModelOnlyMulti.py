@@ -119,6 +119,17 @@ class AUNRandomLoraModelOnlyMulti:
                     },
                 )
 
+        # Append enable/disable toggles at the end to avoid shifting existing widgets' positions
+        for p in range(1, cls.MAX_PROMPTS + 1):
+            for s in range(1, cls.LORAS_PER_PROMPT + 1):
+                required[f"p{p}_enabled{s}"] = (
+                    "BOOLEAN",
+                    {
+                        "default": True,
+                        "tooltip": f"Prompt {p}, LoRA slot {s} enable/disable.",
+                    },
+                )
+
         hidden = {
             "unique_id": "UNIQUE_ID",
         }
@@ -141,7 +152,8 @@ class AUNRandomLoraModelOnlyMulti:
         "Each prompt can have different LoRAs and strengths applied sequentially to the same model+clip. "
         "Double-click to toggle compact mode for quick preview. "
         "In compact mode, drag a LoRA label onto another to swap their values (LoRA, strengths, and triggers). "
-        "Right-click menu: Hide/Show clip strength, Hide/Show footer with trigger words."
+        "Right-click menu: Hide/Show clip strength, Hide/Show footer with trigger words. "
+        "Per-slot enable/disable toggles available in compact mode."
     )
 
     def _is_empty_slot(self, value):
@@ -164,7 +176,16 @@ class AUNRandomLoraModelOnlyMulti:
         trigger = str(trigger_words or "").strip()
         base = str(base_prompt or "").strip()
         if trigger and base:
-            return f"{trigger}, {base}"
+            trigger_parts = [p.strip() for p in trigger.split(",") if p.strip()]
+            base_parts = [p.strip() for p in base.split(",") if p.strip()]
+            seen = set()
+            deduped = []
+            for part in trigger_parts + base_parts:
+                key = part.lower()
+                if key not in seen:
+                    seen.add(key)
+                    deduped.append(part)
+            return ", ".join(deduped)
         return trigger or base
 
     def _emit_selected_loras(
@@ -235,13 +256,15 @@ class AUNRandomLoraModelOnlyMulti:
             strength_model_key = f"p{prompt_idx}_strength_model{s}"
             strength_clip_key = f"p{prompt_idx}_strength_clip{s}"
             trigger_key = f"p{prompt_idx}_trigger{s}"
+            enabled_key = f"p{prompt_idx}_enabled{s}"
 
             lora_name = str(kwargs.get(lora_key, "None") or "None").strip()
             strength_model = float(kwargs.get(strength_model_key, 1.0) or 1.0)
             strength_clip = float(kwargs.get(strength_clip_key, 1.0) or 1.0)
             trigger_words = str(kwargs.get(trigger_key, "") or "").strip()
+            is_enabled = bool(kwargs.get(enabled_key, True))
 
-            if not self._is_empty_slot(lora_name):
+            if not self._is_empty_slot(lora_name) and is_enabled:
                 selected_loras.append(lora_name)
                 selected_strengths_model.append(strength_model)
                 selected_strengths_clip.append(strength_clip)

@@ -194,18 +194,17 @@ function resolveLoraLabel(node) {
   // For Select mode, always prioritize execution index (which reflects actual execution)
   // Only use widget value if it's a direct (not externally connected) selection
   if (mode === "Select") {
-    const execIdx = parsePositiveInt(node?.__AUN_loraLastExecIndex);
-    if (execIdx != null) {
-      const loraW = getWidget(node, `lora_${execIdx}`);
-      const base = loraBasename(loraW?.value);
-      if (base) return base;
-    }
-
-    // Fallback to widget value only if no execution index yet
     const selectW = getWidget(node, "select");
     const idx = parsePositiveInt(selectW?.value);
     if (idx != null) {
       const loraW = getWidget(node, `lora_${idx}`);
+      const base = loraBasename(loraW?.value);
+      if (base) return base;
+    }
+
+    const execIdx = parsePositiveInt(node?.__AUN_loraLastExecIndex);
+    if (execIdx != null) {
+      const loraW = getWidget(node, `lora_${execIdx}`);
       const base = loraBasename(loraW?.value);
       if (base) return base;
     }
@@ -866,17 +865,13 @@ function setupNode(node) {
     } else if (label) {
       if (mode === "Select") {
         const selectW = getWidget(this, "select");
-        // Always prefer execution index for Select mode (reflects actual execution)
-        if (execIdx != null) {
+        const idx = parsePositiveInt(selectW?.value);
+        if (idx != null) {
+          labelText = `${idx}: ${label}`;
+        } else if (execIdx != null) {
           labelText = `${execIdx}: ${label}`;
         } else {
-          // Fallback to widget value if no execution index yet
-          const idx = parsePositiveInt(selectW?.value);
-          if (idx != null) {
-            labelText = `${idx}: ${label}`;
-          } else {
-            labelText = label;
-          }
+          labelText = label;
         }
       } else if (execIdx != null) {
         labelText = `${execIdx}: ${label}`;

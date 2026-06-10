@@ -1942,7 +1942,7 @@ function updateNodeVisualState(node) {
 
   // Update index widget (for non-compact mode or other node types)
   const indexWidget = getWidget(node, "index");
-  if (indexWidget && (node.comfyClass !== "AUNTextIndexSwitch4" || !compact)) {
+  if (indexWidget) {
     const options =
       typeof indexWidget.options === "object" ? { ...indexWidget.options } : {};
     options.max = slotCount;

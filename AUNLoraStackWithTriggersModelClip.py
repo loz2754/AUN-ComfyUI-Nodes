@@ -49,7 +49,7 @@ class AUNLoraStackWithTriggersModelClip:
                 "BOOLEAN",
                 {
                     "default": True,
-                    "tooltip": "Remove duplicate trigger entries while preserving order.",
+                    "tooltip": "Remove duplicate trigger entries across slots and base prompt while preserving order.",
                 },
             ),
         }
@@ -163,7 +163,16 @@ class AUNLoraStackWithTriggersModelClip:
         base = str(base_prompt or "").strip()
         glue = str(joiner if joiner is not None else ", ")
         if trigger and base:
-            return f"{trigger}{glue}{base}"
+            trigger_parts = [p.strip() for p in trigger.split(glue) if p.strip()]
+            base_parts = [p.strip() for p in base.split(",") if p.strip()]
+            seen = set()
+            deduped = []
+            for part in trigger_parts + base_parts:
+                key = part.lower()
+                if key not in seen:
+                    seen.add(key)
+                    deduped.append(part)
+            return glue.join(deduped)
         return trigger or base
 
     def _dedupe_trigger_parts(self, parts, dedupe_triggers):

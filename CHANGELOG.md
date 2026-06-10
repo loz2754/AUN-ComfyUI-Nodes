@@ -4,10 +4,15 @@
 ## [Unreleased]
 
 ### Added
+- Added per-slot enable/disable toggles to `AUNRandomLoraModelOnlyMulti` compact mode — disabled slots are skipped during execution and their trigger words are excluded from the combined output.
 
 ### Changed
+- Reordered label resolution in `AUNRandomLoraModelOnly` compact mode Select mode to prefer the widget value over the execution index, ensuring the displayed label matches what the user sees selected.
+- Reordered upstream label lookup in `AUNRandomLoraModelOnlyMulti` to check switch/index widget values before falling back to cached execution outputs.
 
 ### Fixed
+- Fixed trigger de-duplication in `_combine_trigger_and_base` across all four LoRA nodes (`AUNLoraStackWithTriggers`, `AUNLoraStackWithTriggersModelClip`, `AUNRandomLoraModelOnly`, `AUNRandomLoraModelOnlyMulti`) — now deduplicates across both trigger words and base prompt together instead of only within trigger words.
+- Fixed `AUNTextIndexSwitch3` compact mode index widget update so `AUNTextIndexSwitch4` nodes in compact mode now correctly update their index widget visual state.
 
 ### Notes
 

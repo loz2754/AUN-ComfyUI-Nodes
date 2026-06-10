@@ -217,7 +217,16 @@ class AUNRandomLoraModelOnly:
         trigger = str(trigger_words or "").strip()
         base = str(base_prompt or "").strip()
         if trigger and base:
-            return f"{trigger}, {base}"
+            trigger_parts = [p.strip() for p in trigger.split(",") if p.strip()]
+            base_parts = [p.strip() for p in base.split(",") if p.strip()]
+            seen = set()
+            deduped = []
+            for part in trigger_parts + base_parts:
+                key = part.lower()
+                if key not in seen:
+                    seen.add(key)
+                    deduped.append(part)
+            return ", ".join(deduped)
         return trigger or base
 
     def _is_empty_slot(self, value):

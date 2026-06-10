@@ -272,6 +272,8 @@ function resolveTriggersForDisplay(node) {
   const triggers = [];
 
   for (let slotIdx = 1; slotIdx <= LORAS_PER_PROMPT; slotIdx++) {
+    const enabledWidget = getWidget(node, `p${promptIdx}_enabled${slotIdx}`);
+    if (!enabledWidget?.value) continue;
     const triggerWidget = getWidget(node, `p${promptIdx}_trigger${slotIdx}`);
     const triggerValue = String(triggerWidget?.value ?? "").trim();
     if (triggerValue) {
@@ -519,7 +521,7 @@ function ensureCompactRowStyles() {
       position: fixed;
       z-index: 12;
       display: grid;
-      grid-template-columns: minmax(0, 1fr) 64px 64px;
+      grid-template-columns: minmax(0, 1fr) 64px 64px 34px;
       gap: 5px;
       align-items: center;
       padding: 2px 0;
@@ -532,7 +534,7 @@ function ensureCompactRowStyles() {
       overflow: visible;
     }
     .AUN-lora-multi-row[data-hide-clip="true"] {
-      grid-template-columns: minmax(0, 1fr) 64px;
+      grid-template-columns: minmax(0, 1fr) 64px 34px;
     }
     .AUN-lora-multi-row .AUN-lora-label {
       width: 100%;
@@ -675,6 +677,45 @@ function ensureCompactRowStyles() {
     .AUN-lora-multi-row[draggable="true"] .AUN-lora-label:active {
       cursor: grabbing;
     }
+    .AUN-lora-multi-row input[type="checkbox"] {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 26px;
+      height: 14px;
+      margin: 0;
+      justify-self: start;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.16);
+      background: #242424;
+      box-sizing: border-box;
+      position: relative;
+      cursor: pointer;
+      transition: background 120ms ease, border-color 120ms ease;
+    }
+    .AUN-lora-multi-row input[type="checkbox"]::before {
+      content: "";
+      position: absolute;
+      top: 1px;
+      left: 1px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #b7b7b7;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.35);
+      transition: transform 120ms ease, background 120ms ease;
+    }
+    .AUN-lora-multi-row input[type="checkbox"]:checked {
+      background: #4a5860;
+      border-color: rgba(255,255,255,0.2);
+    }
+    .AUN-lora-multi-row input[type="checkbox"]:checked::before {
+      transform: translateX(12px);
+      background: #d8d8d8;
+    }
+    .AUN-lora-multi-row input[type="checkbox"]:focus-visible {
+      outline: 1px solid rgba(180, 210, 255, 0.8);
+      outline-offset: 1px;
+    }
   `;
   document.head.appendChild(style);
 }
@@ -754,7 +795,12 @@ function buildCompactRow(node, promptIdx, slotIdx) {
   strengthClipControl.append(strengthClipDec, strengthClip, strengthClipInc);
   strengthClipControl.classList.add("AUN-clip-control");
 
-  row.append(loraLabel, strengthModelControl, strengthClipControl);
+  // Per-slot enable/disable toggle
+  const enabled = document.createElement("input");
+  enabled.type = "checkbox";
+  enabled.title = `Enable slot ${slotIdx}`;
+
+  row.append(loraLabel, strengthModelControl, strengthClipControl, enabled);
   document.body.appendChild(row);
 
   // Prevent canvas interaction on events
@@ -956,6 +1002,12 @@ function buildCompactRow(node, promptIdx, slotIdx) {
     return { adjustValue };
   };
 
+  enabled.addEventListener("change", () => {
+    setWidgetValue(getWidget(node, `p${promptIdx}_enabled${slotIdx}`), !!enabled.checked);
+    node.__AUN_loraMultiLastTriggers = null;
+    applyCompact(node);
+  });
+
   const modelBinding = bindNumberInput(
     strengthModel,
     `p${promptIdx}_strength_model${slotIdx}`,
@@ -1032,7 +1084,7 @@ function buildCompactRow(node, promptIdx, slotIdx) {
         draggedData.slotIdx !== slotIdx
       ) {
         // Swap LoRA values between slots
-        const fields = ["lora", "strength_model", "strength_clip", "trigger"];
+        const fields = ["lora", "strength_model", "strength_clip", "trigger", "enabled"];
         let swapped = false;
 
         // Guard flag: prevent lora widget callbacks from calling applyCompact mid-swap
@@ -1110,6 +1162,7 @@ function buildCompactRow(node, promptIdx, slotIdx) {
     strengthModel,
     strengthClipControl,
     strengthClip,
+    enabled,
   };
 }
 
@@ -1179,6 +1232,8 @@ function syncCompactRow(node, row, showClipStrength) {
   if (document.activeElement !== row.strengthClip) {
     row.strengthClip.value = Number(strengthClipWidget?.value ?? 1).toFixed(2);
   }
+  const enabledWidget = getWidget(node, `p${promptIdx}_enabled${slotIdx}`);
+  row.enabled.checked = !!enabledWidget?.value;
 }
 
 function getWidgetBottomY(widget) {
@@ -1556,6 +1611,12 @@ function applyCompact(node) {
         ensureHiddenAwareWidget(tW);
         applyWidgetHiddenState(tW, !isActivePrompt || !hasLora || compact);
       }
+
+      const eW = getWidget(node, `p${p}_enabled${s}`);
+      if (eW) {
+        ensureHiddenAwareWidget(eW);
+        applyWidgetHiddenState(eW, !isActivePrompt || !hasLora || compact);
+      }
     }
   }
 
@@ -1724,6 +1785,8 @@ function startCompactLiveMonitor(node) {
     for (let s = 1; s <= LORAS_PER_PROMPT; s++) {
       const loraW = getWidget(node, `p${promptIdx}_lora${s}`);
       parts.push(String(loraW?.value ?? "None"));
+      const enabledW = getWidget(node, `p${promptIdx}_enabled${s}`);
+      parts.push(String(!!enabledW?.value));
     }
     // Include upstream label value so changes from Random/Increment/Range switches trigger redraw
     parts.push(readLabelValue());
@@ -2172,17 +2235,6 @@ app.registerExtension({
           if (!n) return undefined;
           if (visited.has(n.id)) return undefined;
           visited.add(n.id);
-          if (n.__AUN_lastOutput_label != null) return String(n.__AUN_lastOutput_label);
-          if (n.__AUN_lastOutput_text != null) return String(n.__AUN_lastOutput_text);
-          if (n.__AUN_lastOutput_prompt_title != null) return String(n.__AUN_lastOutput_prompt_title);
-          const labelSlotIdx = n.outputs?.findIndex(o => o.name === "label");
-          const preferredSlot = labelSlotIdx >= 0 ? labelSlotIdx : link.origin_slot;
-          const slotKey = `__AUN_lastOutput_${preferredSlot}`;
-          if (n[slotKey] != null) return String(n[slotKey]);
-          const connectedSlotKey = `__AUN_lastOutput_${link.origin_slot}`;
-          if (n[connectedSlotKey] != null) return String(n[connectedSlotKey]);
-          if (n.__AUN_lastOutput != null) return String(n.__AUN_lastOutput);
-          if (n.__AUN_loraMultiLastLabel != null) return String(n.__AUN_loraMultiLastLabel);
           const nodeType = (n.type || "").toUpperCase();
           if (nodeType.includes("SWITCH") || nodeType.includes("RANDOM")) {
             const idxW = n.widgets?.find(w => w.name === "index");
@@ -2194,6 +2246,17 @@ app.registerExtension({
               }
             }
           }
+          if (n.__AUN_lastOutput_label != null) return String(n.__AUN_lastOutput_label);
+          if (n.__AUN_lastOutput_text != null) return String(n.__AUN_lastOutput_text);
+          if (n.__AUN_lastOutput_prompt_title != null) return String(n.__AUN_lastOutput_prompt_title);
+          const labelSlotIdx = n.outputs?.findIndex(o => o.name === "label");
+          const preferredSlot = labelSlotIdx >= 0 ? labelSlotIdx : link.origin_slot;
+          const slotKey = `__AUN_lastOutput_${preferredSlot}`;
+          if (n[slotKey] != null) return String(n[slotKey]);
+          const connectedSlotKey = `__AUN_lastOutput_${link.origin_slot}`;
+          if (n[connectedSlotKey] != null) return String(n[connectedSlotKey]);
+          if (n.__AUN_lastOutput != null) return String(n.__AUN_lastOutput);
+          if (n.__AUN_loraMultiLastLabel != null) return String(n.__AUN_loraMultiLastLabel);
           const textWidget = n.widgets?.find((w) => {
             const name = (w.name || "").toLowerCase();
             if (skipWidgetNames.has(name)) return false;
