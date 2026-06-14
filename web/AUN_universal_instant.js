@@ -1210,7 +1210,7 @@ const pruneDynamicWidgets = (node) => {
   if (changed) node.__AUN_syncWidgetVisibility?.();
 };
 
-const buildAllGroupsUI = (node, showGroupsUI, mode) => {
+const buildAllGroupsUI = (node, showGroupsUI, mode, showAllCompact) => {
   if (!node.widgets && !node.__AUN_allWidgets) return;
 
   const groups = collectGroupsByTitle();
@@ -1248,8 +1248,9 @@ const buildAllGroupsUI = (node, showGroupsUI, mode) => {
     },
     { on: onLabel, off: offLabel },
   );
+  const isCompact = !!node.properties?._AUN_compactMode;
   header._AUN_dynamic_group = true;
-  applyWidgetHiddenState(header, !showGroupsUI);
+  applyWidgetHiddenState(header, !showGroupsUI || (isCompact && !showAllCompact));
   header.serializeValue = () => undefined;
   ensureHiddenAwareWidget(header);
 
@@ -1491,9 +1492,11 @@ const refreshWidgets = function refreshWidgets() {
     stateWidget.value = getAllGroupsStateValue(this);
   }
 
+  const showAllCompact = !!getWidget(this, "show_AllSwitch")?.value;
+
   if (isGroupNode) {
     if (useAllGroups)
-      buildAllGroupsUI(this, showFullInputs || showGroupsCompact, mode);
+      buildAllGroupsUI(this, showFullInputs || showGroupsCompact, mode, showAllCompact);
     else pruneDynamicWidgets(this);
   } else {
     pruneDynamicWidgets(this);
@@ -1531,7 +1534,6 @@ const refreshWidgets = function refreshWidgets() {
   const singleSlot = slotCount <= 1;
   const allSwitch = getWidget(this, "AllSwitch");
   if (allSwitch) {
-    const showAllCompact = !!getWidget(this, "show_AllSwitch")?.value;
     const hideForGroups = useAllGroups && isGroupNode;
     const hideForCompactSingle = isCompact && !showAllCompact;
     const shouldHide =

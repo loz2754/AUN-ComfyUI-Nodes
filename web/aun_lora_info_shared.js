@@ -132,6 +132,29 @@ function ensureStyles() {
       font-weight: 600;
       letter-spacing: 0.02em;
     }
+    .AUN-lora-info-source-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      border-radius: 4px;
+      margin-right: 5px;
+      font-size: 9px;
+      font-weight: 700;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+    .AUN-lora-info-source-badge--civitai {
+      background: rgba(116, 195, 143, 0.3);
+      color: #b0e8c0;
+      border: 1px solid rgba(116, 195, 143, 0.4);
+    }
+    .AUN-lora-info-source-badge--metadata {
+      background: rgba(111, 168, 220, 0.3);
+      color: #b0d4f0;
+      border: 1px solid rgba(111, 168, 220, 0.4);
+    }
     .AUN-lora-info-grid {
       display: grid;
       grid-template-columns: minmax(0, 1.08fr) minmax(250px, 0.92fr);
@@ -219,6 +242,58 @@ function ensureStyles() {
     .AUN-lora-info-table tr:last-child td {
       border-bottom: none;
     }
+    .AUN-lora-info-edit-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      margin-left: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.05);
+      color: #9cb0c7;
+      cursor: pointer;
+      font-size: 11px;
+      line-height: 1;
+      vertical-align: middle;
+      transition: background 120ms ease, border-color 120ms ease;
+    }
+    .AUN-lora-info-edit-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(171, 208, 246, 0.22);
+      color: #eef2f7;
+    }
+    .AUN-lora-info-edit-input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 4px 6px;
+      border: 1px solid rgba(125, 181, 255, 0.3);
+      border-radius: 6px;
+      background: rgba(0, 0, 0, 0.3);
+      color: #eef2f7;
+      font: 12px/1.4 system-ui, sans-serif;
+    }
+    .AUN-lora-info-edit-input:focus {
+      outline: none;
+      border-color: rgba(125, 181, 255, 0.6);
+    }
+    .AUN-lora-info-edit-textarea {
+      width: 100%;
+      box-sizing: border-box;
+      min-height: 60px;
+      padding: 4px 6px;
+      border: 1px solid rgba(125, 181, 255, 0.3);
+      border-radius: 6px;
+      background: rgba(0, 0, 0, 0.3);
+      color: #eef2f7;
+      font: 12px/1.4 system-ui, sans-serif;
+      resize: vertical;
+    }
+    .AUN-lora-info-edit-textarea:focus {
+      outline: none;
+      border-color: rgba(125, 181, 255, 0.6);
+    }
     .AUN-lora-info-code {
       display: inline-block;
       padding: 2px 7px;
@@ -236,8 +311,8 @@ function ensureStyles() {
     }
     .AUN-lora-info-previews {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-      gap: 10px;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
       padding: 12px;
     }
     .AUN-lora-info-preview-card {
@@ -260,19 +335,74 @@ function ensureStyles() {
       font-size: 11px;
       color: #c7d0db;
     }
-    .AUN-lora-info-notes {
-      margin-top: 16px;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 14px;
-      background: rgba(255, 255, 255, 0.03);
-      overflow: hidden;
+    .AUN-lora-info-preview-card video {
+      display: block;
+      width: 100%;
+      max-height: 320px;
+      background: rgba(0, 0, 0, 0.3);
+      cursor: pointer;
     }
-    .AUN-lora-info-notes-body {
-      padding: 13px;
+    .AUN-lora-info-preview-meta {
+      padding: 10px 12px 12px;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      background: rgba(255, 255, 255, 0.02);
+    }
+    .AUN-lora-info-preview-meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 10px;
+      margin-bottom: 6px;
+    }
+    .AUN-lora-info-preview-meta-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.06);
+      color: #bfd0e2;
+      font-size: 11px;
+      line-height: 1.4;
+    }
+    .AUN-lora-info-preview-meta-pill strong {
+      color: #8fb4d6;
+      font-weight: 600;
+    }
+    .AUN-lora-info-preview-meta-toggle {
+      background: none;
+      border: none;
+      color: #6f90b0;
+      cursor: pointer;
+      font: 11px/1.4 system-ui, sans-serif;
+      padding: 3px 6px;
+    }
+    .AUN-lora-info-preview-meta-toggle:hover {
+      color: #8bc0ff;
+    }
+    .AUN-lora-info-preview-meta-expanded {
+      display: none;
+      margin-top: 6px;
+    }
+    .AUN-lora-info-preview-meta-expanded.is-open {
+      display: block;
+    }
+    .AUN-lora-info-preview-meta-expanded pre {
+      margin: 3px 0;
+      padding: 6px 8px;
+      border-radius: 6px;
+      background: rgba(0, 0, 0, 0.2);
+      color: #c7d0db;
+      font: 11px/1.5 Consolas, "Courier New", monospace;
       white-space: pre-wrap;
-      color: #dbe3ed;
-      max-height: 240px;
+      word-break: break-word;
+      max-height: 120px;
       overflow: auto;
+    }
+    .AUN-lora-info-preview-meta-expanded pre strong {
+      color: #8fb4d6;
+    }
+    .AUN-lora-info-preview-card--video {
+      grid-column: 1 / -1;
     }
     @media (max-width: 820px) {
       .AUN-lora-info-header {
@@ -347,11 +477,25 @@ function ensureModal() {
   insertSelectedButton.className = "AUN-lora-info-action";
   insertSelectedButton.textContent = "Insert selected words";
 
+  const saveButton = document.createElement("button");
+  saveButton.type = "button";
+  saveButton.className = "AUN-lora-info-action";
+  saveButton.textContent = "Save edits";
+  saveButton.style.display = "none";
+
+  const cancelButton = document.createElement("button");
+  cancelButton.type = "button";
+  cancelButton.className = "AUN-lora-info-action";
+  cancelButton.textContent = "Cancel";
+  cancelButton.style.display = "none";
+
   actions.append(
     copyWordsButton,
     copyFileButton,
     openCivitaiButton,
     insertSelectedButton,
+    saveButton,
+    cancelButton,
   );
 
   const trainedSection = document.createElement("section");
@@ -384,20 +528,20 @@ function ensureModal() {
   previews.className = "AUN-lora-info-previews";
   previewsSection.append(previewsTitle, previews);
 
-  const notesSection = document.createElement("section");
-  notesSection.className = "AUN-lora-info-notes";
-  const notesTitle = document.createElement("h3");
-  notesTitle.className = "AUN-lora-info-section-title";
-  notesTitle.textContent = "Notes";
-  const notes = document.createElement("div");
-  notes.className = "AUN-lora-info-notes-body";
-  notesSection.append(notesTitle, notes);
+  const userFieldsSection = document.createElement("section");
+  userFieldsSection.className = "AUN-lora-info-section";
+  const userFieldsTitle = document.createElement("h3");
+  userFieldsTitle.className = "AUN-lora-info-section-title";
+  userFieldsTitle.textContent = "User Settings";
+  const userTable = document.createElement("table");
+  userTable.className = "AUN-lora-info-table";
+  userFieldsSection.append(userFieldsTitle, userTable);
 
   const status = document.createElement("div");
   status.className = "AUN-lora-info-status";
 
-  grid.append(fieldsSection, previewsSection);
-  body.append(badges, status, actions, trainedSection, grid, notesSection);
+  grid.append(fieldsSection);
+  body.append(badges, status, actions, trainedSection, grid, userFieldsSection, previewsSection);
   heading.append(title, subtitle);
   header.append(heading, closeButton);
   dialog.append(header, body);
@@ -430,24 +574,28 @@ function ensureModal() {
     copyFileButton,
     openCivitaiButton,
     insertSelectedButton,
+    saveButton,
+    cancelButton,
     trainedSection,
     trainedWords,
     table,
     previewsSection,
     previews,
-    notesSection,
-    notes,
+    userFieldsSection,
+    userTable,
     status,
     hide,
     currentPayload: null,
     currentContext: null,
     selectedWords: new Set(),
+    editingField: null,
   };
 
   copyWordsButton.addEventListener("click", async () => {
-    const words = Array.isArray(refs.currentPayload?.trained_words)
+    const rawWords = Array.isArray(refs.currentPayload?.trained_words)
       ? refs.currentPayload.trained_words.filter(Boolean)
       : [];
+    const words = rawWords.map((w) => (typeof w === "string" ? w : String(w.word || ""))).filter(Boolean);
     if (!words.length) {
       setStatus(refs, "No trained words available to copy.");
       return;
@@ -489,6 +637,17 @@ function ensureModal() {
     }
     const message = await insertSelectedWords(refs, words);
     setStatus(refs, message);
+  });
+
+  saveButton.addEventListener("click", async () => {
+    await saveEdits(refs);
+  });
+
+  cancelButton.addEventListener("click", () => {
+    refs.editingField = null;
+    renderActions(refs, refs.currentPayload);
+    renderFields(refs, refs.currentPayload?.fields || []);
+    renderUserFields(refs, refs.currentPayload?.user_fields || []);
   });
 
   window[MODAL_KEY] = refs;
@@ -576,8 +735,111 @@ function renderFields(refs, fields) {
       }
     }
 
+    if (field.editable) {
+      const editBtn = document.createElement("button");
+      editBtn.className = "AUN-lora-info-edit-btn";
+      editBtn.textContent = "✎";
+      editBtn.title = `Edit ${label}`;
+      editBtn.addEventListener("click", () => {
+        startEditing(refs, field, row, valueCell);
+      });
+      valueCell.appendChild(editBtn);
+    }
+
     row.append(labelCell, valueCell);
     refs.table.appendChild(row);
+  }
+}
+
+function startEditing(refs, field, row, valueCell) {
+  if (refs.editingField) {
+    setStatus(refs, "Finish editing the current field first.");
+    return;
+  }
+
+  const label = String(field.label || "");
+  const currentValue = String(field.value || "");
+  const editKey = String(field.editKey || label.toLowerCase().replace(/\s+/g, "_"));
+
+  let input;
+  if (editKey === "additionalNotes") {
+    input = document.createElement("textarea");
+    input.className = "AUN-lora-info-edit-textarea";
+    input.value = currentValue;
+    input.rows = 3;
+  } else {
+    input = document.createElement("input");
+    input.className = "AUN-lora-info-edit-input";
+    input.type = editKey === "strengthMin" || editKey === "strengthMax" ? "number" : "text";
+    input.step = editKey === "strengthMin" || editKey === "strengthMax" ? "0.01" : undefined;
+    input.value = currentValue;
+  }
+
+  valueCell.replaceChildren(input);
+  input.focus();
+  input.select();
+
+  refs.editingField = { label, editKey, input, row };
+  renderActions(refs, refs.currentPayload);
+  setStatus(refs, `Editing ${label}. Click "Save edits" to save.`);
+
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && input.tagName !== "TEXTAREA") {
+      saveEdits(refs);
+    } else if (e.key === "Escape") {
+      refs.editingField = null;
+      renderActions(refs, refs.currentPayload);
+      renderFields(refs, refs.currentPayload?.fields || []);
+      renderUserFields(refs, refs.currentPayload?.user_fields || []);
+    }
+  });
+}
+
+async function saveEdits(refs) {
+  if (!refs.editingField) {
+    setStatus(refs, "No field being edited.");
+    return;
+  }
+
+  const { editKey, input } = refs.editingField;
+  const newValue = String(input.value || "").trim();
+  const loraName = String(refs.currentPayload?.file || refs.currentPayload?.requested_name || "").trim();
+
+  if (!loraName) {
+    setStatus(refs, "No LoRA file name available.");
+    return;
+  }
+
+  try {
+    const response = await api.fetchApi("/aun/lora-info/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        lora: loraName,
+        fields: { [editKey]: newValue || null },
+      }),
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      setStatus(refs, String(err.error || "Failed to save."));
+      refs.editingField = null;
+      renderActions(refs, refs.currentPayload);
+      renderFields(refs, refs.currentPayload?.fields || []);
+      renderUserFields(refs, refs.currentPayload?.user_fields || []);
+      return;
+    }
+
+    const payload = await response.json();
+    refs.editingField = null;
+    renderPayload(refs, payload);
+    setStatus(refs, "Saved successfully.");
+  } catch (error) {
+    setStatus(refs, `Save failed: ${error?.message || "Unknown error"}`);
+    refs.editingField = null;
+    renderActions(refs, refs.currentPayload);
+    renderFields(refs, refs.currentPayload?.fields || []);
+    renderUserFields(refs, refs.currentPayload?.user_fields || []);
   }
 }
 
@@ -595,51 +857,60 @@ function renderBadges(refs, badges) {
 
 function renderActions(refs, payload) {
   refs.currentPayload = payload || null;
-  const words = Array.isArray(payload?.trained_words)
+  const rawWords = Array.isArray(payload?.trained_words)
     ? payload.trained_words.filter(Boolean)
     : [];
+  const words = rawWords.map((w) => (typeof w === "string" ? w : String(w.word || ""))).filter(Boolean);
   const fileName = String(
     payload?.file || payload?.requested_name || "",
   ).trim();
   const civitaiUrl = String(payload?.civitai_url || "").trim();
   const canInsert = typeof refs.currentContext?.insertWord === "function";
+  const hasEditable = (Array.isArray(payload?.fields) && payload.fields.some((f) => f.editable)) || (Array.isArray(payload?.user_fields) && payload.user_fields.some((f) => f.editable));
   refs.actions.style.display =
-    words.length || fileName || civitaiUrl || canInsert ? "flex" : "none";
+    words.length || fileName || civitaiUrl || canInsert || hasEditable || refs.editingField ? "flex" : "none";
   refs.copyWordsButton.disabled = !words.length;
   refs.copyFileButton.disabled = !fileName;
   refs.openCivitaiButton.disabled = !civitaiUrl;
   refs.insertSelectedButton.style.display = canInsert ? "inline-flex" : "none";
   refs.insertSelectedButton.disabled = !canInsert || !refs.selectedWords.size;
+  refs.saveButton.style.display = refs.editingField ? "inline-flex" : "none";
+  refs.saveButton.disabled = !refs.editingField;
+  refs.cancelButton.style.display = refs.editingField ? "inline-flex" : "none";
 }
 
 function renderTrainedWords(refs, words) {
   refs.trainedWords.replaceChildren();
   const items = Array.isArray(words) ? words.filter(Boolean) : [];
   const canInsert = typeof refs.currentContext?.insertWord === "function";
+  const wordTexts = items.map((w) => (typeof w === "string" ? w : String(w.word || "")));
   const nextSelection = new Set(
-    Array.from(refs.selectedWords).filter((word) => items.includes(word)),
+    Array.from(refs.selectedWords).filter((w) => wordTexts.includes(w)),
   );
   refs.selectedWords = nextSelection;
   refs.trainedSection.style.display = items.length ? "block" : "none";
-  for (const item of items) {
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    const wordText = typeof item === "string" ? item : String(item.word || "");
+    const source = typeof item === "string" ? "metadata" : String(item.source || "metadata");
+
     const token = document.createElement(canInsert ? "button" : "span");
     token.className = "AUN-lora-info-token";
     if (canInsert) {
       token.type = "button";
       token.classList.add("AUN-lora-info-token-button");
-      token.title = `Insert ${String(item)} into trigger words`;
+      token.title = `Insert ${wordText} into trigger words`;
       token.classList.toggle(
         "is-selected",
-        refs.selectedWords.has(String(item)),
+        refs.selectedWords.has(wordText),
       );
       token.addEventListener("click", () => {
-        const word = String(item);
-        if (refs.selectedWords.has(word)) {
-          refs.selectedWords.delete(word);
+        if (refs.selectedWords.has(wordText)) {
+          refs.selectedWords.delete(wordText);
         } else {
-          refs.selectedWords.add(word);
+          refs.selectedWords.add(wordText);
         }
-        token.classList.toggle("is-selected", refs.selectedWords.has(word));
+        token.classList.toggle("is-selected", refs.selectedWords.has(wordText));
         renderActions(refs, refs.currentPayload);
         setStatus(
           refs,
@@ -649,7 +920,17 @@ function renderTrainedWords(refs, words) {
         );
       });
     }
-    token.textContent = String(item);
+
+    const sourceBadge = document.createElement("span");
+    sourceBadge.className = `AUN-lora-info-source-badge AUN-lora-info-source-badge--${source}`;
+    sourceBadge.textContent = source === "civitai" ? "C" : "M";
+    sourceBadge.title = source === "civitai" ? "From CivitAI" : "From safetensors metadata";
+    token.appendChild(sourceBadge);
+
+    const textSpan = document.createElement("span");
+    textSpan.textContent = wordText;
+    token.appendChild(textSpan);
+
     refs.trainedWords.appendChild(token);
   }
   renderActions(refs, refs.currentPayload);
@@ -703,25 +984,131 @@ function renderPreviews(refs, previews) {
     const figure = document.createElement("figure");
     figure.className = "AUN-lora-info-preview-card";
 
-    const img = document.createElement("img");
-    img.loading = "lazy";
-    img.src = String(preview.src);
-    img.alt = String(preview.label || "LoRA preview");
+    const previewType = String(preview.type || "image");
+    if (previewType === "video") {
+      figure.classList.add("AUN-lora-info-preview-card--video");
+      const video = document.createElement("video");
+      video.src = String(preview.src);
+      video.controls = true;
+      video.loop = false;
+      video.muted = true;
+      video.preload = "metadata";
+      video.playsinline = true;
+      video.title = String(preview.label || "LoRA preview");
+      figure.appendChild(video);
+    } else {
+      const img = document.createElement("img");
+      img.loading = "lazy";
+      img.src = String(preview.src);
+      img.alt = String(preview.label || "LoRA preview");
+      figure.appendChild(img);
+    }
 
-    figure.appendChild(img);
     if (preview.label) {
       const caption = document.createElement("figcaption");
       caption.textContent = String(preview.label);
       figure.appendChild(caption);
     }
+
+    const meta = preview.meta;
+    if (meta && typeof meta === "object" && Object.keys(meta).length) {
+      const metaDiv = document.createElement("div");
+      metaDiv.className = "AUN-lora-info-preview-meta";
+
+      const pillRow = document.createElement("div");
+      pillRow.className = "AUN-lora-info-preview-meta-row";
+
+      const seed = meta.seed ? String(meta.seed) : null;
+      const steps = meta.steps ? String(meta.steps) : null;
+      const cfgVal = meta.cfg || meta.cfgScale ? String(meta.cfg || meta.cfgScale) : null;
+      const sampler = meta.sampler ? String(meta.sampler) : null;
+      const model = meta.model ? String(meta.model) : null;
+
+      const addPill = (label, val) => {
+        if (!val) return;
+        const pill = document.createElement("span");
+        pill.className = "AUN-lora-info-preview-meta-pill";
+        pill.innerHTML = `<strong>${label}:</strong> ${escapeHtml(val)}`;
+        pillRow.appendChild(pill);
+      };
+      addPill("Seed", seed);
+      addPill("Steps", steps);
+      addPill("CFG", cfgVal);
+      addPill("Sampler", sampler);
+      addPill("Model", model);
+
+      metaDiv.appendChild(pillRow);
+
+      const prompt = meta.prompt ? String(meta.prompt) : null;
+      const negPrompt = meta.negativePrompt ? String(meta.negativePrompt) : null;
+      if (prompt || negPrompt) {
+        const isVideo = previewType === "video";
+        const expanded = document.createElement("div");
+        expanded.className = "AUN-lora-info-preview-meta-expanded";
+
+        const toggleBtn = document.createElement("button");
+        toggleBtn.className = "AUN-lora-info-preview-meta-toggle";
+        toggleBtn.textContent = isVideo ? "▸ Show metadata" : "▸ More...";
+        toggleBtn.addEventListener("click", () => {
+          const isOpen = expanded.classList.toggle("is-open");
+          toggleBtn.textContent = isOpen
+            ? (isVideo ? "▾ Hide metadata" : "▾ Less...")
+            : (isVideo ? "▸ Show metadata" : "▸ More...");
+        });
+        metaDiv.appendChild(toggleBtn);
+
+        if (prompt) {
+          const pre = document.createElement("pre");
+          const label = isVideo ? "Prompt" : "Prompt";
+          pre.innerHTML = `<strong>${label}:</strong> ${escapeHtml(prompt)}`;
+          expanded.appendChild(pre);
+        }
+        if (negPrompt) {
+          const pre = document.createElement("pre");
+          pre.innerHTML = `<strong>Negative:</strong> ${escapeHtml(negPrompt)}`;
+          expanded.appendChild(pre);
+        }
+        metaDiv.appendChild(expanded);
+      }
+
+      figure.appendChild(metaDiv);
+    }
+
     refs.previews.appendChild(figure);
   }
 }
 
-function renderNotes(refs, notes) {
-  const text = typeof notes === "string" ? notes.trim() : "";
-  refs.notesSection.style.display = text ? "block" : "none";
-  refs.notes.textContent = text;
+function escapeHtml(text) {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function renderUserFields(refs, userFields) {
+  refs.userTable.replaceChildren();
+  const items = Array.isArray(userFields) ? userFields.filter(Boolean) : [];
+  refs.userFieldsSection.style.display = items.length ? "block" : "none";
+  for (const field of items) {
+    const label = String(field.label || "");
+    const value = String(field.value || "");
+    const row = document.createElement("tr");
+    const labelCell = document.createElement("th");
+    labelCell.textContent = label;
+    const valueCell = document.createElement("td");
+    valueCell.textContent = value;
+    if (field.editable) {
+      const editBtn = document.createElement("button");
+      editBtn.className = "AUN-lora-info-edit-btn";
+      editBtn.textContent = "✎";
+      editBtn.title = `Edit ${label}`;
+      editBtn.addEventListener("click", () => {
+        startEditing(refs, field, row, valueCell);
+      });
+      valueCell.appendChild(editBtn);
+    }
+    row.append(labelCell, valueCell);
+    refs.userTable.appendChild(row);
+  }
 }
 
 function showLoading(refs, loraName) {
@@ -736,7 +1123,7 @@ function showLoading(refs, loraName) {
   renderTrainedWords(refs, []);
   renderFields(refs, []);
   renderPreviews(refs, []);
-  renderNotes(refs, "");
+  renderUserFields(refs, []);
   setStatus(refs, "Fetching metadata...");
 }
 
@@ -755,8 +1142,8 @@ function renderPayload(refs, payload) {
   renderActions(refs, payload);
   renderTrainedWords(refs, payload?.trained_words || []);
   renderFields(refs, payload?.fields || []);
+  renderUserFields(refs, payload?.user_fields || []);
   renderPreviews(refs, payload?.previews || []);
-  renderNotes(refs, payload?.notes || "");
   setStatus(refs, String(payload?.lookup_hint || ""));
 }
 
