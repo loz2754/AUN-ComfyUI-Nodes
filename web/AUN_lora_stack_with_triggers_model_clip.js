@@ -290,6 +290,38 @@ function ensureCompactRowStyles() {
     .AUN-lora-stack-row[draggable="true"] .AUN-lora-label:active {
       cursor: grabbing;
     }
+    .AUN-lora-stack-footer {
+      position: absolute;
+      z-index: 12;
+      display: none;
+      overflow-y: auto;
+      box-sizing: border-box;
+      pointer-events: auto;
+      font: 11px sans-serif;
+      color: rgba(220,220,220,0.9);
+      padding: 2px 6px;
+      background: transparent;
+      white-space: normal;
+      word-break: break-word;
+      border-radius: 0;
+      border: none;
+    }
+    .AUN-lora-stack-footer::-webkit-scrollbar {
+      width: 5px;
+    }
+    .AUN-lora-stack-footer::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .AUN-lora-stack-footer::-webkit-scrollbar-thumb {
+      background: rgba(255,255,255,0.2);
+      border-radius: 3px;
+    }
+    .AUN-lora-stack-footer::-webkit-scrollbar-thumb:hover {
+      background: rgba(255,255,255,0.35);
+    }
+    .AUN-lora-stack-footer b {
+      font-weight: 700;
+    }
   `;
   document.head.appendChild(style);
   window.__AUNLoraStackCompactRowStyle = style;
@@ -781,11 +813,22 @@ function ensureCompactRows(node) {
   return node.__AUN_compactRows;
 }
 
+function ensureCompactFooter(node) {
+  if (node.__AUN_compactFooter) return node.__AUN_compactFooter;
+  const el = document.createElement("div");
+  el.className = "AUN-lora-stack-footer";
+  document.body.appendChild(el);
+  node.__AUN_compactFooter = el;
+  return el;
+}
+
 function disposeCompactRows(node) {
   for (const row of node.__AUN_compactRows ?? []) {
     row.root?.remove?.();
   }
   node.__AUN_compactRows = null;
+  node.__AUN_compactFooter?.remove?.();
+  node.__AUN_compactFooter = null;
 }
 
 function syncCompactRow(node, row, showClipStrength) {
@@ -905,6 +948,52 @@ function positionCompactRowsCore(node, canvasRect, scale, offsetX, offsetY, numS
     });
     anyShown = true;
   }
+
+  // Position footer overlay
+  const footerEl = ensureCompactFooter(node);
+  if (showFooter(node) && !occluded) {
+    const footerHeight = getCompactFooterHeight(node);
+    const h = node.size?.[1] ?? 240;
+    const y0 = h - footerHeight + 3;
+    const y1 = h - 6;
+    const graphLeft = nodeX + 8;
+    const graphTop = nodeY + y0;
+    const graphRight = nodeX + currentWidth - 8;
+    const graphBottom = nodeY + y1;
+
+    const screenTL = graphToScreen(canvasRect, graphLeft, graphTop, scale, offsetX, offsetY);
+    const screenBR = graphToScreen(canvasRect, graphRight, graphBottom, scale, offsetX, offsetY);
+
+    // Populate content (only on change — avoids resetting scroll position)
+    const triggers = resolveStackTriggersForDisplay(node);
+    const newText = triggers ? triggers.join(", ") : null;
+    const cache = footerEl.__AUN_footerCache;
+    if (cache !== newText) {
+      footerEl.__AUN_footerCache = newText;
+      if (newText) {
+        footerEl.textContent = "";
+        const b = document.createElement("b");
+        b.textContent = "Stack trigger words: ";
+        footerEl.appendChild(b);
+        footerEl.appendChild(document.createTextNode(newText));
+      } else {
+        footerEl.textContent = "Stack trigger words (none)";
+      }
+    }
+
+    Object.assign(footerEl.style, {
+      display: "block",
+      left: `${screenTL.x}px`,
+      top: `${screenTL.y}px`,
+      width: `${Math.max(20, screenBR.x - screenTL.x)}px`,
+      height: `${Math.max(20, screenBR.y - screenTL.y)}px`,
+    });
+
+    footerEl.style.pointerEvents = "auto";
+  } else {
+    footerEl.style.display = "none";
+  }
+
   return anyShown;
 }
 
@@ -914,16 +1003,14 @@ function positionCompactRows(node, ctx) {
   const compact = isCompact(node);
   const collapsed = isNodeCollapsed(node);
 
-  // Hide all rows if: not compact, collapsed, no canvas, node being dragged, graph inactive, or canvas unstable
+  // Hide all rows if: not compact, collapsed, no canvas, or node being dragged
   const nodeDragging = node.__AUN_nodeBeingDragged;
-  const graphActive = app?.canvas?.canvas && document.hasFocus?.();
-  const stableFrames = app?.canvas?.__AUN_stableFrameCount ?? 0;
-  const canvasStable = stableFrames >= 3;
 
-  if (!compact || collapsed || !ctx?.canvas || nodeDragging || !graphActive || !canvasStable) {
+  if (!compact || collapsed || !ctx?.canvas || nodeDragging) {
     for (const row of rows) {
       row.root.style.display = "none";
     }
+    if (node.__AUN_compactFooter) node.__AUN_compactFooter.style.display = "none";
     return;
   }
 
@@ -933,6 +1020,7 @@ function positionCompactRows(node, ctx) {
     for (const row of rows) {
       row.root.style.display = "none";
     }
+    if (node.__AUN_compactFooter) node.__AUN_compactFooter.style.display = "none";
     return;
   }
   const scale = ds.scale || 1;
@@ -954,6 +1042,7 @@ function positionCompactRows(node, ctx) {
     for (const row of rows) {
       row.root.style.display = "none";
     }
+    if (node.__AUN_compactFooter) node.__AUN_compactFooter.style.display = "none";
     return;
   }
 
@@ -969,11 +1058,13 @@ function positionCompactRowsFromCanvas(node) {
   const collapsed = isNodeCollapsed(node);
   if (!compact || collapsed) {
     for (const row of rows) row.root.style.display = "none";
+    if (node.__AUN_compactFooter) node.__AUN_compactFooter.style.display = "none";
     return;
   }
   const canvas = app?.canvas;
   if (!canvas || !canvas.canvas || !canvas.ds) {
     for (const row of rows) row.root.style.display = "none";
+    if (node.__AUN_compactFooter) node.__AUN_compactFooter.style.display = "none";
     return;
   }
   const canvasRect = canvas.canvas.getBoundingClientRect();
@@ -991,6 +1082,7 @@ function positionCompactRowsFromCanvas(node) {
     nodeScreen.y - padding < canvasRect.bottom;
   if (!nodeOnScreen) {
     for (const row of rows) row.root.style.display = "none";
+    if (node.__AUN_compactFooter) node.__AUN_compactFooter.style.display = "none";
     return;
   }
   const numSlots = getNumSlots(node);
@@ -1073,17 +1165,7 @@ function resolveStackTriggersForDisplay(node) {
 
 function getCompactFooterHeight(node) {
   if (!isCompact(node) || isNodeCollapsed(node) || !showFooter(node)) return 0;
-  const triggers = resolveStackTriggersForDisplay(node);
-  if (!triggers || triggers.length === 0) {
-    return COMPACT_LABEL_HEIGHT;
-  }
-  const triggersText = triggers.join(", ");
-  const availableWidth = (node.size?.[0] ?? 240) - 20;
-  const avgCharWidth = 6.5;
-  const estLineCount = Math.ceil(
-    triggersText.length / (availableWidth / avgCharWidth),
-  );
-  return Math.max(COMPACT_LABEL_HEIGHT, Math.max(1, estLineCount) * 16 + 28);
+  return 42;
 }
 
 function getWidgetBottomY(widget) {
@@ -1353,97 +1435,17 @@ function setupCanvasTransformMonitor() {
   if (!canvas || canvas.__AUN_transformMonitorSetup) return;
   canvas.__AUN_transformMonitorSetup = true;
 
-  // Frame-based stabilization: rows only appear after N consecutive stable frames.
-  // This handles rapid panning, zooming, and programmatic jumps (bookmarks) robustly.
-  const STABLE_FRAMES_NEEDED = 3;
-  canvas.__AUN_stableFrameCount = 0;
-
-  // Hide ALL compact rows (both node types share this guard)
-  const hideAllCompactRows = () => {
-    const nodes = app?.graph?._nodes;
-    if (!nodes) return;
-    for (const n of nodes) {
-      for (const row of n.__AUN_compactRows ?? []) {
-        row.root.style.display = "none";
-      }
-      // Also hide AUNAddToPromptMulti overlay rows if present
-      for (const row of n.__aun_atpm_rows ?? []) {
-        if (row?.parentNode) row.style.display = "none";
-      }
-    }
-  };
-
-  // Reset stable frame counter and hide rows immediately
-  const markCanvasUnstable = () => {
-    canvas.__AUN_stableFrameCount = 0;
-    hideAllCompactRows();
-  };
-
-  // Use the actual DOM <canvas> element for event listeners (LGraphCanvas doesn't have addEventListener)
+  // Ensure the RAF loop runs during canvas interactions (pan/zoom)
+  // so overlay positions stay in sync.
   const domCanvas = canvas.canvas;
-
   if (domCanvas) {
-    // Proactively mark unstable when canvas interaction starts
-    const onMouseDown = (e) => {
-      if (e.target === domCanvas || e.target === canvas) {
-        markCanvasUnstable();
-        scheduleCompactRowsUpdate();
-      }
-    };
-    domCanvas.addEventListener("mousedown", onMouseDown);
-
-    // Also hide rows on mousemove during pan (middle-click drag / right-click pan)
-    const onMouseMove = () => {
-      if (canvas.__AUN_stableFrameCount > 0) {
-        markCanvasUnstable();
-      }
+    domCanvas.addEventListener("mousedown", () => {
       scheduleCompactRowsUpdate();
-    };
-    domCanvas.addEventListener("mousemove", onMouseMove, { passive: true });
-
-    // Wheel zoom can also shift things
-    const onWheel = () => {
-      markCanvasUnstable();
+    });
+    domCanvas.addEventListener("wheel", () => {
       scheduleCompactRowsUpdate();
-    };
-    domCanvas.addEventListener("wheel", onWheel, { passive: true });
+    }, { passive: true });
   }
-
-  // Monitor transform changes on every draw cycle
-  let lastTransform = null;
-  const JUMP_THRESHOLD = 50;
-
-  const originalDraw = canvas.draw;
-  canvas.draw = function drawTransformMonitor() {
-    const transform = this.getTransform?.();
-    const current = transform
-      ? `${transform.a.toFixed(2)},${transform.b.toFixed(2)},${transform.c.toFixed(2)},${transform.d.toFixed(2)},${transform.e.toFixed(2)},${transform.f.toFixed(2)}`
-      : null;
-
-    if (current && lastTransform) {
-      const prev = lastTransform.split(",").map(Number);
-      const curr = current.split(",").map(Number);
-      const dx = Math.abs(curr[4] - prev[4]);
-      const dy = Math.abs(curr[5] - prev[5]);
-      const ds = Math.abs(curr[0] - prev[0]); // scale change
-
-      if (dx > JUMP_THRESHOLD || dy > JUMP_THRESHOLD || ds > 0.01) {
-        markCanvasUnstable();
-        scheduleCompactRowsUpdate();
-      } else {
-        canvas.__AUN_stableFrameCount = (canvas.__AUN_stableFrameCount || 0) + 1;
-      }
-    } else {
-      // First frame or no transform — mark unstable
-      markCanvasUnstable();
-    }
-
-    lastTransform = current;
-
-    // Draw — positionCompactRows checks canvas.__AUN_stableFrameCount to decide
-    const result = originalDraw.apply(this, arguments);
-    return result;
-  };
 }
 
 function startLiveMonitor(node) {
@@ -1727,17 +1729,6 @@ app.registerExtension({
 
       if (!isCompact(this) || isNodeCollapsed(this) || !showFooter(this)) return;
 
-      const triggers = resolveStackTriggersForDisplay(this);
-      let headerText;
-      let triggerText;
-      if (triggers && triggers.length > 0) {
-        headerText = "Stack trigger words: ";
-        triggerText = triggers.join(", ");
-      } else {
-        headerText = "Stack trigger words (none)";
-        triggerText = "";
-      }
-
       const footerHeight = getCompactFooterHeight(this);
       const w = this.size[0];
       const h = this.size[1];
@@ -1751,61 +1742,6 @@ app.registerExtension({
       ctx.beginPath();
       ctx.roundRect(x0, y0, x1 - x0, y1 - y0, 4);
       ctx.fill();
-      ctx.fillStyle = "rgba(220,220,220,0.9)";
-      ctx.font = "bold 11px sans-serif";
-      ctx.textAlign = "left";
-      ctx.textBaseline = "top";
-
-      const lineHeight = 16;
-      const startX = x0 + 6;
-      const startY = y0 + 2;
-      const maxWidth = x1 - x0 - 12;
-
-      const wrapText = (text) => {
-        const lines = [];
-        let currentLine = "";
-        const words = text.split(", ");
-
-        for (const word of words) {
-          const testLine = currentLine ? currentLine + ", " + word : word;
-          const metrics = ctx.measureText(testLine);
-
-          if (metrics.width > maxWidth && currentLine) {
-            lines.push(currentLine);
-            currentLine = word;
-          } else {
-            currentLine = testLine;
-          }
-        }
-
-        if (currentLine) lines.push(currentLine);
-        return lines;
-      };
-
-      if (triggerText) {
-        const fullText = headerText + triggerText;
-        const headerMetrics = ctx.measureText(headerText);
-
-        if (
-          headerMetrics.width + ctx.measureText(triggerText).width <=
-          maxWidth
-        ) {
-          ctx.fillText(fullText, startX, startY);
-        } else {
-          ctx.fillText(headerText, startX, startY);
-          const wrappedTriggers = wrapText(triggerText);
-          for (let i = 0; i < wrappedTriggers.length; i++) {
-            ctx.fillText(
-              wrappedTriggers[i],
-              startX,
-              startY + (i + 1) * lineHeight,
-            );
-          }
-        }
-      } else {
-        ctx.fillText(headerText, startX, startY);
-      }
-
       ctx.restore();
     };
   },

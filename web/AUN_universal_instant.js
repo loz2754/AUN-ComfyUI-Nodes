@@ -29,10 +29,12 @@ const OFF_LABELS = {
   Mute: "Mute 🔇",
   Collapse: "Collapsed ▶",
   "Bypass+Collapse": "Byp+Col 🔴▶",
+  "Mute+Collapse": "Mute+Col 🔇▶",
 };
 const ON_LABELS = {
   Collapse: "Expanded ▼",
   "Bypass+Collapse": "Expanded ▼",
+  "Mute+Collapse": "Expanded ▼",
 };
 
 const clampInt = (value, min = 1, max = MAX_SLOTS) => {
@@ -842,6 +844,8 @@ const isNodeDisabled = (node, mode) => {
       return !!node.flags?.collapsed;
     case "Bypass+Collapse":
       return node.mode === NODE_MODE_VALUES.BYPASS && !!node.flags?.collapsed;
+    case "Mute+Collapse":
+      return node.mode === NODE_MODE_VALUES.NEVER && !!node.flags?.collapsed;
     default:
       return node.mode === NODE_MODE_VALUES.BYPASS;
   }
@@ -919,7 +923,7 @@ const setNodeStateForMode = (node, mode, isActive, stateChanges) => {
     }
   } else {
     if (updateMode) {
-      if (mode === "Mute") {
+      if (mode === "Mute" || mode === "Mute+Collapse") {
         setModeValue(NODE_MODE_VALUES.NEVER);
       } else {
         setModeValue(NODE_MODE_VALUES.BYPASS);
@@ -1503,6 +1507,7 @@ const refreshWidgets = function refreshWidgets() {
     "slot_count",
     "toggle_restriction",
     "show_outputs",
+    "show_AllSwitch",
     "use_all_groups",
   ];
   compactToggleWidgets.forEach((name) => {
@@ -1526,8 +1531,9 @@ const refreshWidgets = function refreshWidgets() {
   const singleSlot = slotCount <= 1;
   const allSwitch = getWidget(this, "AllSwitch");
   if (allSwitch) {
+    const showAllCompact = !!getWidget(this, "show_AllSwitch")?.value;
     const hideForGroups = useAllGroups && isGroupNode;
-    const hideForCompactSingle = isCompact && activeSlotCount <= 1;
+    const hideForCompactSingle = isCompact && !showAllCompact;
     const shouldHide =
       indexDriven || hideForGroups || hideForCompactSingle || singleSlot;
     applyWidgetHiddenState(allSwitch, shouldHide);
@@ -1709,6 +1715,8 @@ const executeInstant = function executeInstant() {
     stateChanges = ["collapse"];
   } else if (mode === "Bypass+Collapse") {
     stateChanges = ["bypass", "mute", "collapse"];
+  } else if (mode === "Mute+Collapse") {
+    stateChanges = ["mute", "bypass", "collapse"];
   } else {
     stateChanges = ["bypass", "mute"];
   }
@@ -1862,6 +1870,7 @@ const deriveStateChanges = (mode) => {
   if (mode === "Bypass") return ["bypass", "mute"];
   if (mode === "Collapse") return ["collapse"];
   if (mode === "Bypass+Collapse") return ["bypass", "mute", "collapse"];
+  if (mode === "Mute+Collapse") return ["mute", "bypass", "collapse"];
   return ["bypass", "mute"];
 };
 
@@ -2180,6 +2189,7 @@ const decorateNode = (node, nodeData) => {
     "toggle_restriction",
     "mode",
     "show_outputs",
+    "show_AllSwitch",
     "use_all_groups",
   ];
   trackedWidgets.forEach((name) => {

@@ -2,15 +2,18 @@ class AUNMultiBypassIndex:
     @classmethod
     def INPUT_TYPES(cls):
         inputs = {}
+        inputs["slot_count"] = ("INT", {
+            "default": 20, "min": 2, "max": 20, "step": 1,
+            "tooltip": "Number of active slots (2-20). Extra slots are hidden."
+        })
         inputs["Index"] = ("INT", {
             "default": 1, "min": 1, "max": 20,
-            "tooltip": "Select the group index (1-20) to activate. Only node IDs from this group will be active; others will be bypassed."
+            "tooltip": "Select the index (1-20) to activate. Only node IDs from this set of nodes will be active; others will be bypassed."
         })
-        # Inputs for node IDs 1-20
         for i in range(1, 21):
             inputs[f"node_ids_{i}"] = ("STRING", {
                 "default": "0", "multiline": False,
-                "tooltip": f"Comma-separated node IDs for group {i} (e.g., '5,12,23'). Enable ID badges in settings to see IDs."
+                "tooltip": f"Comma-separated node IDs for set {i} (e.g., '5,12,23'). Enable ID badges in settings to see IDs."
             })
         return {"required": inputs}
 
@@ -19,9 +22,9 @@ class AUNMultiBypassIndex:
     FUNCTION = "execute"
     CATEGORY = "AUN Nodes/Node Control"
     OUTPUT_NODE = True
-    DESCRIPTION = "Control bypass state of multiple node groups using an index. Select an index to activate one group while bypassing others."
+    DESCRIPTION = "Control bypass state of node(s) by ID, using an index. Select an index to activate one node-set while bypassing others."
 
-    def execute(self, Index,
+    def execute(self, Index, slot_count,
                       node_ids_1, node_ids_2, node_ids_3,
                       node_ids_4, node_ids_5, node_ids_6,
                       node_ids_7, node_ids_8, node_ids_9,
@@ -42,33 +45,34 @@ class AUNMultiBypassIndex:
                 node_ids_19, node_ids_20,
             ]
 
-            index = Index
-            # Collect desired states for each node ID, prioritizing True (Active)
-            # if a node appears in multiple groups.
+            slot_count = max(2, min(20, int(slot_count)))
+            index = max(1, min(slot_count, int(Index)))
+
             node_states = {}
-            for group_idx, node_ids_str in enumerate(all_inputs, start=1):
-                is_active = (group_idx == index)
+            for group_idx in range(slot_count):
+                node_ids_str = all_inputs[group_idx]
+                is_active = (group_idx + 1 == index)
                 if node_ids_str:
                     try:
-                        # Split string by comma, strip whitespace, and convert to int
                         node_ids = [int(s.strip()) for s in node_ids_str.split(',') if s.strip()]
                         for node_id in node_ids:
                             if node_id > 0:
-                                # If already set to True, don't overwrite with False
                                 if node_states.get(node_id) is not True:
                                     node_states[node_id] = is_active
                     except ValueError as e:
-                        print(f"[AUNMultiBypassIndex] Invalid node ID string for group {group_idx}: '{node_ids_str}'. Error: {e}")
+                        print(f"[AUNMultiBypassIndex] Invalid node ID string for set {group_idx + 1}: '{node_ids_str}'. Must be comma-separated integers. Error: {e}")
 
-            # Send the final states in a single batch event
             if node_states:
-                updates = [{"node_id": nid, "is_active": active} for nid, active in node_states.items()]
-                PromptServer.instance.send_sync("AUN_node_bypass_state", {"updates": updates})
+                mute_clear = [{"node_id": nid, "is_active": True} for nid in node_states.keys()]
+                PromptServer.instance.send_sync("AUN-node-mute-state", {"updates": mute_clear})
+
+                bypass_updates = [{"node_id": nid, "is_active": active} for nid, active in node_states.items()]
+                PromptServer.instance.send_sync("AUN_node_bypass_state", {"updates": bypass_updates})
 
         except Exception as e:
             print(f"[AUNMultiBypassIndex] Could not send bypass state: {e}")
 
-        return (Index,)
+        return (index,)
 
 NODE_CLASS_MAPPINGS = {"AUNMultiBypassIndex": AUNMultiBypassIndex}
 NODE_DISPLAY_NAME_MAPPINGS = {"AUNMultiBypassIndex": "AUN Multi Bypass Index"}

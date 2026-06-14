@@ -320,20 +320,7 @@ function getCompactLabelOverlayHeight(node) {
 
 function getCompactFooterHeight(node) {
   if (!isCompact(node) || isNodeCollapsed(node) || !showFooter(node)) return 0;
-  const triggers = resolveTriggersForDisplay(node);
-  if (!triggers || triggers.length === 0) {
-    // Minimal height just for "Prompt X: (no triggers)"
-    return COMPACT_LABEL_HEIGHT;
-  }
-  // Estimate wrapped lines for comma-separated triggers
-  const triggersText = triggers.join(", ");
-  const availableWidth = (node.size?.[0] ?? 200) - 20; // Account for padding
-  const avgCharWidth = 6.5; // Rough estimate for 11px monospace font
-  const estLineCount = Math.ceil(
-    triggersText.length / (availableWidth / avgCharWidth),
-  );
-  // Add extra buffer for descenders and padding
-  return Math.max(COMPACT_LABEL_HEIGHT, Math.max(1, estLineCount) * 16 + 28);
+  return 42;
 }
 
 function ensureHiddenAwareWidget(widget) {
@@ -715,6 +702,38 @@ function ensureCompactRowStyles() {
     .AUN-lora-multi-row input[type="checkbox"]:focus-visible {
       outline: 1px solid rgba(180, 210, 255, 0.8);
       outline-offset: 1px;
+    }
+    .AUN-lora-multi-footer {
+      position: absolute;
+      z-index: 12;
+      display: none;
+      overflow-y: auto;
+      box-sizing: border-box;
+      pointer-events: auto;
+      font: 11px sans-serif;
+      color: rgba(220,220,220,0.9);
+      padding: 2px 6px;
+      background: transparent;
+      white-space: normal;
+      word-break: break-word;
+      border-radius: 0;
+      border: none;
+    }
+    .AUN-lora-multi-footer::-webkit-scrollbar {
+      width: 5px;
+    }
+    .AUN-lora-multi-footer::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .AUN-lora-multi-footer::-webkit-scrollbar-thumb {
+      background: rgba(255,255,255,0.2);
+      border-radius: 3px;
+    }
+    .AUN-lora-multi-footer::-webkit-scrollbar-thumb:hover {
+      background: rgba(255,255,255,0.35);
+    }
+    .AUN-lora-multi-footer b {
+      font-weight: 700;
     }
   `;
   document.head.appendChild(style);
@@ -1166,18 +1185,27 @@ function buildCompactRow(node, promptIdx, slotIdx) {
   };
 }
 
+function ensureCompactFooter(node) {
+  if (node.__AUN_loraMultiCompactFooter) return node.__AUN_loraMultiCompactFooter;
+  const el = document.createElement("div");
+  el.className = "AUN-lora-multi-footer";
+  document.body.appendChild(el);
+  node.__AUN_loraMultiCompactFooter = el;
+  return el;
+}
+
 function disposeCompactRows(node) {
   const rows = node.__AUN_loraMultiCompactRows;
-  if (!Array.isArray(rows)) return;
-
-  // Remove all DOM elements from the document
-  for (const row of rows) {
-    if (row?.root?.parentNode) {
-      row.root.remove();
+  if (Array.isArray(rows)) {
+    for (const row of rows) {
+      if (row?.root?.parentNode) {
+        row.root.remove();
+      }
     }
+    node.__AUN_loraMultiCompactRows = null;
   }
-
-  node.__AUN_loraMultiCompactRows = null;
+  node.__AUN_loraMultiCompactFooter?.remove?.();
+  node.__AUN_loraMultiCompactFooter = null;
 }
 
 function ensureCompactRows(node) {
@@ -1350,6 +1378,53 @@ function positionCompactRowsCore(node, canvasRect, scale, offsetX, offsetY, occl
     });
     anyShown = true;
   }
+
+  // Position footer overlay
+  const footerEl = ensureCompactFooter(node);
+  if (showFooter(node) && !occluded) {
+    const footerHeight = getCompactFooterHeight(node);
+    const h = node.size?.[1] ?? 240;
+    const y0 = h - footerHeight + 3;
+    const y1 = h - 6;
+    const graphLeft = nodeX + 8;
+    const graphTop = nodeY + y0;
+    const graphRight = nodeX + currentWidth - 8;
+    const graphBottom = nodeY + y1;
+
+    const screenTL = graphToScreen(canvasRect, graphLeft, graphTop, scale, offsetX, offsetY);
+    const screenBR = graphToScreen(canvasRect, graphRight, graphBottom, scale, offsetX, offsetY);
+
+    // Populate content (only on change — avoids resetting scroll position)
+    const promptIdx = resolvePromptIndex(node);
+    const triggers = resolveTriggersForDisplay(node);
+    const newText = triggers ? triggers.join(", ") : null;
+    const cacheKey = `${promptIdx}|${newText ?? ""}`;
+    if (footerEl.__AUN_footerCache !== cacheKey) {
+      footerEl.__AUN_footerCache = cacheKey;
+      if (newText) {
+        footerEl.textContent = "";
+        const b = document.createElement("b");
+        b.textContent = `Prompt ${promptIdx} trigger words: `;
+        footerEl.appendChild(b);
+        footerEl.appendChild(document.createTextNode(newText));
+      } else {
+        footerEl.textContent = `Prompt ${promptIdx} trigger words (none)`;
+      }
+    }
+
+    Object.assign(footerEl.style, {
+      display: "block",
+      left: `${screenTL.x}px`,
+      top: `${screenTL.y}px`,
+      width: `${Math.max(20, screenBR.x - screenTL.x)}px`,
+      height: `${Math.max(20, screenBR.y - screenTL.y)}px`,
+    });
+
+    footerEl.style.pointerEvents = "auto";
+  } else {
+    footerEl.style.display = "none";
+  }
+
   return anyShown;
 }
 
@@ -1359,16 +1434,14 @@ function positionCompactRows(node, ctx) {
   const compact = isCompact(node);
   const collapsed = isNodeCollapsed(node);
 
-  // Hide all rows if: not compact, collapsed, no canvas, node being dragged, graph inactive, or canvas unstable
+  // Hide all rows if: not compact, collapsed, no canvas, or node being dragged
   const nodeDragging = node.__AUN_nodeBeingDragged;
-  const graphActive = app?.canvas?.canvas && document.hasFocus?.();
-  const stableFrames = app?.canvas?.__AUN_stableFrameCount ?? 0;
-  const canvasStable = stableFrames >= 3;
 
-  if (!compact || collapsed || !ctx?.canvas || nodeDragging || !graphActive || !canvasStable) {
+  if (!compact || collapsed || !ctx?.canvas || nodeDragging) {
     for (const row of rows) {
       row.root.style.display = "none";
     }
+    if (node.__AUN_loraMultiCompactFooter) node.__AUN_loraMultiCompactFooter.style.display = "none";
     return;
   }
 
@@ -1378,6 +1451,7 @@ function positionCompactRows(node, ctx) {
     for (const row of rows) {
       row.root.style.display = "none";
     }
+    if (node.__AUN_loraMultiCompactFooter) node.__AUN_loraMultiCompactFooter.style.display = "none";
     return;
   }
   const scale = ds.scale || 1;
@@ -1399,6 +1473,7 @@ function positionCompactRows(node, ctx) {
     for (const row of rows) {
       row.root.style.display = "none";
     }
+    if (node.__AUN_loraMultiCompactFooter) node.__AUN_loraMultiCompactFooter.style.display = "none";
     return;
   }
 
@@ -1412,11 +1487,13 @@ function positionCompactRowsFromCanvas(node) {
   const collapsed = isNodeCollapsed(node);
   if (!compact || collapsed) {
     for (const row of rows) row.root.style.display = "none";
+    if (node.__AUN_loraMultiCompactFooter) node.__AUN_loraMultiCompactFooter.style.display = "none";
     return;
   }
   const canvas = app?.canvas;
   if (!canvas || !canvas.canvas || !canvas.ds) {
     for (const row of rows) row.root.style.display = "none";
+    if (node.__AUN_loraMultiCompactFooter) node.__AUN_loraMultiCompactFooter.style.display = "none";
     return;
   }
   const canvasRect = canvas.canvas.getBoundingClientRect();
@@ -1434,6 +1511,7 @@ function positionCompactRowsFromCanvas(node) {
     nodeScreen.y - padding < canvasRect.bottom;
   if (!nodeOnScreen) {
     for (const row of rows) row.root.style.display = "none";
+    if (node.__AUN_loraMultiCompactFooter) node.__AUN_loraMultiCompactFooter.style.display = "none";
     return;
   }
   positionCompactRowsCore(node, canvasRect, scale, offsetX, offsetY, isNodeOccluded(node, canvasRect, scale, offsetX, offsetY));
@@ -1488,82 +1566,15 @@ function setupCanvasTransformMonitor() {
   if (!canvas || canvas.__AUN_transformMonitorSetup) return;
   canvas.__AUN_transformMonitorSetup = true;
 
-  // Frame-based stabilization: rows only appear after N consecutive stable frames.
-  const STABLE_FRAMES_NEEDED = 3;
-  canvas.__AUN_stableFrameCount = 0;
-
-  // Hide ALL compact rows (both node types share this guard)
-  const hideAllCompactRows = () => {
-    const nodes = app?.graph?._nodes;
-    if (!nodes) return;
-    for (const n of nodes) {
-      for (const row of n.__AUN_compactRows ?? []) {
-        row.root.style.display = "none";
-      }
-      for (const row of n.__AUN_loraMultiCompactRows ?? []) {
-        row.root.style.display = "none";
-      }
-    }
-  };
-
-  // Reset stable frame counter and hide rows immediately
-  const markCanvasUnstable = () => {
-    canvas.__AUN_stableFrameCount = 0;
-    hideAllCompactRows();
-  };
-
-  // Use the actual DOM <canvas> element for event listeners (LGraphCanvas doesn't have addEventListener)
   const domCanvas = canvas.canvas;
   if (domCanvas) {
-    // Proactively mark unstable when canvas interaction starts
-    domCanvas.addEventListener("mousedown", (e) => {
-      if (e.target === domCanvas || e.target === canvas) {
-        markCanvasUnstable();
-        scheduleCompactRowsUpdate();
-      }
+    domCanvas.addEventListener("mousedown", () => {
+      scheduleCompactRowsUpdate();
     });
-
     domCanvas.addEventListener("wheel", () => {
-      markCanvasUnstable();
       scheduleCompactRowsUpdate();
     });
   }
-
-  // Monitor transform changes on every draw cycle
-  let lastTransform = null;
-  const JUMP_THRESHOLD = 100;
-
-  const originalDraw = canvas.draw;
-  canvas.draw = function drawTransformMonitor() {
-    const transform = this.getTransform?.();
-    const current = transform
-      ? `${transform.a.toFixed(2)},${transform.b.toFixed(2)},${transform.c.toFixed(2)},${transform.d.toFixed(2)},${transform.e.toFixed(2)},${transform.f.toFixed(2)}`
-      : null;
-
-    if (current && lastTransform) {
-      const prev = lastTransform.split(",").map(Number);
-      const curr = current.split(",").map(Number);
-      const dx = Math.abs(curr[4] - prev[4]);
-      const dy = Math.abs(curr[5] - prev[5]);
-      const ds = Math.abs(curr[0] - prev[0]); // scale change
-
-      if (dx > JUMP_THRESHOLD || dy > JUMP_THRESHOLD || ds > 0.01) {
-        markCanvasUnstable();
-        scheduleCompactRowsUpdate();
-      } else {
-        canvas.__AUN_stableFrameCount = (canvas.__AUN_stableFrameCount || 0) + 1;
-      }
-    } else {
-      // First frame or no transform — mark unstable
-      markCanvasUnstable();
-    }
-
-    lastTransform = current;
-
-    // Draw — positionCompactRows checks canvas.__AUN_stableFrameCount to decide
-    const result = originalDraw.apply(this, arguments);
-    return result;
-  };
 }
 
 function applyCompact(node) {
@@ -2336,16 +2347,6 @@ app.registerExtension({
       }
 
       if (!showFooter(this)) return;
-      const promptIdx = resolvePromptIndex(this);
-      const triggers = resolveTriggersForDisplay(this);
-      let headerText, triggerText;
-      if (triggers && triggers.length > 0) {
-        headerText = `Prompt ${promptIdx} trigger words: `;
-        triggerText = triggers.join(", ");
-      } else {
-        headerText = `Prompt ${promptIdx} trigger words (none)`;
-        triggerText = "";
-      }
       const footerHeight = getCompactFooterHeight(this);
       const w = this.size[0];
       const h = this.size[1];
@@ -2358,46 +2359,6 @@ app.registerExtension({
       ctx.beginPath();
       ctx.roundRect(x0, y0, x1 - x0, y1 - y0, 4);
       ctx.fill();
-      ctx.fillStyle = "rgba(220,220,220,0.9)";
-      ctx.font = "bold 11px sans-serif";
-      ctx.textAlign = "left";
-      ctx.textBaseline = "top";
-      const lineHeight = 16;
-      const startX = x0 + 6;
-      const startY = y0 + 2;
-      const maxWidth = x1 - x0 - 12;
-      const wrapText = (text) => {
-        const lines = [];
-        let currentLine = "";
-        const words = text.split(", ");
-        for (const word of words) {
-          const testLine = currentLine ? currentLine + ", " + word : word;
-          const metrics = ctx.measureText(testLine);
-          if (metrics.width > maxWidth && currentLine) {
-            lines.push(currentLine);
-            currentLine = word;
-          } else {
-            currentLine = testLine;
-          }
-        }
-        if (currentLine) lines.push(currentLine);
-        return lines;
-      };
-      if (triggerText) {
-        const fullText = headerText + triggerText;
-        const headerMetrics = ctx.measureText(headerText);
-        if (headerMetrics.width + ctx.measureText(triggerText).width <= maxWidth) {
-          ctx.fillText(fullText, startX, startY);
-        } else {
-          ctx.fillText(headerText, startX, startY);
-          const wrappedTriggers = wrapText(triggerText);
-          for (let i = 0; i < wrappedTriggers.length; i++) {
-            ctx.fillText(wrappedTriggers[i], startX, startY + (i + 1) * lineHeight);
-          }
-        }
-      } else {
-        ctx.fillText(headerText, startX, startY);
-      }
       ctx.restore();
     };
   },

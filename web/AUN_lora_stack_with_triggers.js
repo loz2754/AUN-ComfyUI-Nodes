@@ -1085,48 +1085,16 @@ function setupCanvasTransformMonitor() {
   const canvas = app?.canvas;
   if (!canvas || canvas.__AUN_transformMonitorSetup) return;
   canvas.__AUN_transformMonitorSetup = true;
-  const STABLE_FRAMES_NEEDED = 3;
-  canvas.__AUN_stableFrameCount = 0;
-  const markCanvasUnstable = () => {
-    canvas.__AUN_stableFrameCount = 0;
-  };
-  canvas.addEventListener("mousedown", (e) => {
-    if (e.target === canvas.canvas || e.target === canvas) {
-      markCanvasUnstable();
+
+  const domCanvas = canvas.canvas;
+  if (domCanvas) {
+    domCanvas.addEventListener("mousedown", () => {
       scheduleCompactRowsUpdate();
-    }
-  });
-  canvas.addEventListener("wheel", () => {
-    markCanvasUnstable();
-    scheduleCompactRowsUpdate();
-  });
-  let lastTransform = null;
-  const JUMP_THRESHOLD = 100;
-  const originalDraw = canvas.draw;
-  canvas.draw = function drawTransformMonitor() {
-    const transform = this.getTransform?.();
-    const current = transform
-      ? `${transform.a.toFixed(2)},${transform.b.toFixed(2)},${transform.c.toFixed(2)},${transform.d.toFixed(2)},${transform.e.toFixed(2)},${transform.f.toFixed(2)}`
-      : null;
-    if (current && lastTransform) {
-      const prev = lastTransform.split(",").map(Number);
-      const curr = current.split(",").map(Number);
-      const dx = Math.abs(curr[4] - prev[4]);
-      const dy = Math.abs(curr[5] - prev[5]);
-      const ds = Math.abs(curr[0] - prev[0]);
-      if (dx > JUMP_THRESHOLD || dy > JUMP_THRESHOLD || ds > 0.01) {
-        markCanvasUnstable();
-        scheduleCompactRowsUpdate();
-      } else {
-        canvas.__AUN_stableFrameCount = (canvas.__AUN_stableFrameCount || 0) + 1;
-      }
-    } else {
-      markCanvasUnstable();
-    }
-    lastTransform = current;
-    const result = originalDraw.apply(this, arguments);
-    return result;
-  };
+    });
+    domCanvas.addEventListener("wheel", () => {
+      scheduleCompactRowsUpdate();
+    });
+  }
 }
 
 function startLiveMonitor(node) {

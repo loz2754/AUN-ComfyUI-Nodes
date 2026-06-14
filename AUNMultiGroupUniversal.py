@@ -19,6 +19,8 @@ class AUNMultiGroupUniversal:
             return ["collapse"]
         elif mode == "Bypass+Collapse":
             return ["bypass", "mute", "collapse"]
+        elif mode == "Mute+Collapse":
+            return ["mute", "bypass", "collapse"]
         else:
             return ["bypass", "mute"]
 
@@ -27,9 +29,9 @@ class AUNMultiGroupUniversal:
         # Define the base required inputs
         inputs = {
             "required": {
-                "mode": (["Bypass", "Mute", "Collapse", "Bypass+Collapse"], {
+                "mode": (["Bypass", "Mute", "Collapse", "Bypass+Collapse", "Mute+Collapse"], {
                     "default": "Bypass",
-                    "tooltip": "Choose how to disable nodes in groups: Bypass (🔴), Mute (🔇), or Collapse (▶)."
+                    "tooltip": "Choose how to disable nodes in groups: Bypass (🔴), Mute (🔇), Collapse (▶), or combinations."
                 }),
                 "slot_count": ("INT", {
                     "default": 3, "min": 1, "max": 20, "step": 1,
@@ -81,6 +83,10 @@ class AUNMultiGroupUniversal:
         inputs["required"]["Index"] = ("INT", {
             "default": 0, "min": 0, "max": 20, "step": 1,
             "tooltip": "When control_mode is index-driven, activate only this slot. 0 means all slots inactive."
+        })
+        inputs["required"]["show_AllSwitch"] = ("BOOLEAN", {
+            "default": False,
+            "tooltip": "Show the AllSwitch toggle even in compact mode."
         })
             
         return inputs

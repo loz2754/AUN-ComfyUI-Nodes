@@ -5,7 +5,20 @@
 
 ### Added
 
+- New node: **AUNStringListBuilder** — compile up to 20 multiline strings into an `AUN_STRING_LIST` with dynamic input visibility; node auto-resizes based on `num_inputs`.
+- New node: **AUNStringListIndex** — select a string from an `AUN_STRING_LIST` by 1-based index.
+- Added `"Mute+Collapse"` mode to **AUNMultiUniversal** and **AUNMultiGroupUniversal** — mutes then bypasses target nodes, bypassing collapse for a clean canvas.
+- Added `show_AllSwitch` toggle widget to **AUNMultiUniversal** and **AUNMultiGroupUniversal** — keeps the AllSwitch visible even in compact mode.
+- Added `slot_count` widget to **AUNMultiBypassIndex** and **AUNMultiMuteIndex** — control how many of the 20 node ID sets are active; unused slots are hidden.
+- Expanded **AUNMultiMuteIndex** from 10 to 20 node ID sets, matching AUNMultiBypassIndex.
+
 ### Changed
+
+- **AUNMultiBypassIndex** now clears mute state before applying bypass, ensuring nodes don't remain muted after being bypassed.
+- **AUNMultiMuteIndex** now clears bypass state before applying mute, ensuring nodes don't remain bypassed after being muted.
+- Simplified canvas transform monitor in LoRA stack JS extensions — removed unstable-frame detection in favor of direct event listeners on the DOM canvas.
+- Added scrollable footer styling to **AUNLoraStackWithTriggersModelClip** compact overlay.
+- Deleted legacy JS files (`AUNMultiBypassIndex.js`, `AUN_multi_bypass_index_instant.js`) — functionality consolidated into backend.
 
 ### Fixed
 

@@ -71,6 +71,8 @@ from .AUNSetMuteByTitle import AUNSetMuteByTitle
 from .AUNSetMuteStateGroup import AUNSetMuteStateGroup
 from .AUNShowTextWithTitle import AUNShowTextWithTitle
 from .AUNSingleLabelSwitch import AUNSingleLabelSwitch
+from .AUNStringListBuilder import AUNStringListBuilder
+from .AUNStringListIndex import AUNStringListIndex
 from .AUNStrip import AUNStrip
 from .AUNSwitchFloat import AUNSwitchFloat
 from .AUNTextIndexSwitch import AUNTextIndexSwitch
@@ -156,6 +158,8 @@ NODE_CLASS_MAPPINGS = {
     "AUNSetMuteStateGroup": AUNSetMuteStateGroup,
     "AUNShowTextWithTitle": AUNShowTextWithTitle,
     "AUNSingleLabelSwitch": AUNSingleLabelSwitch,
+    "AUNStringListBuilder": AUNStringListBuilder,
+    "AUNStringListIndex": AUNStringListIndex,
     "AUNStrip": AUNStrip,
     "AUNSwitchFloat": AUNSwitchFloat,
     "AUNTextIndexSwitch": AUNTextIndexSwitch,
@@ -237,6 +241,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "AUNSetMuteStateGroup": "Group Muter (Multi)",
     "AUNShowTextWithTitle": "Show Text With Title",
     "AUNSingleLabelSwitch": "Single Label Switch",
+    "AUNStringListBuilder": "String List Builder",
+    "AUNStringListIndex": "String List Index",
     "AUNStrip": "Strip",
     "AUNSwitchFloat": "Switch Float",
     "AUNTextIndexSwitch": "Text Index Switch",
