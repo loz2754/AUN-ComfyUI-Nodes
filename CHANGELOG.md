@@ -5,6 +5,16 @@
 
 ### Added
 
+### Changed
+
+### Fixed
+
+### Notes
+
+## [2.4.0] - 2026-06-14
+
+### Added
+
 - **LoRA Info dialog**: Per-image CivitAI metadata (seed, steps, CFG, sampler, model, prompts) shown on previews.
 - **LoRA Info dialog**: Trained words show source indicators — `[C]` for CivitAI and `[M]` for metadata with color-coded badges.
 - **LoRA Info dialog**: Editable user fields section with Strength Min, Strength Max, and Additional Notes; values persist to `{lora}.aun-info.json` sidecar via Save/Cancel buttons.
@@ -24,7 +34,6 @@
 - **LoRA Info dialog**: Name field no longer skipped when title equals filename stem.
 - **LoRA Info dialog**: Strength Min/Max fields always appear even without CivitAI data.
 - **LoRA Info dialog**: Saving cleared Name/Notes values now persists correctly (empty string stored instead of `null`).
-
 ## [2.3.0] - 2026-06-14
 
 ### Added
