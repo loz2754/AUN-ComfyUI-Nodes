@@ -5,6 +5,16 @@
 
 ### Added
 
+### Changed
+
+### Fixed
+
+### Notes
+
+## [2.3.0] - 2026-06-14
+
+### Added
+
 - New node: **AUNStringListBuilder** — compile up to 20 multiline strings into an `AUN_STRING_LIST` with dynamic input visibility; node auto-resizes based on `num_inputs`.
 - New node: **AUNStringListIndex** — select a string from an `AUN_STRING_LIST` by 1-based index.
 - Added `"Mute+Collapse"` mode to **AUNMultiUniversal** and **AUNMultiGroupUniversal** — mutes then bypasses target nodes, bypassing collapse for a clean canvas.
@@ -23,7 +33,6 @@
 ### Fixed
 
 ### Notes
-
 ## [2.2.22] - 2026-06-10
 
 ### Fixed
