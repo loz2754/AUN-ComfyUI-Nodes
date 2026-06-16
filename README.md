@@ -2,7 +2,9 @@
   <img src="docs/images/aun-logo.png" alt="AUN Logo" height="100" align="center"/> AUN Nodes Collection
 </h1>
 
-A comprehensive collection of custom nodes for ComfyUI designed to enhance workflow efficiency, organization, and control.
+A comprehensive collection of custom nodes for ComfyUI which I find useful. If you prefer compact, well-organised workflows, then give these a try. From versatile bypass/mute/collapse controllers, to automatic file naming and saving, to Loras handling with simple prompt and trigger words management, and lots of other tempting goodies!
+
+Many of the nodes feature a 'compact mode', activated by double clicking the node body, which hides all the widgets, except for those you need to see. I will be updating the readme with more examples/workflows as and when I find the time.
 
 ## <!-- BEGIN: AUN_NODES_AUTO -->
 
@@ -10,16 +12,17 @@ A comprehensive collection of custom nodes for ComfyUI designed to enhance workf
 
 #### Node Control - Command the Flow
 
-_AUN Node state controllers orchestrate bypass, mute, and collapse states so you can keep complex setups lean and responsive:_
+_AUN Node state controllers let you bypass, mute, and/or collapse nodes, keeping complex setups clean and fast:_
 
-- AUN Node Controller (`AUNMultiUniversal`) is a universal bypass/mute/collapse controller (1–20 slots). Nodes are chosen by ID or titles. It can take on the role of any of the more specific Node Control nodes.
+- AUN Node Controller (`AUNMultiUniversal`) is a universal bypass/mute/collapse controller (1–20 slots). Nodes are chosen by ID or titles. It can take on the role of any of the more specific Node Control nodes. Featuring Boolean outputs that can be used to switch other nodes at the same time. Also labels to show the state of the nodes for use in filenaming. There is also an All Switch, to toggle all at the same time, and different modes, such as 'max one', 'always one', 'increment' and 'random'.
 - AUN Group Controller (`AUNMultiGroupUniversal`) targets ComfyUI Groups (by group name) rather than individual nodes, with various filtering options.
-- Both AUN Node Controller and AUN Group Controller can also run in `index-driven` mode, so another node can select the active slot via an `INT` output. Switching back to `manual` drops any existing `Index` link so the manual controls fully take over again.
-- Bypass By Title (`AUNSetBypassByTitle`) sets bypass state for nodes whose titles match any of the provided titles (one per line)
+  The controller can show All Groups that it finds in the workflow, or the user can select which groups to show in the list. There is also an All Groups switch to toggle all groups at once.
+- Both AUN Node Controller and AUN Group Controller can also run in `index-driven` mode, so another node can select the active slot via an `INT` output.
+- Bypass By Title (`AUNSetBypassByTitle`) sets bypass state for one or more nodes whose titles match any of the provided titles (one per line).
 - Mute By Title (`AUNSetMuteByTitle`) same as Bypass By Title but mute instead of bypass.
 - Group Bypasser (Multi) (`AUNSetBypassStateGroup`) set the bypass state of all nodes in groups selected from the graph.
 - Group Muter (Multi) (`AUNSetMuteStateGroup`) same as Group Bypasser but mute instead of bypass.
-- Multi Bypass Index (`AUNMultiBypassIndex`) control bypass state of multiple nodes by IDs using an index. Select an index to activate one set of nodes while bypassing others.
+- Multi Bypass Index (`AUNMultiBypassIndex`) control bypass state of multiple nodes by IDs using an index. Selecting an index exclusively activates one set of nodes while bypassing all other sets.
 - Multi Mute Index (`AUNMultiMuteIndex`) same Multi Bypass Index but mute instead of bypass.
 - Node Collapser & Bypasser Advanced (`AUNSetCollapseAndBypassStateAdvanced`) set collapse and bypass or mute state for multiple nodes. Has a combined override or separate toggles.
 - Node State Controller (`AUNNodeStateController`) control collapse + bypass or mute for nodes by ID, group, or title.
@@ -44,29 +47,31 @@ To provide a fast, visually consistent understanding of node states, AUN nodes u
 
 #### File Management
 
+- Path Filename V2 (`AUNPathFilenameV2`) is an image path/filename builder for generating image save paths and filenames, with manual/auto naming built in. It also emits a 'sidecar' ( text or json) that shows the main parameters used.
+You can toggle on/off whether to save various parameters in the filename, like Model, Sample, Seed, CFG etc.
+Works best when coupled with AUN Save Image.
+- Filename Resolver V2 (`AUNFilenameResolverPreviewV2`) allows the AUN path/filename builder nodes to connect to 'standard' save image/video nodes.
+- Path Filename Video (Resolved) (`AUNPathFilenameVideoResolved`) builds the final resolved video filename and emits a 'sidecar' ( text or json) that shows the main parameters used. Can be used with VHS Video Combine.
+- Path Filename Video V2 (`AUNPathFilenameVideoV2`) is a video path/filename builder that emits `path_filename` plus `date_format`. For use with AUN Save Image/Video nodes.
 - Main Folder Manual Name (`MainFolderManualName`) switch between a manual name and an automatic filename for the output path. Also returns the MainFolder, useful if you want to use the MainFolder in another node, and a boolean which can be used to switch other nodes.
+- Path Filename (`AUNPathFilename`) is the legacy image path/filename builder for existing workflows, generating a file path and filename from image-focused components and placeholders. Kept only for backwards compatibility.
+- Path Filename Video (`AUNPathFilenameVideo`) is the legacy video path/filename builder for existing workflows that still use separate outputs. Kept only for backwards compatibility.
 
-- Path Filename (`AUNPathFilename`) is the legacy image path/filename builder for existing workflows, generating a file path and filename from image-focused components and placeholders.
 
-- Filename Resolver V2 (`AUNFilenameResolverPreviewV2`) bridges the AUN path/filename builder nodes to standard save image/video nodes and consumes one `path_filename` value.
 
-- Path Filename Video (`AUNPathFilenameVideo`) is the legacy video path/filename builder for existing workflows that still use separate outputs.
-- Path Filename V2 (`AUNPathFilenameV2`) is the recommended image path/filename builder that emits `path_filename` plus `date_format` for generating image save paths and filenames, with manual/auto naming built in.
-- Path Filename Video V2 (`AUNPathFilenameVideoV2`) is the recommended single-output video path/filename builder that emits `path_filename` plus `date_format`.
 
-- Path Filename Video (Resolved) (`AUNPathFilenameVideoResolved`) builds the final resolved video filename and emits a sidecar that mirrors AUN Save Video.
 
 ---
 
 #### Image
 
-- Empty Latent (`AUNEmptyLatent`) generates an empty latent image with specified dimensions. It offers options for predefined aspect ratios, random dimension swapping, and batching, making it a flexible starting point for your image generation workflows.
+- Empty Latent (`AUNEmptyLatent`) generates an empty latent image with specified dimensions. It offers options for predefined aspect ratios, random width/height swapping, and batching, making it a flexible starting point for your image generation workflows.
 - Image Loader (`AUNImgLoader`) loads an image and returns the image data, a mask, the original filename, and a cleaned filename. The cleaned filename is useful for prompts or file outputs in other nodes.
-- Image Preview With Title (`AUNTitleImagePreview`) optional text input is mirrored to the node's title.
+- Image Preview With Title (`AUNTitleImagePreview`) shows the image and also the filename actually as the node's title.
 - Img2Img (`AUNImg2Img`) provides a comprehensive Img2Img node, allowing you to switch between txt2img and img2img modes. It handles image loading, resizing, and encoding into the latent space, providing essential outputs for further processing.
 - Load & Resize Image (`AUNImageLoadResize`) load images with optional automatic resizing. Supports FramePack nearest-bucket sizing, maintains aspect ratio, and provides filename information for workflow organization.
-- Load Image Single/Batch 3 (`AUNImageSingleBatch3`) load a single uploaded image or cycle through a batch of images from a folder with multiple selection modes, including increment, random, range and search filtering by filename patterns.
-- Manual/Auto Image Switch (`AUNManualAutoImageSwitch`) replaces the old manual/auto subgraph with one node that switches filename selection and image output together. In Auto mode it passes through the source image and filename; in Manual mode it outputs `ManualName` and a generated placeholder image with optional overlay text and color controls.
+- Load Image Single/Batch 3 (`AUNImageSingleBatch3`) is a veratile way to either load a single uploaded image, or cycle through a batch of images from a folder - with multiple selection modes, including increment, random, range and search filtering by filename patterns.
+- Manual/Auto Image Switch (`AUNManualAutoImageSwitch`) switches a filename and image output together. In Auto mode it passes through the source image and filename; in Manual mode it outputs `ManualName` and a generated placeholder image with optional overlay text and color controls.
 - Resize Image (`AUNImageResize`) resize an input image using the same strategies as AUN Load & Resize Image, including FramePack buckets and fill/crop anchoring.
 - Save Image *Deprecated* (`AUNSaveImage`) is the legacy image saver for workflows that still provide separate `path` and `filename` inputs.
 - Save Image V2 (`AUNSaveImageV2`) is the recommended image saver with advanced filename customization and metadata embedding, accepting one combined `path_filename` input.
@@ -84,12 +89,13 @@ To provide a fast, visually consistent understanding of node states, AUN nodes u
 
 - KSampler Inputs (`KSamplerInputs`) provides a convenient way to set the KSampler inputs (sampler, scheduler, CFG, and steps) in one place. This is useful for organizing your workflow and making it easier to manage these common parameters.
 - KSampler Plus (`AUNKSamplerPlusv3`) a progressive two-pass sampler with latent-upscale, pixel-space upscale and optional final refinement. Also outputs a string of the selected upscale methods for use in filenames.
+- KSampler 2-Model ('AUNKSamplerPlusv4') as KSampler Plus, but accepts a second model for the latent upscale process.
 
 ---
 
 #### Loaders
 
-- Ckpt Load With Clip Skip (`AUNCheckpointLoaderWithClipSkip`) speaks for itself.
+- Ckpt Load With Clip Skip (`AUNCheckpointLoaderWithClipSkip`) speaks for itself. Als outputs the model name.
 
 ---
 
