@@ -108,7 +108,7 @@ class AUNRandomModelBundleSwitch:
     RETURN_TYPES = ("MODEL", "STRING", "INT", "STRING")
     RETURN_NAMES = ("MODEL", "selected_text", "index", "label")
     FUNCTION = "switch"
-    CATEGORY = "AUN Nodes/Utility"
+    CATEGORY = "AUN Nodes/Loras"
     DESCRIPTION = (
         "Selects one model and optional text/label pair using None, Select, Increment, Random, or Range modes. "
         "TIP: Double-click the node or right-click and select 'Compact mode' to hide configuration widgets."

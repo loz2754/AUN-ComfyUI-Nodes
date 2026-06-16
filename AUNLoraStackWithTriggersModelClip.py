@@ -132,7 +132,7 @@ class AUNLoraStackWithTriggersModelClip:
         "trigger + prompt",
     )
     FUNCTION = "load_stack"
-    CATEGORY = "AUN Nodes/Utility"
+    CATEGORY = "AUN Nodes/Loras"
     OUTPUT_NODE = False
     DESCRIPTION = (
         "Stacks multiple LoRAs with per-slot trigger words and optional CLIP support. "

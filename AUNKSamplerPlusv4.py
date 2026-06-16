@@ -130,9 +130,11 @@ class AUNKSamplerPlusv4:
     OUTPUT_NODE = True
     CATEGORY = "AUN Nodes/KSampler"
     DESCRIPTION = (
-        "Progressive two-pass sampler with pixel-space upscale and optional final refinement. "
-        "Flow: Base (first pass) → Latent upscaled (second pass) → Both upscaled (pixel-upscale decoded latent, then resample mirroring second pass) → Refined image (optional). "
+        "Progressive two-pass sampler with pixel-space upscale and optional final refinement."
+        "Input for a second model can be provided for the latent upscale pass, but if not connected, the base model will be used for both passes."
+        "Flow: Base (first pass) → Latent upscaled (second pass) → Both upscaled (pixel-upscaled decoded latent, then resample mirroring second pass) → Refined image (optional). "
         "Upscaled type returns one of: 'Both upscaled', 'Latent upscaled', 'Image upscaled', or 'No upscale'. If refine is enabled, ' Refined' is appended."
+        "Each pass outputs an image: Base (first pass decoded), Image upscaled (base image upscaled in pixel space), Latent upscaled (second pass decoded), Both upscaled (pixel-upscaled decoded latent, then resampled), Refined image (final optional refinement)."
     )
 
     def pil_upscale(self, img, ratio, method, model_name="None"):
@@ -554,4 +556,4 @@ class AUNKSamplerPlusv4:
         )
 
 NODE_CLASS_MAPPINGS = {"AUNKSamplerPlusv4": AUNKSamplerPlusv4}
-NODE_DISPLAY_NAME_MAPPINGS = {"AUNKSamplerPlusv4": "AUN KSampler PlusV4"}
+NODE_DISPLAY_NAME_MAPPINGS = {"AUNKSamplerPlusv4": "AUN KSampler 2-Model"}

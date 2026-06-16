@@ -111,7 +111,7 @@ class AUNLoraStackWithTriggers:
         "prompt",
     )
     FUNCTION = "load_stack"
-    CATEGORY = "AUN Nodes/Utility"
+    CATEGORY = "AUN Nodes/Loras"
     OUTPUT_NODE = False
     DESCRIPTION = (
         "[DEPRECATED] Stacks multiple LoRAs with per-slot trigger words. "

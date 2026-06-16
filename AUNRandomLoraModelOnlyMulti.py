@@ -145,10 +145,10 @@ class AUNRandomLoraModelOnlyMulti:
         "trigger + prompt",
     )
     FUNCTION = "load_loras_for_prompt"
-    CATEGORY = "AUN Nodes/Utility"
+    CATEGORY = "AUN Nodes/Loras"
     OUTPUT_NODE = False
     DESCRIPTION = (
-        "Experimental multi-LoRA loader where prompt index determines which 1-3 LoRAs to apply. "
+        "Multi-LoRA loader where prompt index determines which 1-3 LoRAs to apply. "
         "Each prompt can have different LoRAs and strengths applied sequentially to the same model+clip. "
         "Double-click to toggle compact mode for quick preview. "
         "In compact mode, drag a LoRA label onto another to swap their values (LoRA, strengths, and triggers). "

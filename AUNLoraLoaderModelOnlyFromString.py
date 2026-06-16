@@ -35,7 +35,7 @@ class AUNLoraLoaderModelOnlyFromString:
     RETURN_TYPES = ("MODEL", "STRING")
     RETURN_NAMES = ("MODEL", "resolved_lora")
     FUNCTION = "load_lora"
-    CATEGORY = "AUN Nodes/Utility"
+    CATEGORY = "AUN Nodes/Loras"
     OUTPUT_NODE = False
     DESCRIPTION = "Loads a LoRA into a MODEL from a STRING input. Useful when core LoraLoaderModelOnly lora_name is COMBO-only."
 

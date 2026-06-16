@@ -123,7 +123,7 @@ class AUNKSamplerPlusV2:
     RETURN_NAMES = ("Base image", "Image upscaled", "Latent upscaled", "Both upscaled", "Refined image", "LATENT", "Upscaled type")
     FUNCTION = "qmSample"
     OUTPUT_NODE = True
-    CATEGORY = "AUN Nodes/Sampling"
+    CATEGORY = "AUN Nodes/Deprecated/KSampler"
     DESCRIPTION = (
         "Progressive two-pass sampler with pixel-space upscale and optional final refinement. "
         "Flow: Base (first pass) -> Latent upscaled (second pass) -> Both upscaled (pixel-upscale decoded latent, then resample mirroring second pass) -> Refined image (optional). "
@@ -542,4 +542,4 @@ class AUNKSamplerPlusV2:
 
 
 NODE_CLASS_MAPPINGS = {"AUNKSamplerPlusV2": AUNKSamplerPlusV2}
-NODE_DISPLAY_NAME_MAPPINGS = {"AUNKSamplerPlusV2": "AUN KSampler PlusV2"}
+NODE_DISPLAY_NAME_MAPPINGS = {"AUNKSamplerPlusV2": "AUN KSampler PlusV2 (Deprecated)"}

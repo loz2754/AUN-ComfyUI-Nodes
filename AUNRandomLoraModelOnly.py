@@ -152,7 +152,7 @@ class AUNRandomLoraModelOnly:
         "trigger + prompt",
     )
     FUNCTION = "load_random_lora"
-    CATEGORY = "AUN Nodes/Utility"
+    CATEGORY = "AUN Nodes/Loras"
     OUTPUT_NODE = False
     DESCRIPTION = (
         "Compact all-in-one random LoRA model loader with multiple selectable LoRA slots. "
