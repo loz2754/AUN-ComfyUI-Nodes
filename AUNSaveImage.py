@@ -1321,7 +1321,7 @@ class AUNSaveImage:
     RETURN_NAMES = ("filename", "sidecar_text")
     FUNCTION = "save_files"
     OUTPUT_NODE = True
-    CATEGORY = "AUN Nodes/Image"
+    CATEGORY = "AUN Nodes/Deprecated/Image"
     DESCRIPTION = "Legacy image saver for workflows that provide separate path and filename inputs. Supports advanced filename customization, metadata embedding, and LoRA tracking via selected_lora input. Use Save Image V2 for new single path_filename workflows."
 
     def _get_model_hash(self, modelname):
@@ -1856,4 +1856,4 @@ class AUNSaveImage:
             i += 1
 
 NODE_CLASS_MAPPINGS = {"AUNSaveImage": AUNSaveImage}
-NODE_DISPLAY_NAME_MAPPINGS = {"AUNSaveImage": "AUN Save Image (Legacy)"}
+NODE_DISPLAY_NAME_MAPPINGS = {"AUNSaveImage": "AUN Save Image (Deprecated)"}

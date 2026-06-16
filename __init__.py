@@ -63,6 +63,7 @@ from .AUNRandomTextIndexSwitchV2 import AUNRandomTextIndexSwitchV2
 from .AUNSaveImage import AUNSaveImage
 from .AUNSaveImageV2 import AUNSaveImageV2
 from .AUNSaveVideo import AUNSaveVideo
+from .AUNSaveVideo import AudioInputOptions
 from .AUNSaveVideoV2 import AUNSaveVideoV2
 from .AUNSetBypassByTitle import AUNSetBypassByTitle
 from .AUNSetBypassStateGroup import AUNSetBypassStateGroup
@@ -88,6 +89,7 @@ from .TextSwitch2InputWithTextOutput import TextSwitch2InputWithTextOutput
 WEB_DIRECTORY = "./web"
 
 NODE_CLASS_MAPPINGS = {
+    "AudioInputOptions": AudioInputOptions,
     "AUNAddToPrompt": AUNAddToPrompt,
     "AUNAddToPromptMulti": AUNAddToPromptMulti,
     "AUNAny": AUNAny,
@@ -173,11 +175,12 @@ NODE_CLASS_MAPPINGS = {
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
+    "AudioInputOptions": "Audio Input Options",
     "AUNAddToPrompt": "Add-To-Prompt",
     "AUNAddToPromptMulti": "Add-To-Prompt (Multi)",
     "AUNAny": "Any",
     "AUNBookmark": "AUN Bookmark",
-    "AUNBoolean": "Boolean",
+    "AUNBoolean": "Random Boolean",
     "AUNCFG": "CFG Selector",
     "AUNCheckpointLoaderWithClipSkip": "Ckpt Load With Clip Skip",
     "AUNEmptyLatent": "Empty Latent",
@@ -230,10 +233,10 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "AUNRandomNumber": "Random Number",
     "AUNRandomTextIndexSwitch": "Random Text Index Switch",
     "AUNRandomTextIndexSwitchV2": "Random Text Index Switch V2",
-    "AUNSaveImage": "Save Image (Legacy)",
-    "AUNSaveImageV2": "AUN Save Image V2 (Recommended)",
-    "AUNSaveVideo": "Save Video (Legacy)",
-    "AUNSaveVideoV2": "AUN Save Video V2 (Recommended)",
+    "AUNSaveImage": "Save Image (Deprecated)",
+    "AUNSaveImageV2": "AUN Save Image V2",
+    "AUNSaveVideo": "Save Video (Deprecated)",
+    "AUNSaveVideoV2": "AUN Save Video V2 (Deprecated)",
     "AUNSetBypassStateGroup": "Group Bypasser (Multi)",
     "AUNSetBypassByTitle": "Bypass By Title",
     "AUNSetCollapseAndBypassStateAdvanced": "Node Collapser & Bypasser Advanced",

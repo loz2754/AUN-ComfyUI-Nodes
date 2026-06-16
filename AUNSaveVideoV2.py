@@ -60,7 +60,7 @@ class AUNSaveVideoV2(AUNSaveVideo):
     RETURN_NAMES = AUNSaveVideo.RETURN_NAMES
     OUTPUT_NODE = True
     FUNCTION = "combine_video_v2"
-    CATEGORY = "AUN Nodes/Video"
+    CATEGORY = "AUN Nodes/Deprecated/Video"
     DESCRIPTION = "Recommended video saver for new workflows. Combine image frames into an animated image or video. Supports %token% filename placeholders and %token placeholders. Empty inputs yield empty replacements.Example: %model_short%_steps-%steps%_cfg-%cfg%_seed-%seed%_%loras%."
 
     @staticmethod
@@ -183,4 +183,4 @@ class AUNSaveVideoV2(AUNSaveVideo):
 
 NODE_CLASS_MAPPINGS = {"AUNSaveVideoV2": AUNSaveVideoV2}
 
-NODE_DISPLAY_NAME_MAPPINGS = {"AUNSaveVideoV2": "AUN Save Video V2 (Recommended)"}
+NODE_DISPLAY_NAME_MAPPINGS = {"AUNSaveVideoV2": "AUN Save Video V2 (Deprecated)"}

@@ -136,7 +136,7 @@ class AUNSaveVideo():
     RETURN_NAMES = ("images", "sidecar_text")
     OUTPUT_NODE = True
     FUNCTION = "combine_video"
-    CATEGORY = "AUN Nodes/Video"
+    CATEGORY = "AUN Nodes/Deprecated/Video"
     DESCRIPTION = (
         "Legacy video saver for workflows using the current filename_format input. Supports %token% filename placeholders and %token placeholders. Combine image frames into an animated image or video. Empty inputs yield empty replacements."
         "Example: %model_short%_steps-%steps%_cfg-%cfg%_seed-%seed%_%loras%. Use AUNSaveVideoV2 for new single path_filename workflows."
@@ -1426,6 +1426,7 @@ class AudioInputOptions:
         
     RETURN_TYPES = ("AUDIO_INPUT_OPTIONS",)
     FUNCTION = "execute"
+    CATEGORY = "AUN Nodes/Deprecated/Video"
 
     def execute(self, **kwargs):
         kwargs_copy = copy.deepcopy(kwargs)
@@ -1788,7 +1789,7 @@ NODE_CLASS_MAPPINGS = {
 }  
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "AUNSaveVideo": "AUN Save Video (Legacy)",
-    "JoinVideosInDirectory": "Join Videos In Directory",
+    "AUNSaveVideo": "AUN Save Video (Deprecated)",
+    "JoinVideosInDirectory": "Join Videos In Directory (Deprecated)",
     "AudioInputOptions": "Audio Input Options (For Video Output)"
 }
