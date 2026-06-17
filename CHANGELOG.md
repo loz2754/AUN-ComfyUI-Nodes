@@ -11,6 +11,36 @@
 
 ### Notes
 
+## [2.4.1] - 2026-06-17
+
+### Added
+
+- Registered `AudioInputOptions` node in `__init__.py` (was defined in `AUNSaveVideo.py` but never exposed to the node registry).
+
+### Changed
+
+- Moved LoRA nodes (`AUNLoraLoaderModelOnlyFromString`, `AUNLoraStackWithTriggers`, `AUNLoraStackWithTriggersModelClip`, `AUNRandomLoraModelOnly`, `AUNRandomLoraModelOnlyMulti`, `AUNRandomModelBundleSwitch`) from `AUN Nodes/Utility` to `AUN Nodes/Loras` for better menu organization.
+- Moved `AUNKSamplerPlusV2` from `AUN Nodes/Sampling` to `AUN Nodes/Deprecated/KSampler`.
+- Moved `AUNSaveImage` from `AUN Nodes/Image` to `AUN Nodes/Deprecated/Image`.
+- Moved `AUNSaveVideo` and `AUNSaveVideoV2` from `AUN Nodes/Video` to `AUN Nodes/Deprecated/Video`.
+- `AUNSaveImage` display name: "(Legacy)" → "(Deprecated)".
+- `AUNSaveVideo` display name: "(Legacy)" → "(Deprecated)".
+- `AUNSaveVideoV2` display name: "(Recommended)" → "(Deprecated)".
+- `AUNSaveImageV2` display name: removed "(Recommended)" tag.
+- `AUNBoolean` display name: "Boolean" → "Random Boolean".
+- `AUNKSamplerPlusV2` display name: now tagged "(Deprecated)".
+- `AUNKSamplerPlusv4` display name: "KSampler Plus V4" → "AUN KSampler 2-Model".
+- `AUNRandomLoraModelOnlyMulti` display name: removed "(Experimental)" tag.
+- `JoinVideosInDirectory` display name: now tagged "(Deprecated)".
+- Updated descriptions on `AUNKSamplerPlusv3`, `AUNKSamplerPlusv4`, and `AUNRandomLoraModelOnlyMulti`.
+- Major README.md rewrite with friendlier language, better explanations, and deprecation callouts.
+
+### Fixed
+
+- `AudioInputOptions` category set to `AUN Nodes/Deprecated/Video` (was missing a category).
+
+### Notes
+
 ## [2.4.0] - 2026-06-14
 
 ### Added
