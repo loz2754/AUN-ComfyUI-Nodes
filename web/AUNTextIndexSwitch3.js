@@ -1,4 +1,5 @@
 import { app } from "../../scripts/app.js";
+import { api } from "../../scripts/api.js";
 
 const NODE_TYPES = ["AUNTextIndexSwitch3", "AUNTextIndexSwitch4"];
 const PROP_KEY = "_AUN_compactMode";
@@ -381,6 +382,11 @@ function getEffectiveIndex(node) {
     if (link?.origin_id) {
       const srcNode = app.graph.getNodeById?.(link.origin_id);
       if (srcNode) {
+        // Use cached runtime output if available (set by executed/AUN_random_text_index_selected events)
+        if (srcNode.__aun_last_exec_index != null) {
+          return Number(srcNode.__aun_last_exec_index);
+        }
+
         // Check AUNRandomIndexSwitch
         const selectWidget = srcNode.widgets?.find((w) => w.name === "select");
         if (selectWidget !== undefined) return selectWidget.value;
@@ -2334,6 +2340,94 @@ if (app && app.canvas) {
       return result;
     };
   }
+}
+
+// Listen for executed events to cache output index on AUNRandomIndexSwitch nodes
+// and force-update overlays on AUNTextIndexSwitch3/4 nodes
+if (typeof window?.addEventListener === "function") {
+  api.addEventListener("executed", ({ detail }) => {
+    if (!detail || !app?.graph) return;
+    const nodeId = detail.node;
+    if (nodeId == null) return;
+
+    const node = app.graph.getNodeById?.(nodeId) || app.graph.getNodeById?.(parseInt(nodeId, 10));
+    if (!node) return;
+
+    const nodeType = (node.comfyClass || node.type || "").toLowerCase();
+    if (nodeType.includes("aunrandomindexswitch")) {
+      // Cache the output index from the executed message
+      const output = detail.output;
+      let val = null;
+      if (output != null && typeof output === "object" && !Array.isArray(output)) {
+        if (output.index !== undefined) val = parseInt(output.index, 10);
+      } else if (Array.isArray(output) && output.length > 0) {
+        val = parseInt(output[0], 10);
+      } else if (output != null) {
+        val = parseInt(output, 10);
+      }
+      if (Number.isInteger(val)) {
+        node.__aun_last_exec_index = val;
+      }
+    }
+
+    // Force overlay update on AUNTextIndexSwitch3/4 when they execute
+    if (isTargetNode(node)) {
+      const output = detail.output;
+      if (output) {
+        const idx = output.index != null ? parseInt(output.index, 10) : (Array.isArray(output) ? parseInt(output[2], 10) : null);
+        if (idx != null && Number.isInteger(idx) && idx > 0) {
+          node.__aun_last_exec_index = idx;
+          updateCompactOverlay(node, idx, true);
+        }
+      }
+    }
+  });
+
+  // Listen for AUN_random_text_index_selected events - these fire with the correct index
+  // from AUNRandomTextIndexSwitch/AUNRandomTextIndexSwitchV2 nodes
+  api.addEventListener("AUN_random_text_index_selected", ({ detail }) => {
+    if (!detail || !app?.graph) return;
+    const nodeId = detail.node_id;
+    if (!nodeId) return;
+
+    const switchNode = app.graph.getNodeById?.(nodeId) || app.graph.getNodeById?.(parseInt(nodeId, 10));
+    if (!switchNode) return;
+
+    const idx = parseInt(detail.index) || 1;
+
+    // Find all AUNTextIndexSwitch3/4 nodes that have their index input linked to this switch node
+    const nodes = app.graph._nodes || app.graph.nodes || [];
+    for (const node of nodes) {
+      if (!isTargetNode(node)) continue;
+
+      const indexInput = node.inputs?.find((i) => i.name === "index");
+      if (!indexInput?.link) continue;
+
+      const link = app.graph.links?.get?.(indexInput.link);
+      if (!link) continue;
+
+      // Check if this node's index input is connected to the switch node that fired the event
+      if (String(link.origin_id) === String(nodeId)) {
+        switchNode.__aun_last_exec_index = idx;
+        node.__aun_last_exec_index = idx;
+        // Force overlay update
+        updateCompactOverlay(node, idx, true);
+      } else {
+        // Check if the index input is connected to AUNRandomIndexSwitch which is then connected to this switch
+        // In that case, also cache the index on the target node
+        const srcNode = app.graph.getNodeById?.(link.origin_id);
+        if (srcNode) {
+          const srcType = (srcNode.comfyClass || srcNode.type || "").toLowerCase();
+          if (srcType.includes("aunrandomindexswitch")) {
+            // The AUNRandomIndexSwitch feeds into this switch node, cache the index on the source
+            srcNode.__aun_last_exec_index = idx;
+            // Force overlay update on the target node
+            updateCompactOverlay(node, idx, true);
+          }
+        }
+      }
+    }
+  });
 }
 
 // Also hook graph events

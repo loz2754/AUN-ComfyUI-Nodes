@@ -32,6 +32,7 @@ class AUNTextIndexSwitch3:
     RETURN_NAMES = ("text", "label", "index")
     FUNCTION = "index_switch"
     CATEGORY = "AUN Nodes/Text"
+    OUTPUT_NODE = True
     DESCRIPTION = (
         "Select one of up to 20 text inputs based on an index. Use slot_count to add/remove slots. "
         "Also outputs the label of the selected input.\n\n"
@@ -137,8 +138,26 @@ class AUNTextIndexSwitch3:
                         # Remove first line from text output
                         texts[idx] = '\n'.join(lines[1:]).lstrip()
 
+        self._emit_selected_index(unique_id, clamped_index)
+
         return (texts[idx], selected_label, clamped_index)
     
+    def _emit_selected_index(self, unique_id, index):
+        if unique_id is None:
+            return
+        try:
+            from server import PromptServer
+            PromptServer.instance.send_sync(
+                "AUN_random_text_index_selected",
+                {
+                    "node_id": str(unique_id),
+                    "index": int(index),
+                    "mode": "Select",
+                },
+            )
+        except Exception:
+            pass
+
     def _record_pginfo(self, extra_pnginfo, unique_id, payload):
         if not isinstance(extra_pnginfo, dict) or unique_id is None:
             return
