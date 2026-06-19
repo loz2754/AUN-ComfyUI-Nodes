@@ -1,0 +1,1036 @@
+{
+  "id": "776d3a28-1411-4fc4-8c2c-bce1306cb667",
+  "revision": 0,
+  "last_node_id": 65,
+  "last_link_id": 176,
+  "nodes": [
+    {
+      "id": 44,
+      "type": "ShowText|pysssss",
+      "pos": [
+        1020,
+        945
+      ],
+      "size": [
+        225,
+        190
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 148
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "shape": 6,
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "title": "Prompt + triggers",
+      "properties": {
+        "cnr_id": "comfyui-custom-scripts",
+        "ver": "609f3afaa74b2f88ef9ce8d939626065e3247469",
+        "Node name for S&R": "ShowText|pysssss",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.8"
+        }
+      },
+      "widgets_values": [
+        "raw lighting, A peaceful forest with sunlight filtering through trees."
+      ]
+    },
+    {
+      "id": 28,
+      "type": "ShowText|pysssss",
+      "pos": [
+        1020,
+        785
+      ],
+      "size": [
+        225,
+        100
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 147
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "shape": 6,
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "title": "Triggers",
+      "properties": {
+        "cnr_id": "comfyui-custom-scripts",
+        "ver": "609f3afaa74b2f88ef9ce8d939626065e3247469",
+        "Node name for S&R": "ShowText|pysssss",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.8"
+        }
+      },
+      "widgets_values": [
+        "raw lighting"
+      ]
+    },
+    {
+      "id": 29,
+      "type": "ShowText|pysssss",
+      "pos": [
+        1020,
+        570
+      ],
+      "size": [
+        230,
+        160
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 146
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "shape": 6,
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "title": "Loras",
+      "properties": {
+        "cnr_id": "comfyui-custom-scripts",
+        "ver": "609f3afaa74b2f88ef9ce8d939626065e3247469",
+        "Node name for S&R": "ShowText|pysssss",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.8"
+        }
+      },
+      "widgets_values": [
+        "<lora:Rawfully Stylish v0.2_epoch_20.safetensors:1.00:1.00>"
+      ]
+    },
+    {
+      "id": 41,
+      "type": "Primitive string multiline [Crystools]",
+      "pos": [
+        -700,
+        850
+      ],
+      "size": [
+        555,
+        230
+      ],
+      "flags": {
+        "collapsed": false
+      },
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "string",
+          "type": "STRING",
+          "links": [
+            175
+          ]
+        }
+      ],
+      "title": "Prompts Set 1",
+      "properties": {
+        "cnr_id": "comfyui-crystools",
+        "ver": "1.27.4",
+        "Node name for S&R": "Primitive string multiline [Crystools]",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.8"
+        }
+      },
+      "widgets_values": [
+        "Mountain:A majestic mountain landscape at sunset with golden light.\nCity:A futuristic city with flying cars and neon lights.\nForest:A peaceful forest with sunlight filtering through trees.\nCoral:An underwater scene with colorful coral reefs and fish.\nCabin:A cozy cabin in the woods during winter snowfall.\nSpace:A space station orbiting a distant planet.\nMarketplace:A bustling marketplace in an ancient city.\nLake:A serene lake with mountains reflected in the water.\nLaboratory:A steampunk laboratory with brass gears and steam.\nGarden:A magical garden with glowing flowers and butterflies."
+      ],
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 60,
+      "type": "easy showAnything",
+      "pos": [
+        265,
+        975
+      ],
+      "size": [
+        210,
+        90
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "anything",
+          "shape": 7,
+          "type": "*",
+          "link": 176
+        }
+      ],
+      "outputs": [
+        {
+          "name": "output",
+          "type": "*",
+          "links": null
+        }
+      ],
+      "title": "Current index",
+      "properties": {
+        "cnr_id": "comfyui-easy-use",
+        "ver": "130c1b5796d9876a5f853fa0bea88e808cfda4ad",
+        "Node name for S&R": "easy showAnything",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.8"
+        }
+      },
+      "widgets_values": [
+        "3"
+      ],
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 43,
+      "type": "AUNRandomLoraModelOnlyMulti",
+      "pos": [
+        625,
+        740
+      ],
+      "size": [
+        270,
+        312
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 136
+        },
+        {
+          "name": "clip",
+          "shape": 7,
+          "type": "CLIP",
+          "link": 137
+        },
+        {
+          "name": "base_prompt",
+          "shape": 7,
+          "type": "STRING",
+          "link": 168
+        },
+        {
+          "name": "selected_LoRAs",
+          "shape": 7,
+          "type": "STRING",
+          "link": null
+        },
+        {
+          "name": "label",
+          "shape": 7,
+          "type": "STRING",
+          "link": 171
+        },
+        {
+          "name": "prompt_index",
+          "type": "INT",
+          "widget": {
+            "name": "prompt_index"
+          },
+          "link": 173
+        }
+      ],
+      "outputs": [
+        {
+          "name": "MODEL",
+          "type": "MODEL",
+          "links": null
+        },
+        {
+          "name": "CLIP",
+          "type": "CLIP",
+          "links": null
+        },
+        {
+          "name": "selected LoRAs",
+          "type": "STRING",
+          "links": [
+            146
+          ]
+        },
+        {
+          "name": "index",
+          "type": "INT",
+          "links": []
+        },
+        {
+          "name": "trigger words",
+          "type": "STRING",
+          "links": [
+            147
+          ]
+        },
+        {
+          "name": "trigger + prompt",
+          "type": "STRING",
+          "links": [
+            148
+          ]
+        }
+      ],
+      "title": "AUN Lora by index",
+      "properties": {
+        "_AUN_compactMode": true,
+        "_AUN_showClipStrength": false,
+        "cnr_id": "aun-comfyui-nodes",
+        "ver": "3e4d488da80bfdd8b4dfbdc363021620cb9256ec",
+        "Node name for S&R": "AUNRandomLoraModelOnlyMulti",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.8"
+        },
+        "_AUN_showFooter": true
+      },
+      "widgets_values": [
+        1,
+        10,
+        true,
+        "SDXL\\Dramatic Lighting Slider.safetensors",
+        0.55,
+        0.55,
+        "",
+        "SDXL\\xl_more_art-full_v1.safetensors",
+        1,
+        1,
+        "",
+        "None",
+        1,
+        1,
+        "",
+        "None",
+        1,
+        1,
+        "",
+        "None",
+        1,
+        1,
+        "",
+        "None",
+        1,
+        1,
+        "",
+        "SDXL\\Rawfully Stylish v0.2_epoch_20.safetensors",
+        1,
+        1,
+        "raw lighting",
+        "None",
+        1,
+        1,
+        "",
+        "None",
+        1,
+        1,
+        "",
+        "SDXL\\Point_and_shoot_v0.1.safetensors",
+        1,
+        1,
+        "",
+        "None",
+        1,
+        1,
+        "",
+        "None",
+        1,
+        1,
+        "",
+        "None",
+        1,
+        1,
+        "",
+        "None",
+        1,
+        1,
+        "",
+        "None",
+        1,
+        1,
+        "",
+        "None",
+        1,
+        1,
+        "",
+        "None",
+        1,
+        1,
+        "",
+        "None",
+        1,
+        1,
+        "",
+        "None",
+        1,
+        1,
+        "",
+        "None",
+        1,
+        1,
+        "",
+        "None",
+        1,
+        1,
+        "",
+        "None",
+        1,
+        1,
+        "",
+        "None",
+        1,
+        1,
+        "",
+        "None",
+        1,
+        1,
+        "",
+        "SDXL\\illustrious_masterpieces_v3.safetensors",
+        1.05,
+        1.05,
+        "",
+        "None",
+        1,
+        1,
+        "",
+        "None",
+        1,
+        1,
+        "",
+        "None",
+        1,
+        1,
+        "",
+        "None",
+        1,
+        1,
+        "",
+        "None",
+        1,
+        1,
+        "",
+        "None",
+        1,
+        1,
+        "",
+        "None",
+        1,
+        1,
+        "",
+        "None",
+        1,
+        1,
+        "",
+        "None",
+        1,
+        1,
+        "",
+        "None",
+        1,
+        1,
+        "",
+        "None",
+        1,
+        1,
+        "",
+        "None",
+        1,
+        1,
+        "",
+        "None",
+        1,
+        1,
+        "",
+        "None",
+        1,
+        1,
+        "",
+        "None",
+        1,
+        1,
+        "",
+        "None",
+        1,
+        1,
+        "",
+        "None",
+        1,
+        1,
+        "",
+        "None",
+        1,
+        1,
+        "",
+        "None",
+        1,
+        1,
+        "",
+        "None",
+        1,
+        1,
+        "",
+        "None",
+        1,
+        1,
+        "",
+        "None",
+        1,
+        1,
+        "",
+        "None",
+        1,
+        1,
+        "",
+        "None",
+        1,
+        1,
+        "",
+        "None",
+        1,
+        1,
+        "",
+        "None",
+        1,
+        1,
+        "",
+        "None",
+        1,
+        1,
+        "",
+        "None",
+        1,
+        1,
+        "",
+        "None",
+        1,
+        1,
+        "",
+        "None",
+        1,
+        1,
+        "",
+        "None",
+        1,
+        1,
+        "",
+        "None",
+        1,
+        1,
+        "",
+        "None",
+        1,
+        1,
+        "",
+        "None",
+        1,
+        1,
+        "",
+        "None",
+        1,
+        1,
+        "",
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "color": "#2a363b",
+      "bgcolor": "#3f5159"
+    },
+    {
+      "id": 63,
+      "type": "Note",
+      "pos": [
+        280,
+        475
+      ],
+      "size": [
+        240,
+        110
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.8",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "AUN Show Text With Title-\n\nDisplays the prompt label in the node header, and the selected prompt text"
+      ],
+      "color": "#323",
+      "bgcolor": "#535"
+    },
+    {
+      "id": 64,
+      "type": "Note",
+      "pos": [
+        -90,
+        360
+      ],
+      "size": [
+        305,
+        420
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.8",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "AUN Prompt Cycler-\n\nEither enter any number of prompts, one per line, or connect a multiline string node with prepared prompts.\n\nEnter a title for each prompt in the format-\n\n'Title:Rest of prompt text.'\n\nThe prompts will be selected with  each run of the workflow, either by manually changing the index, sequentially, or by range of indexes (eg 1,2,4-7), or by a search string (looks for matching search terms in all of the prompts in the list).\n\nThe index can be used to drive other nodes, eg an AUN Lora chooser, as shown here."
+      ],
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 65,
+      "type": "Note",
+      "pos": [
+        590,
+        210
+      ],
+      "size": [
+        670,
+        270
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.8",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "AUN Lora by index- (AUNRandomLoraModelOnlyMulti)\n\nThis is a sophisticated lora loader, with the option to automatically select up to 3 loras per prompt (or NONE), the prompts are selected by index. This index can be used to match a selected prompt to its respective loras/trigger words.\n\nThe trained words/triggers can be looked up from Civitai, or from the lora metadata, and auto-enetered as trigger words for each separate lora.\n\nTo edit the loras and other parameters, double click the node body, or right-click for more options, such as show/hide clip strengths.\n\nThe prompt index, prompt title, and current trigger words are displayed in real time.\n"
+      ],
+      "color": "#2a363b",
+      "bgcolor": "#3f5159"
+    },
+    {
+      "id": 30,
+      "type": "CheckpointLoaderSimple",
+      "pos": [
+        605,
+        580
+      ],
+      "size": [
+        210,
+        100
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 4,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "MODEL",
+          "type": "MODEL",
+          "links": [
+            136
+          ]
+        },
+        {
+          "name": "CLIP",
+          "type": "CLIP",
+          "links": [
+            137
+          ]
+        },
+        {
+          "name": "VAE",
+          "type": "VAE",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.21.1",
+        "Node name for S&R": "CheckpointLoaderSimple",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.8"
+        }
+      },
+      "widgets_values": [
+        "SDXL\\bigLove_pony2.safetensors"
+      ]
+    },
+    {
+      "id": 57,
+      "type": "AUNPromptCycler",
+      "pos": [
+        -90,
+        850
+      ],
+      "size": [
+        310,
+        225
+      ],
+      "flags": {
+        "collapsed": false
+      },
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "custom_prompts",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "custom_prompts"
+          },
+          "link": 175
+        }
+      ],
+      "outputs": [
+        {
+          "name": "prompt",
+          "type": "STRING",
+          "links": [
+            167,
+            168
+          ]
+        },
+        {
+          "name": "prompt_title",
+          "type": "STRING",
+          "links": [
+            169,
+            171
+          ]
+        },
+        {
+          "name": "index",
+          "type": "INT",
+          "links": [
+            173,
+            176
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "aun-comfyui-nodes",
+        "ver": "d77ca63d42be214c85ff7f187762f5f7dd923a69",
+        "Node name for S&R": "AUNPromptCycler",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.8"
+        }
+      },
+      "widgets_values": [
+        "sequential",
+        3,
+        "",
+        "",
+        "Mountain:A majestic mountain landscape at sunset with golden light.\nCity:A futuristic city with flying cars and neon lights.\nForest:A peaceful forest with sunlight filtering through trees.\nCoral:An underwater scene with colorful coral reefs and fish.\nCabin:A cozy cabin in the woods during winter snowfall.\nSpace:A space station orbiting a distant planet.\nMarketplace:A bustling marketplace in an ancient city.\nLake:A serene lake with mountains reflected in the water.\nLaboratory:A steampunk laboratory with brass gears and steam.\nGarden:A magical garden with glowing flowers and butterflies."
+      ],
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 23,
+      "type": "AUNShowTextWithTitle",
+      "pos": [
+        280,
+        640
+      ],
+      "size": [
+        240,
+        165
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 167
+        },
+        {
+          "name": "title",
+          "shape": 7,
+          "type": "STRING",
+          "link": 169
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "shape": 6,
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "title": "Forest",
+      "properties": {
+        "cnr_id": "aun-comfyui-nodes",
+        "ver": "3e4d488da80bfdd8b4dfbdc363021620cb9256ec",
+        "Node name for S&R": "AUNShowTextWithTitle",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.8"
+        }
+      },
+      "widgets_values": [
+        "A peaceful forest with sunlight filtering through trees."
+      ],
+      "color": "#323",
+      "bgcolor": "#535"
+    }
+  ],
+  "links": [
+    [
+      136,
+      30,
+      0,
+      43,
+      0,
+      "MODEL"
+    ],
+    [
+      137,
+      30,
+      1,
+      43,
+      1,
+      "CLIP"
+    ],
+    [
+      146,
+      43,
+      2,
+      29,
+      0,
+      "STRING"
+    ],
+    [
+      147,
+      43,
+      4,
+      28,
+      0,
+      "STRING"
+    ],
+    [
+      148,
+      43,
+      5,
+      44,
+      0,
+      "STRING"
+    ],
+    [
+      167,
+      57,
+      0,
+      23,
+      0,
+      "STRING"
+    ],
+    [
+      168,
+      57,
+      0,
+      43,
+      2,
+      "STRING"
+    ],
+    [
+      169,
+      57,
+      1,
+      23,
+      1,
+      "STRING"
+    ],
+    [
+      171,
+      57,
+      1,
+      43,
+      4,
+      "STRING"
+    ],
+    [
+      173,
+      57,
+      2,
+      43,
+      5,
+      "INT"
+    ],
+    [
+      175,
+      41,
+      0,
+      57,
+      0,
+      "STRING"
+    ],
+    [
+      176,
+      57,
+      2,
+      60,
+      0,
+      "INT"
+    ]
+  ],
+  "groups": [
+    {
+      "id": 1,
+      "title": "Loras",
+      "bounding": [
+        590,
+        495,
+        670,
+        660
+      ],
+      "color": "#3f789e",
+      "flags": {}
+    }
+  ],
+  "config": {},
+  "extra": {
+    "ue_links": [],
+    "ds": {
+      "scale": 1,
+      "offset": [
+        916,
+        26
+      ]
+    },
+    "links_added_by_ue": [],
+    "frontendVersion": "1.45.18",
+    "VHS_latentpreview": false,
+    "VHS_latentpreviewrate": 0,
+    "VHS_MetadataImage": false,
+    "VHS_KeepIntermediate": true
+  },
+  "version": 0.4
+}

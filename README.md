@@ -2,7 +2,7 @@
   <img src="docs/images/aun-logo.png" alt="AUN Logo" height="100" align="center"/> AUN Nodes Collection
 </h1>
 
-A comprehensive collection of custom nodes for ComfyUI which I find useful. If you prefer compact, well-organised workflows, then give these a try. From versatile bypass/mute/collapse controllers, to automatic file naming and saving, to Loras handling with simple prompt and trigger words management, and lots of other tempting goodies!
+A comprehensive collection of custom nodes for ComfyUI which I find useful. If you prefer compact, well-organised workflows, then give these a try. From versatile bypass/mute/collapse controllers, to automatic file naming and saving, to LoRAs handling with simple prompt and trigger words management, and lots of other tempting goodies!
 
 Many of the nodes feature a 'compact mode', activated by double clicking the node body, which hides all the widgets, except for those you need to see. I will be updating the readme with more examples/workflows as and when I find the time.
 
@@ -23,7 +23,7 @@ _AUN Node state controllers let you bypass, mute, and/or collapse nodes, keeping
 - Group Bypasser (Multi) (`AUNSetBypassStateGroup`) set the bypass state of all nodes in groups selected from the graph.
 - Group Muter (Multi) (`AUNSetMuteStateGroup`) same as Group Bypasser but mute instead of bypass.
 - Multi Bypass Index (`AUNMultiBypassIndex`) control bypass state of multiple nodes by IDs using an index. Selecting an index exclusively activates one set of nodes while bypassing all other sets.
-- Multi Mute Index (`AUNMultiMuteIndex`) same Multi Bypass Index but mute instead of bypass.
+- Multi Mute Index (`AUNMultiMuteIndex`) same as Multi Bypass Index but mute instead of bypass.
 - Node Collapser & Bypasser Advanced (`AUNSetCollapseAndBypassStateAdvanced`) set collapse and bypass or mute state for multiple nodes. Has a combined override or separate toggles.
 - Node State Controller (`AUNNodeStateController`) control collapse + bypass or mute for nodes by ID, group, or title.
 
@@ -47,19 +47,24 @@ To provide a fast, visually consistent understanding of node states, AUN nodes u
 
 #### File Management
 
-- Path Filename V2 (`AUNPathFilenameV2`) is an image path/filename builder for generating image save paths and filenames, with manual/auto naming built in. It also emits a 'sidecar' ( text or json) that shows the main parameters used.
+- Path Filename V2 (`AUNPathFilenameV2`) is an image path/filename builder for generating image save paths and filenames, with manual/auto naming built in. It also emits a 'sidecar' (text or json) that shows the main parameters used.
 You can toggle on/off whether to save various parameters in the filename, like Model, Sample, Seed, CFG etc.
 Works best when coupled with AUN Save Image.
 - Filename Resolver V2 (`AUNFilenameResolverPreviewV2`) allows the AUN path/filename builder nodes to connect to 'standard' save image/video nodes.
-- Path Filename Video (Resolved) (`AUNPathFilenameVideoResolved`) builds the final resolved video filename and emits a 'sidecar' ( text or json) that shows the main parameters used. Can be used with VHS Video Combine.
+- Path Filename Video (Resolved) (`AUNPathFilenameVideoResolved`) builds the final resolved video filename and emits a 'sidecar' (text or json) that shows the main parameters used. Can be used with VHS Video Combine.
 - Path Filename Video V2 (`AUNPathFilenameVideoV2`) is a video path/filename builder that emits `path_filename` plus `date_format`. For use with AUN Save Image/Video nodes.
-- Main Folder Manual Name (`MainFolderManualName`) switch between a manual name and an automatic filename for the output path. Also returns the MainFolder, useful if you want to use the MainFolder in another node, and a boolean which can be used to switch other nodes.
+- Main Folder Manual Name (`MainFolderManualName`) switches between a manual name and an automatic filename for the output path. Also returns the MainFolder, useful if you want to use the MainFolder in another node, and a boolean which can be used to switch other nodes.
 - Path Filename (`AUNPathFilename`) is the legacy image path/filename builder for existing workflows, generating a file path and filename from image-focused components and placeholders. Kept only for backwards compatibility.
 - Path Filename Video (`AUNPathFilenameVideo`) is the legacy video path/filename builder for existing workflows that still use separate outputs. Kept only for backwards compatibility.
 
+---
 
+#### LoRA
 
-
+- Extract Power LoRAs (`AUNExtractPowerLoras`) extract LoRA names (and strengths) from rgthree Power Lora Loader nodes (and some other Lora loaders) in the graph/workflow.
+- Random LoRA Model Loader (`AUNRandomLoraModelOnly`) selects one LoRA from up to 10 slots using Select, Increment, Random, or Range modes, applies it to the incoming model, and outputs the selected LoRA name plus trigger text. Optional CLIP input enables per-slot clip strength control. Compact mode with footer showing trigger words and menu options to hide/show clip strength. Its `base_prompt` is available as an optional external input for prompt chaining without cluttering compact mode.
+- Random Multi-LoRA Model Loader (`AUNRandomLoraModelOnlyMulti`) selects and applies multiple LoRAs based on prompt index, supporting up to 20 prompts with 3 LoRA slots each. Features compact mode with overlay UI for strength/trigger editing, drag-to-swap support for reordering LoRA slots, per-slot enable/disable toggles, and footer with combined trigger words display.
+- LoRA Stack With Triggers Model Clip (`AUNLoraStackWithTriggersModelClip`) stacks multiple LoRAs with per-slot trigger words and separate model/clip strength control. Supports up to 10 slots with full compact mode featuring overlay UI, drag-to-swap for reordering LoRA slots, and footer display. Successor to the deprecated AUNLoraStackWithTriggers with enhanced functionality.
 
 ---
 
@@ -70,7 +75,7 @@ Works best when coupled with AUN Save Image.
 - Image Preview With Title (`AUNTitleImagePreview`) shows the image and also the filename actually as the node's title.
 - Img2Img (`AUNImg2Img`) provides a comprehensive Img2Img node, allowing you to switch between txt2img and img2img modes. It handles image loading, resizing, and encoding into the latent space, providing essential outputs for further processing.
 - Load & Resize Image (`AUNImageLoadResize`) load images with optional automatic resizing. Supports FramePack nearest-bucket sizing, maintains aspect ratio, and provides filename information for workflow organization.
-- Load Image Single/Batch 3 (`AUNImageSingleBatch3`) is a veratile way to either load a single uploaded image, or cycle through a batch of images from a folder - with multiple selection modes, including increment, random, range and search filtering by filename patterns.
+- Load Image Single/Batch 3 (`AUNImageSingleBatch3`) is a versatile way to either load a single uploaded image, or cycle through a batch of images from a folder - with multiple selection modes, including increment, random, range and search filtering by filename patterns.
 - Manual/Auto Image Switch (`AUNManualAutoImageSwitch`) switches a filename and image output together. In Auto mode it passes through the source image and filename; in Manual mode it outputs `ManualName` and a generated placeholder image with optional overlay text and color controls.
 - Resize Image (`AUNImageResize`) resize an input image using the same strategies as AUN Load & Resize Image, including FramePack buckets and fill/crop anchoring.
 - Save Image *Deprecated* (`AUNSaveImage`) is the legacy image saver for workflows that still provide separate `path` and `filename` inputs.
@@ -80,8 +85,8 @@ Works best when coupled with AUN Save Image.
 
 #### Video
 
-- Save Video *Deprecated in favour of VHS Vdeo Combine* (`AUNSaveVideo`) is the legacy video saver for workflows that still use the current `filename_format` input, combining image frames into animated images or video with token placeholders.
-- Save Video V2 *Deprecated in favour of VHS Vdeo Combine* (`AUNSaveVideoV2`) is the recommended video saver that combines image frames into animated images or video and accepts one combined `path_filename` input.
+- Save Video *Deprecated in favour of VHS Video Combine* (`AUNSaveVideo`) is the legacy video saver for workflows that still use the current `filename_format` input, combining image frames into animated images or video with token placeholders.
+- Save Video V2 *Deprecated in favour of VHS Video Combine* (`AUNSaveVideoV2`) is the recommended video saver that combines image frames into animated images or video and accepts one combined `path_filename` input.
 
 ---
 
@@ -95,7 +100,7 @@ Works best when coupled with AUN Save Image.
 
 #### Loaders
 
-- Ckpt Load With Clip Skip (`AUNCheckpointLoaderWithClipSkip`) speaks for itself. Als outputs the model name.
+- Ckpt Load With Clip Skip (`AUNCheckpointLoaderWithClipSkip`) speaks for itself. Also outputs the model name.
 
 ---
 
@@ -148,7 +153,6 @@ Deprecation note: the full input-style nodes (`AUNInputs`, `AUNInputsDiffusers`,
 - AUNGraphScraper (`AUNGraphScraper`) extract multiple widget values from any node in the graph using {Node.Widget} syntax.
 - CFG Selector (`AUNCFG`) a CFG scale selector with finer control.
 - Extract Model Name (`AUNExtractModelName`) extract a model name from a specific node (by numeric ID) for use in filenames.
-- Extract Power LoRAs (`AUNExtractPowerLoras`) extract LoRA names (and strengths) from rgthree Power Lora Loader nodes (and some other Lora loaders) in the graph/workflow.
 - Extract Widget Value (`AUNExtractWidgetValue`) extract a widget/input value from a specific node by numeric ID and widget name.
 - Get Active Node Title (`AUNGetActiveNodeTitle`) scans a user-defined list of node titles and outputs the title of the first node in that list which is currently active (not bypassed) in the workflow.
 - Get Connected Node Titles (`AUNGetConnectedNodeTitles`) gets the titles of up to 10 connected nodes.
@@ -156,9 +160,6 @@ Deprecation note: the full input-style nodes (`AUNInputs`, `AUNInputsDiffusers`,
 - Model Name Shorten (`AUNModelShorten`) takes a full model name string and outputs a shortened version suitable for filenames.
 - Model and Text Selector (`AUNRandomModelBundleSwitch`) selects one model slot and optional text/label pair using None, Select, Increment, Random, or Range modes, and also outputs the active slot index for downstream control nodes.
 - Random Any Switch (`AUNRandomAnySwitch`) randomly selects one of several connected inputs of any type and outputs it, along with the index of the selected input.
-- Random LoRA Model Loader (`AUNRandomLoraModelOnly`) selects one LoRA from up to 10 slots using Select, Increment, Random, or Range modes, applies it to the incoming model, and outputs the selected LoRA name plus trigger text. Optional CLIP input enables per-slot clip strength control. Compact mode with footer showing trigger words and menu options to hide/show clip strength. Its `base_prompt` is available as an optional external input for prompt chaining without cluttering compact mode.
-- Random Multi-LoRA Model Loader (Experimental) (`AUNRandomLoraModelOnlyMulti`) selects and applies multiple LoRAs based on prompt index, supporting up to 20 prompts with 3 LoRA slots each. Features compact mode with overlay UI for strength/trigger editing, drag-to-swap support for reordering LoRA slots, per-slot enable/disable toggles, and footer with combined trigger words display.
-- LoRA Stack With Triggers Model Clip (`AUNLoraStackWithTriggersModelClip`) stacks multiple LoRAs with per-slot trigger words and separate model/clip strength control. Supports up to 10 slots with full compact mode featuring overlay UI, drag-to-swap for reordering LoRA slots, and footer display. Successor to the deprecated AUNLoraStackWithTriggers with enhanced functionality.
 - Random Number (`AUNRandomNumber`) generates random integers within specified range. Useful for seed variation and randomization in workflows.
 - Random Text Index Switch (`AUNRandomTextIndexSwitch`) generates an index based on the selected mode (Select: fixed value, Increment: cycling through range, Random: random within range) and uses it to select from up to 20 text inputs.
 - Random/Select INT (`AUNRandomIndexSwitch`) outputs an integer based on mode: Select for fixed value, Increment for cycling through range, Random for random value within range.
@@ -222,7 +223,7 @@ From your ComfyUI folder:
 
 ## 🙏 Acknowledgements
 
-AUN Nodes draws inspiration and code patterns from several excellent ComfyUI node projects. Special thanks to:
+AUN Nodes draw inspiration and code patterns from several excellent ComfyUI node projects. Special thanks to:
 
 - **rgthree** (Power Lora Loader and related nodes)
 - **WAS Node Suite** (was-nodes)
@@ -245,6 +246,20 @@ Use `AUN Random/Select INT` with `AUN Text Index Switch` to randomly select a pr
 6. Use output: connect `text` to your CLIP Text Encode node.
 
 Your setup: `AUN Random/Select INT` -> `AUN Text Index Switch` -> `CLIP Text Encode`
+
+### Prompt Cycling with Multi-LoRA Selection
+
+Use `AUN PromptCycler` with `AUN Random Multi-LoRA Model Loader` to cycle through prompts while dynamically applying different LoRA combinations per prompt.
+
+[![PromptCycler with Random Multi-LoRA workflow example](docs/example_workflows/AUNExampleWF-PromptCycler-LorasByIndex.png)](docs/example_workflows/AUNExampleWF-PromptCycler-LorasByIndex.png)
+
+1. Add `AUN PromptCycler` and set its mode (Sequential, Random, Search, etc.).
+2. Connect its `prompt` output to your CLIP Text Encode node.
+3. Add `AUN Random Multi-LoRA Model Loader` and configure per-prompt LoRA slots with trigger words and strengths.
+4. Wire the cycler's `index` output to the LoRA loader's `prompt_index` input.
+5. Run the queue — each prompt change automatically selects the corresponding LoRA set, along with any trigger words needed.
+
+Your setup: `AUN PromptCycler` -> `AUN Random Multi-LoRA Model Loader` -> `Model`/`CLIP` -> `KSampler`
 
 ## 📚 **Documentation**
 

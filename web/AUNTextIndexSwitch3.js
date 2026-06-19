@@ -1009,8 +1009,20 @@ function showCompactLabelPopup(node) {
       editBtn.onclick = (e) => {
         e.stopPropagation();
         popup.remove();
-        // Open edit popup centered on screen since widget is hidden in compact mode
-        showTextEditPopupCentered(node, `text${effectiveIndex}`, textWidget);
+        // Position edit popup near the node (consistent with full mode)
+        const graphRect = app.canvas?.canvas?.getBoundingClientRect?.();
+        let hintLeft = window.innerWidth / 2 - 200;
+        let hintTop = window.innerHeight / 2 - 150;
+        if (graphRect && node.pos) {
+          const scale = app.canvas.ds?.scale || 1;
+          const canvasOffset = app.canvas.ds?.offset || [0, 0];
+          const nodeLeft = graphRect.left + (node.pos[0] + canvasOffset[0]) * scale;
+          const nodeTop = graphRect.top + (node.pos[1] + canvasOffset[1]) * scale;
+          const nodeWidth = (node.size?.[0] || 300) * scale;
+          hintLeft = nodeLeft + nodeWidth + 10;
+          hintTop = nodeTop;
+        }
+        showTextEditPopup(node, `text${effectiveIndex}`, textWidget, { left: hintLeft, top: hintTop, width: 400, height: 350 });
       };
       buttonBar.appendChild(editBtn);
     }
@@ -1113,7 +1125,7 @@ function showCompactLabelPopup(node) {
 }
 
 // Create and show a floating textarea popup for editing
-function showTextEditPopup(node, widgetName, widget) {
+function showTextEditPopup(node, widgetName, widget, positionHint) {
   // Close any existing popup
   hideTextEditPopup();
 
@@ -1190,6 +1202,9 @@ function showTextEditPopup(node, widgetName, widget) {
     minHeight: textarea.style.minHeight,
     height: textarea.style.height,
   };
+
+  // Capture rect BEFORE detaching textarea from DOM
+  const originalRect = textarea.getBoundingClientRect?.();
 
   // Wrap textarea in a container with overflow:visible so autocomplete dropdowns can break out
   const textareaContainer = document.createElement("div");
@@ -1279,12 +1294,21 @@ function showTextEditPopup(node, widgetName, widget) {
   popup.appendChild(buttonBar);
 
   // Position popup near the widget but keep within viewport
-  const rect = textarea.getBoundingClientRect?.();
-  const popupWidth = Math.max(rect?.width || 400, 400);
-  const popupHeight = 350; // Estimated height
+  // Use positionHint if provided (from compact mode), otherwise use captured rect
+  const popupWidth = Math.max(positionHint?.width || originalRect?.width || 400, 400);
+  const popupHeight = positionHint?.height || 350; // Estimated height
 
-  let left = rect ? rect.left : window.innerWidth / 2 - popupWidth / 2;
-  let top = rect ? rect.bottom + 10 : window.innerHeight / 2 - popupHeight / 2;
+  let left, top;
+  if (positionHint) {
+    left = positionHint.left;
+    top = positionHint.top;
+  } else if (originalRect) {
+    left = originalRect.left;
+    top = originalRect.bottom + 10;
+  } else {
+    left = window.innerWidth / 2 - popupWidth / 2;
+    top = window.innerHeight / 2 - popupHeight / 2;
+  }
 
   // Keep popup within viewport
   const margin = 10;

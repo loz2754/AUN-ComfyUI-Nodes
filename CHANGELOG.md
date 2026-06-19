@@ -11,6 +11,25 @@
 
 ### Notes
 
+## [2.4.2] - 2026-06-19
+
+### Added
+
+- New `docs/example_workflows/` folder with embedded workflow PNG and standalone JSON demonstrating PromptCycler + Random Multi-LoRA.
+- New `#### LoRA` sub-section in README between File Management and Image; moved Extract Power LoRAs, Random LoRA Model Loader, Random Multi-LoRA Model Loader, and LoRA Stack With Triggers Model Clip out of Utility.
+
+### Changed
+
+- README grammar/spelling fixes and subject-verb agreement corrections.
+- Added "Prompt Cycling with Multi-LoRA Selection" example workflow section.
+- Removed "(Experimental)" tag from Random Multi-LoRA Model Loader in README.
+
+### Fixed
+
+- `AUNTextIndexSwitch3` compact mode text edit popup now positions near the node instead of centered on the screen.
+
+### Notes
+
 ## [2.4.1] - 2026-06-17
 
 ### Added
