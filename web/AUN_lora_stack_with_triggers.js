@@ -593,6 +593,8 @@ function buildCompactRow(node, slotIndex) {
       if (draggedData.slotIndex !== slotIndex) {
         const fields = ["lora", "strength_model", "trigger", "enabled"];
         let swapped = false;
+        // Guard flag: prevent lora widget callbacks from clearing trigger words mid-swap
+        node.__AUN_stackSwapping = true;
         for (const field of fields) {
           const fromWidgetName = `${field}_${draggedData.slotIndex}`;
           const toWidgetName = `${field}_${slotIndex}`;
@@ -617,6 +619,7 @@ function buildCompactRow(node, slotIndex) {
           forceRedraw(node);
           updateAutoHeight(node);
         }
+        node.__AUN_stackSwapping = false;
       }
     } catch (err) {
       console.error("Error during LoRA reorder:", err);
@@ -1076,6 +1079,17 @@ function hookWidgetRedraw(node, widgetName, extraAction) {
   widget.callback = function callback(value) {
     original?.call(widget, value);
     extraAction?.(value);
+    // Clear associated trigger words when LoRA is changed or removed
+    if (!node.__AUN_stackSwapping) {
+      const match = widgetName.match(/^lora_(\d+)$/);
+      if (match) {
+        const triggerW = getWidget(node, `trigger_${match[1]}`);
+        if (triggerW) {
+          triggerW.value = "";
+          triggerW.callback?.call(triggerW, "");
+        }
+      }
+    }
     forceRedraw(node);
   };
   widget.__AUN_stackHooked = true;

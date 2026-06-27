@@ -261,6 +261,10 @@ function resolveLoraLabelsForDisplay(node) {
 }
 
 function resolveTriggersForDisplay(node) {
+  // When apply_lora is off, hide trigger words (same as per-slot disable behavior)
+  const applyLoraW = getWidget(node, "apply_lora");
+  if (!applyLoraW?.value) return null;
+
   // Try execution cache first
   const cachedTriggers = node?.__AUN_loraMultiLastTriggers;
   if (Array.isArray(cachedTriggers) && cachedTriggers.length > 0) {
@@ -1739,6 +1743,12 @@ function hookLoraChange(node) {
         origCb?.call(loraW, value);
         // Skip if a swap is in progress (swap handler will call applyCompact once)
         if (node.__AUN_loraMultiSwapping) return;
+        // Clear associated trigger words when LoRA is changed or removed
+        const triggerW = getWidget(node, `p${p}_trigger${s}`);
+        if (triggerW) {
+          triggerW.value = "";
+          triggerW.callback?.call(triggerW, "");
+        }
         applyCompact(node);
         forceRedraw(node);
         scheduleAutoHeightUpdate(node, 1, 50);

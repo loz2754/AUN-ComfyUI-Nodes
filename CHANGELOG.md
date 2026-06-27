@@ -5,9 +5,21 @@
 
 ### Added
 
+- `AUNAddToPromptMulti`: `forceInput` on `master_prompt` widget, tooltip text, resolved prompt footer in compact mode showing addon-only output text via `onDrawForeground`
+- `AUNTextIndexSwitch3`: capped minimum/maximum widgets for `AUNTextIndexSwitch4`
+
 ### Changed
 
+- `AUNAddToPromptMulti`: `master_prompt` parameter defaults to `None` instead of `""`; output returns UI dict with `addon_only` prompt alongside `result` tuple; final prompt separator changed from `", "` to `" "`; `IS_CHANGED` always returns `time.time()` to force re-execution on every queue (avoids stale cache on mode changes)
+- `AUNWildcardAddToPrompt`: `populated_text` hidden/cleared when mode is `off`, restored when switching to `on`/`random`
+
 ### Fixed
+
+- `AUNTextIndexSwitch3`: preserve existing widget options object when updating index `max`/`min` (avoid replacing shared reference that could break other node type options)
+- `AUNLoraStackWithTriggers` / `AUNLoraStackWithTriggersModelClip`: drag-drop reorder no longer clears trigger words mid-swap via `__AUN_stackSwapping` guard flag
+- All LoRA nodes (`AUNRandomLoraModelOnly`, `AUNRandomLoraModelOnlyMulti`, `AUNLoraStackWithTriggers`, `AUNLoraStackWithTriggersModelClip`): changing a LoRA selection now clears associated trigger words from that slot
+- `AUNLoraStackWithTriggersModelClip`: `resolveStackTriggersForDisplay` returns `null` when `apply_stack` is off, hiding trigger words from overlay footer
+- `AUNRandomLoraModelOnly` / `AUNRandomLoraModelOnlyMulti`: `resolveTriggersForDisplay` returns `null` when `apply_lora` is off
 
 ### Notes
 

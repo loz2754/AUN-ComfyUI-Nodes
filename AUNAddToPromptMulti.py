@@ -10,9 +10,11 @@ class AUNAddToPromptMulti:
         inputs = {
             "required": {
                 "master_prompt": ("STRING", {
+                    "forceInput": True,
                     "multiline": True,
                     "default": "",
-                    "dynamicPrompts": True
+                    "dynamicPrompts": True,
+                    "tooltip": "Optional master prompt to extend."
                 }),
                 "num_addons": ("INT", {
                     "default": 1,
@@ -57,7 +59,7 @@ class AUNAddToPromptMulti:
         "Double-click or right-click 'Compact mode' to hide configuration widgets and show overlay controls."
     )
     
-    def AddonPrompter(self, master_prompt: str, num_addons: int = 1, **kwargs):
+    def AddonPrompter(self, master_prompt=None, num_addons: int = 1, **kwargs):
         master_prompt_text = str(master_prompt or "").strip()
         num_addons = max(1, min(int(num_addons or 1), self.MAX_ADDONS))
         prefix_parts = []
@@ -96,40 +98,13 @@ class AUNAddToPromptMulti:
             prompt_parts.append(master_prompt_text)
         prompt_parts.extend(suffix_parts)
 
-        final_prompt = ", ".join(prompt_parts)
-        return (final_prompt,)
+        final_prompt = " ".join(prompt_parts)
+        addon_only = " ".join(prefix_parts + suffix_parts)
+        return {"ui": {"prompt": [addon_only]}, "result": (final_prompt,)}
 
     @classmethod
     def IS_CHANGED(cls, **kwargs):
-       # master_prompt = kwargs.get("master_prompt", "")
-        num_addons = max(1, min(int(kwargs.get("num_addons", 1) or 1), cls.MAX_ADDONS))
-        for i in range(1, num_addons + 1):
-            mode = str(kwargs.get(f"text_to_add{i}_mode", "off") or "").strip().lower()
-            if mode == "random":
-                return time.time()
-       # relevant_inputs = (master_prompt, num_addons)
-        # for i in range(1, cls.MAX_ADDONS + 1):
-        #     relevant_inputs += (kwargs.get(f"text_to_add{i}_mode", "off"),)
-        #     relevant_inputs += (kwargs.get(f"text_to_add{i}", ""),)
-        #     relevant_inputs += (kwargs.get(f"order{i}", "prompt_first"),)
-        # return hash(relevant_inputs)
-    
-      #  def IS_CHANGED(cls, **kwargs):
-       # num_addons = max(1, min(int(kwargs.get("num_addons", 1) or 1), cls.MAX_ADDONS))
-        
-        # If ANY active addon is in random mode, force re-execution every run
-      #  for i in range(1, num_addons + 1):
-      #      mode = str(kwargs.get(f"text_to_add{i}_mode", "off") or "").strip().lower()
-      #      if mode == "random":
-      #          return time.time()
-                
-        # Deterministic cache key for non-random modes
-        cache_data = [kwargs.get("master_prompt", ""), num_addons]
-        for i in range(1, cls.MAX_ADDONS + 1):
-            cache_data.append(kwargs.get(f"text_to_add{i}_mode", "off"))
-            cache_data.append(kwargs.get(f"text_to_add{i}", ""))
-            cache_data.append(kwargs.get(f"order{i}", "prompt_first"))
-        return tuple(cache_data)
+        return time.time()
 
 NODE_CLASS_MAPPINGS = {
     "AUNAddToPromptMulti": AUNAddToPromptMulti,

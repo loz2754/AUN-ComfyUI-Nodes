@@ -1973,11 +1973,12 @@ function updateNodeVisualState(node) {
   // Update index widget (for non-compact mode or other node types)
   const indexWidget = getWidget(node, "index");
   if (indexWidget) {
-    const options =
-      typeof indexWidget.options === "object" ? { ...indexWidget.options } : {};
-    options.max = slotCount;
-    options.min = 1;
-    indexWidget.options = options;
+    if (typeof indexWidget.options === "object") {
+      indexWidget.options.max = slotCount;
+      indexWidget.options.min = 1;
+    } else {
+      indexWidget.options = { max: slotCount, min: 1 };
+    }
 
     if (indexWidget.inputEl) {
       if (typeof indexWidget.inputEl.setAttribute === "function") {
@@ -2006,6 +2007,33 @@ function updateNodeVisualState(node) {
       }
     }
   }
+
+  // Also cap minimum and maximum widgets for AUNTextIndexSwitch4
+  const minWidget = getWidget(node, "minimum");
+  const maxWidget = getWidget(node, "maximum");
+  [minWidget, maxWidget].forEach((w) => {
+    if (!w) return;
+    if (typeof w.options === "object") {
+      w.options.max = slotCount;
+      w.options.min = 1;
+    } else {
+      w.options = { max: slotCount, min: 1 };
+    }
+    if (w.inputEl) {
+      if (typeof w.inputEl.setAttribute === "function") {
+        w.inputEl.setAttribute("max", slotCount);
+        w.inputEl.setAttribute("min", 1);
+      }
+      if (typeof w.inputEl.max !== "undefined") w.inputEl.max = slotCount;
+      if (typeof w.inputEl.min !== "undefined") w.inputEl.min = 1;
+    }
+    const val = Number(w.value ?? 1);
+    if (val > slotCount || val < 1) {
+      w.value = slotCount;
+      if (w.inputEl && typeof w.inputEl.value !== "undefined") w.inputEl.value = slotCount;
+      if (typeof w.callback === "function") w.callback.call(w, slotCount);
+    }
+  });
 
   // Update input slots
   if (node.inputs) {

@@ -172,10 +172,24 @@ function updateAutoWidth(node) {
 
 function applyCompact(node) {
   const compact = isCompact(node);
+  const modeW = getWidget(node, "mode");
+  const modeOff = modeW?.value === "off";
   for (const name of ALL_WIDGETS) {
     const widget = getWidget(node, name);
     if (!widget) continue;
-    applyWidgetHidden(widget, compact && !COMPACT_VISIBLE.has(name));
+    let hidden = compact && !COMPACT_VISIBLE.has(name);
+    if (name === "populated_text" && compact) {
+      // Keep widget visible to preserve height, but clear text when mode is off
+      if (modeOff) {
+        applyWidgetHidden(widget, false);
+        if (widget.__populatedTextEl) {
+          widget.__populatedTextEl.textContent = "";
+        }
+        continue;
+      }
+      hidden = false; // always show when mode is on/random
+    }
+    applyWidgetHidden(widget, hidden);
   }
   // Only adjust width if it's too narrow for visible widgets — never force
   // a width change on page reload or workflow load that would override the
@@ -306,6 +320,22 @@ function setupCompact(node) {
       },
     });
   };
+
+  // React to mode changes: show populated_text only when mode is not "off"
+  const modeW = getWidget(node, "mode");
+  if (modeW && !modeW.__aunModeCallbackHooked) {
+    modeW.__aunModeCallbackHooked = true;
+    const origCallback = modeW.callback;
+    modeW.callback = function (...args) {
+      origCallback?.apply(this, args);
+      const popW = getWidget(node, "populated_text");
+      applyCompact(node);
+      // Restore the last populated text when switching out of "off"
+      if (popW && popW.value && modeW.value !== "off" && popW.__populatedTextEl) {
+        popW.__populatedTextEl.textContent = popW.value;
+      }
+    };
+  }
 
   applyCompact(node);
 }
@@ -464,7 +494,9 @@ app.registerExtension({
         ? message.populated_text[0]
         : message.populated_text;
       widget.value = text;
-      widget.__populatedTextEl.textContent = text;
+      const modeW = this.widgets?.find((w) => w.name === "mode");
+      widget.__populatedTextEl.textContent =
+        modeW?.value === "off" ? "" : text;
 
       // Trigger resize to accommodate the updated text, but preserve any
       // manual width the user set — only grow if the computed width is larger.

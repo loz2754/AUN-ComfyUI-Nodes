@@ -281,14 +281,15 @@ function formatStrength(value) {
 function resolveInfoText(node) {
   if (!isInfoEnabled(node)) return null;
 
-  const parts = [];
   const applyEnabled = resolveApplyEnabled(node);
+  // When apply_lora is off, show only "disabled" — hide trigger words (same as per-slot disable)
+  if (!applyEnabled) return "disabled";
+
+  const parts = [];
   const strength = formatStrength(resolveStrengthValue(node));
   const triggerWords = resolveTriggerWords(node);
 
-  if (!applyEnabled) {
-    parts.push("disabled");
-  } else if (strength) {
+  if (strength) {
     parts.push(`strength ${strength}`);
   }
 
@@ -576,6 +577,15 @@ function hookWidgetRedraw(node, widgetName) {
   const original = widget.callback;
   widget.callback = function callback(value) {
     original?.call(widget, value);
+    // Clear associated trigger words when LoRA is changed or removed
+    const match = widgetName.match(/^lora_(\d+)$/);
+    if (match) {
+      const triggerW = getWidget(node, `trigger_${match[1]}`);
+      if (triggerW) {
+        triggerW.value = "";
+        triggerW.callback?.call(triggerW, "");
+      }
+    }
     forceRedraw(node);
   };
   widget.__AUN_loraRedrawHooked = true;

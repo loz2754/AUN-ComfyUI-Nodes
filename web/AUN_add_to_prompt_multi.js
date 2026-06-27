@@ -1,4 +1,5 @@
 import { app } from "../../scripts/app.js";
+import { api } from "../../scripts/api.js";
 
 const NODE_CLASS = "AUNAddToPromptMulti";
 const MAX_ADDONS = 10;
@@ -9,6 +10,7 @@ const ROW_H = 22;
 const ROW_GAP = 2;
 const SIDE_PAD = 8;
 const BADGE_PAD = 6;
+const FOOTER_H = 22;
 
 const MODE_CYCLE = { off: "on", on: "random", random: "off" };
 const ORDER_TOGGLE = { prompt_first: "addon_first", addon_first: "prompt_first" };
@@ -99,7 +101,8 @@ function updateNodeSize(node) {
   const compact = isCompact(node);
   if (compact) {
     const numAddons = clampAddons(getWidget(node, "num_addons")?.value ?? 1);
-    const minH = TITLE_H + 4 + numAddons * (ROW_H + ROW_GAP) + 4;
+    const fh = node.__aun_footerHeight || FOOTER_H;
+    const minH = TITLE_H + 4 + numAddons * (ROW_H + ROW_GAP) + 4 + fh + 2;
     node.setSize([node.size[0], Math.max(h, minH)]);
   } else {
     node.setSize([node.size[0], Math.max(h, 260)]);
@@ -113,6 +116,101 @@ function ellipsizeText(ctx, text, maxWidth) {
     s = s.slice(0, -1);
   }
   return s + "...";
+}
+
+function extractPromptFromOutput(output) {
+  if (!output) return null;
+  let text = output.prompt ?? output["0"] ?? (Array.isArray(output) ? output[0] : null);
+  if (Array.isArray(text)) text = text[0];
+  return text != null ? String(text) : null;
+}
+
+function pullNodeOutput(node) {
+  if (!node || !app) return null;
+  const key = String(node.id);
+  const out = app.nodeOutputs?.[key];
+  return out ? extractPromptFromOutput(out) : null;
+}
+
+function getResolvedText(node) {
+  if (node.__aun_lastOutput != null) return node.__aun_lastOutput;
+  const fromApp = pullNodeOutput(node);
+  if (fromApp != null) {
+    node.__aun_lastOutput = fromApp;
+    node.setDirtyCanvas?.(true, true);
+    return fromApp;
+  }
+  return "";
+}
+
+function computeFooterHeight(ctx, nodeW, text, lineH) {
+  if (!text) return FOOTER_H;
+  const maxW = nodeW - SIDE_PAD * 2 - 8;
+  if (maxW <= 0) return FOOTER_H;
+  const words = text.split(" ");
+  const lines = [];
+  let line = "";
+  for (const w of words) {
+    const test = line ? line + " " + w : w;
+    if (ctx.measureText(test).width > maxW && line) {
+      lines.push(line);
+      line = w;
+    } else {
+      line = test;
+    }
+  }
+  if (line) lines.push(line);
+  return Math.max(FOOTER_H, lines.length * lineH + 6);
+}
+
+function drawResolvedFooter(ctx, node) {
+  const resolved = getResolvedText(node);
+  const nodeW = node.size[0] || 300;
+  const nodeH = node.size[1] || 200;
+  ctx.font = "bold 12px sans-serif";
+  const lineH = 16;
+  const fh = computeFooterHeight(ctx, nodeW, resolved, lineH);
+
+  if (fh !== node.__aun_footerHeight) {
+    node.__aun_footerHeight = fh;
+    updateNodeSize(node);
+  }
+
+  const y = nodeH - fh - 2;
+  ctx.save();
+  ctx.fillStyle = "rgba(35, 35, 35, 0.92)";
+  ctx.beginPath();
+  ctx.roundRect(0, y, nodeW, fh, [0, 0, 4, 4]);
+  ctx.fill();
+  ctx.fillStyle = "#444";
+  ctx.beginPath();
+  ctx.rect(SIDE_PAD, y, nodeW - SIDE_PAD * 2, 1);
+  ctx.fill();
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
+  if (resolved) {
+    ctx.fillStyle = "#eee";
+    const maxW = nodeW - SIDE_PAD * 2 - 8;
+    let lineY = y + 4;
+    const words = resolved.split(" ");
+    let line = "";
+    for (const w of words) {
+      const test = line ? line + " " + w : w;
+      if (ctx.measureText(test).width > maxW && line) {
+        ctx.fillText(line, SIDE_PAD + 4, lineY);
+        lineY += lineH;
+        line = w;
+      } else {
+        line = test;
+      }
+    }
+    if (line) ctx.fillText(line, SIDE_PAD + 4, lineY);
+  } else {
+    ctx.fillStyle = "#888";
+    ctx.textBaseline = "middle";
+    ctx.fillText("(empty)", SIDE_PAD + 4, y + fh / 2);
+  }
+  ctx.restore();
 }
 
 function drawCompactRows(ctx, node) {
@@ -161,9 +259,9 @@ function drawCompactRows(ctx, node) {
     if (labelMaxW > 4) {
       const labelText = getAddonLabel(node, i);
       ctx.save();
-      ctx.font = "12px sans-serif";
+      ctx.font = "bold 12px sans-serif";
       const displayText = ellipsizeText(ctx, labelText, labelMaxW);
-      ctx.fillStyle = "#ccc";
+      ctx.fillStyle = "#eee";
       ctx.textAlign = "left";
       ctx.textBaseline = "middle";
       ctx.fillText(displayText, labelX, rowY + ROW_H / 2);
@@ -200,9 +298,30 @@ function toggleCompact(node) {
   updateNodeVisibility(node);
 }
 
+let _executedBound = false;
+function bindExecutedRedraw() {
+  if (_executedBound) return;
+  _executedBound = true;
+  api.addEventListener("executed", ({ detail }) => {
+    const nodeId = String(detail.display_node || detail.node);
+    const output = detail.output;
+    if (!output) return;
+    app.graph?._nodes?.forEach(n => {
+      if (n.type !== NODE_CLASS || String(n.id) !== nodeId) return;
+      let text = output.prompt ?? output["0"] ?? (Array.isArray(output) ? output[0] : null);
+      if (Array.isArray(text)) text = text[0];
+      if (text != null) {
+        n.__aun_lastOutput = String(text);
+        n.setDirtyCanvas?.(true, true);
+      }
+    });
+  });
+}
+
 function patchNode(node) {
   if (node.__aun_patched) return;
   node.__aun_patched = true;
+  bindExecutedRedraw();
 
   if (typeof node.properties?.[PROP_COMPACT] !== "boolean") {
     setCompact(node, true);
@@ -212,20 +331,37 @@ function patchNode(node) {
     ensureHiddenAware(w);
   }
 
-  const numAddonsW = getWidget(node, "num_addons");
-  if (numAddonsW) {
-    const origCb = numAddonsW.callback;
-    numAddonsW.callback = function (value) {
-      const result = origCb?.apply(this, arguments);
+  const numWidget = getWidget(node, "num_addons");
+  if (numWidget && !numWidget.__aun_hasCb) {
+    numWidget.__aun_hasCb = true;
+    const origCb = numWidget.callback;
+    numWidget.callback = function (v) {
+      origCb?.apply(this, arguments);
       updateNodeVisibility(node);
-      return result;
     };
   }
+
+  // onExecuted fallback in case the API ever calls it directly
+  const origOnExecuted = node.onExecuted;
+  node.onExecuted = function (message) {
+    origOnExecuted?.apply(this, arguments);
+    if (message) {
+      let prompt = message.prompt ?? message["0"] ?? message[0];
+      if (Array.isArray(prompt)) prompt = prompt[0];
+      if (prompt != null) {
+        this.__aun_lastOutput = String(prompt);
+        this.setDirtyCanvas?.(true, true);
+      }
+    }
+  };
 
   const origDrawFg = node.onDrawForeground;
   node.onDrawForeground = function (ctx) {
     origDrawFg?.apply(this, arguments);
-    if (isCompact(this)) drawCompactRows(ctx, this);
+    if (isCompact(this)) {
+      drawCompactRows(ctx, this);
+      drawResolvedFooter(ctx, this);
+    }
   };
 
   const origMouseDown = node.onMouseDown;
@@ -281,7 +417,8 @@ function patchNode(node) {
     const result = origResize?.apply(this, arguments);
     if (isCompact(this)) {
       const numAddons = clampAddons(getWidget(this, "num_addons")?.value ?? 1);
-      const minH = TITLE_H + 4 + numAddons * (ROW_H + ROW_GAP) + 4;
+      const fh = this.__aun_footerHeight || FOOTER_H;
+      const minH = TITLE_H + 4 + numAddons * (ROW_H + ROW_GAP) + 4 + fh + 2;
       if (this.size[1] < minH) this.size[1] = minH;
     }
     return result;
@@ -299,11 +436,11 @@ function patchNode(node) {
 
 app.registerExtension({
   name: "AUN.AddToPromptMulti.Canvas",
-  async nodeCreated(node) {
+  nodeCreated(node) {
     if (node.comfyClass !== NODE_CLASS && node.type !== NODE_CLASS) return;
     patchNode(node);
   },
-  async loadedGraphNode(node) {
+  loadedGraphNode(node) {
     if (node.comfyClass !== NODE_CLASS && node.type !== NODE_CLASS) return;
     patchNode(node);
   },
