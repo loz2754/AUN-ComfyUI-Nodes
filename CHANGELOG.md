@@ -5,6 +5,16 @@
 
 ### Added
 
+### Changed
+
+### Fixed
+
+### Notes
+
+## [2.4.3] - 2026-06-27
+
+### Added
+
 - `AUNAddToPromptMulti`: `forceInput` on `master_prompt` widget, tooltip text, resolved prompt footer in compact mode showing addon-only output text via `onDrawForeground`
 - `AUNTextIndexSwitch3`: capped minimum/maximum widgets for `AUNTextIndexSwitch4`
 
@@ -22,7 +32,6 @@
 - `AUNRandomLoraModelOnly` / `AUNRandomLoraModelOnlyMulti`: `resolveTriggersForDisplay` returns `null` when `apply_lora` is off
 
 ### Notes
-
 ## [2.4.2] - 2026-06-19
 
 ### Added
