@@ -36,13 +36,7 @@
 
 ### Fixed
 
-- `AUNLoraStackWithTriggers` / `AUNLoraStackWithTriggersModelClip`: LoRA basename extraction regex corrected (`.[^.]+# AUN Custom Nodes Changelog
-
-
- → `\.[^.]+# AUN Custom Nodes Changelog
-
-
-) to properly strip file extensions.
+- `AUNLoraStackWithTriggers` / `AUNLoraStackWithTriggersModelClip`: LoRA basename extraction regex corrected (`.+$` → `\.[^.]+$`) to properly strip file extensions.
 - Resolution overlay linked value read: uses `origin_slot` instead of hardcoded index 0; `parseFloat` instead of `Number` for numeric conversion.
 - `AUNLoraStackWithTriggers` / `AUNLoraStackWithTriggersModelClip`: empty lora value string (`""`) now correctly treated as "None".
 - `AUNGetConnectedNodeTitles` `IS_CHANGED` now always returns `time.time()` to force re-execution.
