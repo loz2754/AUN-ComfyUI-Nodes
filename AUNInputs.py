@@ -3,10 +3,10 @@ import folder_paths as comfy_paths
 import comfy.sd
 import comfy.utils
 import torch
-#import time
-import random
 import comfy.samplers
 from datetime import datetime
+
+from .AUNResolutionHelper import PRESETS, ASPECT_RATIOS, ASPECT_RATIO_NAMES, ASPECT_MODE_OPTIONS, MEGAPIXELS_WIDGET, MULTIPLE_WIDGET, resolve_dimensions, apply_aspect_mode
 
 class AnyType(str):
    
@@ -39,23 +39,6 @@ class AUNInputs:
     @classmethod
    
     def INPUT_TYPES(s):
-        aspect_ratios = ["custom",
-                            "512x512",
-                            "512x682",
-                            "512x768",
-                            "640x1536",
-                            "720x720",
-                            "768x1024",
-                            "768x1344",
-                            "832x1216",
-                            "896x1152",                   
-                            "910x512",
-                            "952x512",
-                            "1024x512",
-                            "1024x1024",
-                            "1224x512",                          
-                          ]
-
         return {
             "optional": {
                 "auto_name": ("STRING", {"multiline": False, "default": "Name", "forceInput": True, "tooltip": "Automatic name input, typically from a prompt node, used when 'name_mode' is set to Auto."}),
@@ -72,8 +55,8 @@ class AUNInputs:
                 "steps": ("INT", {"default": 10, "min": 1, "max": 10000, "tooltip": "Number of sampling steps."}),
                 "width": ("INT", {"default": 720, "min": 64, "max": 8192, "tooltip": "Image width. Used when 'aspect_ratio' is 'custom'."}),
                 "height": ("INT", {"default": 720, "min": 64, "max": 8192, "tooltip": "Image height. Used when 'aspect_ratio' is 'custom'."}),
-                "aspect_ratio": (aspect_ratios, {"tooltip": "Select a predefined aspect ratio to automatically set width and height."}),
-                "aspect_mode": (["Random", "Swap", "Original"], {"default": "Original", "tooltip": "Random swaps dimensions 50% of the time, Swap forces a swap, Original keeps the original order."}),
+                "aspect_ratio": (ASPECT_RATIO_NAMES, {"tooltip": "Select a predefined aspect ratio or ratio to automatically set width and height."}),
+                "aspect_mode": (ASPECT_MODE_OPTIONS, {"default": "Original", "tooltip": "Random swaps dimensions 50% of the time, Swap forces a swap, Original keeps the original order."}),
                 "batch_size": ("INT", {"default": 1, "min": 1, "max": 64, "tooltip": "Number of latent images to generate in a batch."}),
                 "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff, "tooltip": "The random seed for generation."}),
                 'MainFolder': ('STRING', {'multiline': False, 'default': 'MainFolder', "forceInput": False, "tooltip": "The main output folder for saved files."}),
@@ -82,7 +65,9 @@ class AUNInputs:
                 "prefix": ('STRING', {'multiline': False, 'default': '', "forceInput": False, "tooltip": "A prefix to add to the generated filename."}),
                 "date_format": (s.date_format, {"tooltip": "The format for the date placeholder in filenames."}),
                 "crop": ("BOOLEAN", {"default": True, "label_on": "On", "label_off": "Off", "tooltip": "Enable or disable cropping the filename to a specified number of words."}),
-                "words": ("INT", {"default": 1, "min": 1, "max": 10, "step": 1, "tooltip": "The number of words to keep from the start of the string."})
+                "words": ("INT", {"default": 1, "min": 1, "max": 10, "step": 1, "tooltip": "The number of words to keep from the start of the string."}),
+                "megapixels": MEGAPIXELS_WIDGET,
+                "multiple": MULTIPLE_WIDGET,
             },
         }
                 
@@ -99,7 +84,7 @@ class AUNInputs:
     FUNCTION = 'inputs'
     CATEGORY = 'AUN Nodes/Loaders+Inputs'
 
-    def inputs(self, ckpt_name, speed_lora, speed_lora_model, speed_lora_strength, clip_skip, MainFolder, ManualName, name_mode, prefix, sampler, scheduler, cfg, steps, width, height, aspect_ratio, aspect_mode, batch_size, seed, date_format, crop, words, auto_name="Name"):
+    def inputs(self, ckpt_name, speed_lora, speed_lora_model, speed_lora_strength, clip_skip, MainFolder, ManualName, name_mode, prefix, sampler, scheduler, cfg, steps, width, height, aspect_ratio, aspect_mode, batch_size, seed, date_format, crop, words, auto_name="Name", megapixels=1.0, multiple=8):
         ckpt_path = comfy_paths.get_full_path("checkpoints", ckpt_name)
         out = comfy.sd.load_checkpoint_guess_config(ckpt_path, output_vae=True, output_clip=True, embedding_directory=comfy_paths.get_folder_paths("embeddings"))
         model, clip, vae = out[0], out[1], out[2]
@@ -117,44 +102,11 @@ class AUNInputs:
                 else:
                     print(f"SpeedLoRA model '{lora_choice}' not found; skipping SpeedLoRA load.")
 
-        if aspect_ratio == "512x512":
-            width, height = 512, 512
-        elif aspect_ratio == "720x720":
-            width, height = 720, 720
-        elif aspect_ratio == "512x768":
-            width, height = 512, 768
-        elif aspect_ratio == "910x512":
-            width, height = 910, 512
-        elif aspect_ratio == "512x682":
-            width, height = 512, 682
-        elif aspect_ratio == "952x512":
-            width, height = 952, 512
-        elif aspect_ratio == "1024x512":
-            width, height = 1024, 512
-        elif aspect_ratio == "1224x512":
-            width, height = 1224, 512
-        elif aspect_ratio == "1024x1024":
-            width, height = 1024, 1024
-        elif aspect_ratio == "896x1152":
-            width, height = 896, 1152
-        elif aspect_ratio == "832x1216":
-            width, height = 832, 1216
-        elif aspect_ratio == "768x1344":
-            width, height = 768, 1344
-        elif aspect_ratio == "640x1536":
-            width, height = 640, 1536
-        elif aspect_ratio == "768x1024":
-            width, height = 768, 1024           
+        width, height = resolve_dimensions(width, height, aspect_ratio, megapixels, multiple)
+        width, height = apply_aspect_mode(width, height, aspect_mode)
 
         # Store original dimensions
         original_width, original_height = width, height
-        
-        # Apply aspect mode handling
-        if aspect_mode == "Random":
-            if random.SystemRandom().random() < 0.5:
-                width, height = height, width
-        elif aspect_mode == "Swap":
-            width, height = height, width
 
         # Create the empty latent
         latent = torch.zeros([batch_size, 4, height // 8, width // 8])

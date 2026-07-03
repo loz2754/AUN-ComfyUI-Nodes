@@ -1,5 +1,6 @@
 import { app } from "../../scripts/app.js";
 import { openLoraInfoDialog } from "./aun_lora_info_shared.js";
+import { makeLoraLabelClickable } from "./aun_lora_dropdown_shared.js";
 
 const NODE_TYPE = "AUNLoraStackWithTriggersModelClip";
 const PROP_KEY = "_AUN_compactMode";
@@ -147,6 +148,10 @@ function ensureCompactRowStyles() {
       overflow: hidden;
       white-space: nowrap;
       text-overflow: ellipsis;
+      cursor: pointer;
+    }
+    .AUN-lora-stack-row .AUN-lora-label-text:hover {
+      color: #fff;
     }
     .AUN-lora-stack-row .AUN-lora-info-btn {
       width: 16px;
@@ -410,6 +415,11 @@ function buildCompactRow(node, slotIndex) {
 
   const loraLabelText = document.createElement("span");
   loraLabelText.className = "AUN-lora-label-text";
+
+  makeLoraLabelClickable(node, `lora_${slotIndex}`, loraLabel, loraLabelText, {
+    formatLabel: formatCompactLoraLabel,
+    onChanged: (n) => { applyCompact(n); forceRedraw(n); },
+  });
 
   const infoButton = document.createElement("button");
   infoButton.type = "button";
@@ -840,7 +850,7 @@ function syncCompactRow(node, row, showClipStrength) {
   const strengthModelWidget = getWidget(node, `strength_model_${slotIndex}`);
   const strengthClipWidget = getWidget(node, `strength_clip_${slotIndex}`);
   const enabledWidget = getWidget(node, `enabled_${slotIndex}`);
-  const loraValue = String(loraWidget?.value ?? "None");
+  const loraValue = String(loraWidget?.value ?? "None") || "None";
   const hasLora = !!loraValue && loraValue !== "None";
 
   row.root.dataset.hideClip = showClipStrength ? "false" : "true";

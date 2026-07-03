@@ -1,5 +1,5 @@
 import os
-import random
+from .AUNResolutionHelper import ASPECT_RATIO_NAMES, ASPECT_MODE_OPTIONS, MEGAPIXELS_WIDGET, MULTIPLE_WIDGET, resolve_dimensions, apply_aspect_mode
 
 import comfy.sample
 import comfy.samplers
@@ -57,23 +57,6 @@ class AUNInputsDiffusersRefineBasic:
 
     @classmethod
     def INPUT_TYPES(cls):
-        aspect_ratios = [
-            "custom",
-            "512x512",
-            "512x682",
-            "512x768",
-            "640x1536",
-            "720x720",
-            "768x1024",
-            "768x1344",
-            "832x1216",
-            "896x1152",
-            "910x512",
-            "952x512",
-            "1024x512",
-            "1024x1024",
-            "1224x512",
-        ]
 
         diffusion_files = cls._choices_or_placeholder(
             comfy_paths.get_filename_list("diffusion_models"), cls._NO_DIFFUSION
@@ -206,11 +189,11 @@ class AUNInputsDiffusersRefineBasic:
                     },
                 ),
                 "aspect_ratio": (
-                    aspect_ratios,
+                    ASPECT_RATIO_NAMES,
                     {"tooltip": "Preset aspect ratio that overrides width/height."},
                 ),
                 "aspect_mode": (
-                    ["Random", "Swap", "Original"],
+                    ASPECT_MODE_OPTIONS,
                     {
                         "default": "Original",
                         "tooltip": "Random swaps dimensions 50% of the time, Swap always flips width/height.",
@@ -224,6 +207,8 @@ class AUNInputsDiffusersRefineBasic:
                     "INT",
                     {"default": 0, "min": 0, "max": 0xFFFFFFFFFFFFFFFF, "tooltip": "Base seed."},
                 ),
+                "megapixels": MEGAPIXELS_WIDGET,
+                "multiple": MULTIPLE_WIDGET,
             },
         }
 
@@ -323,33 +308,7 @@ class AUNInputsDiffusersRefineBasic:
         refine_strength = speed_lora_strength * (1.0 - speed_lora_ratio)
         return main_strength, refine_strength
 
-    @staticmethod
-    def _apply_aspect_ratio(aspect_ratio, width, height):
-        presets = {
-            "512x512": (512, 512),
-            "720x720": (720, 720),
-            "512x768": (512, 768),
-            "910x512": (910, 512),
-            "512x682": (512, 682),
-            "952x512": (952, 512),
-            "1024x512": (1024, 512),
-            "1224x512": (1224, 512),
-            "1024x1024": (1024, 1024),
-            "896x1152": (896, 1152),
-            "832x1216": (832, 1216),
-            "768x1344": (768, 1344),
-            "640x1536": (640, 1536),
-            "768x1024": (768, 1024),
-        }
-        return presets.get(aspect_ratio, (width, height))
 
-    @staticmethod
-    def _maybe_swap(width, height, aspect_mode):
-        if aspect_mode == "Swap":
-            return height, width
-        if aspect_mode == "Random" and random.SystemRandom().random() < 0.5:
-            return height, width
-        return width, height
 
     @classmethod
     def _build_latent(cls, model, batch_size, width, height):
@@ -387,6 +346,8 @@ class AUNInputsDiffusersRefineBasic:
         aspect_mode,
         batch_size,
         seed,
+        megapixels=1.0,
+        multiple=8,
     ):
         model = self._mark_latent_processing(self._load_diffusion_model(diffusion_name))
         clip, vae = self._load_shared_clip_and_vae(clip_name, clip_type, vae_name)
@@ -420,8 +381,8 @@ class AUNInputsDiffusersRefineBasic:
                         f"SpeedLoRA model '{lora_choice}' not found for refine diffusion inputs; skipping SpeedLoRA load."
                     )
 
-        width, height = self._apply_aspect_ratio(aspect_ratio, width, height)
-        width, height = self._maybe_swap(width, height, aspect_mode)
+        width, height = resolve_dimensions(width, height, aspect_ratio, megapixels, multiple)
+        width, height = apply_aspect_mode(width, height, aspect_mode)
 
         latent = {"samples": self._build_latent(model, batch_size, width, height)}
 

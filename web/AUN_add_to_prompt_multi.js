@@ -145,7 +145,8 @@ function getResolvedText(node) {
 
 function computeFooterHeight(ctx, nodeW, text, lineH) {
   if (!text) return FOOTER_H;
-  const maxW = nodeW - SIDE_PAD * 2 - 8;
+  const x0 = 8, x1 = nodeW - 8;
+  const maxW = x1 - x0 - 8;
   if (maxW <= 0) return FOOTER_H;
   const words = text.split(" ");
   const lines = [];
@@ -167,7 +168,8 @@ function drawResolvedFooter(ctx, node) {
   const resolved = getResolvedText(node);
   const nodeW = node.size[0] || 300;
   const nodeH = node.size[1] || 200;
-  ctx.font = "bold 12px sans-serif";
+  const x0 = 8, x1 = nodeW - 8;
+  ctx.font = "12px sans-serif";
   const lineH = 16;
   const fh = computeFooterHeight(ctx, nodeW, resolved, lineH);
 
@@ -178,37 +180,37 @@ function drawResolvedFooter(ctx, node) {
 
   const y = nodeH - fh - 2;
   ctx.save();
-  ctx.fillStyle = "rgba(35, 35, 35, 0.92)";
+  ctx.fillStyle = "rgba(0, 0, 0, 0.25)";
   ctx.beginPath();
-  ctx.roundRect(0, y, nodeW, fh, [0, 0, 4, 4]);
+  ctx.roundRect(x0, y, x1 - x0, fh, [0, 0, 4, 4]);
   ctx.fill();
   ctx.fillStyle = "#444";
   ctx.beginPath();
-  ctx.rect(SIDE_PAD, y, nodeW - SIDE_PAD * 2, 1);
+  ctx.rect(x0, y, x1 - x0, 1);
   ctx.fill();
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
   if (resolved) {
     ctx.fillStyle = "#eee";
-    const maxW = nodeW - SIDE_PAD * 2 - 8;
+    const maxW = x1 - x0 - 8;
     let lineY = y + 4;
     const words = resolved.split(" ");
     let line = "";
     for (const w of words) {
       const test = line ? line + " " + w : w;
       if (ctx.measureText(test).width > maxW && line) {
-        ctx.fillText(line, SIDE_PAD + 4, lineY);
+        ctx.fillText(line, x0 + 4, lineY);
         lineY += lineH;
         line = w;
       } else {
         line = test;
       }
     }
-    if (line) ctx.fillText(line, SIDE_PAD + 4, lineY);
+    if (line) ctx.fillText(line, x0 + 4, lineY);
   } else {
     ctx.fillStyle = "#888";
     ctx.textBaseline = "middle";
-    ctx.fillText("(empty)", SIDE_PAD + 4, y + fh / 2);
+    ctx.fillText("(empty)", x0 + 4, y + fh / 2);
   }
   ctx.restore();
 }
@@ -259,7 +261,7 @@ function drawCompactRows(ctx, node) {
     if (labelMaxW > 4) {
       const labelText = getAddonLabel(node, i);
       ctx.save();
-      ctx.font = "bold 12px sans-serif";
+      ctx.font = "12px sans-serif";
       const displayText = ellipsizeText(ctx, labelText, labelMaxW);
       ctx.fillStyle = "#eee";
       ctx.textAlign = "left";

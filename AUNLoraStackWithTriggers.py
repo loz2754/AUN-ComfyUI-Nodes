@@ -98,6 +98,15 @@ class AUNLoraStackWithTriggers:
                     "tooltip": "Optional prompt text appended after all active trigger words.",
                 },
             ),
+            "selected_LoRAs": (
+                "STRING",
+                {
+                    "default": "",
+                    "multiline": False,
+                    "forceInput": True,
+                    "tooltip": "Pass-through and concatenate selected_LoRAs text.",
+                },
+            ),
         }
 
         return {"required": required, "optional": optional}
@@ -105,10 +114,10 @@ class AUNLoraStackWithTriggers:
     RETURN_TYPES = ("MODEL", "STRING", "STRING", "STRING", "STRING")
     RETURN_NAMES = (
         "MODEL",
+        "selected LoRAs",
         "labels",
         "trigger words",
         "trigger + prompt",
-        "prompt",
     )
     FUNCTION = "load_stack"
     CATEGORY = "AUN Nodes/Loras"
@@ -198,13 +207,15 @@ class AUNLoraStackWithTriggers:
         trigger_joiner,
         dedupe_triggers,
         base_prompt=None,
+        selected_LoRAs="",
         **kwargs,
     ):
         active_slots = self._resolve_active_slots(num_slots, kwargs)
         base_prompt_text = str(base_prompt or "")
+        upstream_loras = str(selected_LoRAs or "").strip()
 
         if not bool(apply_stack) or not active_slots:
-            return (model, "", "", base_prompt_text, base_prompt_text)
+            return (model, upstream_loras, "", "", base_prompt_text)
 
         trigger_parts = [item["trigger"] for item in active_slots if item["trigger"]]
         trigger_parts = self._dedupe_trigger_parts(trigger_parts, bool(dedupe_triggers))
@@ -216,6 +227,19 @@ class AUNLoraStackWithTriggers:
             else base_prompt_text
         )
         labels = " + ".join(item["label"] for item in active_slots if item["label"])
+        # Format: <lora:filename:model_strength>
+        lora_tags = []
+        for item in active_slots:
+            if item["lora"] != "None":
+                basename = item["lora"].split("/")[-1].split("\\")[-1]
+                lora_tags.append(f"<lora:{basename}:{item['strength_model']:.2f}>")
+        local_selected_loras = ", ".join(lora_tags)
+
+        # Concatenate with upstream selected_LoRAs input if provided
+        if upstream_loras:
+            selected_loras = upstream_loras + ", " + local_selected_loras
+        else:
+            selected_loras = local_selected_loras
 
         loaded_model = model
         for item in active_slots:
@@ -236,10 +260,10 @@ class AUNLoraStackWithTriggers:
 
         return (
             loaded_model,
+            selected_loras,
             labels,
             trigger_words,
             trigger_prompt,
-            base_prompt_text,
         )
 
     @classmethod
@@ -250,6 +274,7 @@ class AUNLoraStackWithTriggers:
         base_prompt=None,
         trigger_joiner=None,
         dedupe_triggers=None,
+        selected_LoRAs="",
         **kwargs,
     ):
         return (
@@ -258,6 +283,7 @@ class AUNLoraStackWithTriggers:
             base_prompt,
             trigger_joiner,
             dedupe_triggers,
+            selected_LoRAs,
             tuple(sorted(kwargs.items())),
         )
 

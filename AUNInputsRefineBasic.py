@@ -1,11 +1,12 @@
 import os
-import random
 
 import comfy.samplers
 import comfy.sd
 import comfy.utils
 import folder_paths as comfy_paths
 import torch
+
+from .AUNResolutionHelper import ASPECT_RATIO_NAMES, ASPECT_MODE_OPTIONS, MEGAPIXELS_WIDGET, MULTIPLE_WIDGET, resolve_dimensions, apply_aspect_mode
 
 
 class AnyType(str):
@@ -26,24 +27,6 @@ class AUNInputsRefineBasic:
 
     @classmethod
     def INPUT_TYPES(cls):
-        aspect_ratios = [
-            "custom",
-            "512x512",
-            "512x682",
-            "512x768",
-            "640x1536",
-            "720x720",
-            "768x1024",
-            "768x1344",
-            "832x1216",
-            "896x1152",
-            "910x512",
-            "952x512",
-            "1024x512",
-            "1024x1024",
-            "1224x512",
-        ]
-
         return {
             "required": {
                 "ckpt_name": (comfy_paths.get_filename_list("checkpoints"), {"tooltip": "The checkpoint model file to load."}),
@@ -60,10 +43,12 @@ class AUNInputsRefineBasic:
                 "steps": ("INT", {"default": 10, "min": 1, "max": 10000, "tooltip": "Number of sampling steps."}),
                 "width": ("INT", {"default": 720, "min": 64, "max": 8192, "tooltip": "Image width. Used when 'aspect_ratio' is 'custom'."}),
                 "height": ("INT", {"default": 720, "min": 64, "max": 8192, "tooltip": "Image height. Used when 'aspect_ratio' is 'custom'."}),
-                "aspect_ratio": (aspect_ratios, {"tooltip": "Select a predefined aspect ratio to automatically set width and height."}),
-                "aspect_mode": (["Random", "Swap", "Original"], {"default": "Original", "tooltip": "Random swaps dimensions 50% of the time, Swap forces a swap, Original keeps the original order."}),
+                "aspect_ratio": (ASPECT_RATIO_NAMES, {"tooltip": "Select a predefined aspect ratio or ratio to automatically set width and height."}),
+                "aspect_mode": (ASPECT_MODE_OPTIONS, {"default": "Original", "tooltip": "Random swaps dimensions 50% of the time, Swap forces a swap, Original keeps the original order."}),
                 "batch_size": ("INT", {"default": 1, "min": 1, "max": 64, "tooltip": "Number of latent images to generate in a batch."}),
                 "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff, "tooltip": "The random seed for generation."}),
+                "megapixels": MEGAPIXELS_WIDGET,
+                "multiple": MULTIPLE_WIDGET,
             },
         }
 
@@ -142,27 +127,7 @@ class AUNInputsRefineBasic:
         refine_strength = speed_lora_strength * (1.0 - speed_lora_ratio)
         return main_strength, refine_strength
 
-    @staticmethod
-    def _resolve_dimensions(width, height, aspect_ratio):
-        presets = {
-            "512x512": (512, 512),
-            "720x720": (720, 720),
-            "512x768": (512, 768),
-            "910x512": (910, 512),
-            "512x682": (512, 682),
-            "952x512": (952, 512),
-            "1024x512": (1024, 512),
-            "1224x512": (1224, 512),
-            "1024x1024": (1024, 1024),
-            "896x1152": (896, 1152),
-            "832x1216": (832, 1216),
-            "768x1344": (768, 1344),
-            "640x1536": (640, 1536),
-            "768x1024": (768, 1024),
-        }
-        return presets.get(aspect_ratio, (width, height))
-
-    def inputs(self, ckpt_name, refine_ckpt, speed_lora, speed_lora_model, speed_lora_strength, speed_lora_full_both, speed_lora_ratio, clip_skip, sampler, scheduler, cfg, steps, width, height, aspect_ratio, aspect_mode, batch_size, seed):
+    def inputs(self, ckpt_name, refine_ckpt, speed_lora, speed_lora_model, speed_lora_strength, speed_lora_full_both, speed_lora_ratio, clip_skip, sampler, scheduler, cfg, steps, width, height, aspect_ratio, aspect_mode, batch_size, seed, megapixels=1.0, multiple=8):
         model, clip, vae = self._load_checkpoint_bundle(ckpt_name)
         model = self._tag_model_source(model, ckpt_name)
 
@@ -192,13 +157,8 @@ class AUNInputsRefineBasic:
                 else:
                     print(f"SpeedLoRA model '{lora_choice}' not found; skipping SpeedLoRA load.")
 
-        width, height = self._resolve_dimensions(width, height, aspect_ratio)
-
-        if aspect_mode == "Random":
-            if random.SystemRandom().random() < 0.5:
-                width, height = height, width
-        elif aspect_mode == "Swap":
-            width, height = height, width
+        width, height = resolve_dimensions(width, height, aspect_ratio, megapixels, multiple)
+        width, height = apply_aspect_mode(width, height, aspect_mode)
 
         latent = torch.zeros([batch_size, 4, height // 8, width // 8])
 

@@ -141,6 +141,7 @@ class AUNImageLoadResize:
                 }
 
     CATEGORY = "AUN Nodes/Image"
+    OUTPUT_NODE = True
     RETURN_TYPES = ("IMAGE", "MASK", "STRING", "STRING", "INT", "INT")
     RETURN_NAMES = ("IMAGE", "MASK", "filename", "cleaned filename", "width", "height")
     FUNCTION = "load_image"
@@ -298,7 +299,11 @@ class AUNImageLoadResize:
                 new_parts.append(p)
             filename = "".join(new_parts).rstrip("_ -")
 
-        return (output_image, output_mask, filename, cleaned_filename, final_w or width, final_h or height)
+        output_w = final_w or width
+        output_h = final_h or height
+        self.width = output_w
+        self.height = output_h
+        return (output_image, output_mask, filename, cleaned_filename, output_w, output_h)
 
 
     # @classmethod

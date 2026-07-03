@@ -5,9 +5,31 @@
 
 ### Added
 
+- New node: `AUNAnyIndexSwitch` — dynamic input labeling with "Node Title" / "Slot Label" modes; auto-label updates on connection/disconnection and title-change polling.
+- New shared module: `AUNResolutionHelper` — centralized aspect ratio resolution with ratio-based presets (1:1, 16:9, etc.), megapixels targeting, and multiple-of rounding.
+- New shared module: `web/aun_lora_dropdown_shared.js` — clickable LoRA label dropdowns with tree/folder browser in compact overlays.
+- `AUNGetConnectedNodeTitles`: `visible_inputs` widget (1-10) to control displayed input sockets with dynamic socket management and connected-link confirmation dialog.
+- All Inputs nodes (`AUNInputs`, `AUNInputsBasic`, `AUNInputsDiffusers`, `AUNInputsDiffusersBasic`, `AUNInputsDiffusersRefineBasic`, `AUNInputsHybrid`, `AUNInputsRefine`, `AUNInputsRefineBasic`): `megapixels` and `multiple` widgets for ratio-based resolution calculation.
+- `AUNLoraStackWithTriggers`: `selected_LoRAs` passthrough input/output that generates `<lora:filename:strength>` tags.
+- `AUNImageLoadResize`: `OUTPUT_NODE = True` with `width`/`height` instance attributes exposed.
+- `AUNGetConnectedNodeTitles` Python backend: lazy evaluation support on optional inputs.
+
 ### Changed
 
+- All 8 Inputs nodes: refactored to use shared `AUNResolutionHelper` instead of duplicated preset maps and inline dimension logic; aspect ratio options now include ratio modes (1:1, 16:9, etc.) alongside fixed presets.
+- Resolution overlay (`web/AUN_inputs_resolution_overlay.js`): extended to cover all 8 Inputs nodes (was `AUNInputsBasic` only); now reads resolved width/height from `app.nodeOutputs` post-execution for accurate display with `api.status` listener.
+- `AUNGetConnectedNodeTitles` frontend: complete rewrite with dynamic socket count (1-10), auto-label updates, title-change polling, and `selected_title` output preservation on socket changes.
+- `AUNLoraStackWithTriggers`: return types reordered — `selected LoRAs` added between MODEL and labels; `prompt` output removed.
+- LoRA stack compact overlays (`AUNLoraStackWithTriggers`, `AUNLoraStackWithTriggersModelClip`, `AUNRandomLoraModelOnlyMulti`): LoRA labels now clickable with dropdown tree browser via `makeLoraLabelClickable`.
+- `AUN_add_to_prompt_multi` compact mode: footer rendering uses `x0`/`x1` bounds for consistent padding; font size normalized to 12px; background changed to semi-transparent black.
+- `AUN_wildcard_add_to_prompt`: increased compact mode padding (bottom padding 30→68) and maxHeight (42→60px) for better text display.
+
 ### Fixed
+
+- `AUNLoraStackWithTriggers` / `AUNLoraStackWithTriggersModelClip`: LoRA basename extraction regex corrected (`.[^.]+$` → `\.[^.]+$`) to properly strip file extensions.
+- Resolution overlay linked value read: uses `origin_slot` instead of hardcoded index 0; `parseFloat` instead of `Number` for numeric conversion.
+- `AUNLoraStackWithTriggers` / `AUNLoraStackWithTriggersModelClip`: empty lora value string (`""`) now correctly treated as "None".
+- `AUNGetConnectedNodeTitles` `IS_CHANGED` now always returns `time.time()` to force re-execution.
 
 ### Notes
 

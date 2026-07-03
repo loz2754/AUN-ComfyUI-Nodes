@@ -20,6 +20,10 @@ function getIndexWidget(node) {
     return node.widgets?.find((w) => w.name === "index");
 }
 
+function getWidgetByName(node, name) {
+    return node.widgets?.find((w) => w.name === name);
+}
+
 function ensureWidgetHook(node) {
     const widget = getVisibleWidget(node);
     if (!widget || widget.__aun_hooked) {
@@ -100,6 +104,7 @@ function applyInputSockets(node, desiredInputs) {
 
     if (changed) {
         resizeNode(node);
+        updateInputLabels(node);
     }
 }
 
@@ -142,6 +147,42 @@ function hasLinkedInputsAbove(node, target) {
     return false;
 }
 
+function updateInputLabels(node) {
+    if (!node || node.comfyClass !== "AUNAnyIndexSwitch") return;
+    const graph = node.graph || app.graph;
+    if (!graph) return;
+
+    const labelMode = getWidgetByName(node, "label_mode")?.value || "Node Title";
+
+    for (let i = 1; i <= MAX_INPUTS; i++) {
+        const slot = node.inputs?.find((s) => s.name === `${VALUE_PREFIX}${i}`);
+        if (!slot) continue;
+
+        if (slot.link != null) {
+            const links = graph.links;
+            const link = links?.get ? links.get(slot.link) : links?.[slot.link];
+            if (link) {
+                const srcNode = graph.getNodeById ? graph.getNodeById(link.origin_id) : null;
+                if (srcNode) {
+                    if (labelMode === "Slot Label") {
+                        const originSlot = link.origin_slot;
+                        const output = srcNode.outputs?.[originSlot];
+                        slot.label = output?.label || output?.name || `${VALUE_PREFIX}${i}`;
+                    } else {
+                        slot.label = srcNode.title || srcNode.type || `${VALUE_PREFIX}${i}`;
+                    }
+                    continue;
+                }
+            }
+        }
+        slot.label = `${VALUE_PREFIX}${i}`;
+    }
+    if (app.canvas) {
+        app.canvas.setDirty(true);
+        app.canvas.draw(true, true);
+    }
+}
+
 function updateTrackedNodes() {
     for (const node of Array.from(trackedNodes)) {
         if (!node || node.type === undefined) {
@@ -175,6 +216,18 @@ function setupNode(node) {
     const widgetValue = clampInputCount(getVisibleWidget(node)?.value ?? MIN_INPUTS);
     scheduleUpdate(node, widgetValue);
     syncIndexWidget(node, widgetValue);
+
+    const labelModeWidget = getWidgetByName(node, "label_mode");
+    if (labelModeWidget && !labelModeWidget.__aun_label_hooked) {
+        labelModeWidget.__aun_label_hooked = true;
+        const origCb = labelModeWidget.callback;
+        labelModeWidget.callback = function (value) {
+            if (origCb) origCb.call(this, value);
+            updateInputLabels(node);
+        };
+    }
+
+    setTimeout(() => updateInputLabels(node), 0);
 }
 
 function syncIndexWidget(node, maxVisible) {
@@ -204,9 +257,41 @@ app.registerExtension({
     nodeCreated(node) {
         setupNode(node);
     },
+    nodeInputConnected(node, inputSlot) {
+        if (node.comfyClass === "AUNAnyIndexSwitch") {
+            updateInputLabels(node);
+        }
+    },
+    nodeInputDisconnected(node, inputSlot) {
+        if (node.comfyClass === "AUNAnyIndexSwitch") {
+            updateInputLabels(node);
+        }
+    },
     loadedGraphNode(node) {
         setupNode(node);
     }
 });
+
+let lastTitles = {};
+function pollTitles() {
+    if (app && app.graph && app.graph._nodes) {
+        for (const node of app.graph._nodes) {
+            if (node.title !== lastTitles[node.id]) {
+                lastTitles[node.id] = node.title;
+                for (const n of app.graph._nodes) {
+                    if (n.comfyClass === "AUNAnyIndexSwitch") {
+                        updateInputLabels(n);
+                    }
+                }
+                if (app.canvas) {
+                    app.canvas.setDirty(true, true);
+                    app.canvas.draw(true, true);
+                }
+            }
+        }
+    }
+    requestAnimationFrame(pollTitles);
+}
+pollTitles();
 
 updateTrackedNodes();

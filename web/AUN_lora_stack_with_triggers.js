@@ -1,5 +1,6 @@
 import { app } from "../../scripts/app.js";
 import { openLoraInfoDialog } from "./aun_lora_info_shared.js";
+import { makeLoraLabelClickable } from "./aun_lora_dropdown_shared.js";
 
 const NODE_TYPE = "AUNLoraStackWithTriggers";
 const PROP_KEY = "_AUN_compactMode";
@@ -110,6 +111,10 @@ function ensureCompactRowStyles() {
       overflow: hidden;
       white-space: nowrap;
       text-overflow: ellipsis;
+      cursor: pointer;
+    }
+    .AUN-lora-stack-row-basic .AUN-lora-label-text-basic:hover {
+      color: #fff;
     }
     .AUN-lora-stack-row-basic .AUN-lora-info-btn-basic {
       width: 16px;
@@ -253,7 +258,7 @@ function ensureCompactRowStyles() {
 function loraBasename(value) {
   if (!value || typeof value !== "string") return null;
   const stripped = value.replace(/\\/g, "/").split("/").pop() ?? value;
-  return stripped.replace(/.[^.]+$/, "");
+  return stripped.replace(/\.[^.]+$/, "");
 }
 
 function normalizeLoraWidgetValue(widget) {
@@ -340,6 +345,12 @@ function buildCompactRow(node, slotIndex) {
 
   const loraLabelText = document.createElement("span");
   loraLabelText.className = "AUN-lora-label-text-basic";
+  loraLabelText.textContent = "None";
+
+  makeLoraLabelClickable(node, `lora_${slotIndex}`, loraLabel, loraLabelText, {
+    formatLabel: formatCompactLoraLabel,
+    onChanged: (n) => { applyCompact(n); forceRedraw(n); },
+  });
 
   const infoButton = document.createElement("button");
   infoButton.type = "button";
@@ -671,7 +682,7 @@ function syncCompactRow(node, row) {
   const loraWidget = getWidget(node, `lora_${slotIndex}`);
   const strengthWidget = getWidget(node, `strength_model_${slotIndex}`);
   const enabledWidget = getWidget(node, `enabled_${slotIndex}`);
-  const loraValue = String(loraWidget?.value ?? "None");
+  const loraValue = String(loraWidget?.value ?? "None") || "None";
   const hasLora = !!loraValue && loraValue !== "None";
   row.loraLabelText.textContent = formatCompactLoraLabel(loraValue);
   row.loraLabel.title = loraValue;

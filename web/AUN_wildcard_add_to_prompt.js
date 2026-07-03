@@ -297,7 +297,7 @@ function setupCompact(node) {
     node.computeSize = function (...args) {
       const result = origComputeSize.apply(this, args);
       if (Array.isArray(result) && result.length >= 2) {
-        return [result[0], result[1] + 30];
+        return [result[0], result[1] + 68]; // Add bottom padding to height
       }
       return result;
     };
@@ -437,7 +437,7 @@ app.registerExtension({
       el.style.color = "#e0e0e0";
       el.style.padding = "6px 8px";
       el.style.minHeight = "30px";
-      el.style.maxHeight = "42px";
+      el.style.maxHeight = "60px";
       el.style.overflowY = "scroll";
       el.style.borderRadius = "4px";
       el.style.border = "1px solid #444";

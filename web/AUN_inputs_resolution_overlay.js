@@ -1,6 +1,16 @@
 import { app } from "../../scripts/app.js";
+import { api } from "../../scripts/api.js";
 
-const TARGET_CLASSES = new Set(["AUNInputsBasic"]);
+const TARGET_CLASSES = new Set([
+    "AUNInputsBasic",
+    "AUNInputs",
+    "AUNInputsRefine",
+    "AUNInputsRefineBasic",
+    "AUNInputsDiffusers",
+    "AUNInputsDiffusersBasic",
+    "AUNInputsDiffusersRefineBasic",
+    "AUNInputsHybrid",
+]);
 
 const ASPECT_RATIOS = {
     "1:1 (Square)": [1, 1],
@@ -52,32 +62,60 @@ function resolveComboValue(widget) {
     return raw;
 }
 
-function refreshLinkedValues(node) {
-    try {
+function getResolvedValue(node) {
+    const inputs = node?.inputs;
+    if (!Array.isArray(inputs)) return {};
+
+    const myOutputs = app?.nodeOutputs?.[String(node.id)];
+    if (myOutputs) {
+        let w = myOutputs[9], h = myOutputs[10];
+        if (w == null) w = myOutputs["9"] ?? myOutputs[String(9)];
+        if (h == null) h = myOutputs["10"] ?? myOutputs[String(10)];
+        if (w == null) w = myOutputs.width ?? myOutputs["width"];
+        if (h == null) h = myOutputs.height ?? myOutputs["height"];
+        if (w != null && h != null) {
+            return { width: parseFloat(w), height: parseFloat(h) };
+        }
+    }
+
+    const result = {};
+    for (const input of inputs) {
+        const linkId = input?.link;
+        if (linkId == null) continue;
+        const name = input?.name;
+        if (name !== "width" && name !== "height") continue;
+        const obj = node?.graph?.links?.[linkId];
+        if (!obj) continue;
+        const origin = app?.graph?.getNodeById?.(obj.origin_id);
+        if (!origin) continue;
+        const widget = findWidget(origin, name);
+        if (widget?.value != null) result[name] = parseFloat(widget.value);
+    }
+    if (result.width != null && result.height != null) {
+        return { width: result.width, height: result.height };
+    }
+    return {};
+}
+
+function refreshOverlay(node) {
+    const resolved = getResolvedValue(node);
+    if (resolved.width != null && resolved.height != null) {
+        node.__aun_wValue = resolved.width;
+        node.__aun_hValue = resolved.height;
+    } else {
         node.__aun_wValue = undefined;
         node.__aun_hValue = undefined;
-        const inputs = node?.inputs;
-        if (!Array.isArray(inputs)) return;
-        for (let i = 0; i < inputs.length; i++) {
-            const input = inputs[i];
-            const linkId = input?.link;
-            if (linkId == null) continue;
-            const name = input?.name;
-            const obj = node?.graph?.links?.[linkId];
-            if (!obj) continue;
-            const origin = app?.graph?.getNodeById?.(obj.origin_id);
-            if (!origin) continue;
-            const originSlot = obj.origin_slot;
-            const raw = origin?.widgets?.[originSlot]?.value;
-            if (raw != null) {
-                const num = parseFloat(raw);
-                if (!isNaN(num)) {
-                    if (name === "width") node.__aun_wValue = num;
-                    if (name === "height") node.__aun_hValue = num;
-                }
-            }
-        }
-    } catch(_) {}
+    }
+}
+
+function refreshAllOverlays() {
+    const nodes = app.graph?._nodes;
+    if (!nodes) return;
+    for (const node of nodes) {
+        if (!TARGET_CLASSES.has(node.comfyClass) && !TARGET_CLASSES.has(node.type)) continue;
+        refreshOverlay(node);
+        node.setDirtyCanvas?.(true, true);
+    }
 }
 
 function computeLabel(node) {
@@ -112,7 +150,6 @@ function computeLabel(node) {
     if (aspectMode === "Random") {
         label += " (random)";
     }
-
     return label;
 }
 
@@ -121,7 +158,7 @@ function wrapWidget(node, widget) {
     const original = widget.callback;
     widget.callback = function (value) {
         try { if (typeof original === "function") original.call(widget, value); } catch (e) {}
-        refreshLinkedValues(node);
+        refreshOverlay(node);
         const graph = node.graph ?? app.graph;
         graph?.setDirtyCanvas(true, true);
     };
@@ -185,32 +222,43 @@ function installOverlay(node) {
     const origConnect = node.onConnectInput;
     node.onConnectInput = function (slot, type, output, originNode, outputSlot) {
         const r = typeof origConnect === "function" ? origConnect.apply(this, arguments) : undefined;
-        refreshLinkedValues(this);
+        refreshOverlay(this);
         return r;
     };
     const origDisconnect = node.onDisconnectInput;
     node.onDisconnectInput = function (slot) {
         const r = typeof origDisconnect === "function" ? origDisconnect.apply(this, arguments) : undefined;
-        refreshLinkedValues(this);
+        refreshOverlay(this);
         return r;
     };
 
     node.__aun_resolution_overlay_hooked = true;
 }
 
+function refreshWithRedraw(node, delay) {
+    setTimeout(() => {
+        refreshOverlay(node);
+        const graph = node.graph ?? app.graph;
+        graph?.setDirtyCanvas(true, true);
+    }, delay);
+}
+
 function setupNode(node) {
     if (!node) return;
     if (!TARGET_CLASSES.has(node.comfyClass) && !TARGET_CLASSES.has(node.type)) return;
     wrapWidgets(node);
-    refreshLinkedValues(node);
     installOverlay(node);
-    // Retry caching in case inputs not yet populated
-    setTimeout(() => refreshLinkedValues(node), 100);
-    setTimeout(() => refreshLinkedValues(node), 500);
-    const graph = node.graph ?? app.graph;
-    setTimeout(() => graph?.setDirtyCanvas(true, true), 0);
-    setTimeout(() => graph?.setDirtyCanvas(true, true), 120);
+    refreshWithRedraw(node, 0);
+    refreshWithRedraw(node, 150);
+    refreshWithRedraw(node, 500);
+    refreshWithRedraw(node, 1500);
 }
+
+api.addEventListener("status", async ({ detail }) => {
+    if (detail?.exec_info?.queue_remaining != null && detail.exec_info.queue_remaining === 0) {
+        refreshAllOverlays();
+    }
+});
 
 app.registerExtension({
     name: "AUN.InputsResolutionOverlay",

@@ -1,6 +1,7 @@
 import { api } from "../../scripts/api.js";
 import { app } from "../../scripts/app.js";
 import { openLoraInfoDialog } from "./aun_lora_info_shared.js";
+import { makeLoraLabelClickable } from "./aun_lora_dropdown_shared.js";
 
 const NODE_TYPE = "AUNRandomLoraModelOnlyMulti";
 const PROP_KEY = "_AUN_compactMode";
@@ -554,6 +555,10 @@ function ensureCompactRowStyles() {
       white-space: nowrap;
       text-overflow: ellipsis;
       letter-spacing: 0.3px;
+      cursor: pointer;
+    }
+    .AUN-lora-multi-row .AUN-lora-label-text:hover {
+      color: #fff;
     }
     .AUN-lora-multi-row .AUN-lora-info-btn {
       width: 18px;
@@ -756,6 +761,11 @@ function buildCompactRow(node, promptIdx, slotIdx) {
 
   const loraLabelText = document.createElement("span");
   loraLabelText.className = "AUN-lora-label-text";
+
+  makeLoraLabelClickable(node, `p${promptIdx}_lora${slotIdx}`, loraLabel, loraLabelText, {
+    formatLabel: formatCompactLoraLabel,
+    onChanged: (n) => { applyCompact(n); forceRedraw(n); },
+  });
 
   const infoButton = document.createElement("button");
   infoButton.type = "button";
