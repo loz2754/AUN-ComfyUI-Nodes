@@ -5,6 +5,16 @@
 
 ### Added
 
+### Changed
+
+### Fixed
+
+### Notes
+
+## [2.5.0] - 2026-07-04
+
+### Added
+
 - New node: `AUNAnyIndexSwitch` — dynamic input labeling with "Node Title" / "Slot Label" modes; auto-label updates on connection/disconnection and title-change polling.
 - New shared module: `AUNResolutionHelper` — centralized aspect ratio resolution with ratio-based presets (1:1, 16:9, etc.), megapixels targeting, and multiple-of rounding.
 - New shared module: `web/aun_lora_dropdown_shared.js` — clickable LoRA label dropdowns with tree/folder browser in compact overlays.
@@ -26,13 +36,18 @@
 
 ### Fixed
 
-- `AUNLoraStackWithTriggers` / `AUNLoraStackWithTriggersModelClip`: LoRA basename extraction regex corrected (`.[^.]+$` → `\.[^.]+$`) to properly strip file extensions.
+- `AUNLoraStackWithTriggers` / `AUNLoraStackWithTriggersModelClip`: LoRA basename extraction regex corrected (`.[^.]+# AUN Custom Nodes Changelog
+
+
+ → `\.[^.]+# AUN Custom Nodes Changelog
+
+
+) to properly strip file extensions.
 - Resolution overlay linked value read: uses `origin_slot` instead of hardcoded index 0; `parseFloat` instead of `Number` for numeric conversion.
 - `AUNLoraStackWithTriggers` / `AUNLoraStackWithTriggersModelClip`: empty lora value string (`""`) now correctly treated as "None".
 - `AUNGetConnectedNodeTitles` `IS_CHANGED` now always returns `time.time()` to force re-execution.
 
 ### Notes
-
 ## [2.4.3] - 2026-06-27
 
 ### Added
