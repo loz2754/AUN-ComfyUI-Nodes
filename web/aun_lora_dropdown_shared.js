@@ -1,3 +1,5 @@
+import { showTooltip, hideTooltip, formatLoraTooltip } from "./tooltip.js";
+
 let __AUN_dropdown_styles_loaded = false;
 
 function ensureDropdownStyles() {
@@ -138,6 +140,18 @@ export function makeLoraLabelClickable(node, slotName, loraLabel, loraLabelText,
 
   ensureDropdownStyles();
 
+  // Add hover tooltip to loraLabelText (shown when dropdown is closed)
+  const attachTooltip = (el) => {
+    el.addEventListener("mouseenter", () => {
+      const w = getWidget(node, slotName);
+      const val = String(w?.value ?? "None");
+      showTooltip(el, formatLoraTooltip(val));
+    });
+    el.addEventListener("mouseleave", () => hideTooltip());
+  };
+
+  attachTooltip(loraLabelText);
+
   let active = false;
   let trigger = null;
   let popup = null;
@@ -275,7 +289,15 @@ export function makeLoraLabelClickable(node, slotName, loraLabel, loraLabelText,
     trigger = document.createElement("div");
     trigger.className = "AUN-lora-dropdown-label";
     trigger.textContent = currentValue === "None" ? "None" : formatLabel(currentValue);
-    trigger.title = currentValue;
+
+    // Hover tooltip for full path
+    trigger.addEventListener("mouseenter", () => {
+      showTooltip(trigger, formatLoraTooltip(currentValue));
+    });
+    trigger.addEventListener("mouseleave", () => {
+      hideTooltip();
+    });
+
     loraLabelText.replaceWith(trigger);
 
     // Create popup

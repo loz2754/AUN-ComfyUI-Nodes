@@ -1,6 +1,18 @@
 # AUN Custom Nodes Changelog
 
 
+## [2.6.0] - 2026-07-06
+
+### Added
+
+- New `web/tooltip.js` module: canvas-based hover tooltip system that shows the full selected value for combo/dropdown widgets across all nodes; works with canvas-rendered widgets (modern ComfyUI frontend) via `setupComboWidgetTooltips`/`teardownComboWidgetTooltips`; uses `app.canvas.graph_mouse` coordinate conversion for hit detection.
+- ComfyUI Settings toggle `AUN.ComboTooltip.Enabled` to enable/disable combo widget value tooltips.
+- Hover tooltips on LoRA dropdown labels and triggers in `aun_lora_dropdown_shared.js`, showing full LoRA path and formatted name via `import { showTooltip, hideTooltip, formatLoraTooltip } from "./tooltip.js"`.
+
+### Changed
+
+- `AUN_lora_stack_with_triggers.js`, `AUN_lora_stack_with_triggers_model_clip.js`, `AUN_random_lora_multi.js`: removed native `title` attributes from LoRA label containers (replaced by custom tooltip popups).
+
 ## [Unreleased]
 
 ### Added

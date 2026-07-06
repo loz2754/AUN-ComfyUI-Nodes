@@ -341,7 +341,6 @@ function buildCompactRow(node, slotIndex) {
 
   const loraLabel = document.createElement("div");
   loraLabel.className = "AUN-lora-label-basic";
-  loraLabel.title = `LoRA ${slotIndex}`;
 
   const loraLabelText = document.createElement("span");
   loraLabelText.className = "AUN-lora-label-text-basic";
@@ -685,7 +684,6 @@ function syncCompactRow(node, row) {
   const loraValue = String(loraWidget?.value ?? "None") || "None";
   const hasLora = !!loraValue && loraValue !== "None";
   row.loraLabelText.textContent = formatCompactLoraLabel(loraValue);
-  row.loraLabel.title = loraValue;
   row.infoButton.title = hasLora ? `Show LoRA info for ${loraValue}` : "No LoRA selected";
   row.infoButton.style.visibility = hasLora ? "visible" : "hidden";
   if (document.activeElement !== row.strengthModel) {
