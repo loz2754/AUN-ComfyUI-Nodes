@@ -25,6 +25,7 @@ class AUNInputsDiffusers:
     DESCRIPTION = (
         "Load a diffusion-only UNet with explicit CLIP and VAE files, "
         "then emit the same downstream inputs as AUNInputs."
+        "\n\nRight-click → \"Collapse Connections\" or double-click to hide output labels and converge connection lines."
     )
 
     MODEL_SOURCES = ["Checkpoint", "Diffusion model"]

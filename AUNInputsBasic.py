@@ -19,7 +19,7 @@ sampler = AnyType("*")
 
 
 class AUNInputsBasic:
-    DESCRIPTION = "A comprehensive 'all-in-one' node for setting up a generation pipeline. It loads a checkpoint, creates a latent image, and prepares various parameters for sampling and saving, all in one place."
+    DESCRIPTION = "A comprehensive 'all-in-one' node for setting up a generation pipeline. It loads a checkpoint, creates a latent image, and prepares various parameters for sampling and saving, all in one place.\n\nRight-click → \"Collapse Connections\" or double-click to hide output labels and converge connection lines."
     # date_format = ["%Y%m%d%H%M%S",
     #                "%Y%m%d%H%M",
     #                "%Y%m%d",

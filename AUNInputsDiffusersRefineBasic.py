@@ -20,7 +20,7 @@ sampler = AnyType("*")
 
 
 class AUNInputsDiffusersRefineBasic:
-    DESCRIPTION = "A lightweight diffusion-model setup node that loads a standalone UNet with explicit CLIP and VAE files, prepares common sampler settings, creates an empty latent batch, and optionally provides a separate refinement diffusion model."
+    DESCRIPTION = "A lightweight diffusion-model setup node that loads a standalone UNet with explicit CLIP and VAE files, prepares common sampler settings, creates an empty latent batch, and optionally provides a separate refinement diffusion model.\n\nRight-click → \"Collapse Connections\" or double-click to hide output labels and converge connection lines."
 
     _NO_DIFFUSION = "<no diffusion models found>"
     _NO_CLIP = "<no clip files found>"

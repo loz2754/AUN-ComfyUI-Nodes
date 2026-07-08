@@ -20,7 +20,7 @@ sampler = AnyType("*")
 
 
 class AUNInputsRefineBasic:
-    DESCRIPTION = "A lightweight all-in-one setup node that loads a checkpoint, prepares common sampler settings, creates an empty latent batch, and optionally provides a separate refinement model."
+    DESCRIPTION = "A lightweight all-in-one setup node that loads a checkpoint, prepares common sampler settings, creates an empty latent batch, and optionally provides a separate refinement model.\n\nRight-click → \"Collapse Connections\" or double-click to hide output labels and converge connection lines."
 
     def __init__(self):
         pass

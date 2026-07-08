@@ -4,7 +4,7 @@
 
 A comprehensive collection of custom nodes for ComfyUI which I find useful. If you prefer compact, well-organised workflows, then give these a try. From versatile bypass/mute/collapse controllers, to automatic file naming and saving, to LoRAs handling with simple prompt and trigger words management, and lots of other tempting goodies!
 
-Many of the nodes feature a 'compact mode', activated by double clicking the node body, which hides all the widgets, except for those you need to see. I will be updating the readme with more examples/workflows as and when I find the time.
+Many of the nodes feature a 'compact mode', activated by double clicking the node body, which hides all the widgets, except for those you need to see. AUN Inputs nodes additionally feature a 'collapse connections' mode, activated by double-clicking or right-clicking, which hides output labels and converges all output connection lines to a single point while keeping the node compact. I will be updating the readme with more examples/workflows as and when I find the time.
 
 ## <!-- BEGIN: AUN_NODES_AUTO -->
 
@@ -170,6 +170,14 @@ Deprecation note: the full input-style nodes (`AUNInputs`, `AUNInputsDiffusers`,
 ---
 
 ### Notes
+
+#### Collapse Connections
+
+AUN Inputs nodes (`AUNInputs`, `AUNInputsBasic`, `AUNInputsRefine`, `AUNInputsRefineBasic`, `AUNInputsDiffusers`, `AUNInputsDiffusersBasic`, `AUNInputsDiffusersRefineBasic`, `AUNInputsHybrid`) feature a **collapse connections** mode that hides all output labels and converges all output connection lines to a single point, making complex workflows visually cleaner.
+
+**Toggle**: Right-click → "Collapse Connections" / "Show Connections", or double-click anywhere on the node body (excluding the title bar and widgets). The node height reduces to match the collapsed output area while preserving user-set width.
+
+**Note**: This is distinct from ComfyUI's built-in title-bar collapse — the output sockets remain functional, and connections are preserved; only the visual representation is compacted.
 
 ## 🚀 **Getting Started**
 

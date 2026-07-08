@@ -219,6 +219,7 @@ export function setupComboWidgetTooltips() {
 
     let activeWidget = null;
     let isShowing = false;
+    let clickSuppress = false;
 
     const getCanvasPos = (e) => {
       const gm = app.canvas?.graph_mouse;
@@ -250,13 +251,24 @@ export function setupComboWidgetTooltips() {
     };
 
     const onMouseMove = (e) => {
-      if (!isEnabled) return;
+      if (!isEnabled || clickSuppress) return;
+
+      // Suppress tooltip while a LoRA dropdown popup is open (would obscure it)
+      if (document.querySelector(".AUN-lora-dropdown-popup")) {
+        if (isShowing) { hideTooltip(); isShowing = false; activeWidget = null; }
+        return;
+      }
 
       const cp = getCanvasPos(e);
       if (!cp || isNaN(cp[0]) || isNaN(cp[1])) return;
 
       let found = false;
       for (const [node, widgets] of comboWidgets) {
+        // Skip and clean up stale entries (deleted nodes)
+        if (!app.graph?._nodes?.includes?.(node)) {
+          comboWidgets.delete(node);
+          continue;
+        }
         const nx = node.pos[0], ny = node.pos[1];
         const nw = node.size[0], nh = node.size[1];
         const mx = cp[0], my = cp[1];
@@ -295,8 +307,19 @@ export function setupComboWidgetTooltips() {
     canvas.addEventListener("mousemove", onMouseMove, false);
     __AUN_comboTooltipCleanup.push(() => canvas.removeEventListener("mousemove", onMouseMove));
 
-    // Re-sync when graph structure changes
+    // Hide tooltip and suppress on ANY click (uses pointerdown because LiteGraph calls preventDefault on pointerdown,
+    // which suppresses the synthesized mousedown event for canvas-rendered widgets)
+    const onPointerDown = () => {
+      if (isShowing) { hideTooltip(); isShowing = false; activeWidget = null; }
+      clickSuppress = true;
+      setTimeout(() => { clickSuppress = false; }, 400);
+    };
+    document.addEventListener("pointerdown", onPointerDown, true);
+    __AUN_comboTooltipCleanup.push(() => document.removeEventListener("pointerdown", onPointerDown, true));
+
+    // Re-sync when graph structure changes (rebuild from scratch to remove stale entries)
     const sync = () => {
+      comboWidgets.clear();
       if (!app.graph?._nodes) return;
       for (const node of app.graph._nodes) {
         if (!node.widgets) continue;
