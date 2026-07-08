@@ -13,6 +13,21 @@
 
 - `AUN_lora_stack_with_triggers.js`, `AUN_lora_stack_with_triggers_model_clip.js`, `AUN_random_lora_multi.js`: removed native `title` attributes from LoRA label containers (replaced by custom tooltip popups).
 
+## [2.7.0] - 2026-07-08
+
+### Added
+
+- New `web/AUN_inputs_basic_collapse_connections.js` extension: **Collapse Connections** mode for all AUN Inputs nodes (`AUNInputs`, `AUNInputsBasic`, `AUNInputsRefine`, `AUNInputsRefineBasic`, `AUNInputsDiffusers`, `AUNInputsDiffusersBasic`, `AUNInputsDiffusersRefineBasic`, `AUNInputsHybrid`). Double-click or right-click → "Collapse Connections" to hide output labels and converge all output connection lines to a single point, reducing node height while preserving connections.
+- AUN Inputs node descriptions now document the Collapse Connections feature.
+- README.md: new "Collapse Connections" section with toggle instructions and usage notes.
+
+### Fixed
+
+- `web/tooltip.js`: ghost tooltips from stale (deleted) nodes — stale-node check in mousemove loop skips and prunes entries for nodes no longer in `app.graph._nodes`.
+- `web/tooltip.js`: tooltips no longer obscure LoRA dropdown popups — mousemove handler returns early when `.AUN-lora-dropdown-popup` is present in the DOM.
+- `web/tooltip.js`: tooltips hide on pointerdown (click suppression) — capture-phase `document` listener + 400ms `clickSuppress` cooldown prevents tooltip from obscuring dropdown overlays.
+- `web/tooltip.js`: `comboWidgets` map now cleared on graph sync to remove stale entries from deleted nodes.
+
 ## [Unreleased]
 
 ### Added
