@@ -1,6 +1,16 @@
 # AUN Custom Nodes Changelog
 
 
+## [Unreleased]
+
+### Added
+
+### Changed
+
+### Fixed
+
+### Notes
+
 ## [2.7.0] - 2026-07-08
 
 ### Added
@@ -27,16 +37,6 @@
 ### Changed
 
 - `AUN_lora_stack_with_triggers.js`, `AUN_lora_stack_with_triggers_model_clip.js`, `AUN_random_lora_multi.js`: removed native `title` attributes from LoRA label containers (replaced by custom tooltip popups).
-
-## [Unreleased]
-
-### Added
-
-### Changed
-
-### Fixed
-
-### Notes
 
 ## [2.5.0] - 2026-07-04
 
