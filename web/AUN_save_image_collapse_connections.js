@@ -2,12 +2,32 @@ import { app } from "../../scripts/app.js";
 
 const TARGET_CLASSES = new Set(["AUNSaveImage", "AUNSaveImageV2"]);
 
+const HIDE_WIDGETS = new Set([
+  "steps", "cfg", "modelname", "sampler_name", "scheduler",
+  "seed_value", "date_format", "sidecar_format",
+  "lpw_positive", "lpw_negative", "loras_delimiter",
+  "preview", "save_image", "save_sidecar_to_file",
+  "path_filename", "filename", "path", "extension",
+]);
+
 function setupNode(node) {
   if (!node || !TARGET_CLASSES.has(node.comfyClass)) return;
   if (node.__aun_collapse_hooked) return;
 
   node.properties = node.properties || {};
   const PK = "collapse_connections";
+  const SIZE_KEY = `__${PK}_full_size`;
+
+  function applyWidgetVisibility() {
+    const c = !!node.properties?.[PK];
+    for (const w of node.widgets || []) {
+      if (HIDE_WIDGETS.has(w.name)) {
+        w.hidden = c;
+        w.options = w.options || {};
+        w.options.noDraw = c;
+      }
+    }
+  }
 
   const origGetOutputPos = node.getOutputPos.bind(node);
   node.getOutputPos = function (index) {
@@ -21,16 +41,14 @@ function setupNode(node) {
     return origGetInputPos(index);
   };
 
-  const origComputeSize = (node.computeSize || (() => node.size)).bind(node);
   node.computeSize = function (out) {
-    const s = origComputeSize(out);
+    const w = out?.[0] ?? this.size[0] ?? 240;
     if (this.properties?.[PK]) {
-      const ni = this.inputs?.filter((i) => !(this.widgets?.length && i.widget)).length || 0;
-      const no = this.outputs?.length || 0;
-      const rows = Math.max(ni, no);
-      s[1] -= Math.max(0, rows - 1) * LiteGraph.NODE_SLOT_HEIGHT;
+      const h = this[SIZE_KEY]?.[1] ?? this.size[1] ?? 100;
+      return [w, h];
     }
-    return s;
+    const orig = this._origComputeSize || (() => this.size);
+    return orig(out);
   };
 
   const origDrawFg = node.onDrawForeground;
@@ -45,6 +63,18 @@ function setupNode(node) {
       }
     }
   };
+
+  function toggle() {
+    const on = !node.properties[PK];
+    node.properties[PK] = on;
+    if (on) {
+      node[SIZE_KEY] = [node.size[0], node.size[1]];
+    } else {
+      node[SIZE_KEY] = null;
+    }
+    applyWidgetVisibility();
+    node.graph?.setDirtyCanvas(true, true);
+  }
 
   const origDblClick = node.onDblClick;
   node.onDblClick = function (event, pos) {
@@ -64,9 +94,7 @@ function setupNode(node) {
     )
       return;
 
-    this.properties[PK] = !this.properties[PK];
-    this.setSize([this.size[0], this.computeSize()[1]]);
-    this.graph?.setDirtyCanvas(true, true);
+    toggle.call(this);
   };
 
   const origMenu = node.getExtraMenuOptions;
@@ -74,24 +102,23 @@ function setupNode(node) {
     if (origMenu) origMenu.apply(this, [canvas, options]);
     const on = !!this.properties?.[PK];
     options.push(null, {
-      content: on ? "Show Connections" : "Collapse Connections",
-      callback: () => {
-        this.properties[PK] = !on;
-        this.setSize([this.size[0], this.computeSize()[1]]);
-        this.graph?.setDirtyCanvas(true, true);
-      },
+      content: on ? "Show Controls" : "Preview Mode",
+      callback: () => toggle.call(this),
     });
   };
 
+  node._origComputeSize = node.computeSize || (() => node.size);
+
   node.__aun_collapse_hooked = true;
+  applyWidgetVisibility();
 
   if (node.properties[PK]) {
-    node.setSize([node.size[0], node.computeSize()[1]]);
+    node[SIZE_KEY] = [node.size[0], node.size[1]];
   }
 }
 
 app.registerExtension({
-  name: "AUN.SaveImage.CollapseConnections",
+  name: "AUN.SaveImage.PreviewMode",
   nodeCreated: (node) => setupNode(node),
   loadedGraphNode: (node) => setupNode(node),
 });

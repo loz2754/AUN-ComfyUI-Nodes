@@ -25,3 +25,4 @@ Notes
 - Detected LoRAs still appear in the sidecar output and sidecar files.
 - `AUNPathFilenameV2` is the intended builder for generating the combined `path_filename` string.
 - Internally this node splits `path_filename` and then reuses the current `AUNSaveImage` save logic.
+- **Preview Mode**: Double-click the node or right-click -> "Preview Mode" to hide all widgets and show only the image preview. Right-click -> "Show Controls" to restore all widgets. The node size stays frozen during preview mode.

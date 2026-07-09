@@ -1,6 +1,13 @@
 # AUN Custom Nodes Changelog
 
 
+## [2.7.1] - 2026-07-09
+
+### Added
+
+- **Preview Mode** for AUN Save Image V2 (and legacy AUN Save Image). Double-click or right-click → "Preview Mode" to hide all widgets and show only the image preview. Right-click → "Show Controls" to restore widgets. Node size stays frozen during preview mode.
+- New `web/AUN_save_image_collapse_connections.js` extension.
+
 ## [Unreleased]
 
 ### Added

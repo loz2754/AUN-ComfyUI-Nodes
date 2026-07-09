@@ -68,6 +68,7 @@ Supported tokens include:
 - LoRAs used for `%loras` and sidecar extraction are pulled from the workflow/prompt graph and formatted compactly. Text-based LoRA loaders are filtered so only LoRAs that actually appear in the final prompt text are included.
 - In preview-only mode (`save_image = False`), images are written to the temp directory for UI display and sidecar files are suppressed.
 - Current sidecar output intentionally omits `extension` and `count`.
+- **Preview Mode**: Double-click the node or right-click -> "Preview Mode" to hide all widgets and show only the image preview. Right-click -> "Show Controls" to restore widgets. The node size stays frozen during preview mode.
 
 ## Common setups
 
