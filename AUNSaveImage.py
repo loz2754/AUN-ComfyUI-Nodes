@@ -1322,7 +1322,7 @@ class AUNSaveImage:
     FUNCTION = "save_files"
     OUTPUT_NODE = True
     CATEGORY = "AUN Nodes/Deprecated/Image"
-    DESCRIPTION = "Legacy image saver for workflows that provide separate path and filename inputs. Supports advanced filename customization, metadata embedding, and LoRA tracking via selected_lora input. Use Save Image V2 for new single path_filename workflows."
+    DESCRIPTION = "Legacy image saver for workflows that provide separate path and filename inputs. Supports advanced filename customization, metadata embedding, and LoRA tracking via selected_lora input. Use Save Image V2 for new single path_filename workflows. Right-click -> \"Collapse Connections\" or double-click to hide output labels and converge connection lines."
 
     def _get_model_hash(self, modelname):
         """Calculates the SHA256 hash of the model file."""

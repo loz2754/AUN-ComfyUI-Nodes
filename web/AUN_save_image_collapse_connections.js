@@ -1,15 +1,6 @@
 import { app } from "../../scripts/app.js";
 
-const TARGET_CLASSES = new Set([
-  "AUNInputsBasic",
-  "AUNInputs",
-  "AUNInputsRefine",
-  "AUNInputsRefineBasic",
-  "AUNInputsDiffusers",
-  "AUNInputsDiffusersBasic",
-  "AUNInputsDiffusersRefineBasic",
-  "AUNInputsHybrid",
-]);
+const TARGET_CLASSES = new Set(["AUNSaveImage", "AUNSaveImageV2"]);
 
 function setupNode(node) {
   if (!node || !TARGET_CLASSES.has(node.comfyClass)) return;
@@ -24,12 +15,20 @@ function setupNode(node) {
     return origGetOutputPos(index);
   };
 
+  const origGetInputPos = node.getInputPos.bind(node);
+  node.getInputPos = function (index) {
+    if (this.properties?.[PK]) return origGetInputPos(0);
+    return origGetInputPos(index);
+  };
+
   const origComputeSize = (node.computeSize || (() => node.size)).bind(node);
   node.computeSize = function (out) {
     const s = origComputeSize(out);
     if (this.properties?.[PK]) {
-      const n = this.outputs?.length || 0;
-      s[1] -= Math.max(0, n - 1) * LiteGraph.NODE_SLOT_HEIGHT;
+      const ni = this.inputs?.filter((i) => !(this.widgets?.length && i.widget)).length || 0;
+      const no = this.outputs?.length || 0;
+      const rows = Math.max(ni, no);
+      s[1] -= Math.max(0, rows - 1) * LiteGraph.NODE_SLOT_HEIGHT;
     }
     return s;
   };
@@ -38,11 +37,11 @@ function setupNode(node) {
   node.onDrawForeground = function (ctx) {
     if (origDrawFg) origDrawFg.apply(this, arguments);
     const c = !!this.properties?.[PK];
-    for (const out of this.outputs || []) {
+    for (const slot of [...(this.inputs || []), ...(this.outputs || [])]) {
       if (c) {
-        out.label = " ";
+        slot.label = " ";
       } else {
-        delete out.label;
+        delete slot.label;
       }
     }
   };
@@ -92,7 +91,7 @@ function setupNode(node) {
 }
 
 app.registerExtension({
-  name: "AUN.InputsBasic.CollapseConnections",
+  name: "AUN.SaveImage.CollapseConnections",
   nodeCreated: (node) => setupNode(node),
   loadedGraphNode: (node) => setupNode(node),
 });

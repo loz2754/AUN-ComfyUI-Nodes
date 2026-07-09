@@ -129,6 +129,7 @@ class AUNKSamplerPlusv3:
         "Flow: Base (first pass) → Latent upscaled (second pass) → Both upscaled (pixel-upscaled decoded latent, then resample mirroring second pass) → Refined image (optional). "
         "Upscaled type returns one of: 'Both upscaled', 'Latent upscaled', 'Image upscaled', or 'No upscale'. If refine is enabled, ' Refined' is appended. "
         "Each pass outputs an image: Base (first pass decoded), Image upscaled (base image upscaled in pixel space), Latent upscaled (second pass decoded), Both upscaled (pixel-upscaled decoded latent, then resampled), Refined image (final optional refinement)."
+        "\n\nRight-click → \"Collapse Connections\" or double-click to hide slot labels and converge connection lines."
     )
 
     def pil_upscale(self, img, ratio, method, model_name="None"):

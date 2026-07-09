@@ -24,7 +24,7 @@ class AUNSaveImageV2(AUNSaveImage):
     FUNCTION = "save_files_v2"
     OUTPUT_NODE = True
     CATEGORY = "AUN Nodes/Image"
-    DESCRIPTION = "Recommended image saver for new workflows. A versatile image saver with advanced filename customization and metadata embedding. Accepts a single combined path_filename input with support for %token% placeholders, %token placeholders, and date/time formatting. Use AUNPathFilenameV2 to generate path_filename strings from individual components."
+    DESCRIPTION = "Recommended image saver for new workflows. A versatile image saver with advanced filename customization and metadata embedding. Accepts a single combined path_filename input with support for %token% placeholders, %token placeholders, and date/time formatting. Use AUNPathFilenameV2 to generate path_filename strings from individual components. Right-click -> \"Collapse Connections\" or double-click to hide output labels and converge connection lines."
 
     def save_files_v2(self, images, path_filename, extension, **kwargs):
         kwargs.pop("loras_delimiter", None)

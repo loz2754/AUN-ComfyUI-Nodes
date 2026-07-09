@@ -173,11 +173,11 @@ Deprecation note: the full input-style nodes (`AUNInputs`, `AUNInputsDiffusers`,
 
 #### Collapse Connections
 
-AUN Inputs nodes (`AUNInputs`, `AUNInputsBasic`, `AUNInputsRefine`, `AUNInputsRefineBasic`, `AUNInputsDiffusers`, `AUNInputsDiffusersBasic`, `AUNInputsDiffusersRefineBasic`, `AUNInputsHybrid`) feature a **collapse connections** mode that hides all output labels and converges all output connection lines to a single point, making complex workflows visually cleaner.
+AUN Inputs nodes (`AUNInputs`, `AUNInputsBasic`, `AUNInputsRefine`, `AUNInputsRefineBasic`, `AUNInputsDiffusers`, `AUNInputsDiffusersBasic`, `AUNInputsDiffusersRefineBasic`, `AUNInputsHybrid`) and AUN KSampler nodes (`AUNKSamplerPlusV2`, `AUNKSamplerPlusv3`, `AUNKSamplerPlusv4`) feature a **collapse connections** mode that hides all slot labels and converges all connection lines to a single point, making complex workflows visually cleaner.
 
-**Toggle**: Right-click → "Collapse Connections" / "Show Connections", or double-click anywhere on the node body (excluding the title bar and widgets). The node height reduces to match the collapsed output area while preserving user-set width.
+**Toggle**: Right-click → "Collapse Connections" / "Show Connections", or double-click anywhere on the node body (excluding the title bar and widgets). The node height reduces to match the collapsed slot area while preserving user-set width.
 
-**Note**: This is distinct from ComfyUI's built-in title-bar collapse — the output sockets remain functional, and connections are preserved; only the visual representation is compacted.
+**Note**: This is distinct from ComfyUI's built-in title-bar collapse — the sockets remain functional, and connections are preserved; only the visual representation is compacted.
 
 ## 🚀 **Getting Started**
 

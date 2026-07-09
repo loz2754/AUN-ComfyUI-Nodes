@@ -128,6 +128,7 @@ class AUNKSamplerPlusV2:
         "Progressive two-pass sampler with pixel-space upscale and optional final refinement. "
         "Flow: Base (first pass) -> Latent upscaled (second pass) -> Both upscaled (pixel-upscale decoded latent, then resample mirroring second pass) -> Refined image (optional). "
         "Upscaled type returns one of: 'Both upscaled', 'Latent upscaled', 'Image upscaled', or 'No upscale'. If refine is enabled, ' Refined' is appended."
+        "\n\nRight-click → \"Collapse Connections\" or double-click to hide slot labels and converge connection lines."
     )
 
     def pil_upscale(self, img, ratio, method, model_name="None"):
