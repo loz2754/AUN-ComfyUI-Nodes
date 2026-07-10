@@ -16,6 +16,9 @@
 
 ### Fixed
 
+- **Preview Mode infinite recursion**: Fixed critical bug in `web/AUN_save_image_collapse_connections.js` where `_origComputeSize` captured the overridden `computeSize` instead of the original, causing infinite recursion when the node was not in Preview Mode. This prevented workflows with AUNSaveImage/AUNSaveImageV2 nodes from loading correctly.
+- **Preview Mode node resize**: Fixed missing `setSize()` calls in `toggle()` and `loadedGraphNode` so the node visually resizes when entering/exiting Preview Mode instead of keeping full height with hidden widgets.
+
 ### Notes
 
 ## [2.7.0] - 2026-07-08
