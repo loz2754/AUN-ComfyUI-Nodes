@@ -19,6 +19,16 @@
 
 ### Added
 
+### Changed
+
+### Fixed
+
+### Notes
+
+## [2.7.3] - 2026-07-12
+
+### Added
+
 - New `__init__.py` import and `web/AUNShowMultiText.js` extension for the **AUNShowMultiText** node — displays multi-line overlay text constrained within the node body.
 
 ### Changed
@@ -31,7 +41,6 @@
 - **AUNShowMultiText collapse toggle preserves height**: Toggle only flips property + redraws canvas; no `setSize` or `computeSize` override on toggle.
 
 ### Notes
-
 ## [2.7.0] - 2026-07-08
 
 ### Added
