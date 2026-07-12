@@ -199,6 +199,43 @@ function buildOverlayCards(container, entries) {
   }
 }
 
+// ── Occlusion check ─────────────────────────────────────────────────
+
+function graphToScreen(canvasRect, gx, gy, scale, offsetX, offsetY) {
+  return {
+    x: canvasRect.left + (gx + offsetX) * scale,
+    y: canvasRect.top + (gy + offsetY) * scale,
+  };
+}
+
+function isNodeOccluded(node, canvasRect, scale, offsetX, offsetY) {
+  const nodes = app?.graph?._nodes;
+  if (!nodes) return false;
+
+  const selfScreen = graphToScreen(canvasRect, node.pos[0], node.pos[1], scale, offsetX, offsetY);
+  const selfRight = selfScreen.x + (node.size?.[0] ?? 300) * scale;
+  const selfBottom = selfScreen.y + (node.size?.[1] ?? 100) * scale;
+
+  for (const other of nodes) {
+    if (!other || other === node) continue;
+    if ((other.index ?? -1) <= (node.index ?? -2)) continue;
+    if (other.flags?.collapsed) continue;
+
+    const otherScreen = graphToScreen(canvasRect, other.pos[0], other.pos[1], scale, offsetX, offsetY);
+    const otherRight = otherScreen.x + (other.size?.[0] ?? 300) * scale;
+    const otherBottom = otherScreen.y + (other.size?.[1] ?? 100) * scale;
+
+    if (!(otherRight <= selfScreen.x ||
+          otherScreen.x >= selfRight ||
+          otherBottom <= selfScreen.y ||
+          otherScreen.y >= selfBottom)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 function positionOverlay(node) {
   const id = Number(node.id);
   const state = overlayRegistry.get(id);
@@ -226,6 +263,12 @@ function positionOverlay(node) {
   const scale = ds.scale;
   const panX = ds.offset[0];
   const panY = ds.offset[1];
+
+  // Hide if another node is stacked on top (higher z-order)
+  if (isNodeOccluded(node, canvasRect, scale, panX, panY)) {
+    state.overlay.style.display = "none";
+    return;
+  }
 
   const screenX = canvasRect.left + (node.pos[0] + panX) * scale;
   const screenY = canvasRect.top + (node.pos[1] + panY) * scale;
