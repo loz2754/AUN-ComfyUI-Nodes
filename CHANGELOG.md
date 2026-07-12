@@ -8,16 +8,27 @@
 - **Preview Mode** for AUN Save Image V2 (and legacy AUN Save Image). Double-click or right-click → "Preview Mode" to hide all widgets and show only the image preview. Right-click → "Show Controls" to restore widgets. Node size stays frozen during preview mode.
 - New `web/AUN_save_image_collapse_connections.js` extension.
 
-## [Unreleased]
-
-### Added
-
-### Changed
+## [2.7.2] - 2026-07-10
 
 ### Fixed
 
 - **Preview Mode infinite recursion**: Fixed critical bug in `web/AUN_save_image_collapse_connections.js` where `_origComputeSize` captured the overridden `computeSize` instead of the original, causing infinite recursion when the node was not in Preview Mode. This prevented workflows with AUNSaveImage/AUNSaveImageV2 nodes from loading correctly.
 - **Preview Mode node resize**: Fixed missing `setSize()` calls in `toggle()` and `loadedGraphNode` so the node visually resizes when entering/exiting Preview Mode instead of keeping full height with hidden widgets.
+
+## [Unreleased]
+
+### Added
+
+- New `__init__.py` import and `web/AUNShowMultiText.js` extension for the **AUNShowMultiText** node — displays multi-line overlay text constrained within the node body.
+
+### Changed
+
+### Fixed
+
+- **Widget name disappearing on collapse toggle**: Fixed `onDrawForeground` in `web/AUN_ksampler_collapse_connections.js`, `web/AUN_save_image_collapse_connections.js`, and `web/AUNShowMultiText.js` to skip `slot.label` deletion for widget-linked inputs, preserving widget display names after toggling collapse mode.
+- **AUNShowMultiText overlay containment**: Overlay content now stays within node bounds (uses `getContentYOffset` helper, clamps to `Math.max(0, …)`, hides when available space < 20px).
+- **AUNShowMultiText no auto-resize**: Removed all `computeSize` override and auto-resize logic — node height is never changed by text content or collapse toggle.
+- **AUNShowMultiText collapse toggle preserves height**: Toggle only flips property + redraws canvas; no `setSize` or `computeSize` override on toggle.
 
 ### Notes
 

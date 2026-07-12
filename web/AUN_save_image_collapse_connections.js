@@ -56,6 +56,7 @@ function setupNode(node) {
     if (origDrawFg) origDrawFg.apply(this, arguments);
     const c = !!this.properties?.[PK];
     for (const slot of [...(this.inputs || []), ...(this.outputs || [])]) {
+      if (this.widgets?.length && slot.widget) continue;
       if (c) {
         slot.label = " ";
       } else {

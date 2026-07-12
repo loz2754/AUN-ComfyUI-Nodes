@@ -135,6 +135,7 @@ Deprecation note: the full input-style nodes (`AUNInputs`, `AUNInputsDiffusers`,
 - Manual/Auto Text Switch (`AUNManualAutoTextSwitch`) choose between an automatically generated filename and a manual name, and also output the mode boolean so related nodes can stay in sync.
 - Name Crop (`AUNNameCrop`) crops a string to a specified number of words.
 - Negative Prompt Selector (`AUNMultiNegPrompt`) selects one of the 10 preset negative prompts to use.
+- Show Multi Text (`AUNShowMultiText`) displays string values from up to 20 connected inputs with captions taken from the source node's output slot names. Features autogrow (inputs adjust automatically as connections change) and a collapse connections mode for cleaner layouts. TIP: Double-click or right-click → "Collapse Connections" to hide slot labels and converge connection lines.
 - Show Text With Title (`AUNShowTextWithTitle`) a show text node with a difference - shows text from an input, and dynamically sets the node's title from a text input upon execution. Useful when selecting from a list of text input nodes to see which one was selected.
 - Single Label Switch (`AUNSingleLabelSwitch`) a simple boolean toggle with text label. Useful for adding the same text to more than one node.
 - Strip (`AUNStrip`) trim digits and whitespace from the start and end of a string. Simple cleaner for building filenames or labels.
@@ -173,7 +174,7 @@ Deprecation note: the full input-style nodes (`AUNInputs`, `AUNInputsDiffusers`,
 
 #### Collapse Connections
 
-AUN Inputs nodes (`AUNInputs`, `AUNInputsBasic`, `AUNInputsRefine`, `AUNInputsRefineBasic`, `AUNInputsDiffusers`, `AUNInputsDiffusersBasic`, `AUNInputsDiffusersRefineBasic`, `AUNInputsHybrid`) and AUN KSampler nodes (`AUNKSamplerPlusV2`, `AUNKSamplerPlusv3`, `AUNKSamplerPlusv4`) feature a **collapse connections** mode that hides all slot labels and converges all connection lines to a single point, making complex workflows visually cleaner.
+AUN Inputs nodes (`AUNInputs`, `AUNInputsBasic`, `AUNInputsRefine`, `AUNInputsRefineBasic`, `AUNInputsDiffusers`, `AUNInputsDiffusersBasic`, `AUNInputsDiffusersRefineBasic`, `AUNInputsHybrid`), AUN KSampler nodes (`AUNKSamplerPlusV2`, `AUNKSamplerPlusv3`, `AUNKSamplerPlusv4`) and Show Multi Text (`AUNShowMultiText`) feature a **collapse connections** mode that hides all slot labels and converges all connection lines to a single point, making complex workflows visually cleaner.
 
 **Toggle**: Right-click → "Collapse Connections" / "Show Connections", or double-click anywhere on the node body (excluding the title bar and widgets). The node height reduces to match the collapsed slot area while preserving user-set width.
 

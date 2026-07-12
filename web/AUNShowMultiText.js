@@ -98,6 +98,28 @@ function setupNode(node) {
   node.__aun_hooked = true;
 }
 
+// ── Shared helpers ──────────────────────────────────────────────────
+
+function getContentYOffset(node, ignoreCollapse) {
+  let bottomY = 6;
+  for (const w of node.widgets || []) {
+    if (w.hidden) continue;
+    const wY = w.last_y != null ? w.last_y : 30;
+    const wSize = w.computeSize?.(node.size?.[0]) || [200, 24];
+    bottomY = Math.max(bottomY, wY + wSize[1]);
+  }
+  const slotStartY = node.constructor?.slot_start_y ?? 0;
+  const nInputs = (node.inputs || []).filter(
+    (i) => !(node.widgets?.length && i.widget),
+  ).length;
+  const nOutputs = (node.outputs || []).length;
+  const maxSockets = Math.max(nInputs, nOutputs);
+  const isCollapsed = !ignoreCollapse && !!node.properties?.[COLLAPSE_KEY];
+  const socketRows = isCollapsed ? Math.min(maxSockets, 1) : maxSockets;
+  const socketBlockEnd = slotStartY + socketRows * LiteGraph.NODE_SLOT_HEIGHT;
+  return Math.max(bottomY, socketBlockEnd) + 4;
+}
+
 // ── HTML Overlay Display ─────────────────────────────────────────────
 
 const overlayRegistry = new Map();
@@ -210,33 +232,13 @@ function positionOverlay(node) {
   const nodeW = (node.size?.[0] || 300) * scale;
   const nodeH = (node.size?.[1] || 100) * scale;
 
-  // Compute Y offset below the last widget and socket block
-  let widgetBottomY = 6;
-  for (const w of node.widgets || []) {
-    if (w.hidden) continue;
-    const wY = w.last_y != null ? w.last_y : 30;
-    const wSize = w.computeSize?.(node.size?.[0]) || [200, 24];
-    widgetBottomY = Math.max(widgetBottomY, wY + wSize[1]);
-  }
-
-  // Account for input/output socket block
-  const slotStartY = node.constructor?.slot_start_y ?? 0;
-  const nInputs = (node.inputs || []).filter(
-    (i) => !(node.widgets?.length && i.widget),
-  ).length;
-  const nOutputs = (node.outputs || []).length;
-  const maxSockets = Math.max(nInputs, nOutputs);
-  const isCollapsed = !!node.properties?.[COLLAPSE_KEY];
-  const socketRows = isCollapsed ? Math.min(maxSockets, 1) : maxSockets;
-  const socketBlockEnd = slotStartY + socketRows * LiteGraph.NODE_SLOT_HEIGHT;
-  widgetBottomY = Math.max(widgetBottomY, socketBlockEnd) + 4;
-
-  const yOffset = widgetBottomY * scale;
+  const yOffset = getContentYOffset(node) * scale;
   const pad = 4 * scale;
   const maxW = nodeW - pad * 2;
-  const availableH = Math.max(50, nodeH - yOffset);
+  const bottomPad = 6 * scale;
+  const availableH = Math.max(0, nodeH - yOffset - bottomPad);
 
-  if (maxW <= 0) {
+  if (maxW <= 0 || availableH < 20) {
     state.overlay.style.display = "none";
     return;
   }
@@ -288,25 +290,12 @@ function setupCollapseConnections(node) {
     return origGetInputPos(index);
   };
 
-  const origComputeSize = (node.computeSize || (() => node.size)).bind(node);
-  node.computeSize = function (out) {
-    const s = origComputeSize(out);
-    if (this.properties?.[COLLAPSE_KEY]) {
-      const ni = (this.inputs || []).filter(
-        (i) => !(this.widgets?.length && i.widget),
-      ).length;
-      const no = (this.outputs || []).length;
-      const rows = Math.max(ni, no);
-      s[1] -= Math.max(0, rows - 1) * LiteGraph.NODE_SLOT_HEIGHT;
-    }
-    return s;
-  };
-
   const origDrawFg = node.onDrawForeground;
   node.onDrawForeground = function (ctx) {
     if (origDrawFg) origDrawFg.apply(this, arguments);
     const c = !!this.properties?.[COLLAPSE_KEY];
     for (const slot of [...(this.inputs || []), ...(this.outputs || [])]) {
+      if (this.widgets?.length && slot.widget) continue;
       if (c) {
         slot.label = " ";
       } else {
@@ -314,6 +303,12 @@ function setupCollapseConnections(node) {
       }
     }
   };
+
+  function toggleCollapse() {
+    const on = !this.properties[COLLAPSE_KEY];
+    this.properties[COLLAPSE_KEY] = on;
+    this.graph?.setDirtyCanvas(true, true);
+  }
 
   const origDblClick = node.onDblClick;
   node.onDblClick = function (event, pos) {
@@ -330,9 +325,7 @@ function setupCollapseConnections(node) {
         el.classList?.contains("litegraph") ||
         el.id?.includes("widget"))
     ) return;
-    this.properties[COLLAPSE_KEY] = !this.properties[COLLAPSE_KEY];
-    this.setSize([this.size[0], this.computeSize()[1]]);
-    this.graph?.setDirtyCanvas(true, true);
+    toggleCollapse.call(this);
   };
 
   const origMenu = node.getExtraMenuOptions;
@@ -341,17 +334,9 @@ function setupCollapseConnections(node) {
     const on = !!this.properties?.[COLLAPSE_KEY];
     options.push(null, {
       content: on ? "Show Connections" : "Collapse Connections",
-      callback: () => {
-        this.properties[COLLAPSE_KEY] = !on;
-        this.setSize([this.size[0], this.computeSize()[1]]);
-        this.graph?.setDirtyCanvas(true, true);
-      },
+      callback: () => toggleCollapse.call(this),
     });
   };
-
-  if (node.properties[COLLAPSE_KEY]) {
-    node.setSize([node.size[0], node.computeSize()[1]]);
-  }
 }
 
 // ── Extension Registration ──────────────────────────────────────────
@@ -361,30 +346,6 @@ app.registerExtension({
 
   async beforeRegisterNodeDef(nodeType, nodeData, app) {
     if (nodeData.name !== NODE_TYPE) return;
-
-    // Override computeSize to account for overlay height
-    const baseComputeSize = nodeType.prototype.computeSize;
-    nodeType.prototype.computeSize = function (out) {
-      const sz = baseComputeSize
-        ? baseComputeSize.apply(this, arguments)
-        : [200, 60];
-
-      // Add overlay height estimate
-      if (this._aunEntries?.length) {
-        const nInputs = (this.inputs || []).filter(
-          (i) => !(this.widgets?.length && i.widget),
-        ).length;
-        const nOutputs = (this.outputs || []).length;
-        const maxSockets = Math.max(nInputs, nOutputs);
-        const isCollapsed = !!this.properties?.[COLLAPSE_KEY];
-        const socketRows = isCollapsed ? Math.min(maxSockets, 1) : maxSockets;
-        const socketH = socketRows * LiteGraph.NODE_SLOT_HEIGHT;
-        const estEntryH = 30;
-        const overlayH = 40 + this._aunEntries.length * estEntryH + socketH;
-        if (sz[1] < overlayH) sz[1] = overlayH;
-      }
-      return sz;
-    };
 
     // onConnectionsChange – autogrow when connections change
     const baseOnConnectionsChange = nodeType.prototype.onConnectionsChange;
@@ -409,13 +370,6 @@ app.registerExtension({
         const state = getOverlayState(this);
         buildOverlayCards(state.container, message.entries);
         positionOverlay(this);
-
-        // Grow node to fit overlays
-        const sz = this.computeSize();
-        if (sz[1] > (this.size?.[1] || 0)) {
-          this.setSize([this.size?.[0] || sz[0], sz[1]]);
-          this.graph?.setDirtyCanvas(true, true);
-        }
       }
     };
 
@@ -442,12 +396,6 @@ app.registerExtension({
               const state = getOverlayState(this);
               buildOverlayCards(state.container, entries);
               positionOverlay(this);
-
-              const sz = this.computeSize();
-              if (sz[1] > (this.size?.[1] || 0)) {
-                this.setSize([this.size?.[0] || sz[0], sz[1]]);
-                this.graph?.setDirtyCanvas(true, true);
-              }
             });
           }
         } catch (e) {}

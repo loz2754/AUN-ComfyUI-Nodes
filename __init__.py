@@ -71,6 +71,7 @@ from .AUNSetBypassStateGroup import AUNSetBypassStateGroup
 from .AUNSetCollapseAndBypassStateAdvanced import AUNSetCollapseAndBypassStateAdvanced
 from .AUNSetMuteByTitle import AUNSetMuteByTitle
 from .AUNSetMuteStateGroup import AUNSetMuteStateGroup
+from .AUNShowMultiText import AUNShowMultiText
 from .AUNShowTextWithTitle import AUNShowTextWithTitle
 from .AUNSingleLabelSwitch import AUNSingleLabelSwitch
 from .AUNStringListBuilder import AUNStringListBuilder
@@ -160,6 +161,7 @@ NODE_CLASS_MAPPINGS = {
     "AUNSetCollapseAndBypassStateAdvanced": AUNSetCollapseAndBypassStateAdvanced,
     "AUNSetMuteByTitle": AUNSetMuteByTitle,
     "AUNSetMuteStateGroup": AUNSetMuteStateGroup,
+    "AUNShowMultiText": AUNShowMultiText,
     "AUNShowTextWithTitle": AUNShowTextWithTitle,
     "AUNSingleLabelSwitch": AUNSingleLabelSwitch,
     "AUNStringListBuilder": AUNStringListBuilder,
@@ -246,6 +248,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "AUNSetCollapseAndBypassStateAdvanced": "Node Collapser & Bypasser Advanced",
     "AUNSetMuteByTitle": "Mute By Title",
     "AUNSetMuteStateGroup": "Group Muter (Multi)",
+    "AUNShowMultiText": "Show Multi Text",
     "AUNShowTextWithTitle": "Show Text With Title",
     "AUNSingleLabelSwitch": "Single Label Switch",
     "AUNStringListBuilder": "String List Builder",
