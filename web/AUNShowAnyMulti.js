@@ -524,19 +524,7 @@ app.registerExtension({
     const onConfigure = nodeType.prototype.onConfigure;
     nodeType.prototype.onConfigure = function () {
       onConfigure?.apply(this, arguments);
-
-      const savedHeight = this.size?.[1];
-
-      requestAnimationFrame(() => {
-        if (!this.__aun_recalc_done) {
-          this.__aun_recalc_done = true;
-          recalcNumInputs(this);
-          updateInputLabels(this);
-          if (savedHeight != null && this.size) {
-            this.size[1] = savedHeight;
-          }
-        }
-      });
+      this._aunSavedHeight = this.size?.[1] ?? null;
 
       if (this.properties?.aun_entries) {
         try {
@@ -569,6 +557,10 @@ app.registerExtension({
           node.__aun_recalc_done = true;
           recalcNumInputs(node);
           updateInputLabels(node);
+          if (node._aunSavedHeight != null && node.size) {
+            node.size[1] = node._aunSavedHeight;
+            node._aunSavedHeight = null;
+          }
         }
       });
     }
@@ -576,6 +568,7 @@ app.registerExtension({
 
   loadedGraphNode(node) {
     if (node.comfyClass === NODE_TYPE) {
+      node._aunSavedHeight = node.size?.[1] ?? null;
       setupCollapseConnections(node);
       setupShowTypes(node);
     }
