@@ -106,8 +106,7 @@ function applyVisibleInputs(node, desired) {
 
   if (changed) {
     updateInputLabels(node);
-    const graph = node.graph ?? app.graph;
-    if (graph) graph.setDirtyCanvas(true, true);
+    resizeNode(node);
   }
 }
 
@@ -124,21 +123,15 @@ function recalcNumInputs(node) {
   applyVisibleInputs(node, target);
 }
 
-function setupNode(node) {
-  if (node.__aun_hooked) return;
-  node.__aun_hooked = true;
-
-  const origComputeSize = node.computeSize;
-  node.computeSize = function (out) {
-    const base = origComputeSize ? origComputeSize.call(this, out) : [200, 60];
-    if (this.tempSize) {
-      base[0] = this.tempSize[0];
-      base[1] = this.tempSize[1];
-      clearTimeout(this.__aun_tempTimer);
-      this.__aun_tempTimer = setTimeout(() => { this.tempSize = null; }, 32);
+function resizeNode(node) {
+  if (typeof node?.computeSize === "function") {
+    const newSize = node.computeSize();
+    if (node.size && newSize && newSize.length >= 2) {
+      node.size[1] = newSize[1];
     }
-    return base;
-  };
+  }
+  const graph = node.graph ?? app.graph;
+  if (graph) graph.setDirtyCanvas(true, true);
 }
 
 // ── Shared helpers ──────────────────────────────────────────────────
@@ -576,7 +569,6 @@ app.registerExtension({
 
   nodeCreated(node) {
     if (node.comfyClass === NODE_TYPE) {
-      setupNode(node);
       setupCollapseConnections(node);
       setupShowTypes(node);
       requestAnimationFrame(() => {
@@ -591,8 +583,6 @@ app.registerExtension({
 
   loadedGraphNode(node) {
     if (node.comfyClass === NODE_TYPE) {
-      node.tempSize = [...node.size];
-      setupNode(node);
       setupCollapseConnections(node);
       setupShowTypes(node);
     }
