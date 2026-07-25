@@ -75,8 +75,7 @@ function applyVisibleInputs(node, desired) {
 
   if (changed) {
     updateInputLabels(node);
-    const graph = node.graph ?? app.graph;
-    if (graph) graph.setDirtyCanvas(true, true);
+    resizeNode(node);
   }
 }
 
@@ -91,6 +90,17 @@ function recalcNumInputs(node) {
   }
   const target = Math.max(1, Math.min(MAX_INPUTS, highestConnected + 1));
   applyVisibleInputs(node, target);
+}
+
+function resizeNode(node) {
+  if (typeof node?.computeSize === "function") {
+    const newSize = node.computeSize();
+    if (node.size && newSize && newSize.length >= 2) {
+      node.size[1] = newSize[1];
+    }
+  }
+  const graph = node.graph ?? app.graph;
+  if (graph) graph.setDirtyCanvas(true, true);
 }
 
 // ── Shared helpers ──────────────────────────────────────────────────
