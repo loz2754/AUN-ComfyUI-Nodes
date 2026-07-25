@@ -38,13 +38,6 @@ function getTypeColor(typeName) {
 
 // ── Socket visibility / num_inputs management ─────────────────────────
 
-function clampInputCount(value) {
-  if (Number.isFinite(value)) {
-    return Math.min(MAX_INPUTS, Math.max(1, Math.floor(value)));
-  }
-  return 1;
-}
-
 function updateInputLabels(node) {
   const graph = node.graph || app.graph;
   if (!graph || !node.inputs) return;
@@ -77,16 +70,20 @@ function updateInputLabels(node) {
   }
 }
 
-function applyVisibleInputs(node, desired) {
-  const target = clampInputCount(desired);
+function applyVisibleInputs(node) {
   const inputs = node.inputs || [];
   let changed = false;
+
+  const target = inputs.filter(
+    (i) => i?.name?.startsWith(INPUT_PREFIX) && i.link != null,
+  ).length;
+  const targetCount = Math.max(1, Math.min(MAX_INPUTS, target + 1));
 
   for (let i = inputs.length - 1; i >= 0; i--) {
     const input = inputs[i];
     if (!input?.name?.startsWith(INPUT_PREFIX)) continue;
     const num = parseInt(input.name.substring(INPUT_PREFIX.length), 10);
-    if (Number.isFinite(num) && num > target) {
+    if (Number.isFinite(num) && num > targetCount) {
       if (input.link) {
         const graph = node.graph || app.graph;
         graph?.removeLink?.(input.link);
@@ -96,7 +93,7 @@ function applyVisibleInputs(node, desired) {
     }
   }
 
-  for (let i = 1; i <= target; i++) {
+  for (let i = 1; i <= targetCount; i++) {
     const name = INPUT_PREFIX + i;
     if (!node.inputs?.some((input) => input?.name === name)) {
       node.addInput(name, "*");
@@ -111,23 +108,14 @@ function applyVisibleInputs(node, desired) {
 }
 
 function recalcNumInputs(node) {
-  let highestConnected = 0;
-  for (const input of node.inputs || []) {
-    const match = input?.name?.match(/^input_(\d+)$/);
-    if (match && input.link != null) {
-      const num = parseInt(match[1], 10);
-      if (num > highestConnected) highestConnected = num;
-    }
-  }
-  const target = Math.max(1, Math.min(MAX_INPUTS, highestConnected + 1));
-  applyVisibleInputs(node, target);
+  applyVisibleInputs(node);
 }
 
 function resizeNode(node) {
   if (typeof node?.computeSize === "function") {
     const newSize = node.computeSize();
     if (node.size && newSize && newSize.length >= 2) {
-      node.size[1] = newSize[1];
+      node.size[1] = Math.max(node.size[1], newSize[1]);
     }
   }
   const graph = node.graph ?? app.graph;
