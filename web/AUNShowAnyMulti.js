@@ -103,6 +103,7 @@ function applyVisibleInputs(node) {
 
   if (changed) {
     updateInputLabels(node);
+    resizeNode(node);
   }
 }
 
@@ -526,6 +527,18 @@ app.registerExtension({
       onConfigure?.apply(this, arguments);
       this._aunFromWorkflow = true;
 
+      this._aunSavedHeight = this.size?.[1] ?? 0;
+      const savedH = this._aunSavedHeight;
+      this._aunOrigComputeSize = this.computeSize.bind(this);
+      const origCS = this._aunOrigComputeSize;
+      this.computeSize = function () {
+        const s = origCS();
+        if (s && s.length >= 2 && savedH > 0) {
+          s[1] = Math.max(s[1], savedH);
+        }
+        return s;
+      };
+
       if (this.properties?.aun_entries) {
         try {
           const entries = JSON.parse(this.properties.aun_entries);
@@ -557,8 +570,21 @@ app.registerExtension({
           node.__aun_recalc_done = true;
           recalcNumInputs(node);
           updateInputLabels(node);
-          if (!node._aunFromWorkflow) resizeNode(node);
-          node._aunFromWorkflow = false;
+          if (node._aunFromWorkflow) {
+            if (node._aunSavedHeight > 0) {
+              node.size[1] = node._aunSavedHeight;
+            }
+            delete node._aunSavedHeight;
+            delete node._aunFromWorkflow;
+            if (node._aunOrigComputeSize) {
+              node.computeSize = node._aunOrigComputeSize;
+              delete node._aunOrigComputeSize;
+            }
+            const graph = node.graph ?? app.graph;
+            if (graph) graph.setDirtyCanvas(true, true);
+          } else {
+            resizeNode(node);
+          }
         }
       });
     }

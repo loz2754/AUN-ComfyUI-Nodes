@@ -19,9 +19,14 @@
 
 ### Added
 
+- New node: Show Any Multi (`AUNShowAnyMulti`) — universal "show any" node that shows text, numbers, images, Model, Clip, VAE, etc. (with standard ComfyUI socket colors) and inline image previews for IMAGE inputs. Accepts up to 20 autogrow inputs. Features a collapse connections mode, and a right-click toggle to show/hide type badges.
+
 ### Changed
 
 ### Fixed
+
+- **Height preservation on F5**: Node height now correctly persists across workflow reloads by overriding `computeSize()` during graph loading with a saved-height floor, then restoring the original after the initial resize pass completes.
+- **Slot labels with collapsed source nodes**: Fixed slot name reading when the source node has collapsed connections — now reads `outSlot.name` directly instead of `outSlot.label` (which collapse handlers poison to `" "`).
 
 ### Notes
 
