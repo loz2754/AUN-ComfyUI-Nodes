@@ -103,7 +103,6 @@ function applyVisibleInputs(node) {
 
   if (changed) {
     updateInputLabels(node);
-    resizeNode(node);
   }
 }
 
@@ -504,6 +503,7 @@ app.registerExtension({
       if (this.comfyClass === NODE_TYPE && this.__aun_recalc_done) {
         recalcNumInputs(this);
         updateInputLabels(this);
+        resizeNode(this);
       }
     };
 
@@ -524,7 +524,7 @@ app.registerExtension({
     const onConfigure = nodeType.prototype.onConfigure;
     nodeType.prototype.onConfigure = function () {
       onConfigure?.apply(this, arguments);
-      this._aunSavedHeight = this.size?.[1] ?? null;
+      this._aunFromWorkflow = true;
 
       if (this.properties?.aun_entries) {
         try {
@@ -557,10 +557,8 @@ app.registerExtension({
           node.__aun_recalc_done = true;
           recalcNumInputs(node);
           updateInputLabels(node);
-          if (node._aunSavedHeight != null && node.size) {
-            node.size[1] = node._aunSavedHeight;
-            node._aunSavedHeight = null;
-          }
+          if (!node._aunFromWorkflow) resizeNode(node);
+          node._aunFromWorkflow = false;
         }
       });
     }
@@ -568,7 +566,6 @@ app.registerExtension({
 
   loadedGraphNode(node) {
     if (node.comfyClass === NODE_TYPE) {
-      node._aunSavedHeight = node.size?.[1] ?? null;
       setupCollapseConnections(node);
       setupShowTypes(node);
     }
