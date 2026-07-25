@@ -1,20 +1,6 @@
 # AUN Custom Nodes Changelog
 
 
-## [2.7.1] - 2026-07-09
-
-### Added
-
-- **Preview Mode** for AUN Save Image V2 (and legacy AUN Save Image). Double-click or right-click → "Preview Mode" to hide all widgets and show only the image preview. Right-click → "Show Controls" to restore widgets. Node size stays frozen during preview mode.
-- New `web/AUN_save_image_collapse_connections.js` extension.
-
-## [2.7.2] - 2026-07-10
-
-### Fixed
-
-- **Preview Mode infinite recursion**: Fixed critical bug in `web/AUN_save_image_collapse_connections.js` where `_origComputeSize` captured the overridden `computeSize` instead of the original, causing infinite recursion when the node was not in Preview Mode. This prevented workflows with AUNSaveImage/AUNSaveImageV2 nodes from loading correctly.
-- **Preview Mode node resize**: Fixed missing `setSize()` calls in `toggle()` and `loadedGraphNode` so the node visually resizes when entering/exiting Preview Mode instead of keeping full height with hidden widgets.
-
 ## [Unreleased]
 
 ### Added
@@ -55,6 +41,21 @@
 - **AUNShowMultiText collapse toggle preserves height**: Toggle only flips property + redraws canvas; no `setSize` or `computeSize` override on toggle.
 
 ### Notes
+
+## [2.7.2] - 2026-07-10
+
+### Fixed
+
+- **Preview Mode infinite recursion**: Fixed critical bug in `web/AUN_save_image_collapse_connections.js` where `_origComputeSize` captured the overridden `computeSize` instead of the original, causing infinite recursion when the node was not in Preview Mode. This prevented workflows with AUNSaveImage/AUNSaveImageV2 nodes from loading correctly.
+- **Preview Mode node resize**: Fixed missing `setSize()` calls in `toggle()` and `loadedGraphNode` so the node visually resizes when entering/exiting Preview Mode instead of keeping full height with hidden widgets.
+
+## [2.7.1] - 2026-07-09
+
+### Added
+
+- **Preview Mode** for AUN Save Image V2 (and legacy AUN Save Image). Double-click or right-click → "Preview Mode" to hide all widgets and show only the image preview. Right-click → "Show Controls" to restore widgets. Node size stays frozen during preview mode.
+- New `web/AUN_save_image_collapse_connections.js` extension.
+
 ## [2.7.0] - 2026-07-08
 
 ### Added
