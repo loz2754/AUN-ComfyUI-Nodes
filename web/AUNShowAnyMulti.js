@@ -63,7 +63,7 @@ function updateInputLabels(node) {
         if (srcNode && srcNode.outputs) {
           const outSlot = srcNode.outputs[link.origin_slot];
           if (outSlot) {
-            input.label = (outSlot.label && outSlot.label.trim()) || outSlot.name || input.name;
+            input.label = outSlot.name || input.name;
             continue;
           }
         }

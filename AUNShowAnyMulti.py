@@ -168,7 +168,8 @@ class AUNShowAnyMulti:
                     if isinstance(outputs, list) and origin_slot_idx is not None and origin_slot_idx < len(outputs):
                         out_slot = outputs[origin_slot_idx]
                         if isinstance(out_slot, dict):
-                            caption = out_slot.get("label") or out_slot.get("name", slot_name)
+                            label_val = (out_slot.get("label") or "").strip()
+                            caption = label_val or out_slot.get("name", slot_name)
                             captions[slot_name] = caption
                 break
 
