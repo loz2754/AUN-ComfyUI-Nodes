@@ -43,6 +43,7 @@ from .AUNMultiBypassIndex import AUNMultiBypassIndex
 from .AUNMultiGroupUniversal import AUNMultiGroupUniversal
 from .AUNMultiMuteIndex import AUNMultiMuteIndex
 from .AUNMultiNegPrompt import AUNMultiNegPrompt
+from .AUNMultiPromptCycler import AUNMultiPromptCycler
 from .AUNMultiUniversal import AUNMultiUniversal
 from .AUNNameCrop import AUNNameCrop
 from .AUNNodeStateController import AUNNodeStateController
@@ -71,6 +72,7 @@ from .AUNSetBypassStateGroup import AUNSetBypassStateGroup
 from .AUNSetCollapseAndBypassStateAdvanced import AUNSetCollapseAndBypassStateAdvanced
 from .AUNSetMuteByTitle import AUNSetMuteByTitle
 from .AUNSetMuteStateGroup import AUNSetMuteStateGroup
+from .AUNShowAnyMulti import AUNShowAnyMulti
 from .AUNShowMultiText import AUNShowMultiText
 from .AUNShowTextWithTitle import AUNShowTextWithTitle
 from .AUNSingleLabelSwitch import AUNSingleLabelSwitch
@@ -81,6 +83,7 @@ from .AUNSwitchFloat import AUNSwitchFloat
 from .AUNTextIndexSwitch import AUNTextIndexSwitch
 from .AUNTextIndexSwitch3 import AUNTextIndexSwitch3
 from .AUNTextIndexSwitch4 import AUNTextIndexSwitch4
+from .AUNImageTitleMultiPreview import AUNImageTitleMultiPreview
 from .AUNTitleImagePreview import AUNTitleImagePreview
 from .AUNWildcardAddToPrompt import AUNWildcardAddToPrompt
 from .KSamplerInputs import KSamplerInputs
@@ -134,6 +137,7 @@ NODE_CLASS_MAPPINGS = {
     "AUNMultiGroupUniversal": AUNMultiGroupUniversal,
     "AUNMultiMuteIndex": AUNMultiMuteIndex,
     "AUNMultiNegPrompt": AUNMultiNegPrompt,
+    "AUNMultiPromptCycler": AUNMultiPromptCycler,
     "AUNMultiUniversal": AUNMultiUniversal,
     "AUNNameCrop": AUNNameCrop,
     "AUNNodeStateController": AUNNodeStateController,
@@ -161,6 +165,7 @@ NODE_CLASS_MAPPINGS = {
     "AUNSetCollapseAndBypassStateAdvanced": AUNSetCollapseAndBypassStateAdvanced,
     "AUNSetMuteByTitle": AUNSetMuteByTitle,
     "AUNSetMuteStateGroup": AUNSetMuteStateGroup,
+    "AUNShowAnyMulti": AUNShowAnyMulti,
     "AUNShowMultiText": AUNShowMultiText,
     "AUNShowTextWithTitle": AUNShowTextWithTitle,
     "AUNSingleLabelSwitch": AUNSingleLabelSwitch,
@@ -171,6 +176,7 @@ NODE_CLASS_MAPPINGS = {
     "AUNTextIndexSwitch": AUNTextIndexSwitch,
     "AUNTextIndexSwitch3": AUNTextIndexSwitch3,
     "AUNTextIndexSwitch4": AUNTextIndexSwitch4,
+    "AUNImageTitleMultiPreview": AUNImageTitleMultiPreview,
     "AUNTitleImagePreview": AUNTitleImagePreview,
     "AUNWildcardAddToPrompt": AUNWildcardAddToPrompt,
     "KSamplerInputs": KSamplerInputs,
@@ -221,6 +227,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "AUNMultiGroupUniversal": "AUN Group Controller",
     "AUNMultiMuteIndex": "Multi Mute Index",
     "AUNMultiNegPrompt": "Negative Prompt Selector",
+    "AUNMultiPromptCycler": "AUN Multi Prompt Cycler",
     "AUNMultiUniversal": "AUN Node Controller",
     "AUNNameCrop": "Name Crop",
     "AUNNodeStateController": "Node State Controller",
@@ -248,6 +255,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "AUNSetCollapseAndBypassStateAdvanced": "Node Collapser & Bypasser Advanced",
     "AUNSetMuteByTitle": "Mute By Title",
     "AUNSetMuteStateGroup": "Group Muter (Multi)",
+    "AUNShowAnyMulti": "Show Any Multi",
     "AUNShowMultiText": "Show Multi Text",
     "AUNShowTextWithTitle": "Show Text With Title",
     "AUNSingleLabelSwitch": "Single Label Switch",
@@ -258,6 +266,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "AUNTextIndexSwitch": "Text Index Switch",
     "AUNTextIndexSwitch3": "Text Index Switch 3",
     "AUNTextIndexSwitch4": "Text Index Switch 4",
+    "AUNImageTitleMultiPreview": "AUN Image Title Multi Preview",
     "AUNTitleImagePreview": "Image Preview With Title",
     "AUNWildcardAddToPrompt": "AUN Wildcard Add-To-Prompt",
     "KSamplerInputs": "KSampler Inputs",
