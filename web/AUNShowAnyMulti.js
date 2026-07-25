@@ -115,7 +115,7 @@ function resizeNode(node) {
   if (typeof node?.computeSize === "function") {
     const newSize = node.computeSize();
     if (node.size && newSize && newSize.length >= 2) {
-      node.size[1] = Math.max(node.size[1], newSize[1]);
+      node.size[1] = newSize[1];
     }
   }
   const graph = node.graph ?? app.graph;
@@ -525,11 +525,16 @@ app.registerExtension({
     nodeType.prototype.onConfigure = function () {
       onConfigure?.apply(this, arguments);
 
+      const savedHeight = this.size?.[1];
+
       requestAnimationFrame(() => {
         if (!this.__aun_recalc_done) {
           this.__aun_recalc_done = true;
           recalcNumInputs(this);
           updateInputLabels(this);
+          if (savedHeight != null && this.size) {
+            this.size[1] = savedHeight;
+          }
         }
       });
 
