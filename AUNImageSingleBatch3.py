@@ -121,7 +121,6 @@ def filter_files_by_search(files, search_pattern, search_enabled):
 def parse_indices(indices_str, num_files):
     indices = set()
     if not indices_str.strip():
-        # If empty, default to first index
         return [0] if num_files > 0 else []
     for part in indices_str.split(','):
         part = part.strip()
@@ -133,9 +132,8 @@ def parse_indices(indices_str, num_files):
                 continue
         elif part.isdigit():
             indices.add(int(part))
-    valid_indices = [i for i in sorted(indices) if 0 <= i < num_files]
+    valid_indices = [i - 1 for i in sorted(indices) if 1 <= i <= num_files]
     if not valid_indices and num_files > 0:
-        # If nothing valid, default to first index
         return [0]
     return valid_indices
 
@@ -171,8 +169,8 @@ class AUNImageSingleBatch3(PreviewImage):
                     "tooltip": "How to select the next image from the folder. Use 'search' mode to filter files by pattern using the range_or_pattern field."
                 }),
                 "range_or_pattern": ("STRING", {
-                    "default": "0",
-                    "tooltip": "Multi-purpose field:\n• For fixed/range modes: Comma-separated indices or ranges (e.g., 2,3,4-7,10)\n• For search mode: Search pattern supporting wildcards (*,?,[]), regex, or simple text (e.g., 'portrait*', 'img_[0-9]+', '.*face.*')"
+                    "default": "1",
+                    "tooltip": "Multi-purpose field:\n• For fixed/range modes: Comma-separated 1-based indices or ranges (e.g., 2,3,4-7,10)\n• For search mode: Search pattern supporting wildcards (*,?,[]), regex, or simple text (e.g., 'portrait*', 'img_[0-9]+', '.*face.*')"
                 }),
                 "image_upload": (
                     sorted(files),
@@ -184,6 +182,10 @@ class AUNImageSingleBatch3(PreviewImage):
                 "max_num_words": ("INT", {
                     "default": 0, "min": 0, "max": 32, "step": 1,
                     "tooltip": "Maximum number of words to keep for both filename outputs. Set to 0 for no limit."
+                }),
+                "output_is_list": ("BOOLEAN", {
+                    "default": False,
+                    "tooltip": "When enabled with 'range', 'fixed', or 'search' batch modes, output ALL matching images as a list (one per downstream execution) with corresponding filename lists."
                 }),
             },
             "hidden": {
@@ -198,7 +200,7 @@ class AUNImageSingleBatch3(PreviewImage):
     FUNCTION = "load_image"
     OUTPUT_NODE = True
     CATEGORY = "AUN Nodes/Image"
-    DESCRIPTION = "Load a single uploaded image or cycle through a batch of images from a folder with multiple selection modes, including range and search filtering by filename patterns."
+    DESCRIPTION = "Load a single uploaded image or cycle through a batch of images from a folder with multiple selection modes. Enable 'output_is_list' in range/fixed/search modes to output all matching images and filenames as lists for per-item downstream processing."
 
     def __init__(self):
         super().__init__()
@@ -232,7 +234,7 @@ class AUNImageSingleBatch3(PreviewImage):
         else:
             return output_images[0]
 
-    def load_image(self, source_mode, path_mode, predefined_path, manual_path, batch_mode, range_or_pattern, image_upload, max_num_words=0, hide_preview=False, unique_id=None, **kwargs):
+    def load_image(self, source_mode, path_mode, predefined_path, manual_path, batch_mode, range_or_pattern, image_upload, max_num_words=0, output_is_list=False, hide_preview=False, unique_id=None, **kwargs):
         # Retrieve or initialize state for this node instance
         if unique_id is not None:
             if isinstance(unique_id, (list, tuple)):
@@ -251,6 +253,8 @@ class AUNImageSingleBatch3(PreviewImage):
         else:
             # Fallback to instance variables if unique_id is missing
             state = self.__dict__
+
+        self.OUTPUT_IS_LIST = (True, True, True) if output_is_list else (False, False, False)
 
         image_path = ""
         filename_without_ext = ""
@@ -325,11 +329,57 @@ class AUNImageSingleBatch3(PreviewImage):
             image_path = os.path.join(effective_path, selected_file)
             filename_without_ext = os.path.splitext(selected_file)[0]
 
+        if output_is_list and batch_mode in ("range", "fixed", "search") and source_mode != "Single Image Upload":
+            if batch_mode in ("range", "fixed"):
+                indices = parse_indices(range_or_pattern, num_files)
+            else:
+                indices = list(range(num_files))
+            if not indices:
+                raise ValueError("No valid indices found for list output.")
+            image_list = []
+            filename_list = []
+            cleaned_list = []
+            for idx in indices:
+                sf = state["image_files"][idx]
+                fp = os.path.join(effective_path, sf)
+                pi = Image.open(fp)
+                t = self._process_pil_image(pi)
+                if t.dim() == 4 and t.shape[0] > 1:
+                    t = t[0:1]
+                if t.dim() == 3:
+                    t = t.unsqueeze(0)
+                image_list.append(t)
+                raw_fn = os.path.splitext(sf)[0]
+                filename_list.append(raw_fn)
+                cleaned_list.append(clean_filename_for_output(raw_fn, max_num_words))
+            return (image_list, filename_list, cleaned_list)
+        
+        if output_is_list:
+            pil_image = Image.open(image_path)
+            t = self._process_pil_image(pil_image)
+            if t.dim() == 4 and t.shape[0] > 1:
+                t = t[0:1]
+            if t.dim() == 3:
+                t = t.unsqueeze(0)
+            cfn = clean_filename_for_output(filename_without_ext, max_num_words)
+            fn = filename_without_ext
+            if max_num_words > 0:
+                parts = re.split(r'([_\s\-]+)', fn)
+                words_seen = 0
+                new_parts = []
+                for p in parts:
+                    if p and not re.match(r'^[_\s\-]+$', p):
+                        words_seen += 1
+                    if words_seen > max_num_words:
+                        break
+                    new_parts.append(p)
+                fn = "".join(new_parts).rstrip("_ -")
+            return ([t], [fn], [cfn])
+        
         pil_image = Image.open(image_path)
         tensor_image = self._process_pil_image(pil_image)
         cleaned_filename = clean_filename_for_output(filename_without_ext, max_num_words)
         
-        # Apply word limit to raw filename if requested, preserving original separators
         filename = filename_without_ext
         if max_num_words > 0:
             parts = re.split(r'([_\s\-]+)', filename)
@@ -346,7 +396,6 @@ class AUNImageSingleBatch3(PreviewImage):
         if hide_preview:
             return {"ui": {"images": [], "filename": filename}, "result": (tensor_image, filename, cleaned_filename)}
         
-        # Save images and build preview UI (inherits from PreviewImage)
         preview = self.save_images(tensor_image, "AUNImageSingleBatch", kwargs.get("prompt"), kwargs.get("extra_pnginfo"))
         ui_data = preview.get("ui", {})
         ui_data["filename"] = filename
@@ -365,6 +414,7 @@ class AUNImageSingleBatch3(PreviewImage):
         range_start=None, 
         range_end=None, 
         image_upload=None, 
+        output_is_list=False,
         **kwargs
     ):
         if source_mode == "Single Image Upload":
@@ -373,7 +423,7 @@ class AUNImageSingleBatch3(PreviewImage):
             with open(image_path, 'rb') as f:
                 m.update(f.read())
             return m.digest().hex()
-        if batch_mode in ["increment", "decrement", "random", "range", "search"]:
+        if batch_mode in ["increment", "decrement", "random", "range", "search"] or output_is_list:
             return float("NaN")
         effective_path = manual_path if path_mode == "Manual" else predefined_path
         search_key = f"{range_or_pattern}" if batch_mode == "search" else ""
