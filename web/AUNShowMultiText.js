@@ -93,11 +93,6 @@ function recalcNumInputs(node) {
   applyVisibleInputs(node, target);
 }
 
-function setupNode(node) {
-  if (node.__aun_hooked) return;
-  node.__aun_hooked = true;
-}
-
 // ── Shared helpers ──────────────────────────────────────────────────
 
 function getContentYOffset(node, ignoreCollapse) {
@@ -455,7 +450,6 @@ app.registerExtension({
 
   nodeCreated(node) {
     if (node.comfyClass === NODE_TYPE) {
-      setupNode(node);
       setupCollapseConnections(node);
       // Defer initial autogrow to next frame:
       //   - new nodes: RAF fires after node creation, sets count to 1
@@ -472,7 +466,6 @@ app.registerExtension({
 
   loadedGraphNode(node) {
     if (node.comfyClass === NODE_TYPE) {
-      setupNode(node);
       setupCollapseConnections(node);
     }
   },
