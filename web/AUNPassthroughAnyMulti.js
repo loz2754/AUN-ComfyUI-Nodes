@@ -7,8 +7,6 @@ const COLLAPSE_KEY = "collapse_connections";
 const SHOW_TYPES_KEY = "show_types";
 const MAX_VALUE_LEN_KEY = "max_value_len";
 
-const DANGEROUS_OUTPUT_TYPES = new Set(["MODEL", "CLIP", "VAE", "CLIP_VISION", "STYLE_MODEL", "CONTROL_NET", "GUIDER", "SAMPLER", "SIGMAS", "TAESD"]);
-const CRASH_TARGET_NODES = new Set(["ShowText|pysssss", "Show Text 🐍"]);
 
 const TYPE_COLORS = {
   IMAGE: "#64B5F6",
@@ -150,7 +148,7 @@ function applyVisibleInputs(node) {
     node.removeOutput(node.outputs.length - 1);
   }
   while (node.outputs.length < outputTarget) {
-    node.addOutput(`output_${node.outputs.length + 1}`, "*");
+    node.addOutput(`output_${node.outputs.length + 1}`, "STRING");
   }
 
   if (changed) {
@@ -547,59 +545,6 @@ function setupShowTypes(node) {
   };
 }
 
-// ── Warning system ──────────────────────────────────────────────────
-
-function checkDangerousConnections(node) {
-  if (!node?.outputs || !node.graph) return;
-
-  const graph = node.graph;
-
-  for (let i = 0; i < node.outputs.length; i++) {
-    const output = node.outputs[i];
-    if (!output?.links?.length) continue;
-
-    for (const linkId of output.links) {
-      const link = graph.links?.get ? graph.links.get(linkId) : graph.links?.[linkId];
-      if (!link) continue;
-
-      const targetNode = graph.getNodeById ? graph.getNodeById(link.target_id) : null;
-      if (!targetNode) continue;
-
-      const targetType = targetNode.comfyClass || targetNode.type || "";
-      if (!CRASH_TARGET_NODES.has(targetType)) continue;
-
-      // Get the actual upstream type by tracing back through our inputs
-      const inputName = `input_${i + 1}`;
-      const inputSlot = node.inputs?.find(inp => inp.name === inputName);
-      let sourceType = "*";
-      if (inputSlot?.link != null) {
-        const inLink = graph.links?.get ? graph.links.get(inputSlot.link) : graph.links?.[inputSlot.link];
-        if (inLink) {
-          const srcNode = graph.getNodeById ? graph.getNodeById(inLink.origin_id) : null;
-          if (srcNode && srcNode.outputs) {
-            const srcOutput = srcNode.outputs[inLink.origin_slot];
-            if (srcOutput?.type) {
-              sourceType = srcOutput.type;
-            }
-          }
-        }
-      }
-
-      if (!DANGEROUS_OUTPUT_TYPES.has(sourceType.toUpperCase())) continue;
-
-      console.warn(`[${NODE_TYPE}] ⚠️ Connecting ${sourceType} to "${targetType}" may crash ComfyUI. Use "Preview Text" instead.`);
-      if (app.extensionManager?.toast?.add) {
-        app.extensionManager.toast.add({
-          severity: "warning",
-          summary: `Connecting ${sourceType} to "${targetType}"`,
-          detail: `This may crash ComfyUI. Use "Preview Text" for display.`,
-          lifetime: 5000,
-        });
-      }
-    }
-  }
-}
-
 // ── Max Value Len (right-click menu) ────────────────────────────────
 
 const MAX_VALUE_LEN_PRESETS = [
@@ -656,9 +601,6 @@ app.registerExtension({
         resizeNode(this);
       }
 
-      if (isConnected && this.comfyClass === NODE_TYPE) {
-        checkDangerousConnections(this);
-      }
     };
 
     const onExecuted = nodeType.prototype.onExecuted;

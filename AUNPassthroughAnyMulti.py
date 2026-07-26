@@ -67,14 +67,16 @@ class AUNPassthroughAnyMulti:
             })
         return inputs
 
-    RETURN_TYPES = tuple(any_type for _ in range(20))
+    RETURN_TYPES = tuple("STRING" for _ in range(20))
     RETURN_NAMES = tuple(f"output_{i}" for i in range(1, 21))
     FUNCTION = "show_multi"
     CATEGORY = "AUN Nodes/Utility"
     DESCRIPTION = (
         "Inspects up to 20 connected inputs of any type. Shows the type name, "
         "a string representation of each value, and an inline image preview "
-        "for IMAGE inputs. Also passes each input through to its corresponding output."
+        "for IMAGE inputs. Each output returns a string representation of the "
+        "corresponding input — useful for passing names, paths, or summaries "
+        "to text/string nodes downstream."
         "\n\nRight-click -> \"Collapse Connections\" or double-click to hide "
         "slot labels and converge connection lines."
         "\nRight-click -> \"Show/Hide Data Types\" to toggle the type badge on each entry."
@@ -86,10 +88,12 @@ class AUNPassthroughAnyMulti:
         max_value_len = self._read_property(unique_id, extra_pnginfo, "max_value_len", _MAX_VALUE_LEN)
 
         entries = []
+        outputs = []
         for i in range(1, self.MAX_INPUTS + 1):
             key = f"input_{i}"
             value = kwargs.get(key)
             if value is None:
+                outputs.append("")
                 continue
 
             caption = captions.get(key, f"Input {i}")
@@ -151,9 +155,59 @@ class AUNPassthroughAnyMulti:
                 entry["type"] = type(value).__name__.upper()
 
             entries.append(entry)
+            outputs.append(self._value_to_string(value, type_name, caption))
 
-        result = tuple(kwargs.get(f"input_{i}") for i in range(1, self.MAX_INPUTS + 1))
-        return {"ui": {"entries": _sanitize_for_json(entries)}, "result": result}
+        return {"ui": {"entries": _sanitize_for_json(entries)}, "result": tuple(outputs)}
+
+    def _value_to_string(self, value, type_name, caption=""):
+        try:
+            if type_name == "IMAGE":
+                dims = ""
+                if isinstance(value, torch.Tensor):
+                    t = value
+                    if t.dim() == 4:
+                        t = t[0]
+                    if t.dim() == 3:
+                        h, w = t.shape[0], t.shape[1]
+                        dims = f"{w} x {h}"
+                caption_words = " ".join(caption.split()[:4]).strip()
+                if caption_words:
+                    return f"{caption_words} {dims}" if dims else caption_words
+                return dims or str(value)
+            elif type_name == "STRING":
+                return str(value)
+            elif type_name == "LATENT":
+                if isinstance(value, dict):
+                    samples = value.get("samples")
+                    if isinstance(samples, torch.Tensor):
+                        return f"Latent tensor shape={list(samples.shape)}, dtype={samples.dtype}"
+                    return f"Latent dict with keys: {', '.join(value.keys())}"
+                return str(value)
+            elif type_name == "MODEL":
+                name = self._extract_name(value, "MODEL")
+                return name if name else f"MODEL object ({type(value).__name__})"
+            elif type_name == "CLIP":
+                name = self._extract_name(value, "CLIP")
+                return name if name else f"CLIP object ({type(value).__name__})"
+            elif type_name == "VAE":
+                name = self._extract_name(value, "VAE")
+                return name if name else f"VAE object ({type(value).__name__})"
+            elif isinstance(value, dict):
+                try:
+                    return json.dumps(value, default=str, ensure_ascii=False)
+                except Exception:
+                    return str(value)
+            elif isinstance(value, (list, tuple)):
+                try:
+                    return json.dumps(value, default=str, ensure_ascii=False)
+                except Exception:
+                    return str(value)
+            elif isinstance(value, torch.Tensor):
+                return f"Tensor(shape={list(value.shape)}, dtype={value.dtype}, device={value.device})"
+            else:
+                return str(value)
+        except Exception:
+            return _safe_string_convert(value)
 
     # ── graph helpers ───────────────────────────────────────────────
 
