@@ -7,9 +7,14 @@
 
 ### Changed
 
+- AUNPassthroughAnyMulti outputs now return STRING type with text summaries instead of raw passthrough — useful for feeding names, paths, or dimension strings to downstream text/path nodes
+- IMAGE output includes caption (up to 4 words) and dimensions (e.g. "Load Image 1344 x 768")
+
 ### Fixed
 
 ### Notes
+
+- Removed dangerous connection warning system (no longer relevant since outputs are always STRING)
 
 ## [2.8.1] - 2026-07-26
 
