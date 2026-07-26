@@ -419,8 +419,6 @@ function setupCollapseConnections(node) {
       if (this.widgets?.length && slot.widget) continue;
       if (c) {
         slot.label = " ";
-      } else {
-        delete slot.label;
       }
     }
   };
@@ -428,6 +426,9 @@ function setupCollapseConnections(node) {
   function toggleCollapse() {
     const on = !this.properties[COLLAPSE_KEY];
     this.properties[COLLAPSE_KEY] = on;
+    if (!on) {
+      updateInputLabels(this);
+    }
     this.graph?.setDirtyCanvas(true, true);
   }
 

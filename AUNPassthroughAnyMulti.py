@@ -28,6 +28,25 @@ def _truncate(s, max_len=_MAX_VALUE_LEN):
     return s, None
 
 
+def _safe_string_convert(value):
+    """Safely convert a value to string, handling crash-prone objects."""
+    try:
+        return str(value)
+    except Exception:
+        return f"Object (type={type(value).__name__}, unable to display)"
+
+
+def _sanitize_for_json(obj):
+    """Recursively ensure an object tree is JSON-serializable."""
+    if isinstance(obj, dict):
+        return {k: _sanitize_for_json(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_sanitize_for_json(item) for item in obj]
+    if isinstance(obj, (str, int, float, bool, type(None))):
+        return obj
+    return _safe_string_convert(obj)
+
+
 class AUNPassthroughAnyMulti:
     MAX_INPUTS = 20
 
@@ -51,7 +70,6 @@ class AUNPassthroughAnyMulti:
     RETURN_TYPES = tuple(any_type for _ in range(20))
     RETURN_NAMES = tuple(f"output_{i}" for i in range(1, 21))
     FUNCTION = "show_multi"
-    OUTPUT_NODE = True
     CATEGORY = "AUN Nodes/Utility"
     DESCRIPTION = (
         "Inspects up to 20 connected inputs of any type. Shows the type name, "
@@ -78,60 +96,64 @@ class AUNPassthroughAnyMulti:
             type_name = type_map.get(key, self._infer_type(value))
             entry = {"caption": caption, "type": type_name, "value": "", "preview": None}
 
-            if type_name == "IMAGE":
-                entry["preview"] = self._image_to_base64(value)
-                val, full = self._image_summary(value, max_value_len)
-                entry["value"] = val
-                if full:
-                    entry["full_value"] = full
-            elif type_name == "STRING":
-                val, full = _truncate(str(value), max_value_len)
-                entry["value"] = val
-                if full:
-                    entry["full_value"] = full
-            elif type_name == "LATENT":
-                val, full = self._latent_summary(value, max_value_len)
-                entry["value"] = val
-                if full:
-                    entry["full_value"] = full
-            elif type_name == "MODEL":
-                name = self._extract_name(value, "MODEL")
-                entry["value"] = name if name else f"MODEL object ({type(value).__name__})"
-            elif type_name == "CLIP":
-                name = self._extract_name(value, "CLIP")
-                entry["value"] = name if name else f"CLIP object ({type(value).__name__})"
-            elif type_name == "VAE":
-                name = self._extract_name(value, "VAE")
-                entry["value"] = name if name else f"VAE object ({type(value).__name__})"
-            elif isinstance(value, dict):
-                val, full = self._safe_json(value, max_value_len)
-                entry["value"] = val
-                if full:
-                    entry["full_value"] = full
-            elif isinstance(value, (list, tuple)):
-                val, full = self._safe_json(value, max_value_len)
-                entry["value"] = val
-                if full:
-                    entry["full_value"] = full
-            elif isinstance(value, torch.Tensor):
-                val, full = _truncate(
-                    f"Tensor(shape={list(value.shape)}, "
-                    f"dtype={value.dtype}, device={value.device})",
-                    max_value_len,
-                )
-                entry["value"] = val
-                if full:
-                    entry["full_value"] = full
-            else:
-                val, full = _truncate(str(value), max_value_len)
-                entry["value"] = val
-                if full:
-                    entry["full_value"] = full
+            try:
+                if type_name == "IMAGE":
+                    entry["preview"] = self._image_to_base64(value)
+                    val, full = self._image_summary(value, max_value_len)
+                    entry["value"] = val
+                    if full:
+                        entry["full_value"] = full
+                elif type_name == "STRING":
+                    val, full = _truncate(str(value), max_value_len)
+                    entry["value"] = val
+                    if full:
+                        entry["full_value"] = full
+                elif type_name == "LATENT":
+                    val, full = self._latent_summary(value, max_value_len)
+                    entry["value"] = val
+                    if full:
+                        entry["full_value"] = full
+                elif type_name == "MODEL":
+                    name = self._extract_name(value, "MODEL")
+                    entry["value"] = name if name else f"MODEL object ({type(value).__name__})"
+                elif type_name == "CLIP":
+                    name = self._extract_name(value, "CLIP")
+                    entry["value"] = name if name else f"CLIP object ({type(value).__name__})"
+                elif type_name == "VAE":
+                    name = self._extract_name(value, "VAE")
+                    entry["value"] = name if name else f"VAE object ({type(value).__name__})"
+                elif isinstance(value, dict):
+                    val, full = self._safe_json(value, max_value_len)
+                    entry["value"] = val
+                    if full:
+                        entry["full_value"] = full
+                elif isinstance(value, (list, tuple)):
+                    val, full = self._safe_json(value, max_value_len)
+                    entry["value"] = val
+                    if full:
+                        entry["full_value"] = full
+                elif isinstance(value, torch.Tensor):
+                    val, full = _truncate(
+                        f"Tensor(shape={list(value.shape)}, "
+                        f"dtype={value.dtype}, device={value.device})",
+                        max_value_len,
+                    )
+                    entry["value"] = val
+                    if full:
+                        entry["full_value"] = full
+                else:
+                    val, full = _truncate(str(value), max_value_len)
+                    entry["value"] = val
+                    if full:
+                        entry["full_value"] = full
+            except Exception:
+                entry["value"] = _safe_string_convert(value)
+                entry["type"] = type(value).__name__.upper()
 
             entries.append(entry)
 
         result = tuple(kwargs.get(f"input_{i}") for i in range(1, self.MAX_INPUTS + 1))
-        return {"ui": {"entries": entries}, "result": result}
+        return {"ui": {"entries": _sanitize_for_json(entries)}, "result": result}
 
     # ── graph helpers ───────────────────────────────────────────────
 
