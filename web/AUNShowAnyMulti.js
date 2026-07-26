@@ -5,6 +5,7 @@ const MAX_INPUTS = 20;
 const INPUT_PREFIX = "input_";
 const COLLAPSE_KEY = "collapse_connections";
 const SHOW_TYPES_KEY = "show_types";
+const MAX_VALUE_LEN_KEY = "max_value_len";
 
 const TYPE_COLORS = {
   IMAGE: "#64B5F6",
@@ -258,6 +259,7 @@ function buildOverlayCards(container, entries, showTypes = true) {
           margin-top: 3px;
         `;
         valEl.textContent = entry.value;
+        if (entry.full_value) valEl.title = entry.full_value;
         card.appendChild(valEl);
       }
     } else if (entry.value) {
@@ -270,6 +272,7 @@ function buildOverlayCards(container, entries, showTypes = true) {
         line-height: 1.4;
       `;
       valEl.textContent = entry.value;
+      if (entry.full_value) valEl.title = entry.full_value;
       card.appendChild(valEl);
     }
 
@@ -490,6 +493,44 @@ function setupShowTypes(node) {
   };
 }
 
+// ── Max Value Len (right-click menu) ────────────────────────────────
+
+const MAX_VALUE_LEN_PRESETS = [
+  { label: "200", value: 200 },
+  { label: "500 (default)", value: 500 },
+  { label: "1000", value: 1000 },
+  { label: "2000", value: 2000 },
+  { label: "Unlimited", value: 0 },
+];
+
+function setupMaxValueLen(node) {
+  if (node.__aun_max_value_len_hooked) return;
+  node.__aun_max_value_len_hooked = true;
+
+  node.properties = node.properties || {};
+  if (typeof node.properties[MAX_VALUE_LEN_KEY] !== "number") {
+    node.properties[MAX_VALUE_LEN_KEY] = 500;
+  }
+
+  const origMenu = node.getExtraMenuOptions;
+  node.getExtraMenuOptions = function (canvas, options) {
+    if (origMenu) origMenu.apply(this, [canvas, options]);
+    options.push(null, {
+      content: "Max Value Len",
+      disabled: true,
+    });
+    for (const p of MAX_VALUE_LEN_PRESETS) {
+      const current = this.properties?.[MAX_VALUE_LEN_KEY] === p.value;
+      options.push({
+        content: (current ? "✓ " : "   ") + p.label,
+        callback: () => {
+          this.properties[MAX_VALUE_LEN_KEY] = p.value;
+        },
+      });
+    }
+  };
+}
+
 // ── Extension Registration ──────────────────────────────────────────
 
 app.registerExtension({
@@ -565,6 +606,7 @@ app.registerExtension({
     if (node.comfyClass === NODE_TYPE) {
       setupCollapseConnections(node);
       setupShowTypes(node);
+      setupMaxValueLen(node);
       requestAnimationFrame(() => {
         if (!node.__aun_recalc_done) {
           node.__aun_recalc_done = true;
@@ -594,6 +636,7 @@ app.registerExtension({
     if (node.comfyClass === NODE_TYPE) {
       setupCollapseConnections(node);
       setupShowTypes(node);
+      setupMaxValueLen(node);
     }
   },
 

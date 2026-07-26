@@ -20,6 +20,13 @@ _MAX_VALUE_LEN = 500
 _MAX_IMG_SIDE = 400
 
 
+def _truncate(s, max_len=_MAX_VALUE_LEN):
+    """Returns (display_value, full_value_or_None)."""
+    if max_len and len(s) > max_len:
+        return s[:max_len] + "... [truncated]", s
+    return s, None
+
+
 class AUNShowAnyMulti:
     MAX_INPUTS = 20
 
@@ -52,10 +59,12 @@ class AUNShowAnyMulti:
         "\n\nRight-click -> \"Collapse Connections\" or double-click to hide "
         "slot labels and converge connection lines."
         "\nRight-click -> \"Show/Hide Data Types\" to toggle the type badge on each entry."
+        "\nRight-click -> \"Max Value Len\" to set the character display limit (hover to see full text)."
     )
 
     def show_multi(self, unique_id=None, extra_pnginfo=None, **kwargs):
         captions, type_map = self._read_graph_meta(unique_id, extra_pnginfo)
+        max_value_len = self._read_property(unique_id, extra_pnginfo, "max_value_len", _MAX_VALUE_LEN)
 
         entries = []
         for i in range(1, self.MAX_INPUTS + 1):
@@ -70,11 +79,20 @@ class AUNShowAnyMulti:
 
             if type_name == "IMAGE":
                 entry["preview"] = self._image_to_base64(value)
-                entry["value"] = self._image_summary(value)
+                val, full = self._image_summary(value, max_value_len)
+                entry["value"] = val
+                if full:
+                    entry["full_value"] = full
             elif type_name == "STRING":
-                entry["value"] = str(value)[:_MAX_VALUE_LEN]
+                val, full = _truncate(str(value), max_value_len)
+                entry["value"] = val
+                if full:
+                    entry["full_value"] = full
             elif type_name == "LATENT":
-                entry["value"] = self._latent_summary(value)
+                val, full = self._latent_summary(value, max_value_len)
+                entry["value"] = val
+                if full:
+                    entry["full_value"] = full
             elif type_name == "MODEL":
                 entry["value"] = f"MODEL object ({type(value).__name__})"
             elif type_name == "CLIP":
@@ -82,16 +100,29 @@ class AUNShowAnyMulti:
             elif type_name == "VAE":
                 entry["value"] = f"VAE object ({type(value).__name__})"
             elif isinstance(value, dict):
-                entry["value"] = self._safe_json(value)
+                val, full = self._safe_json(value, max_value_len)
+                entry["value"] = val
+                if full:
+                    entry["full_value"] = full
             elif isinstance(value, (list, tuple)):
-                entry["value"] = self._safe_json(value)
+                val, full = self._safe_json(value, max_value_len)
+                entry["value"] = val
+                if full:
+                    entry["full_value"] = full
             elif isinstance(value, torch.Tensor):
-                entry["value"] = (
+                val, full = _truncate(
                     f"Tensor(shape={list(value.shape)}, "
-                    f"dtype={value.dtype}, device={value.device})"
-                )[:_MAX_VALUE_LEN]
+                    f"dtype={value.dtype}, device={value.device})",
+                    max_value_len,
+                )
+                entry["value"] = val
+                if full:
+                    entry["full_value"] = full
             else:
-                entry["value"] = str(value)[:_MAX_VALUE_LEN]
+                val, full = _truncate(str(value), max_value_len)
+                entry["value"] = val
+                if full:
+                    entry["full_value"] = full
 
             entries.append(entry)
 
@@ -175,6 +206,27 @@ class AUNShowAnyMulti:
 
         return captions, type_map
 
+    @staticmethod
+    def _read_property(unique_id, extra_pnginfo, prop_name, default=None):
+        if unique_id is None or extra_pnginfo is None:
+            return default
+        workflow = extra_pnginfo.get("workflow", {})
+        nodelist = workflow.get("nodes", [])
+        my_node = next(
+            (n for n in nodelist if str(n.get("id")) == str(unique_id)),
+            None,
+        )
+        if not my_node:
+            return default
+        props = my_node.get("properties", {})
+        val = props.get(prop_name)
+        if val is None:
+            return default
+        try:
+            return int(val)
+        except Exception:
+            return default
+
     # ── value formatting ────────────────────────────────────────────
 
     @staticmethod
@@ -225,32 +277,32 @@ class AUNShowAnyMulti:
             return None
 
     @staticmethod
-    def _image_summary(tensor):
+    def _image_summary(tensor, max_len=_MAX_VALUE_LEN):
         if isinstance(tensor, torch.Tensor):
             t = tensor
             if t.dim() == 4:
                 t = t[0]
             if t.dim() == 3:
                 h, w = t.shape[0], t.shape[1]
-                return f"{w} x {h}"
-        return str(tensor)[:_MAX_VALUE_LEN]
+                return f"{w} x {h}", None
+        return _truncate(str(tensor), max_len)
 
     @staticmethod
-    def _latent_summary(latent):
+    def _latent_summary(latent, max_len=_MAX_VALUE_LEN):
         if isinstance(latent, dict):
             samples = latent.get("samples")
             if isinstance(samples, torch.Tensor):
-                return f"Latent tensor shape={list(samples.shape)}, dtype={samples.dtype}"
-            return f"Latent dict with keys: {', '.join(latent.keys())}"
-        return str(latent)[:_MAX_VALUE_LEN]
+                return f"Latent tensor shape={list(samples.shape)}, dtype={samples.dtype}", None
+            return f"Latent dict with keys: {', '.join(latent.keys())}", None
+        return _truncate(str(latent), max_len)
 
     @staticmethod
-    def _safe_json(obj):
+    def _safe_json(obj, max_len=_MAX_VALUE_LEN):
         try:
             s = json.dumps(obj, default=str, ensure_ascii=False)
         except Exception:
             s = str(obj)
-        return s[:_MAX_VALUE_LEN]
+        return _truncate(s, max_len)
 
 
 NODE_CLASS_MAPPINGS = {
