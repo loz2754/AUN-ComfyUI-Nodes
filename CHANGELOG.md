@@ -5,6 +5,16 @@
 
 ### Added
 
+### Changed
+
+### Fixed
+
+### Notes
+
+## [2.8.1] - 2026-07-26
+
+### Added
+
 - New node: `AUNPassthroughAnyMulti` — passthrough node with up to 20 autogrow inputs, collapse connections, mirrored output labels, and inline overlay display
 - Configurable max value length with truncation and hover tooltips for Show Any Multi
 - Crash warning toast when connecting MODEL/CLIP/VAE outputs to Show Text nodes — prevents confusing WebSocket serialization crashes
@@ -20,7 +30,6 @@
 - WebSocket crash when downstream nodes (e.g. ShowText|pysssss) receive Model/CLIP/VAE types via passthrough
 
 ### Notes
-
 ## [2.8.0] - 2026-07-25
 
 ### Added
