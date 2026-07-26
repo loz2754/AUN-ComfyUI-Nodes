@@ -1,6 +1,7 @@
 import base64
 import io
 import json
+import os
 
 import numpy as np
 import torch
@@ -94,11 +95,14 @@ class AUNShowAnyMulti:
                 if full:
                     entry["full_value"] = full
             elif type_name == "MODEL":
-                entry["value"] = f"MODEL object ({type(value).__name__})"
+                name = self._extract_name(value, "MODEL")
+                entry["value"] = name if name else f"MODEL object ({type(value).__name__})"
             elif type_name == "CLIP":
-                entry["value"] = f"CLIP object ({type(value).__name__})"
+                name = self._extract_name(value, "CLIP")
+                entry["value"] = name if name else f"CLIP object ({type(value).__name__})"
             elif type_name == "VAE":
-                entry["value"] = f"VAE object ({type(value).__name__})"
+                name = self._extract_name(value, "VAE")
+                entry["value"] = name if name else f"VAE object ({type(value).__name__})"
             elif isinstance(value, dict):
                 val, full = self._safe_json(value, max_value_len)
                 entry["value"] = val
@@ -303,6 +307,41 @@ class AUNShowAnyMulti:
         except Exception:
             s = str(obj)
         return _truncate(s, max_len)
+
+    @staticmethod
+    def _extract_name(value, type_name):
+        """Try to get the original filename from cached_patcher_init."""
+        try:
+            if type_name == "MODEL":
+                init = getattr(value, "cached_patcher_init", None)
+                if init is None:
+                    return None
+                path = init[1][0]
+                return os.path.splitext(os.path.basename(path))[0]
+            if type_name == "CLIP":
+                patcher = getattr(value, "patcher", None)
+                if patcher is None:
+                    return None
+                init = getattr(patcher, "cached_patcher_init", None)
+                if init is None:
+                    return None
+                paths = init[1][0]
+                if isinstance(paths, (list, tuple)):
+                    names = [os.path.splitext(os.path.basename(p))[0] for p in paths]
+                    return ", ".join(names)
+                return os.path.splitext(os.path.basename(paths))[0]
+            if type_name == "VAE":
+                patcher = getattr(value, "patcher", None)
+                if patcher is None:
+                    return None
+                init = getattr(patcher, "cached_patcher_init", None)
+                if init is None:
+                    return None
+                path = init[1][0]
+                return os.path.splitext(os.path.basename(path))[0]
+        except Exception:
+            return None
+        return None
 
 
 NODE_CLASS_MAPPINGS = {
