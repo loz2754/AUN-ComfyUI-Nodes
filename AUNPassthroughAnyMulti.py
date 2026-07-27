@@ -69,6 +69,7 @@ class AUNPassthroughAnyMulti:
 
     RETURN_TYPES = tuple("STRING" for _ in range(20))
     RETURN_NAMES = tuple(f"output_{i}" for i in range(1, 21))
+    OUTPUT_NODE = True
     FUNCTION = "show_multi"
     CATEGORY = "AUN Nodes/Utility"
     DESCRIPTION = (
