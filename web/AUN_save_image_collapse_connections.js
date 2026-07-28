@@ -44,11 +44,12 @@ function setupNode(node) {
   const origComputeSize = (node.computeSize || (() => node.size)).bind(node);
   node.computeSize = function (out) {
     const w = out?.[0] ?? this.size[0] ?? 240;
+    const h = this.size[1] ?? 100;
     if (this.properties?.[PK]) {
-      const h = this[SIZE_KEY]?.[1] ?? this.size[1] ?? 100;
       return [w, h];
     }
-    return origComputeSize(out);
+    const s = origComputeSize(out);
+    return [s[0], h];
   };
 
   const origDrawFg = node.onDrawForeground;
@@ -74,7 +75,6 @@ function setupNode(node) {
       node[SIZE_KEY] = null;
     }
     applyWidgetVisibility();
-    node.setSize([node.size[0], node.computeSize()[1]]);
     node.graph?.setDirtyCanvas(true, true);
   }
 
@@ -114,7 +114,6 @@ function setupNode(node) {
 
   if (node.properties[PK]) {
     node[SIZE_KEY] = [node.size[0], node.size[1]];
-    node.setSize([node.size[0], node.computeSize()[1]]);
   }
 }
 
