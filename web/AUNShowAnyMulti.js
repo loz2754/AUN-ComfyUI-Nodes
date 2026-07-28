@@ -57,7 +57,7 @@ function updateInputLabels(node) {
         if (srcNode && srcNode.outputs) {
           const outSlot = srcNode.outputs[link.origin_slot];
           if (outSlot) {
-            input.label = outSlot.name || input.name;
+            input.label = outSlot.label || outSlot.name || input.name;
             continue;
           }
         }
@@ -116,7 +116,7 @@ function resizeNode(node) {
   if (typeof node?.computeSize === "function") {
     const newSize = node.computeSize();
     if (node.size && newSize && newSize.length >= 2) {
-      node.size[1] = newSize[1];
+      node.size[1] = Math.max(node.size[1] || 0, newSize[1]);
     }
   }
   const graph = node.graph ?? app.graph;

@@ -58,7 +58,7 @@ function updateInputLabels(node) {
         if (srcNode && srcNode.outputs) {
           const outSlot = srcNode.outputs[link.origin_slot];
           if (outSlot) {
-            input.label = outSlot.name || input.name;
+            input.label = outSlot.label || outSlot.name || input.name;
             continue;
           }
         }
@@ -98,7 +98,7 @@ function updateOutputLabels(node) {
         if (srcNode && srcNode.outputs) {
           const outSlot = srcNode.outputs[link.origin_slot];
           if (outSlot) {
-            output.label = outSlot.name || `output_${num}`;
+            output.label = outSlot.label || outSlot.name || `output_${num}`;
             continue;
           }
         }
