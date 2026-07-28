@@ -40,9 +40,13 @@ function setupNode(node) {
     return origGetInputPos(index);
   };
 
+  const origComputeSize = node.computeSize.bind(node);
   node.computeSize = function (out) {
-    const w = out?.[0] ?? this.size[0] ?? 240;
-    return [w, 100];
+    if (this.properties?.[PK]) {
+      return [out?.[0] ?? 240, 100];
+    }
+    const s = origComputeSize(out);
+    return [s[0], 100];
   };
 
   const origDrawFg = node.onDrawForeground;
