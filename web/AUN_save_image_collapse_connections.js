@@ -16,7 +16,6 @@ function setupNode(node) {
 
   node.properties = node.properties || {};
   const PK = "collapse_connections";
-  const SIZE_KEY = `__${PK}_full_size`;
 
   function applyWidgetVisibility() {
     const c = !!node.properties?.[PK];
@@ -41,15 +40,9 @@ function setupNode(node) {
     return origGetInputPos(index);
   };
 
-  const origComputeSize = (node.computeSize || (() => node.size)).bind(node);
   node.computeSize = function (out) {
     const w = out?.[0] ?? this.size[0] ?? 240;
-    const h = this.size[1] ?? 100;
-    if (this.properties?.[PK]) {
-      return [w, h];
-    }
-    const s = origComputeSize(out);
-    return [s[0], h];
+    return [w, 100];
   };
 
   const origDrawFg = node.onDrawForeground;
@@ -69,11 +62,6 @@ function setupNode(node) {
   function toggle() {
     const on = !node.properties[PK];
     node.properties[PK] = on;
-    if (on) {
-      node[SIZE_KEY] = [node.size[0], node.size[1]];
-    } else {
-      node[SIZE_KEY] = null;
-    }
     applyWidgetVisibility();
     node.graph?.setDirtyCanvas(true, true);
   }
@@ -111,10 +99,6 @@ function setupNode(node) {
 
   node.__aun_collapse_hooked = true;
   applyWidgetVisibility();
-
-  if (node.properties[PK]) {
-    node[SIZE_KEY] = [node.size[0], node.size[1]];
-  }
 }
 
 app.registerExtension({
