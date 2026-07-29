@@ -5,6 +5,16 @@
 
 ### Added
 
+### Changed
+
+### Fixed
+
+### Notes
+
+## [2.8.3] - 2026-07-29
+
+### Added
+
 - OUTPUT_NODE attribute added to AUNPassthroughAnyMulti class
 
 ### Changed
@@ -18,7 +28,6 @@
 - Fixed computeSize function to correctly handle height and remove redundant setSize calls
 
 ### Notes
-
 ## [2.8.2] - 2026-07-26
 
 ### Added
