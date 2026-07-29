@@ -5,9 +5,17 @@
 
 ### Added
 
+- OUTPUT_NODE attribute added to AUNPassthroughAnyMulti class
+
 ### Changed
 
+- Enhanced label assignment in updateInputLabels and updateOutputLabels functions
+- Refactored computeSize function and removed unused SIZE_KEY logic
+
 ### Fixed
+
+- Fixed computeSize function to correctly handle width based on properties
+- Fixed computeSize function to correctly handle height and remove redundant setSize calls
 
 ### Notes
 
