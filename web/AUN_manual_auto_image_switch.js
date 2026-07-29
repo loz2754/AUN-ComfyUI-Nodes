@@ -171,16 +171,18 @@ const attachColorPickers = (node) => {
   });
 };
 
-const applyCompactMode = (node) => {
-  const compact = !!node.properties?._AUN_compactMode;
+const PK = "collapse_connections";
+
+const applyCollapse = (node) => {
+  const collapsed = !!node.properties?.[PK];
   for (const widget of node.widgets || []) {
     if (!ADVANCED_WIDGETS.has(widget.name)) continue;
-    widget.hidden = compact;
+    widget.hidden = collapsed;
     widget.options = widget.options || {};
-    widget.options.noDraw = compact;
+    widget.options.noDraw = collapsed;
 
     if (COLOR_WIDGET_DEFAULTS[widget.name] && widget.__AUN_colorInput) {
-      widget.__AUN_colorInput.style.display = compact ? "none" : "block";
+      widget.__AUN_colorInput.style.display = collapsed ? "none" : "block";
     }
   }
 
@@ -194,6 +196,49 @@ const applyCompactMode = (node) => {
   node.setDirtyCanvas?.(true, true);
 };
 
+const setupCollapseOverrides = (node) => {
+  if (node.__aun_collapse_setup_done) return;
+  node.__aun_collapse_setup_done = true;
+
+  const origGetOutputPos = node.getOutputPos.bind(node);
+  node.getOutputPos = function (index) {
+    if (this.properties?.[PK]) return origGetOutputPos(0);
+    return origGetOutputPos(index);
+  };
+
+  const origGetInputPos = node.getInputPos.bind(node);
+  node.getInputPos = function (index) {
+    if (this.properties?.[PK]) return origGetInputPos(0);
+    return origGetInputPos(index);
+  };
+
+  const origComputeSize = (node.computeSize || (() => node.size)).bind(node);
+  node.computeSize = function (out) {
+    const s = origComputeSize(out);
+    if (this.properties?.[PK]) {
+      const ni = this.inputs?.filter((i) => !(this.widgets?.length && i.widget)).length || 0;
+      const no = this.outputs?.length || 0;
+      const rows = Math.max(ni, no);
+      s[1] -= Math.max(0, rows - 1) * LiteGraph.NODE_SLOT_HEIGHT;
+    }
+    return s;
+  };
+
+  const origDrawFg = node.onDrawForeground;
+  node.onDrawForeground = function (ctx) {
+    if (origDrawFg) origDrawFg.apply(this, arguments);
+    const c = !!this.properties?.[PK];
+    for (const slot of [...(this.inputs || []), ...(this.outputs || [])]) {
+      if (this.widgets?.length && slot.widget) continue;
+      if (c) {
+        slot.label = " ";
+      } else {
+        delete slot.label;
+      }
+    }
+  };
+};
+
 app.registerExtension({
   name: "AUN.ManualAutoImageSwitch.Compact",
   async beforeRegisterNodeDef(nodeType, nodeData) {
@@ -203,13 +248,14 @@ app.registerExtension({
     nodeType.prototype.onNodeCreated = function onNodeCreated() {
       originalOnNodeCreated?.apply(this, arguments);
       this.properties = this.properties || {};
-      if (typeof this.properties._AUN_compactMode !== "boolean") {
-        this.properties._AUN_compactMode = true;
+      if (typeof this.properties[PK] !== "boolean") {
+        this.properties[PK] = true;
       }
+      setupCollapseOverrides(this);
       setTimeout(() => {
         pruneLegacyPickerWidgets(this);
         attachColorPickers(this);
-        applyCompactMode(this);
+        applyCollapse(this);
       }, 0);
     };
 
@@ -217,13 +263,14 @@ app.registerExtension({
     nodeType.prototype.onConfigure = function onConfigure() {
       originalOnConfigure?.apply(this, arguments);
       this.properties = this.properties || {};
-      if (typeof this.properties._AUN_compactMode !== "boolean") {
-        this.properties._AUN_compactMode = true;
+      if (typeof this.properties[PK] !== "boolean") {
+        this.properties[PK] = true;
       }
+      setupCollapseOverrides(this);
       setTimeout(() => {
         pruneLegacyPickerWidgets(this);
         attachColorPickers(this);
-        applyCompactMode(this);
+        applyCollapse(this);
       }, 0);
     };
 
@@ -251,9 +298,12 @@ app.registerExtension({
       if (Array.isArray(pos) && typeof pos[1] === "number" && pos[1] < 0) {
         return;
       }
+      if (app?.canvas?.interacting_widget || app?.canvas?.active_widget) return;
+      const el = document.activeElement;
+      if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.classList?.contains("litegraph") || el.id?.includes("widget"))) return;
       this.properties = this.properties || {};
-      this.properties._AUN_compactMode = !this.properties._AUN_compactMode;
-      applyCompactMode(this);
+      this.properties[PK] = !this.properties[PK];
+      applyCollapse(this);
     };
 
     const originalMenu = nodeType.prototype.getExtraMenuOptions;
@@ -262,13 +312,13 @@ app.registerExtension({
       options,
     ) {
       originalMenu?.apply(this, arguments);
-      const compact = !!this.properties?._AUN_compactMode;
+      const on = !!this.properties?.[PK];
       options.push({
-        content: compact ? "AUN: Show all controls" : "AUN: Compact mode",
+        content: on ? "Show Connections" : "Collapse Connections",
         callback: () => {
           this.properties = this.properties || {};
-          this.properties._AUN_compactMode = !compact;
-          applyCompactMode(this);
+          this.properties[PK] = !on;
+          applyCollapse(this);
         },
       });
     };
