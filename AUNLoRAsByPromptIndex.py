@@ -1,0 +1,363 @@
+import comfy.sd
+import comfy.utils
+import folder_paths
+
+
+class AUNLoRAsByPromptIndex:
+    MAX_PROMPTS = 20
+    LORAS_PER_PROMPT = 3
+
+    @classmethod
+    def _lora_choices(cls):
+        try:
+            files = folder_paths.get_filename_list("loras")
+        except Exception:
+            files = []
+        if not isinstance(files, list):
+            files = []
+        return ["None"] + files
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        choices = cls._lora_choices()
+        required = {
+            "model": ("MODEL",),
+            "prompt_index": (
+                "INT",
+                {
+                    "default": 1,
+                    "min": 1,
+                    "max": cls.MAX_PROMPTS,
+                    "tooltip": "Prompt index (1-20) determines which LoRAs to apply.",
+                },
+            ),
+            "num_prompts": (
+                "INT",
+                {
+                    "default": 5,
+                    "min": 1,
+                    "max": cls.MAX_PROMPTS,
+                    "tooltip": "Number of prompts to configure (1-20).",
+                },
+            ),
+            "apply_lora": (
+                "BOOLEAN",
+                {
+                    "default": True,
+                    "tooltip": "When disabled, returns the input model unchanged.",
+                },
+            ),
+        }
+        optional = {
+            "clip": ("CLIP",),
+            "base_prompt": (
+                "STRING",
+                {
+                    "default": "",
+                    "multiline": True,
+                    "forceInput": True,
+                    "tooltip": "Optional prompt text appended after trigger words.",
+                },
+            ),
+            "selected_LoRAs": (
+                "STRING",
+                {
+                    "default": "",
+                    "multiline": False,
+                    "forceInput": True,
+                    "tooltip": "Pass-through and concatenate selected_LoRAs text.",
+                },
+            ),
+            "label": (
+                "STRING",
+                {
+                    "default": "",
+                    "multiline": False,
+                    "forceInput": True,
+                    "tooltip": "Optional label displayed on the node (e.g. from TextIndexSwitch4 label output).",
+                },
+            ),
+        }
+        
+        # Add slots for each prompt (1-20)
+        for p in range(1, cls.MAX_PROMPTS + 1):
+            # Add 3 LoRA slots per prompt
+            for s in range(1, cls.LORAS_PER_PROMPT + 1):
+                required[f"p{p}_lora{s}"] = (
+                    choices,
+                    {
+                        "default": "None",
+                        "tooltip": f"Prompt {p}, LoRA slot {s}.",
+                    },
+                )
+                required[f"p{p}_strength_model{s}"] = (
+                    "FLOAT",
+                    {
+                        "default": 1.0,
+                        "min": -20.0,
+                        "max": 20.0,
+                        "step": 0.01,
+                        "tooltip": f"Prompt {p}, LoRA {s} model strength.",
+                    },
+                )
+                required[f"p{p}_strength_clip{s}"] = (
+                    "FLOAT",
+                    {
+                        "default": 1.0,
+                        "min": -20.0,
+                        "max": 20.0,
+                        "step": 0.01,
+                        "tooltip": f"Prompt {p}, LoRA {s} clip strength.",
+                    },
+                )
+                required[f"p{p}_trigger{s}"] = (
+                    "STRING",
+                    {
+                        "default": "",
+                        "multiline": False,
+                        "tooltip": f"Prompt {p}, LoRA {s} trigger words.",
+                    },
+                )
+
+        # Append enable/disable toggles at the end to avoid shifting existing widgets' positions
+        for p in range(1, cls.MAX_PROMPTS + 1):
+            for s in range(1, cls.LORAS_PER_PROMPT + 1):
+                required[f"p{p}_enabled{s}"] = (
+                    "BOOLEAN",
+                    {
+                        "default": True,
+                        "tooltip": f"Prompt {p}, LoRA slot {s} enable/disable.",
+                    },
+                )
+
+        hidden = {
+            "unique_id": "UNIQUE_ID",
+        }
+        return {"required": required, "optional": optional, "hidden": hidden}
+
+    RETURN_TYPES = ("MODEL", "CLIP", "STRING", "INT", "STRING", "STRING",)
+    RETURN_NAMES = (
+        "MODEL",
+        "CLIP",
+        "selected LoRAs",
+        "index",
+        "trigger words",
+        "trigger + prompt",
+    )
+    FUNCTION = "load_loras_for_prompt"
+    CATEGORY = "AUN Nodes/Loras"
+    OUTPUT_NODE = False
+    DESCRIPTION = (
+        "Multi-LoRA loader where prompt index determines which 0-3 LoRAs to apply. "
+        "Each prompt can have different LoRAs and strengths applied sequentially to the same model+clip. "
+        "Empty slots are hidden: only configured LoRAs appear, and prompts with no LoRAs show no empty slots "
+        "(double-click for compact mode, or use the Setup dialog). "
+        "Double-click to toggle compact mode for quick preview. "
+        "In compact mode, drag a LoRA label onto another to swap their values (LoRA, strengths, and triggers). "
+        "Right-click menu: Hide/Show clip strength, Hide/Show footer with trigger words. "
+        "Per-slot enable/disable toggles available in compact mode."
+    )
+
+    def _is_empty_slot(self, value):
+        return not value or value == "None"
+
+    def _normalize_node_id(self, unique_id):
+        value = unique_id
+        if isinstance(value, (list, tuple)) and value:
+            value = value[0]
+        if isinstance(value, dict):
+            value = value.get("node_id", value.get("id", value))
+        text = str(value or "").strip()
+        if not text:
+            return None
+        if text.isdigit():
+            return int(text)
+        return text
+
+    def _compose_trigger_prompt(self, trigger_words, base_prompt):
+        trigger = str(trigger_words or "").strip()
+        base = str(base_prompt or "").strip()
+        if trigger and base:
+            trigger_parts = [p.strip() for p in trigger.split(",") if p.strip()]
+            base_parts = [p.strip() for p in base.split(",") if p.strip()]
+            seen = set()
+            deduped = []
+            for part in trigger_parts + base_parts:
+                key = part.lower()
+                if key not in seen:
+                    seen.add(key)
+                    deduped.append(part)
+            return ", ".join(deduped)
+        return trigger or base
+
+    def _emit_selected_loras(
+        self,
+        unique_id,
+        prompt_index,
+        selected_loras,
+        trigger_words_list,
+        apply_lora=True,
+    ):
+        if unique_id is None:
+            return
+        try:
+            from server import PromptServer  # type: ignore[import-not-found]
+
+            node_id = self._normalize_node_id(unique_id)
+            if node_id is None:
+                return
+            PromptServer.instance.send_sync(
+                "AUN_random_lora_multi_selected",
+                {
+                    "node_id": str(node_id),
+                    "prompt_index": int(prompt_index or 0),
+                    "selected_loras": [str(l or "None") for l in selected_loras],
+                    "trigger_words_list": [str(t or "") for t in trigger_words_list],
+                    "apply_lora": bool(apply_lora),
+                },
+            )
+        except Exception:
+            pass
+
+    def load_loras_for_prompt(
+        self,
+        model,
+        prompt_index,
+        apply_lora,
+        unique_id=None,
+        clip=None,
+        selected_LoRAs="",
+        label="",
+        **kwargs,
+    ):
+        base_prompt = kwargs.get("base_prompt", "")
+        
+        # Clamp prompt index
+        prompt_idx = max(1, min(int(prompt_index or 1), self.MAX_PROMPTS))
+        upstream_loras = str(selected_LoRAs or "").strip()
+        
+        # If apply_lora is disabled, return early
+        if not bool(apply_lora):
+            self._emit_selected_loras(
+                unique_id,
+                prompt_idx,
+                [],
+                [],
+                apply_lora,
+            )
+            return (model, clip, upstream_loras, prompt_idx, "", str(base_prompt or ""))
+
+        # Gather LoRAs for this prompt
+        selected_loras = []
+        selected_strengths_model = []
+        selected_strengths_clip = []
+        selected_triggers = []
+
+        for s in range(1, self.LORAS_PER_PROMPT + 1):
+            lora_key = f"p{prompt_idx}_lora{s}"
+            strength_model_key = f"p{prompt_idx}_strength_model{s}"
+            strength_clip_key = f"p{prompt_idx}_strength_clip{s}"
+            trigger_key = f"p{prompt_idx}_trigger{s}"
+            enabled_key = f"p{prompt_idx}_enabled{s}"
+
+            lora_name = str(kwargs.get(lora_key, "None") or "None").strip()
+            strength_model = float(kwargs.get(strength_model_key, 1.0) or 1.0)
+            strength_clip = float(kwargs.get(strength_clip_key, 1.0) or 1.0)
+            trigger_words = str(kwargs.get(trigger_key, "") or "").strip()
+            is_enabled = bool(kwargs.get(enabled_key, True))
+
+            if not self._is_empty_slot(lora_name) and is_enabled:
+                selected_loras.append(lora_name)
+                selected_strengths_model.append(strength_model)
+                selected_strengths_clip.append(strength_clip)
+                selected_triggers.append(trigger_words)
+
+        # If no LoRAs found, return model unchanged
+        if not selected_loras:
+            self._emit_selected_loras(
+                unique_id,
+                prompt_idx,
+                [],
+                [],
+                apply_lora,
+            )
+            return (model, clip, upstream_loras, prompt_idx, "", str(base_prompt or ""))
+
+        # Apply LoRAs sequentially
+        current_model = model
+        current_clip = clip
+        all_triggers = []
+
+        for i, (lora_name, strength_m, strength_c, trigger) in enumerate(
+            zip(
+                selected_loras,
+                selected_strengths_model,
+                selected_strengths_clip,
+                selected_triggers,
+            )
+        ):
+            lora_path = folder_paths.get_full_path("loras", lora_name)
+            if not lora_path:
+                all_triggers.append(trigger)
+                continue
+
+            try:
+                lora_weights = comfy.utils.load_torch_file(lora_path, safe_load=True)
+                current_model, current_clip = comfy.sd.load_lora_for_models(
+                    current_model,
+                    current_clip,
+                    lora_weights,
+                    float(strength_m),
+                    float(strength_c) if current_clip is not None else 0.0,
+                )
+                all_triggers.append(trigger)
+            except Exception:
+                all_triggers.append(trigger)
+
+        # Compose output strings
+        # Format: <lora:filename:model_strength:clip_strength>, <lora:filename2:model_strength2:clip_strength2>
+        # (comma-separated with tags, so SaveImage doesn't wrap them as a single entry)
+        lora_tags = []
+        for name, strength_m, strength_c in zip(
+            selected_loras,
+            selected_strengths_model,
+            selected_strengths_clip,
+        ):
+            # Extract just the filename without path
+            basename = name.split("/")[-1].split("\\")[-1]
+            lora_tags.append(f"<lora:{basename}:{strength_m:.2f}:{strength_c:.2f}>")
+        selected_loras_str = ", ".join(lora_tags)
+
+        # Concatenate with upstream selected_LoRAs input if provided
+        if upstream_loras:
+            final_selected_loras = upstream_loras + ", " + selected_loras_str
+        else:
+            final_selected_loras = selected_loras_str
+        combined_triggers = ", ".join([t for t in all_triggers if t])
+        composed_prompt = self._compose_trigger_prompt(combined_triggers, base_prompt)
+
+        self._emit_selected_loras(
+            unique_id,
+            prompt_idx,
+            selected_loras,
+            all_triggers,
+            apply_lora,
+        )
+
+        return (
+            current_model,
+            current_clip,
+            final_selected_loras,
+            prompt_idx,
+            combined_triggers,
+            composed_prompt,
+        )
+
+
+NODE_CLASS_MAPPINGS = {
+    "AUNLoRAsByPromptIndex": AUNLoRAsByPromptIndex,
+}
+
+NODE_DISPLAY_NAME_MAPPINGS = {
+    "AUNLoRAsByPromptIndex": "LoRAs by Prompt Index",
+}

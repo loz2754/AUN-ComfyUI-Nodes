@@ -1,8 +1,8 @@
-# AUNRandomLoraModelOnlyMulti — Random Multi-LoRA Model Loader
+# AUNLoRAsByPromptIndex — LoRAs by Prompt Index
 
-> **Note:** This node is kept for backward compatibility with existing workflows. New workflows should prefer **LoRAs by Prompt Index** (`AUNLoRAsByPromptIndex`), which is a fully independent copy with identical behavior plus a no-empty-slots display (empty LoRA dropdowns hidden in full mode) and a single **＋ Add LoRA** row in its Setup dialog.
+Purpose: Multi-prompt LoRA loader where a `prompt_index` determines which 0–3 LoRAs to apply. Each prompt can have different LoRAs with independent strengths and trigger words, all applied sequentially to the same model+clip. **Empty slots are hidden** — prompts with no LoRAs show no empty slots, so only configured LoRAs appear.
 
-Purpose: Experimental multi-prompt LoRA loader where a `prompt_index` determines which 1–3 LoRAs to apply. Each prompt can have different LoRAs with independent strengths and trigger words, all applied sequentially to the same model+clip.
+The recommended successor to `AUNRandomLoraModelOnlyMulti` with the same behavior plus the no-empty-slots feature.
 
 ## Inputs
 
@@ -28,6 +28,7 @@ Each prompt has 3 LoRA slots. For prompt `P`, slot `S`:
 - `p{P}_strength_model{S}` (FLOAT): Model strength for that LoRA (-20 to 20).
 - `p{P}_strength_clip{S}` (FLOAT): Clip strength for that LoRA when CLIP is connected.
 - `p{P}_trigger{S}` (STRING): Trigger words for that LoRA slot.
+- `p{P}_enabled{S}` (BOOLEAN): Per-slot enable/disable toggle.
 
 ## Outputs
 
@@ -35,9 +36,15 @@ Each prompt has 3 LoRA slots. For prompt `P`, slot `S`:
 - `CLIP`: Patched CLIP when connected, otherwise passthrough.
 - `selected LoRAs` (STRING): Generated `<lora:name:strength_model:strength_clip>` tags for active slots in the selected prompt, concatenated with any upstream `selected_LoRAs`. Passes through unchanged when `apply_lora` is off.
 - `index` (INT): The resolved prompt index.
-- `labels` (STRING): LoRA labels joined with commas.
 - `trigger words` (STRING): Trigger text from all active slots in the selected prompt.
 - `trigger + prompt` (STRING): Trigger text combined with `base_prompt`.
+
+## No-empty-slots feature
+
+- In full (normal) mode, empty LoRA dropdowns (`None`) are hidden per prompt. A prompt with no configured LoRAs shows **no slot rows at all**; only slots that actually contain a LoRA are visible.
+- In compact mode the overlay already only shows configured slots; behavior is unchanged.
+- This is purely presentational — the backend already skips `None`/disabled slots during execution, so hiding empty slots cannot change results and existing workflows load identically.
+- Use the Setup dialog to configure any prompt regardless of what is visible on the canvas.
 
 ## Compact UI notes
 
@@ -54,7 +61,8 @@ Each prompt has 3 LoRA slots. For prompt `P`, slot `S`:
 
 The node stays small; configure every prompt in a scrollable dialog instead. Open it via the **⚙ Setup** (gear icon) button in the node's title bar (top-right), or the right-click menu item **AUN: Setup prompts…**.
 
-- Lists prompts `1..num_prompts`, each with its 3 LoRA slots (LoRA picker, model/clip strengths, trigger words, enable toggle) — no more flipping `prompt_index` to edit each prompt.
+- Lists prompts `1..num_prompts`. Each prompt shows **only its configured LoRA slots** plus a single **＋ Add LoRA** row. Click the add row to pick a LoRA for the next empty slot; the row is then replaced by a normal slot row. Empty prompts show just the add row.
+- Setting an existing slot back to `None` removes that row (and re-shows the add row if a slot is free).
 - **Per-prompt label**: give each prompt a name (e.g. `anime girl`) for easy identification; shown in the dialog and in the node footer.
 - **Copy / Paste / Clear** buttons on each prompt duplicate or wipe a prompt's full 3-slot configuration.
 - **Export JSON / Import JSON**: **Export JSON** saves the setup under the name you type in the **Set name** field (prefilled with the node title) and copies it to the clipboard. Saved sets live in the config folder (`ComfyUI/user/aun/<name>.json`); saving over an existing name asks for confirmation. **Import JSON** pastes a setup from the clipboard. Use the **Load saved…** dropdown to load a saved set from the config folder (✕ deletes the selected one); loading a set also fills the name field so a later export updates that set in place.
@@ -63,12 +71,13 @@ The node stays small; configure every prompt in a scrollable dialog instead. Ope
 
 ## Common setups
 
+- This node is purely index-driven — it has no Select/Range/Random mode of its own. The `prompt_index` may come from any upstream source (manual, `AUNRandomIndexSwitch`, `AUNTextIndexSwitch4`, `AUNPromptCycler`, etc.), which is what provides Select/Range/Random behavior.
 - Connect `AUNTextIndexSwitch4.index` to `prompt_index` so a text selector drives which LoRA set is active.
 - Use `selected_LoRAs` chaining when you want multiple nodes to contribute LoRA tags (e.g., base stack + conditional overrides).
 - Combine with `AUNMultiUniversal` for dashboard-style control of which prompt/LoRA sets are active.
 
 ## Notes
 
-- This node is experimental and may have API changes in future releases.
 - Each prompt's LoRAs are applied sequentially (slot 1 → slot 2 → slot 3) to the same model+clip chain.
-- Empty slots (`None`) within a prompt are skipped — only non-empty LoRA slots contribute tags or patches.
+- Empty slots (`None`) within a prompt are skipped — only non-empty, enabled LoRA slots contribute tags or patches.
+- No-empty-slots display is cosmetic only and never changes executed behavior.

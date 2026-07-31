@@ -5,6 +5,8 @@ import { makeLoraLabelClickable } from "./aun_lora_dropdown_shared.js";
 import { openPromptSetupDialog } from "./AUN_random_lora_multi_setup_dialog.js";
 
 const NODE_TYPE = "AUNRandomLoraModelOnlyMulti";
+const NODE_TYPE_NEW = "AUNLoRAsByPromptIndex";
+const NODE_TYPES = [NODE_TYPE, NODE_TYPE_NEW];
 const PROP_KEY = "_AUN_compactMode";
 const CLIP_STRENGTH_PROP_KEY = "_AUN_showClipStrength";
 const PROP_SHOW_FOOTER = "_AUN_showFooter";
@@ -257,7 +259,12 @@ function scheduleGlobalRedraw() {
 
 function isTargetNode(node) {
   if (!node) return false;
-  return node.comfyClass === NODE_TYPE || node.type === NODE_TYPE;
+  return NODE_TYPES.includes(node.comfyClass) || NODE_TYPES.includes(node.type);
+}
+
+function isNewNode(node) {
+  if (!node) return false;
+  return node.comfyClass === NODE_TYPE_NEW || node.type === NODE_TYPE_NEW;
 }
 
 function applyExecutionPayload(node, message) {
@@ -1710,10 +1717,15 @@ function applyCompact(node) {
       const loraValue = String(loraW?.value ?? "None");
       const hasLora = loraValue && loraValue !== "None";
 
-      // In compact mode, hide ALL LoRA widgets - overlay provides UI
+      // In compact mode, hide ALL LoRA widgets - overlay provides UI.
+      // For the new node, also hide empty-slot dropdowns in full mode so
+      // prompts with no LoRAs show no empty slots.
       if (loraW) {
         ensureHiddenAwareWidget(loraW);
-        applyWidgetHiddenState(loraW, !isActivePrompt || compact);
+        applyWidgetHiddenState(
+          loraW,
+          !isActivePrompt || (isNewNode(node) && !hasLora) || compact,
+        );
       }
 
       const smW = getWidget(node, `p${p}_strength_model${s}`);
@@ -2227,16 +2239,16 @@ app.registerExtension({
         }
       }
 
-      // Also apply lora-specific payload if this is the target node
-      if (nodeData?.name === NODE_TYPE) {
+      // Also apply lora-specific payload if this is a target node
+      if (NODE_TYPES.includes(nodeData?.name)) {
         applyExecutionPayload(this, message);
       }
     };
     nodeType.prototype.__AUN_loraMultiProtoExecHooked = true;
 
-    // --- Prototype-level handlers for target node type ---
+    // --- Prototype-level handlers for target node types ---
     // These persist across all instances, even when nodes are recreated via context menu reload.
-    if (nodeData?.name !== NODE_TYPE) return;
+    if (!NODE_TYPES.includes(nodeData?.name)) return;
 
     // onDblClick
     const protoOrigDblClick = nodeType.prototype.onDblClick;
@@ -2497,7 +2509,7 @@ app.registerExtension({
   },
 
   loadedGraphNode(node) {
-    if (node.comfyClass !== NODE_TYPE && node.type !== NODE_TYPE) return;
+    if (!isTargetNode(node)) return;
     setupNode(node);
     applyCompact(node);
     scheduleAutoHeightUpdate(node, 2, 50);

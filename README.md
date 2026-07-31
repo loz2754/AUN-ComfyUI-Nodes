@@ -64,6 +64,7 @@ Works best when coupled with AUN Save Image.
 - Extract Power LoRAs (`AUNExtractPowerLoras`) extract LoRA names (and strengths) from rgthree Power Lora Loader nodes (and some other Lora loaders) in the graph/workflow.
 - Random LoRA Model Loader (`AUNRandomLoraModelOnly`) selects one LoRA from up to 10 slots using Select, Increment, Random, or Range modes, applies it to the incoming model, and outputs the selected LoRA name plus trigger text. Optional CLIP input enables per-slot clip strength control. Compact mode with footer showing trigger words and menu options to hide/show clip strength. Its `base_prompt` is available as an optional external input for prompt chaining without cluttering compact mode.
 - Random Multi-LoRA Model Loader (`AUNRandomLoraModelOnlyMulti`) selects and applies multiple LoRAs based on prompt index, supporting up to 20 prompts with 3 LoRA slots each. Features compact mode with overlay UI for strength/trigger editing, drag-to-swap support for reordering LoRA slots, per-slot enable/disable toggles, and footer with combined trigger words display.
+- LoRAs by Prompt Index (`AUNLoRAsByPromptIndex`) is the recommended successor to the Random Multi-LoRA Model Loader: same multi-prompt behavior plus a **no-empty-slots** display — empty LoRA dropdowns are hidden in full mode, so only configured LoRAs appear (purely cosmetic; execution is identical). It is purely index-driven (Select/Range/Random behavior comes from whichever upstream node supplies `prompt_index`). Its Setup dialog shows each prompt's configured slots with a single **＋ Add LoRA** row to fill the next empty slot.
 - LoRA Stack With Triggers Model Clip (`AUNLoraStackWithTriggersModelClip`) stacks multiple LoRAs with per-slot trigger words and separate model/clip strength control. Supports up to 10 slots with full compact mode featuring overlay UI, drag-to-swap for reordering LoRA slots, and footer display. Successor to the deprecated AUNLoraStackWithTriggers with enhanced functionality.
 
 ---
@@ -285,6 +286,7 @@ Complex nodes include detailed READMEs with examples and troubleshooting.
 - Random Text Index Switch: [docs/AUNRandomTextIndexSwitch_README.md](docs/AUNRandomTextIndexSwitch_README.md)
 - Model and Text Selector: [docs/AUNRandomModelBundleSwitch_README.md](docs/AUNRandomModelBundleSwitch_README.md)
 - Random LoRA Model Loader: [docs/AUNRandomLoraModelOnly_README.md](docs/AUNRandomLoraModelOnly_README.md)
+- LoRAs by Prompt Index: [docs/AUNLoRAsByPromptIndex_README.md](docs/AUNLoRAsByPromptIndex_README.md)
 - Extract Model Name: [docs/AUNExtractModelName_README.md](docs/AUNExtractModelName_README.md)
 - Extract Power LoRAs: [docs/AUNExtractPowerLoras_README.md](docs/AUNExtractPowerLoras_README.md)
 - Extract Widget Value: [docs/AUNExtractWidgetValue_README.md](docs/AUNExtractWidgetValue_README.md)

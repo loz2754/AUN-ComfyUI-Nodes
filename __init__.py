@@ -17,6 +17,7 @@ from .AUNExtractWidgetValue import AUNExtractWidgetValue
 from .AUNModelNamePass import AUNModelNamePass
 from .AUNModelShorten import AUNModelShorten
 from .AUNLoraLoaderModelOnlyFromString import AUNLoraLoaderModelOnlyFromString
+from .AUNLoRAsByPromptIndex import AUNLoRAsByPromptIndex
 from .AUNGetActiveNodeTitle import AUNGetActiveNodeTitle
 from .AUNGetConnectedNodeTitles import AUNGetConnectedNodeTitles
 from .AUNGraphScraper import AUNGraphScraper
@@ -111,6 +112,7 @@ NODE_CLASS_MAPPINGS = {
     "AUNModelNamePass": AUNModelNamePass,
     "AUNModelShorten": AUNModelShorten,
     "AUNLoraLoaderModelOnlyFromString": AUNLoraLoaderModelOnlyFromString,
+    "AUNLoRAsByPromptIndex": AUNLoRAsByPromptIndex,
     "AUNGetActiveNodeTitle": AUNGetActiveNodeTitle,
     "AUNGetConnectedNodeTitles": AUNGetConnectedNodeTitles,
     "AUNGraphScraper": AUNGraphScraper,
@@ -202,6 +204,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "AUNModelNamePass": "Model Name Pass",
     "AUNModelShorten": "Model Name Shorten",
     "AUNLoraLoaderModelOnlyFromString": "LoRA Loader Model Only (String)",
+    "AUNLoRAsByPromptIndex": "LoRAs by Prompt Index",
     "AUNGetActiveNodeTitle": "Get Active Node Title",
     "AUNGetConnectedNodeTitles": "Get Connected Node Titles",
     "AUNImageLoadResize": "Load & Resize Image",

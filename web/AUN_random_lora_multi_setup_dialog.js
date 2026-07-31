@@ -3,9 +3,15 @@ import { makeLoraLabelClickable } from "./aun_lora_dropdown_shared.js";
 
 const MAX_PROMPTS = 20;
 const LORAS_PER_PROMPT = 3;
+const NODE_TYPE_NEW = "AUNLoRAsByPromptIndex";
 const STYLE_KEY = "__AUN_loraMultiSetupStyle";
 const MODAL_KEY = "__AUN_loraMultiSetupRefs";
 const SHOW_CLIP_PROP = "_AUN_showClipStrength";
+
+function isDynamicSlotsNode(node) {
+  if (!node) return false;
+  return node.comfyClass === NODE_TYPE_NEW || node.type === NODE_TYPE_NEW;
+}
 
 const DEFAULT_SLOT = { lora: "None", sm: 1, sc: 1, trigger: "", enabled: true };
 
@@ -468,6 +474,28 @@ function ensureStyles() {
       font-weight: 600;
       text-align: center;
     }
+    .AUN-setup-add-slot {
+      display: grid;
+      grid-template-columns: 1fr;
+      padding: 5px 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .AUN-setup-add-label {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px dashed rgba(171, 208, 246, 0.35);
+      border-radius: 4px;
+      background: rgba(171, 208, 246, 0.06);
+      color: rgba(171, 208, 246, 0.9);
+      cursor: pointer;
+      font: 12px/1.4 system-ui, sans-serif;
+      text-align: center;
+    }
+    .AUN-setup-add-label:hover {
+      background: rgba(171, 208, 246, 0.12);
+      border-color: rgba(171, 208, 246, 0.6);
+    }
     .AUN-setup-strength {
       display: inline-flex;
       align-items: center;
@@ -718,7 +746,7 @@ function bindStrengthControl(node, container, slotName, onChanged) {
   return input;
 }
 
-function buildSlot(node, p, s, onChanged, showClip) {
+function buildSlot(node, p, s, onChanged, showClip, onLoraChanged) {
   const row = document.createElement("div");
   row.className = "AUN-setup-slot";
   row.dataset.prompt = String(p);
@@ -747,7 +775,7 @@ function buildSlot(node, p, s, onChanged, showClip) {
     formatLabel: formatPromptLoraLabel,
     onChanged: (n, value) => {
       loraLabelText.textContent = formatPromptLoraLabel(String(value ?? "None"));
-      onChanged(n);
+      (onLoraChanged || onChanged)(n, value);
     },
   });
 
@@ -808,6 +836,32 @@ function buildSlot(node, p, s, onChanged, showClip) {
   };
 }
 
+function buildAddRow(node, p, s, onLoraChanged) {
+  const row = document.createElement("div");
+  row.className = "AUN-setup-add-slot";
+  row.dataset.prompt = String(p);
+  row.dataset.slot = String(s);
+
+  const addLabel = document.createElement("div");
+  addLabel.className = "AUN-lora-dropdown-label AUN-setup-add-label";
+  addLabel.style.width = "100%";
+  addLabel.style.height = "20px";
+  const addText = document.createElement("span");
+  addText.textContent = "＋ Add LoRA";
+  addLabel.appendChild(addText);
+
+  const slotName = `p${p}_lora${s}`;
+  makeLoraLabelClickable(node, slotName, addLabel, addText, {
+    formatLabel: () => "＋ Add LoRA",
+    onChanged: (n, value) => {
+      if (value && value !== "None") onLoraChanged(n);
+    },
+  });
+
+  row.appendChild(addLabel);
+  return row;
+}
+
 function readSlot(node, p, s) {
   return {
     lora: String(getWidget(node, `p${p}_lora${s}`)?.value ?? "None"),
@@ -844,6 +898,16 @@ function buildPromptCard(node, p, refs) {
   const onChanged = (n) => {
     setEditedPrompt(refs, p);
     refs.options?.onChanged?.(n || refs.node);
+  };
+
+  const dynamic = isDynamicSlotsNode(node);
+  const rebuild = () => {
+    renderRows(refs);
+    renderToolbar(refs);
+  };
+  const refreshOrRebuild = () => {
+    if (dynamic) rebuild();
+    else refreshAll(refs);
   };
 
   const card = document.createElement("div");
@@ -906,7 +970,7 @@ function buildPromptCard(node, p, refs) {
     setPromptLabel(node, p, refs.clipboard.label || "");
     node.__AUN_loraMultiSwapping = false;
     onChanged(node);
-    refreshAll(refs);
+    refreshOrRebuild();
     setStatus(refs, `Pasted into prompt ${p}.`);
   });
 
@@ -924,7 +988,7 @@ function buildPromptCard(node, p, refs) {
     setPromptLabel(node, p, "");
     node.__AUN_loraMultiSwapping = false;
     onChanged(node);
-    refreshAll(refs);
+    refreshOrRebuild();
     setStatus(refs, `Cleared prompt ${p}.`);
   });
 
@@ -954,10 +1018,21 @@ function buildPromptCard(node, p, refs) {
   slotsWrap.appendChild(header);
 
   const slotRefs = [];
+  const slotValues = [];
   for (let s = 1; s <= LORAS_PER_PROMPT; s++) {
-    const sr = buildSlot(node, p, s, onChanged, showClip);
+    const value = String(getWidget(node, `p${p}_lora${s}`)?.value ?? "None");
+    slotValues.push(value);
+    if (dynamic && (!value || value === "None")) continue;
+    const sr = buildSlot(node, p, s, onChanged, showClip, dynamic ? rebuild : null);
     slotsWrap.appendChild(sr.row);
     slotRefs.push(sr);
+  }
+
+  if (dynamic) {
+    const nextEmpty = slotValues.findIndex((v) => !v || v === "None") + 1;
+    if (nextEmpty) {
+      slotsWrap.appendChild(buildAddRow(node, p, nextEmpty, rebuild));
+    }
   }
 
   card.append(head, slotsWrap);
@@ -1209,7 +1284,12 @@ function ensureModal() {
     }
     node.__AUN_loraMultiSwapping = false;
     refs.options?.onChanged?.(node);
-    refreshAll(refs);
+    if (isDynamicSlotsNode(node)) {
+      renderRows(refs);
+      renderToolbar(refs);
+    } else {
+      refreshAll(refs);
+    }
     setStatus(refs, `Cleared all ${refs.numPrompts} prompts.`);
   });
 

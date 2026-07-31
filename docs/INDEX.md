@@ -35,6 +35,7 @@ Generated list of documentation files under `docs/`.
 - [AUNKSamplerPlusv3](./AUNKSamplerPlusv3_README.md)
 - [KSamplerInputs](./KSamplerInputs_README.md)
 - [MainFolderManualName](./MainFolderManualName_README.md)
+- [AUNLoRAsByPromptIndex](./AUNLoRAsByPromptIndex_README.md)
 - [AUNManualAutoTextSwitch](./AUNManualAutoTextSwitch_README.md)
 - [AUNMultiBypassIndex](./AUNMultiBypassIndex_README.md)
 - [AUNMultiGroupUniversal](./AUNMultiGroupUniversal_README.md)
