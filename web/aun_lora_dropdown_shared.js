@@ -140,9 +140,10 @@ export function makeLoraLabelClickable(node, slotName, loraLabel, loraLabelText,
 
   ensureDropdownStyles();
 
-  // Add hover tooltip to loraLabelText (shown when dropdown is closed)
+  // Add hover tooltip to the whole label bar (shown when dropdown is closed)
   const attachTooltip = (el) => {
     el.addEventListener("mouseenter", () => {
+      if (active) return;
       const w = getWidget(node, slotName);
       const val = String(w?.value ?? "None");
       showTooltip(el, formatLoraTooltip(val));
@@ -150,6 +151,7 @@ export function makeLoraLabelClickable(node, slotName, loraLabel, loraLabelText,
     el.addEventListener("mouseleave", () => hideTooltip());
   };
 
+  attachTooltip(loraLabel);
   attachTooltip(loraLabelText);
 
   let active = false;
@@ -349,7 +351,13 @@ export function makeLoraLabelClickable(node, slotName, loraLabel, loraLabelText,
 
     // Event handlers
     const outsideHandler = (event) => {
-      if (popup.contains(event.target) || event.target === trigger) return;
+      if (
+        popup.contains(event.target) ||
+        event.target === trigger ||
+        loraLabel.contains(event.target)
+      ) {
+        return;
+      }
       cleanupListeners();
       close();
     };
@@ -381,7 +389,7 @@ export function makeLoraLabelClickable(node, slotName, loraLabel, loraLabelText,
     }, 0);
   };
 
-  loraLabelText.addEventListener("click", (event) => {
+  loraLabel.addEventListener("click", (event) => {
     stopCanvasEvent(event);
     show();
   });

@@ -2,6 +2,7 @@ import { api } from "../../scripts/api.js";
 import { app } from "../../scripts/app.js";
 import { openLoraInfoDialog } from "./aun_lora_info_shared.js";
 import { makeLoraLabelClickable } from "./aun_lora_dropdown_shared.js";
+import { openPromptSetupDialog } from "./AUN_random_lora_multi_setup_dialog.js";
 
 const NODE_TYPE = "AUNRandomLoraModelOnlyMulti";
 const PROP_KEY = "_AUN_compactMode";
@@ -57,6 +58,105 @@ function setShowFooter(node, show) {
   if (!node) return;
   node.properties = node.properties || {};
   node.properties[PROP_SHOW_FOOTER] = !!show;
+}
+
+function getPromptLabel(node, p) {
+  const labels = node?.properties?.AUN_promptLabels;
+  return labels && typeof labels === "object" && labels[p]
+    ? String(labels[p])
+    : "";
+}
+
+function openSetupDialog(node) {
+  openPromptSetupDialog(node, {
+    onChanged: (n) => {
+      if (!isTargetNode(n)) return;
+      applyCompact(n);
+      forceRedraw(n);
+      scheduleAutoHeightUpdate(n, 1, 0);
+      n.setDirtyCanvas?.(true, true);
+    },
+  });
+}
+
+// Setup button in the node title bar. Uses litegraph's native title-button
+// mechanism (drawn by the canvas in the title bar, clicks handled before
+// onMouseDown/drag), so it never overlaps the MODEL output port.
+function canvasMouseLocalOf(node) {
+  const g = app?.canvas?.graph_mouse;
+  if (Array.isArray(g) && g.length >= 2 && Array.isArray(node?.pos)) {
+    return [g[0] - node.pos[0], g[1] - node.pos[1]];
+  }
+  return null;
+}
+
+function installSetupTitleButton(node) {
+  if (node.__AUN_loraMultiSetupTitleInstalled) return;
+  if (typeof node.addTitleButton !== "function") return;
+  node.__AUN_loraMultiSetupTitleInstalled = true;
+
+  const BTN_W = 54;
+  const BTN_H = 18;
+  const btn = node.addTitleButton({
+    name: "AUN_loraMulti_setup",
+    text: "Setup",
+    fontSize: 11,
+    height: BTN_H,
+    cornerRadius: 4,
+  });
+
+  btn.getWidth = function getWidth() {
+    return this.visible ? BTN_W : 0;
+  };
+
+  btn.draw = function draw(ctx, x, y) {
+    if (!this.visible) return;
+    const x0 = x + (this.xOffset || 0);
+    const y0 = y + (this.yOffset || 0);
+    const h = this.height || BTN_H;
+    this._last_area = [x0, y0, BTN_W, h];
+    const mouse = canvasMouseLocalOf(node);
+    const hovered = !!(
+      mouse &&
+      mouse[0] >= x0 - 0.5 &&
+      mouse[0] <= x0 + BTN_W + 0.5 &&
+      mouse[1] >= y0 - 0.5 &&
+      mouse[1] <= y0 + h + 0.5
+    );
+    ctx.save();
+    ctx.beginPath();
+    if (typeof ctx.roundRect === "function") {
+      ctx.roundRect(x0 + 0.5, y0 + 0.5, BTN_W - 1, h - 1, 4);
+    } else {
+      ctx.rect(x0 + 0.5, y0 + 0.5, BTN_W - 1, h - 1);
+    }
+    ctx.fillStyle = hovered ? "rgba(255,255,255,0.28)" : "rgba(255,255,255,0.14)";
+    ctx.fill();
+    ctx.strokeStyle = hovered ? "rgba(255,255,255,0.55)" : "rgba(255,255,255,0.32)";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.fillStyle = hovered ? "#ffffff" : "#dbe4ff";
+    ctx.font = "11px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("\u2699 Setup", x0 + BTN_W / 2, y0 + h / 2 + 0.5);
+    ctx.restore();
+  };
+
+  btn.isPointInside = function isPointInside(x, y) {
+    const a = this._last_area;
+    if (!a) return false;
+    return x >= a[0] && x <= a[0] + a[2] && y >= a[1] && y <= a[1] + a[3];
+  };
+
+  const origOnTitleButtonClick = node.onTitleButtonClick?.bind(node);
+  node.onTitleButtonClick = function onTitleButtonClick(button, canvas) {
+    if (button && button.name === "AUN_loraMulti_setup") {
+      openSetupDialog(this);
+      return;
+    }
+    if (origOnTitleButtonClick) origOnTitleButtonClick(button, canvas);
+  };
 }
 
 function syncHiddenClipStrength(node) {
@@ -476,15 +576,11 @@ function clampNumber(value, min, max) {
   return value;
 }
 
-function truncateToDecimals(value, decimals) {
-  if (!Number.isFinite(value)) return value;
-  const factor = Math.pow(10, decimals);
-  return Math.trunc(value * factor) / factor;
-}
-
 function roundToStep(value, step) {
   if (!Number.isFinite(step) || step <= 0) return value;
-  return Math.round(value / step) * step;
+  const rounded = Math.round(value / step) * step;
+  const decimals = Math.max(0, Math.ceil(-Math.log10(step)));
+  return Number(rounded.toFixed(decimals));
 }
 
 function formatCompactLoraLabel(value) {
@@ -910,7 +1006,7 @@ function buildCompactRow(node, promptIdx, slotIdx) {
       const currentValue = Number(widget?.value ?? inputEl.value ?? 0);
       const baseValue = Number.isFinite(currentValue) ? currentValue : 0;
       const nextValue = clampNumber(
-        truncateToDecimals(baseValue + step * direction, 2),
+        roundToStep(baseValue + step * direction, step),
         min,
         max,
       );
@@ -922,12 +1018,12 @@ function buildCompactRow(node, promptIdx, slotIdx) {
     const commitValue = (rawValue) => {
       const widget = getWidget(node, widgetName);
       let parsed = parseFloat(rawValue);
-      const step = Number(widget?.options?.step ?? 0.01);
+      const step = 0.01;
       const min = Number(widget?.options?.min);
       const max = Number(widget?.options?.max);
       const fallback = Number(widget?.value ?? 0);
       let nextValue = Number.isFinite(parsed)
-        ? clampNumber(truncateToDecimals(parsed, 2), min, max)
+        ? clampNumber(roundToStep(parsed, step), min, max)
         : fallback;
       setWidgetValue(widget, nextValue);
       inputEl.value = formatValue(nextValue);
@@ -972,7 +1068,7 @@ function buildCompactRow(node, promptIdx, slotIdx) {
     inputEl.addEventListener("pointerdown", (event) => {
       if (event.button !== 0) return;
       const widget = getWidget(node, widgetName);
-      const step = Number(widget?.options?.step ?? 0.01);
+      const step = 0.01;
       const min = Number(widget?.options?.min);
       const max = Number(widget?.options?.max);
       const startX = event.clientX;
@@ -1416,11 +1512,17 @@ function positionCompactRowsCore(node, canvasRect, scale, offsetX, offsetY, occl
       if (newText) {
         footerEl.textContent = "";
         const b = document.createElement("b");
-        b.textContent = `Prompt ${promptIdx} trigger words: `;
+        const promptLabel = getPromptLabel(node, promptIdx);
+        b.textContent = `Prompt ${promptIdx}${
+          promptLabel ? ` (${promptLabel})` : ""
+        } trigger words: `;
         footerEl.appendChild(b);
         footerEl.appendChild(document.createTextNode(newText));
       } else {
-        footerEl.textContent = `Prompt ${promptIdx} trigger words (none)`;
+        const promptLabel = getPromptLabel(node, promptIdx);
+        footerEl.textContent = `Prompt ${promptIdx}${
+          promptLabel ? ` (${promptLabel})` : ""
+        } trigger words (none)`;
       }
     }
 
@@ -1930,6 +2032,8 @@ function setupNode(node) {
   hookStrengthModelChange(node);
   startCompactLiveMonitor(node);
 
+  installSetupTitleButton(node);
+
   applyCompact(node);
 }
 
@@ -2153,6 +2257,10 @@ app.registerExtension({
       protoOrigMenu?.apply(this, arguments);
       const compact = isCompact(this);
       options.push({
+        content: "AUN: Setup prompts…",
+        callback: () => openSetupDialog(this),
+      });
+      options.push({
         content: compact ? "AUN: Show all prompts" : "AUN: Compact mode",
         callback: () => {
           setCompact(this, !isCompact(this));
@@ -2252,7 +2360,8 @@ app.registerExtension({
       }
       protoOrigDrawFg?.apply(this, arguments);
       positionCompactRows(this, ctx);
-      if (!isCompact(this) || isNodeCollapsed(this)) return;
+
+      if (!isCompact(this)) return;
 
       // Draw label overlay
       let labelText = "";

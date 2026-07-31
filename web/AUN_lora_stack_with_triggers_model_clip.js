@@ -392,15 +392,11 @@ function clampNumber(value, min, max) {
   return next;
 }
 
-function truncateToDecimals(value, decimals) {
-  if (!Number.isFinite(value)) return value;
-  const factor = Math.pow(10, decimals);
-  return Math.trunc(value * factor) / factor;
-}
-
 function roundToStep(value, step) {
   if (!Number.isFinite(step) || step <= 0) return value;
-  return Math.round(value / step) * step;
+  const rounded = Math.round(value / step) * step;
+  const decimals = Math.max(0, Math.ceil(-Math.log10(step)));
+  return Number(rounded.toFixed(decimals));
 }
 
 function buildCompactRow(node, slotIndex) {
@@ -535,7 +531,7 @@ function buildCompactRow(node, slotIndex) {
       const currentValue = Number(widget?.value ?? inputEl.value ?? 0);
       const baseValue = Number.isFinite(currentValue) ? currentValue : 0;
       const nextValue = clampNumber(
-        truncateToDecimals(baseValue + step * direction, 2),
+        roundToStep(baseValue + step * direction, step),
         min,
         max,
       );
@@ -548,13 +544,12 @@ function buildCompactRow(node, slotIndex) {
       const widget = getWidget(node, widgetName);
       // Accept only valid float input (allow leading/trailing dot, but parse as float)
       let parsed = parseFloat(rawValue);
-      const step = Number(widget?.options?.step ?? 0.01);
+      const step = 0.01;
       const min = Number(widget?.options?.min);
       const max = Number(widget?.options?.max);
       const fallback = Number(widget?.value ?? 0);
-      // Truncate to two decimals instead of rounding
       let nextValue = Number.isFinite(parsed)
-        ? clampNumber(truncateToDecimals(parsed, 2), min, max)
+        ? clampNumber(roundToStep(parsed, step), min, max)
         : fallback;
       setWidgetValue(widget, nextValue);
       inputEl.value = formatValue(nextValue);
@@ -606,7 +601,7 @@ function buildCompactRow(node, slotIndex) {
     inputEl.addEventListener("pointerdown", (event) => {
       if (event.button !== 0) return;
       const widget = getWidget(node, widgetName);
-      const step = Number(widget?.options?.step ?? inputEl.step ?? 0.01);
+      const step = 0.01;
       const min = Number(widget?.options?.min);
       const max = Number(widget?.options?.max);
       const startX = event.clientX;
