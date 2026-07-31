@@ -5,6 +5,16 @@
 
 ### Added
 
+### Changed
+
+### Fixed
+
+### Notes
+
+## [2.9.0] - 2026-07-31
+
+### Added
+
 - New `AUNLoRAsByPromptIndex` ("LoRAs by Prompt Index") node: a multi-prompt LoRA loader (up to 20 prompts x 3 slots each, with per-slot model/clip strength, trigger words, and enable toggles) driven by a `prompt_index` input. It is a fully independent successor to `AUNRandomLoraModelOnlyMulti` (kept for backwards compatibility) and adds a no-empty-slots display — empty LoRA dropdowns are hidden in full mode, so only configured LoRAs appear (purely cosmetic; execution is identical). Its Setup dialog shows each prompt's configured slots with a single "+ Add LoRA" row to fill the next empty slot. Range/Random selection is supplied by whichever upstream node drives `prompt_index`.
 
 ### Changed
@@ -12,7 +22,6 @@
 ### Fixed
 
 ### Notes
-
 ## [2.8.3] - 2026-07-29
 
 ### Added
