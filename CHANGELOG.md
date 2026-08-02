@@ -5,6 +5,16 @@
 
 ### Added
 
+### Changed
+
+### Fixed
+
+### Notes
+
+## [2.10.0] - 2026-08-02
+
+### Added
+
 - New `AUNImageSliderComparer` ("AUN Image Slider Comparer") node: compares up to five named pairs of images with a draggable slider. Each input socket is labelled with the name of the connected output slot, batched images are matched by index (a single-frame shows to both sides), and Pair plus Frame dropdowns select which pair and frame to view. The node title and an in-node header always show the active pair. Inputs accept either a batched tensor or a list of frames (e.g. a source node with `output_is_list` enabled). The header shows each side's dimensions; right-click offers open/download of the current frame; a `save_active` toggle saves the displayed frame into the output folder with a configurable prefix.
 
 ### Changed
@@ -15,7 +25,6 @@
 - Fixed AUNSaveVideo / AUNSaveVideoV2: the inline media preview now follows the node's native collapse control and is dropped when the node scrolls off-screen (previously left floating at the old viewport position).
 
 ### Notes
-
 ## [2.9.0] - 2026-07-31
 
 ### Added
