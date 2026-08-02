@@ -11,6 +11,9 @@
 
 ### Fixed
 
+- Fixed AUNSaveImage / AUNSaveImageV2 "Preview Mode": hidden widgets (`save_active`, `prefix`, etc.) no longer reappear after a page reload or tab switch — the collapsed widget state is now re-applied after the graph is configured.
+- Fixed AUNSaveVideo / AUNSaveVideoV2: the inline media preview now follows the node's native collapse control and is dropped when the node scrolls off-screen (previously left floating at the old viewport position).
+
 ### Notes
 
 ## [2.9.0] - 2026-07-31
