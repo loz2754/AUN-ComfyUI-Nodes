@@ -7,6 +7,52 @@ import { api } from "../../scripts/api.js";
 const PREVIEW_REGISTRY = new WeakMap();
 const SUPPORTED_NODE_NAMES = new Set(["AUNSaveVideo", "AUNSaveVideoV2"]);
 
+// Nodes that currently own a DOM media preview, for per-frame collapse sync.
+const PREVIEW_NODES = new Set();
+
+// Off-screen nodes are culled by LiteGraph, so the media widget's draw()/
+// offsetDOMWidget never runs and the DOM preview would stay pinned at its old
+// screen spot after a viewport jump (e.g. bookmark), with no node body to
+// dismiss. Treat them like hidden.
+function isPreviewOffScreen(node, canvas) {
+  if (!canvas?.canvas || !node?.pos || !node?.size) return false;
+  const ds = canvas.ds;
+  if (!ds) return false;
+  const rect = canvas.canvas.getBoundingClientRect();
+  const scale = ds.scale;
+  const x = rect.left + (node.pos[0] + ds.offset[0]) * scale;
+  const y = rect.top + (node.pos[1] + ds.offset[1]) * scale;
+  const w = (node.size[0] || 300) * scale;
+  const h = (node.size[1] || 100) * scale;
+  const m = 64;
+  return x + w < -m || x > rect.width + m || y + h < -m || y > rect.height + m;
+}
+
+// Keep the DOM preview in sync with the node's native collapsed state
+// (ComfyUI's collapse dot). When collapsed, draw() isn't called for the
+// widget, so the overlay would otherwise stay visible.
+function applyPreviewVisibility(node) {
+  const state = PREVIEW_REGISTRY.get(node);
+  if (!state) return;
+  const hidden =
+    !!node?.flags?.collapsed || isPreviewOffScreen(node, app?.canvas);
+  for (const w of state.widgets) {
+    if (!w?.inputEl) continue;
+    w.inputEl.style.display = hidden || w.isHidden ? "none" : "block";
+  }
+}
+
+function startPreviewCollapseLoop() {
+  function tick() {
+    for (const node of PREVIEW_NODES) {
+      applyPreviewVisibility(node);
+    }
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+startPreviewCollapseLoop();
+
 function updateWidgetVisibility(widget, hidden, node) {
   if (!widget) return;
   widget.isHidden = hidden;
@@ -116,6 +162,12 @@ function createMediaWidget(name, url, format, node) {
     isHidden: false,
     draw(ctx, node, widgetWidth, widgetY) {
       if (!this.inputEl || this.isHidden) return;
+      // Hide while natively collapsed; draw isn't called for collapsed nodes,
+      // but this restores visibility once expanded.
+      if (node?.flags?.collapsed) {
+        this.inputEl.style.display = "none";
+        return;
+      }
       let desiredHeight = 160;
       if (this.aspectRatio && this.aspectRatio > 0) {
         const innerW = Math.max(0, widgetWidth - 30);
@@ -207,6 +259,19 @@ const AUNMediaPreview = {
       const node = this;
       const prefix = "AUN_media_preview_";
       const previewState = getPreviewState(node);
+      PREVIEW_NODES.add(node);
+
+      if (!node.__aun_preview_collapse_hooked) {
+        node.__aun_preview_collapse_hooked = true;
+        const origCollapse = node.collapse;
+        if (typeof origCollapse === "function") {
+          node.collapse = function () {
+            const cr = origCollapse.apply(this, arguments);
+            applyPreviewVisibility(this);
+            return cr;
+          };
+        }
+      }
 
       if (node.widgets) {
         const pos = node.widgets.findIndex((w) => w.name === `${prefix}_0`);
@@ -243,6 +308,7 @@ const AUNMediaPreview = {
       const originalOnRemoved = node.onRemoved;
       node.onRemoved = () => {
         if (node.widgets) node.widgets.forEach((w) => w.onRemoved?.());
+        PREVIEW_NODES.delete(node);
         PREVIEW_REGISTRY.delete(node);
         return originalOnRemoved?.();
       };

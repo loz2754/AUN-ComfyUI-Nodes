@@ -74,6 +74,7 @@ Works best when coupled with AUN Save Image.
 - Empty Latent (`AUNEmptyLatent`) generates an empty latent image with specified dimensions. It offers options for predefined aspect ratios, random width/height swapping, and batching, making it a flexible starting point for your image generation workflows.
 - Image Loader (`AUNImgLoader`) loads an image and returns the image data, a mask, the original filename, and a cleaned filename. The cleaned filename is useful for prompts or file outputs in other nodes.
 - Image Preview With Title (`AUNTitleImagePreview`) shows the image and also the filename actually as the node's title.
+- Image Slider Comparer (`AUNImageSliderComparer`) compares up to five named pairs of images with a draggable slider divider. Each input socket is labelled with the connected output-slot name, batched images (or lists of frames) are matched by index (a single-frame shows both sides). A Pair dropdown plus a Frame dropdown pick which pair/frame to view. The node title and an in-node header always show the active pair, with each side's dimensions shown next to its title. Right-click the node for full actions: **Open Left in New Tab**, **Download Left Image**, **Open Right in New Tab**, **Download Right Image** (or right-click directly on the left/right half of the image area for a per-side menu), plus **Collapse Connections** / **Show Connections** to toggle which widgets are hidden. Enabling `save_active` saves the displayed frame into the output folder with a configurable `prefix`.
 - Img2Img (`AUNImg2Img`) provides a comprehensive Img2Img node, allowing you to switch between txt2img and img2img modes. It handles image loading, resizing, and encoding into the latent space, providing essential outputs for further processing.
 - Load & Resize Image (`AUNImageLoadResize`) load images with optional automatic resizing. Supports FramePack nearest-bucket sizing, maintains aspect ratio, and provides filename information for workflow organization.
 - Load Image Single/Batch 3 (`AUNImageSingleBatch3`) is a versatile way to either load a single uploaded image, or cycle through a batch of images from a folder - with multiple selection modes, including increment, random, range and search filtering by filename patterns.
@@ -281,6 +282,7 @@ Complex nodes include detailed READMEs with examples and troubleshooting.
 - Path Filename Video: [docs/SaveVideoPathNode_README.md](docs/SaveVideoPathNode_README.md)
 - Path Filename Video (Resolved): [docs/AUNPathFilenameVideoResolved_README.md](docs/AUNPathFilenameVideoResolved_README.md)
 - Load Image Single/Batch 3: [docs/AUNImageSingleBatch3_README.md](docs/AUNImageSingleBatch3_README.md)
+- Image Slider Comparer: [docs/AUNImageSliderComparer_README.md](docs/AUNImageSliderComparer_README.md)
 - Manual/Auto Text Switch: [docs/AUNManualAutoTextSwitch_README.md](docs/AUNManualAutoTextSwitch_README.md)
 - Manual/Auto Image Switch: [docs/AUNManualAutoImageSwitch_README.md](docs/AUNManualAutoImageSwitch_README.md)
 - Random Text Index Switch: [docs/AUNRandomTextIndexSwitch_README.md](docs/AUNRandomTextIndexSwitch_README.md)

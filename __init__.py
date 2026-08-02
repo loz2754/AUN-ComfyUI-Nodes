@@ -24,6 +24,7 @@ from .AUNGraphScraper import AUNGraphScraper
 from .AUNImageLoadResize import AUNImageLoadResize
 from .AUNImageResize import AUNImageResize
 from .AUNImageSingleBatch3 import AUNImageSingleBatch3
+from .AUNImageSliderComparer import AUNImageSliderComparer
 from .AUNImg2Img import AUNImg2Img
 from .AUNImgLoader import AUNImgLoader
 from .AUNInputs import AUNInputs
@@ -119,6 +120,7 @@ NODE_CLASS_MAPPINGS = {
     "AUNImageLoadResize": AUNImageLoadResize,
     "AUNImageResize": AUNImageResize,
     "AUNImageSingleBatch3": AUNImageSingleBatch3,
+    "AUNImageSliderComparer": AUNImageSliderComparer,
     "AUNImg2Img": AUNImg2Img,
     "AUNImgLoader": AUNImgLoader,
     "AUNInputs": AUNInputs,
@@ -210,6 +212,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "AUNImageLoadResize": "Load & Resize Image",
     "AUNImageResize": "Resize Image",
     "AUNImageSingleBatch3": "Load Image Single/Batch",
+    "AUNImageSliderComparer": "AUN Image Slider Comparer",
     "AUNImg2Img": "Img2Img",
     "AUNImgLoader": "Image Loader",
     "AUNInputs": "Inputs",
