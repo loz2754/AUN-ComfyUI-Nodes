@@ -65,6 +65,7 @@ from .AUNRandomModelBundleSwitch import AUNRandomModelBundleSwitch
 from .AUNRandomNumber import AUNRandomNumber
 from .AUNRandomTextIndexSwitch import AUNRandomTextIndexSwitch
 from .AUNRandomTextIndexSwitchV2 import AUNRandomTextIndexSwitchV2
+from .AUNRIFE import AUNRIFE
 from .AUNSaveImage import AUNSaveImage
 from .AUNSaveImageV2 import AUNSaveImageV2
 from .AUNSaveVideo import AUNSaveVideo
@@ -161,6 +162,7 @@ NODE_CLASS_MAPPINGS = {
     "AUNRandomNumber": AUNRandomNumber,
     "AUNRandomTextIndexSwitch": AUNRandomTextIndexSwitch,
     "AUNRandomTextIndexSwitchV2": AUNRandomTextIndexSwitchV2,
+    "AUNRIFE": AUNRIFE,
     "AUNSaveImage": AUNSaveImage,
     "AUNSaveImageV2": AUNSaveImageV2,
     "AUNSaveVideo": AUNSaveVideo,
@@ -253,6 +255,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "AUNRandomNumber": "Random Number",
     "AUNRandomTextIndexSwitch": "Random Text Index Switch",
     "AUNRandomTextIndexSwitchV2": "Random Text Index Switch V2",
+    "AUNRIFE": "RIFE Frame Interpolation",
     "AUNSaveImage": "Save Image (Deprecated)",
     "AUNSaveImageV2": "AUN Save Image V2",
     "AUNSaveVideo": "Save Video (Deprecated)",

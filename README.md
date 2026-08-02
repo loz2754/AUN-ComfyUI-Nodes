@@ -89,6 +89,7 @@ Works best when coupled with AUN Save Image.
 
 - Save Video *Deprecated in favour of VHS Video Combine* (`AUNSaveVideo`) is the legacy video saver for workflows that still use the current `filename_format` input, combining image frames into animated images or video with token placeholders.
 - Save Video V2 *Deprecated in favour of VHS Video Combine* (`AUNSaveVideoV2`) is the recommended video saver that combines image frames into animated images or video and accepts one combined `path_filename` input.
+- RIFE Frame Interpolation (`AUNRIFE`) generates intermediate frames between input frames using RIFE (Real-Time Intermediate Flow Estimation) v4.7. Takes a batched IMAGE tensor and a multiplier (2–10) to produce smoother slow-motion or higher frame-rate sequences. Model weights (rife47 / rife49) are downloaded from HuggingFace to `ComfyUI/models/rife` on first use. Optional `ensemble` mode runs the model twice and averages results for better quality (slower).
 
 ---
 
@@ -283,6 +284,7 @@ Complex nodes include detailed READMEs with examples and troubleshooting.
 - Path Filename Video (Resolved): [docs/AUNPathFilenameVideoResolved_README.md](docs/AUNPathFilenameVideoResolved_README.md)
 - Load Image Single/Batch 3: [docs/AUNImageSingleBatch3_README.md](docs/AUNImageSingleBatch3_README.md)
 - Image Slider Comparer: [docs/AUNImageSliderComparer_README.md](docs/AUNImageSliderComparer_README.md)
+- RIFE Frame Interpolation: [docs/AUNRIFE_README.md](docs/AUNRIFE_README.md)
 - Manual/Auto Text Switch: [docs/AUNManualAutoTextSwitch_README.md](docs/AUNManualAutoTextSwitch_README.md)
 - Manual/Auto Image Switch: [docs/AUNManualAutoImageSwitch_README.md](docs/AUNManualAutoImageSwitch_README.md)
 - Random Text Index Switch: [docs/AUNRandomTextIndexSwitch_README.md](docs/AUNRandomTextIndexSwitch_README.md)

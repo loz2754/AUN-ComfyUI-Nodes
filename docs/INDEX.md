@@ -60,6 +60,7 @@ Generated list of documentation files under `docs/`.
 - [AUNRandomModelBundleSwitch](./AUNRandomModelBundleSwitch_README.md)
 - [AUNRandomTextIndexSwitch](./AUNRandomTextIndexSwitch_README.md)
 - [AUNRandomTextIndexSwitchV2](./AUNRandomTextIndexSwitchV2_README.md)
+- [AUNRIFE](./AUNRIFE_README.md)
 - [AUNSaveImage](./AUNSaveImage_README.md)
 - [AUNSaveImageV2](./AUNSaveImageV2_README.md)
 - [AUNSaveVideo](./AUNSaveVideo_README.md)

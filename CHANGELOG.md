@@ -5,6 +5,8 @@
 
 ### Added
 
+- New `AUNRIFE` ("RIFE Frame Interpolation") node: generates intermediate frames between input frames using RIFE (Real-Time Intermediate Flow Estimation) v4.7. Takes a batched IMAGE tensor and a `multiplier` (2–10) to produce smoother slow-motion or higher frame-rate sequences. Model weights (`rife47` / `rife49`) are downloaded from HuggingFace to `ComfyUI/models/rife` on first use; an optional `ensemble` mode runs the model twice and averages results for better quality. Extracted and adapted from the ComfyUI_Fill-Nodes pack.
+
 ### Changed
 
 ### Fixed
