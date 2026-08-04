@@ -28,8 +28,13 @@ class AUNRIFE:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "images": ("IMAGE",),
-                "ckpt_name": (list(cls.CKPT_CONFIGS.keys()), {"default": "rife47"}),
+                "images": ("IMAGE", {
+                    "tooltip": "A batched IMAGE tensor whose frames will be interpolated.",
+                }),
+                "ckpt_name": (list(cls.CKPT_CONFIGS.keys()), {
+                    "default": "rife47",
+                    "tooltip": "RIFE model checkpoint to use (rife47 or rife49; downloaded from HuggingFace to ComfyUI/models/rife on first use).",
+                }),
                 "multiplier": ("INT", {
                     "default": 2,
                     "min": 2,
@@ -48,6 +53,12 @@ class AUNRIFE:
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "interpolate_frames"
     CATEGORY = "AUN Nodes/Video"
+    DESCRIPTION = (
+        "Generates intermediate frames between input frames using RIFE (Real-Time Intermediate Flow Estimation) v4.7. "
+        "Takes a batched IMAGE tensor and a multiplier (2-10) to produce smoother slow-motion or higher frame-rate sequences. "
+        "Model weights (rife47 / rife49) are downloaded from HuggingFace to ComfyUI/models/rife on first use. "
+        "Optional `ensemble` mode runs the model twice and averages results for better quality (slower)."
+    )
 
     def __init__(self):
         self.cache_dir = Path(folder_paths.models_dir) / "rife"

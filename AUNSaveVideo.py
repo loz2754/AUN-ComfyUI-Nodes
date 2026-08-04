@@ -1416,10 +1416,22 @@ class AudioInputOptions:
     def INPUT_TYPES(cls):
         return {"required": 
                     {
-                        "audio_input_path": ("STRING", {"default": "/path/"}),
-                        "clip_audio": ("BOOLEAN", {"default": False}),
-                        "audio_clip_start_seconds": ("FLOAT", {"default": 0, "min": 0, "max": 3.402823466e+38}),
-                        "audio_clip_duration": ("FLOAT", {"default": 0, "min": 0, "max": 3.402823466e+38}),
+                        "audio_input_path": ("STRING", {
+                            "default": "/path/",
+                            "tooltip": "Path to the audio file to use with the video.",
+                        }),
+                        "clip_audio": ("BOOLEAN", {
+                            "default": False,
+                            "tooltip": "Enable to clip the audio to a start time and duration.",
+                        }),
+                        "audio_clip_start_seconds": ("FLOAT", {
+                            "default": 0, "min": 0, "max": 3.402823466e+38,
+                            "tooltip": "Start time in seconds for audio clipping (when clip_audio is enabled).",
+                        }),
+                        "audio_clip_duration": ("FLOAT", {
+                            "default": 0, "min": 0, "max": 3.402823466e+38,
+                            "tooltip": "Duration in seconds for audio clipping (when clip_audio is enabled).",
+                        }),
                      },
                 "hidden": {"prompt": "PROMPT", "extra_pnginfo": "EXTRA_PNGINFO"},
         }
@@ -1427,6 +1439,11 @@ class AudioInputOptions:
     RETURN_TYPES = ("AUDIO_INPUT_OPTIONS",)
     FUNCTION = "execute"
     CATEGORY = "AUN Nodes/Deprecated/Video"
+    DESCRIPTION = (
+        "Deprecated helper that packages an audio file path with optional clip start/duration "
+        "settings into a single AUDIO_INPUT_OPTIONS value for video nodes. "
+        "Prefer passing audio directly to current save/combine nodes."
+    )
 
     def execute(self, **kwargs):
         kwargs_copy = copy.deepcopy(kwargs)
