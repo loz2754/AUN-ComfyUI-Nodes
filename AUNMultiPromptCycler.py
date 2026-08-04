@@ -48,7 +48,7 @@ class AUNMultiPromptCycler:
     RETURN_NAMES = ("prompt", "prompt_title")
     OUTPUT_IS_LIST = (True, True)
     FUNCTION = "get_prompts"
-    CATEGORY = "AUN Nodes/Text"
+    CATEGORY = "AUN Nodes/Prompts"
     OUTPUT_NODE = True
 
     def _parse_prompts(self, custom_prompts):
