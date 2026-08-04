@@ -227,7 +227,7 @@ class AUNWildcardAddToPrompt(AUNAddToPrompt):
     RETURN_TYPES = ("STRING", "STRING")
     RETURN_NAMES = ("prompt", "populated_text")
     FUNCTION = "add_wildcard_to_prompt"
-    CATEGORY = "AUN Nodes/Text"
+    CATEGORY = "AUN Nodes/Prompts"
     DESCRIPTION = "Randomize local wildcard syntax each execution, then conditionally add the populated text to a prompt."
 
     @staticmethod

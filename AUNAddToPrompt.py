@@ -36,7 +36,7 @@ class AUNAddToPrompt:
     
     RETURN_TYPES = ("STRING",)
     FUNCTION = "add_to_prompt"
-    CATEGORY = "AUN Nodes/Text"
+    CATEGORY = "AUN Nodes/Prompts"
     DESCRIPTION = "Add text to a prompt."
 
     def _record_pginfo(self, extra_pnginfo, unique_id, payload):

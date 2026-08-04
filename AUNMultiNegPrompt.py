@@ -49,7 +49,7 @@ class AUNMultiNegPrompt:
     RETURN_TYPES = ("STRING",)
     RETURN_NAMES = ("negative",)
     FUNCTION = "select_negative"
-    CATEGORY = "AUN Nodes/Text"
+    CATEGORY = "AUN Nodes/Prompts"
     DESCRIPTION = "Selects one of up to 20 manually entered negative prompts using an index input, with a configurable number of visible fields."
 
     def _clamp_visible_inputs(self, visible_inputs):

@@ -37,7 +37,7 @@ class AUNRandomIndexSwitch:
     RETURN_TYPES = ("INT",)
     RETURN_NAMES = ("index",)
     FUNCTION = "do"
-    CATEGORY = "AUN Nodes/Utility"
+    CATEGORY = "AUN Nodes/Prompts"
     DESCRIPTION = (
         "Outputs an integer based on mode:\n"
         "• Select: fixed value from 'select' parameter\n"

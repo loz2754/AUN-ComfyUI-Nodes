@@ -54,7 +54,7 @@ class AUNTextIndexSwitch:
     RETURN_TYPES = ("STRING", "STRING")
     RETURN_NAMES = ("text", "label")
     FUNCTION = "index_switch"
-    CATEGORY = "AUN Nodes/Text"
+    CATEGORY = "AUN Nodes/Prompts"
     DESCRIPTION = "Switch between up to 20 text inputs based on index number. Useful for dynamic prompt selection with control over how many sockets are visible on the node. Inputs take the title of the connected node, which is also used as the label."
 
     def _clamp_visible_inputs(self, visible_inputs):

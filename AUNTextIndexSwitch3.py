@@ -31,7 +31,7 @@ class AUNTextIndexSwitch3:
     RETURN_TYPES = ("STRING", "STRING","INT",)
     RETURN_NAMES = ("text", "label", "index")
     FUNCTION = "index_switch"
-    CATEGORY = "AUN Nodes/Text"
+    CATEGORY = "AUN Nodes/Prompts"
     OUTPUT_NODE = True
     DESCRIPTION = (
         "Select one of up to 20 text inputs based on an index. Use slot_count to add/remove slots. "

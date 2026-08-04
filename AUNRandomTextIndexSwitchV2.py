@@ -64,7 +64,7 @@ class AUNRandomTextIndexSwitchV2:
     RETURN_TYPES = ("STRING", "STRING", "INT", "STRING")
     RETURN_NAMES = ("text", "label", "index", "prefixed_label")
     FUNCTION = "random_text_switch"
-    CATEGORY = "AUN Nodes/Utility"
+    CATEGORY = "AUN Nodes/Prompts"
     OUTPUT_NODE = True
     DESCRIPTION = "Combines random index generation with text selection. Generates an index based on the selected mode (Select: fixed value, Increment: cycling through range, Random: random within range, Range: selecting a range of indices) and uses it to select from up to 20 text inputs. Control how many sockets are visible on the node for cleaner layouts."
 

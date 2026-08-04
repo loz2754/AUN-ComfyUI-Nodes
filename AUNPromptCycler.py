@@ -49,7 +49,8 @@ class AUNPromptCycler:
         return {
             "required": {
                 "cycle_mode": (["manual", "sequential", "random", "range", "search"], {
-                    "default": "manual"
+                    "default": "manual",
+                    "tooltip": "How to cycle prompts: manual (pick by index), sequential (step through), random, range (e.g. '1,2,4-8,11'), or search (filter by text)."
                 }),
                 "manual_index": ("INT", {
                     "default": 1,
@@ -86,7 +87,7 @@ class AUNPromptCycler:
     RETURN_TYPES = ("STRING", "STRING", "INT")
     RETURN_NAMES = ("prompt", "prompt_title", "index")
     FUNCTION = "cycle_prompt"
-    CATEGORY = "AUN Nodes/Text"
+    CATEGORY = "AUN Nodes/Prompts"
     OUTPUT_NODE = True
 
     def _emit_selected_prompt(self, unique_id, prompt_title, cycle_index):

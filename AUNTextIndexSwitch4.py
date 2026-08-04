@@ -64,7 +64,7 @@ class AUNTextIndexSwitch4:
     RETURN_TYPES = ("STRING", "STRING", "INT")
     RETURN_NAMES = ("text", "label", "index")
     FUNCTION = "text_index_switch"
-    CATEGORY = "AUN Nodes/Text"
+    CATEGORY = "AUN Nodes/Prompts"
     OUTPUT_NODE = True
     DESCRIPTION = ("Switch between up to 20 text inputs based on index number. Useful for dynamic prompt selection with control over how many sockets are visible on the node."
     " Inputs take the title of the connected node, which is also used as the label. Otherwise, the first line of the text input is used as the label and removed from the output."
