@@ -5,6 +5,16 @@
 
 ### Added
 
+### Changed
+
+### Fixed
+
+### Notes
+
+## [2.12.0] - 2026-08-04
+
+### Added
+
 - Example workflow PNGs and JSONs for: Inputs, SavePipeline, Prompts, ImageSliderComparer, KSamplerPlus, ShowAnyMulti
 - Before/after collapse-connections comparison images in README
 - `tools/embed_workflow_png.py` for embedding ComfyUI workflow JSON into PNG files
@@ -20,7 +30,6 @@
 ### Notes
 
 - All new workflow PNGs have ComfyUI workflow JSON embedded for drop-load compatibility
-
 ## [2.11.0] - 2026-08-02
 
 ### Added
