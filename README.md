@@ -8,6 +8,8 @@ Many of the nodes feature a 'compact mode', which hides all the widgets, except 
 
 My newest addition is a brilliant image compare node that accepts up to 5 pairs of image inputs, with auto naming of left and right image pairs for easy comparison.
 
+Another fantastically useful addition is the Show Any Multi node. It will accept any input type and display a text preview, or image preview, with the name of the connected output slot as a caption. Not only that, it accept and shows up to 20 mixed inputs and display the previews of all 20 in the same node! (There's also a node that passes through the inputs as string outputs).
+
 ## 🧭 Browse by Category
 
 Jump straight to the node group you need:
@@ -33,19 +35,6 @@ Also see: [💡 Example Workflows](#cat-examples) · [🚀 Getting Started](#cat
 <a id="cat-examples"></a>
 
 ## 💡 Example Workflows
-
-### How to Randomly Select a Prompt
-
-Use `AUN Random/Select INT` with `AUN Text Index Switch` to randomly select a prompt.
-
-1. Add nodes: `AUN Random/Select INT` (`AUNRandomIndexSwitch`) and `AUN Text Index Switch`.
-2. Connect index: wire `INT` output to `index` input.
-3. Set to Random: on `AUNRandomIndexSwitch`, toggle to Random.
-4. Define range: set `minimum`/`maximum` to match the number of text inputs used.
-5. Add prompts: fill `text1`, `text2`, `text3`, ... on the text switch node.
-6. Use output: connect `text` to your CLIP Text Encode node.
-
-Your setup: `AUN Random/Select INT` -> `AUN Text Index Switch` -> `CLIP Text Encode`
 
 ### Prompt Cycling with Multi-LoRA Selection
 
