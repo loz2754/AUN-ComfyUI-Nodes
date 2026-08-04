@@ -2,9 +2,11 @@
   <img src="docs/images/aun-logo.png" alt="AUN Logo" height="100" align="center"/> AUN Nodes Collection
 </h1>
 
-A comprehensive collection of custom nodes for ComfyUI which I find useful. If you prefer compact, well-organised workflows, then give these a try. From versatile bypass/mute/collapse controllers, to automatic file naming and saving, to LoRAs handling with simple prompt and trigger words management, and lots of other tempting goodies!
+A comprehensive collection of custom nodes for ComfyUI which helps you to create compact, well-organised workflows. Includes a bunch of bypass/mute/collapse controllers, automatic file naming and saving, clever index-driven prompting that matches specific LoRAs to specific prompts. With in-built trigger words management, CivitAI lookup and lots more!
 
-Many of the nodes feature a 'compact mode', activated by double clicking the node body, which hides all the widgets, except for those you need to see. AUN Inputs nodes additionally feature a 'collapse connections' mode, activated by double-clicking or right-clicking, which hides output labels and converges all output connection lines to a single point while keeping the node compact. I will be updating the readme with more examples/workflows as and when I find the time.
+Many of the nodes feature a 'compact mode', which hides all the widgets, except for those you need to see, for a cleaner workflow. Selected nodes also feature a 'collapse connections' mode, which hides output labels and converges all output connection lines to a single point while keeping the node compact.
+
+My newest addition is a brilliant image compare node that accepts up to 5 pairs of image inputs, with auto naming of left and right image pairs for easy comparison.
 
 ## 🧭 Browse by Category
 
