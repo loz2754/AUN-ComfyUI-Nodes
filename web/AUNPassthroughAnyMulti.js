@@ -40,6 +40,42 @@ function getTypeColor(typeName) {
 
 // ── Socket visibility / num_inputs management ─────────────────────────
 
+const PASSTHROUGH_CLASS = "AUNPassthroughAnyMulti";
+
+function getSlotLabel(outSlot) {
+  if (!outSlot) return "";
+  const raw = outSlot.label;
+  if (raw && raw.trim()) return raw.trim();
+  return outSlot.name || "";
+}
+
+function resolveLinkInput(node, input) {
+  if (input?.link == null) return getSlotLabel(input);
+  const graph = node.graph || app.graph;
+  const links = graph?.links;
+  const link = links?.get ? links.get(input.link) : links?.[input.link];
+  if (!link) return getSlotLabel(input);
+  const src = graph?.getNodeById
+    ? graph?.getNodeById(link.origin_id)
+    : null;
+  const outSlot = src?.outputs?.[link.origin_slot];
+  if (!outSlot) return getSlotLabel(input);
+  if (src && src.comfyClass === PASSTHROUGH_CLASS) {
+    const outIdx = src.outputs.indexOf(outSlot);
+    const mirrored = src.inputs?.[outIdx];
+    if (mirrored) {
+      const resolved = resolveGraphInput(src, mirrored);
+      if (resolved) return resolved;
+    }
+  }
+  return getSlotLabel(outSlot);
+}
+
+function resolveGraphInput(node, input) {
+  const label = resolveLinkInput(node, input);
+  return label || input?.name || "";
+}
+
 function updateInputLabels(node) {
   const graph = node.graph || app.graph;
   if (!graph || !node.inputs) return;
@@ -58,7 +94,7 @@ function updateInputLabels(node) {
         if (srcNode && srcNode.outputs) {
           const outSlot = srcNode.outputs[link.origin_slot];
           if (outSlot) {
-            input.label = outSlot.label || outSlot.name || input.name;
+            input.label = resolveLinkInput(node, input) || input.name;
             continue;
           }
         }
@@ -98,13 +134,16 @@ function updateOutputLabels(node) {
         if (srcNode && srcNode.outputs) {
           const outSlot = srcNode.outputs[link.origin_slot];
           if (outSlot) {
-            output.label = outSlot.label || outSlot.name || `output_${num}`;
+            const resolved = resolveLinkInput(node, input) || `output_${num}`;
+            output.label = resolved;
+            output.name = resolved;
             continue;
           }
         }
       }
     }
     output.label = `output_${num}`;
+    output.name = `output_${num}`;
   }
   if (app.canvas) {
     app.canvas.setDirty(true);
@@ -696,25 +735,59 @@ app.registerExtension({
 
 });
 
-// ── Poll for connected node title changes ───────────────────────────
+// ── Poll for connected node title / label changes ──────────────────
 
 let lastTitles = {};
+function rawSourceLabel(node, input) {
+  if (input?.link == null) return "";
+  const graph = node.graph || app.graph;
+  const links = graph?.links;
+  const link = links?.get ? links.get(input.link) : links?.[input.link];
+  if (!link) return "";
+  const src = graph?.getNodeById ? graph?.getNodeById(link.origin_id) : null;
+  const outSlot = src?.outputs?.[link.origin_slot];
+  return getSlotLabel(outSlot || {});
+}
+
+function labelsSig(node) {
+  return (node.inputs || [])
+    .filter((i) => i?.name?.startsWith(INPUT_PREFIX))
+    .map((i) => inputDisplayLabel(node, i))
+    .join("\u0001");
+}
+
+function inputDisplayLabel(node, input) {
+  return (resolveGraphInput(node, input) || `output_${parseInt(input.name.substring(INPUT_PREFIX.length), 10)}`).replace(/\s+/g, " ").trim();
+}
+
 function pollForTitleChanges() {
   if (app?.graph?._nodes) {
     for (const node of app.graph._nodes) {
-      if (node.title !== lastTitles[node.id]) {
-        lastTitles[node.id] = node.title;
-        app.graph._nodes.forEach((n) => {
-          if (n.comfyClass === NODE_TYPE) {
-            updateInputLabels(n);
-            updateOutputLabels(n);
-          }
-        });
-        if (app.canvas) {
-          app.canvas.setDirty(true, true);
-          app.canvas.draw(true, true);
+      node.__aun_sig = node.__aun_sig || {};
+      const changedTitle = node.title !== lastTitles[node.id];
+      if (changedTitle) lastTitles[node.id] = node.title;
+      if (node.comfyClass === NODE_TYPE) {
+        const sig = labelsSig(node);
+        if (changedTitle || sig !== node.__aun_lastSig) {
+          node.__aun_lastSig = sig;
+          updateInputLabels(node);
+          updateOutputLabels(node);
         }
       }
+    }
+    app.graph._nodes.forEach((n) => {
+      if (n.comfyClass === NODE_TYPE) {
+        const sig = labelsSig(n);
+        if (sig !== n.__aun_lastSig) {
+          n.__aun_lastSig = sig;
+          updateInputLabels(n);
+          updateOutputLabels(n);
+        }
+      }
+    });
+    if (app.canvas) {
+      app.canvas.setDirty(true, true);
+      app.canvas.draw(true, true);
     }
   }
   requestAnimationFrame(pollForTitleChanges);

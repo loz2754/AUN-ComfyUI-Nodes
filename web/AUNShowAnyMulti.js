@@ -39,6 +39,42 @@ function getTypeColor(typeName) {
 
 // ── Socket visibility / num_inputs management ─────────────────────────
 
+const PASSTHROUGH_CLASS = "AUNPassthroughAnyMulti";
+
+function getSlotLabel(outSlot) {
+  if (!outSlot) return "";
+  const raw = outSlot.label;
+  if (raw && raw.trim()) return raw.trim();
+  return outSlot.name || "";
+}
+
+function resolveLinkInput(node, input) {
+  if (input?.link == null) return getSlotLabel(input);
+  const graph = node.graph || app.graph;
+  const links = graph?.links;
+  const link = links?.get ? links.get(input.link) : links?.[input.link];
+  if (!link) return getSlotLabel(input);
+  const src = graph?.getNodeById
+    ? graph?.getNodeById(link.origin_id)
+    : null;
+  const outSlot = src?.outputs?.[link.origin_slot];
+  if (!outSlot) return getSlotLabel(input);
+  if (src && src.comfyClass === PASSTHROUGH_CLASS) {
+    const outIdx = src.outputs.indexOf(outSlot);
+    const mirrored = src.inputs?.[outIdx];
+    if (mirrored) {
+      const resolved = resolveGraphInput(src, mirrored);
+      if (resolved) return resolved;
+    }
+  }
+  return getSlotLabel(outSlot);
+}
+
+function resolveGraphInput(node, input) {
+  const label = resolveLinkInput(node, input);
+  return label || input?.name || "";
+}
+
 function updateInputLabels(node) {
   const graph = node.graph || app.graph;
   if (!graph || !node.inputs) return;
@@ -57,7 +93,7 @@ function updateInputLabels(node) {
         if (srcNode && srcNode.outputs) {
           const outSlot = srcNode.outputs[link.origin_slot];
           if (outSlot) {
-            input.label = outSlot.label || outSlot.name || input.name;
+            input.label = resolveLinkInput(node, input) || input.name;
             continue;
           }
         }
