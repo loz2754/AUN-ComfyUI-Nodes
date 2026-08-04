@@ -24,8 +24,13 @@ Thanks for helping improve AUN.
    - Import the class
    - Add to `NODE_CLASS_MAPPINGS`
    - Add to `NODE_DISPLAY_NAME_MAPPINGS` (friendly UI name)
-4. Regenerate the README node list:
+4. Check the README category section stays in sync (read-only; never edits files):
    - `python tools/generate_readme_nodes.py`
+   - Exits 0 when every registered node is documented, 1 if any are missing or stale.
+   - If a node is reported missing, add it to the README's `<!-- BEGIN/END: AUN_NODES_AUTO -->` category section.
+5. Run the node-docs audit (checks in-code `DESCRIPTION` and per-input tooltips; read-only):
+   - `python tools/audit_node_docs.py --fail-on-missing`
+   - Exits non-zero if any node is missing a `DESCRIPTION` or an input tooltip.
 
 ## Dependencies
 

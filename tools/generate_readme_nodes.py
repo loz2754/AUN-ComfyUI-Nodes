@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import argparse
 import ast
+import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Tuple
@@ -52,7 +54,6 @@ def _parse_init(init_path: Path) -> Tuple[Dict[str, str], Dict[str, str], Dict[s
     init_text = _read_text(init_path)
     tree = ast.parse(init_text, filename=str(init_path))
 
-    # Map class name -> module name based on "from .Module import Class" imports
     class_to_module: Dict[str, str] = {}
     for node in tree.body:
         if isinstance(node, ast.ImportFrom) and getattr(node, "level", 0) == 1 and node.module:
@@ -79,7 +80,6 @@ def _parse_init(init_path: Path) -> Tuple[Dict[str, str], Dict[str, str], Dict[s
         try:
             display = _extract_str(v_node)
         except ValueError:
-            # If the value isn't a string literal, fall back to the key.
             display = key
         node_key_to_display[key] = display
 
@@ -130,56 +130,63 @@ def collect_registered_nodes(aun_dir: Path) -> List[NodeInfo]:
     return nodes
 
 
-def render_markdown(nodes: Iterable[NodeInfo]) -> str:
-    by_cat: Dict[str, List[NodeInfo]] = {}
-    for n in nodes:
-        by_cat.setdefault(n.category, []).append(n)
-
-    lines: List[str] = []
-    lines.append("### ComfyUI Menu Categories (synced from registered nodes)")
-    lines.append("")
-
-    for cat in sorted(by_cat.keys(), key=lambda s: s.lower()):
-        lines.append(f"#### {cat}")
-        lines.append("")
-
-        for n in sorted(by_cat[cat], key=lambda x: (x.display_name.lower(), x.key.lower())):
-            if n.display_name == n.key:
-                lines.append(f"- {n.key} (`{n.key}`)")
-            else:
-                lines.append(f"- {n.display_name} (`{n.key}`)")
-
-        lines.append("")
-
-    return "\n".join(lines).rstrip() + "\n"
-
-
-def update_readme(readme_path: Path, generated_block: str) -> bool:
-    text = _read_text(readme_path)
-
-    begin = text.find(BEGIN_MARKER)
-    end = text.find(END_MARKER)
+def _find_region(readme_text: str) -> Tuple[int, int]:
+    begin = readme_text.find(BEGIN_MARKER)
+    end = readme_text.find(END_MARKER)
     if begin == -1 or end == -1 or end < begin:
         raise SystemExit(
-            f"Could not find markers in {readme_path}.\n"
-            f"Add these lines around the auto-generated section:\n"
+            f"Could not find region markers in the README.\n"
+            f"The category section is expected between:\n"
             f"{BEGIN_MARKER}\n...\n{END_MARKER}\n"
         )
+    return begin + len(BEGIN_MARKER), end
 
-    before = text[: begin + len(BEGIN_MARKER)]
-    after = text[end:]
 
-    new_text = before + "\n\n" + generated_block + "\n" + after
-    changed = new_text != text
-    if changed:
-        readme_path.write_text(new_text, encoding="utf-8")
-    return changed
+def check_drift(readme_path: Path, registered: List[NodeInfo]) -> Tuple[List[NodeInfo], List[Tuple[str, int]]]:
+    """Returns (missing, stale) where stale items are (backticked token, 1-based line number)."""
+
+    text = _read_text(readme_path)
+    start, end = _find_region(text)
+    region = text[start:end]
+    registered_keys = {n.key for n in registered}
+
+    missing = [n for n in registered if n.key not in region]
+
+    stale: List[Tuple[str, int]] = []
+    region_start_line = text[:start].count("\n") + 1
+    token_re = re.compile(r"`(AUN[A-Za-z0-9]+)`")
+    for offset, line in enumerate(region.split("\n")):
+        for match in token_re.finditer(line):
+            token = match.group(1)
+            if token not in registered_keys:
+                stale.append((token, region_start_line + offset))
+
+    return missing, stale
+
+
+def _report_human(nodes: List[NodeInfo], missing: List[NodeInfo], stale: List[Tuple[str, int]]) -> str:
+    lines: List[str] = []
+    if not missing and not stale:
+        lines.append(f"OK: all {len(nodes)} registered nodes are documented in the README category section.")
+        return "\n".join(lines)
+
+    if missing:
+        lines.append(f"Missing from README: {len(missing)} registered node(s) not documented:")
+        for n in sorted(missing, key=lambda x: (x.category.lower(), x.key.lower())):
+            lines.append(f"  - {n.display_name} (`{n.key}`) [category: {n.category}]")
+    if stale:
+        lines.append(f"Stale in README: {len(stale)} documented node reference(s) not registered:")
+        for token, line_no in sorted(stale, key=lambda x: x[1]):
+            lines.append(f"  - `{token}` (README line {line_no})")
+
+    return "\n".join(lines)
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(
         description=(
-            "Generate the AUN README node/category section from AUN/__init__.py and node CATEGORY values."
+            "Audit the README node/category section against the nodes actually registered in code. "
+            "Read-only: never modifies files. Exits 1 if any drift is found."
         )
     )
     parser.add_argument(
@@ -195,14 +202,9 @@ def main() -> int:
         help="Path to README.md (defaults to <aun-dir>/README.md).",
     )
     parser.add_argument(
-        "--stdout",
+        "--json",
         action="store_true",
-        help="Print the generated Markdown to stdout instead of editing README.md.",
-    )
-    parser.add_argument(
-        "--check",
-        action="store_true",
-        help="Exit with non-zero status if README.md would change.",
+        help="Print a machine-readable JSON report instead of human text.",
     )
 
     args = parser.parse_args()
@@ -210,18 +212,28 @@ def main() -> int:
     readme_path: Path = args.readme or (aun_dir / "README.md")
 
     nodes = collect_registered_nodes(aun_dir)
-    block = render_markdown(nodes)
+    missing, stale = check_drift(readme_path, nodes)
+    ok = not missing and not stale
 
-    if args.stdout:
-        print(block)
-        return 0
+    if args.json:
+        print(
+            json.dumps(
+                {
+                    "ok": ok,
+                    "scanned": len(nodes),
+                    "missing": [
+                        {"key": n.key, "display_name": n.display_name, "category": n.category}
+                        for n in missing
+                    ],
+                    "stale": [{"token": token, "line": line_no} for token, line_no in stale],
+                },
+                indent=2,
+            )
+        )
+        return 0 if ok else 1
 
-    changed = update_readme(readme_path, block)
-
-    if args.check:
-        return 1 if changed else 0
-
-    return 0
+    print(_report_human(nodes, missing, stale))
+    return 0 if ok else 1
 
 
 if __name__ == "__main__":

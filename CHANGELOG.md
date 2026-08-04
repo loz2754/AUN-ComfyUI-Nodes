@@ -5,11 +5,21 @@
 
 ### Added
 
+- Example workflow PNGs and JSONs for: Inputs, SavePipeline, Prompts, ImageSliderComparer, KSamplerPlus, ShowAnyMulti
+- Before/after collapse-connections comparison images in README
+- `tools/embed_workflow_png.py` for embedding ComfyUI workflow JSON into PNG files
+- Updated CONTRIBUTING.md with node-docs audit instructions
+
 ### Changed
+
+- Reorganized prompt-related nodes from `AUN Nodes/Text` and `AUN Nodes/Utility` into a dedicated `AUN Nodes/Prompts` category: AUNAddToPrompt, AUNAddToPromptMulti, AUNMultiNegPrompt, AUNPromptCycler, AUNRandomIndexSwitch, AUNRandomTextIndexSwitch, AUNRandomTextIndexSwitchV2, AUNTextIndexSwitch, AUNTextIndexSwitch3, AUNTextIndexSwitch4, AUNWildcardAddToPrompt
+- Added input tooltips and DESCRIPTION to AUNRIFE and AudioInputOptions nodes
 
 ### Fixed
 
 ### Notes
+
+- All new workflow PNGs have ComfyUI workflow JSON embedded for drop-load compatibility
 
 ## [2.11.0] - 2026-08-02
 
