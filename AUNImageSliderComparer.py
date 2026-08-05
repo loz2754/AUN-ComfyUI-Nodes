@@ -71,14 +71,17 @@ class AUNImageSliderComparer(PreviewImage):
     FUNCTION = "compare"
     OUTPUT_NODE = True
     CATEGORY = "AUN Nodes/Image"
+
     DESCRIPTION = (
-        "Compare several pairs of images with a draggable slider. Up to five "
+        "Compare several pairs of images with a slider. Up to five "
         "named pairs are accepted (pairN_left / pairN_right). Each input may be "
         "a batched tensor or a list of frames; frames are matched by index (a "
         "single-frame side shows in both). Use the Pair dropdown to pick "
         "which pair to view and the Frame dropdown to pick the frame. Slots, "
         "dropdown, and node title show the name of the connected output slot so "
-        "the active pair is always obvious."
+        "the active pair is always obvious. Right-click the node to switch "
+        "between Drag (click and drag to scrub) and Slide (slider follows the "
+        "mouse without clicking) modes."
     )
 
     def compare(self, pair, frame, prompt=None, extra_pnginfo=None, **kwargs):

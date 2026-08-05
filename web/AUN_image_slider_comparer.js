@@ -345,10 +345,11 @@ function forwardBackgroundEvents(container) {
   container.addEventListener(
     "contextmenu",
     (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      if (container.__aunContextMenu?.(event)) return;
-      app.canvas?._mousedown_callback?.call(app.canvas, event);
+      if (container.__aunContextMenu?.(event)) {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
     },
     true,
   );
@@ -378,7 +379,15 @@ function updateSlider(widget, pct) {
   const s = Math.max(0, Math.min(100, pct));
   widget.__slider = s;
   if (widget.__imgLeft) {
-    widget.__imgLeft.style.clipPath = `inset(0 ${100 - s}% 0 0)`;
+    const isSlide = widget.parent?.properties?.comparer_mode === "Slide";
+    if (isSlide) {
+      // Slide mode: clip left image from the left edge so the right image
+      // appears from the left and expands rightward as the slider moves.
+      widget.__imgLeft.style.clipPath = `inset(0 0 0 ${s}%)`;
+    } else {
+      // Drag mode: left image hidden at 0%, fully visible at 100%.
+      widget.__imgLeft.style.clipPath = `inset(0 ${100 - s}% 0 0)`;
+    }
   }
   if (widget.__divider) {
     widget.__divider.style.left = `${s}%`;
@@ -517,9 +526,22 @@ function createSliderWidget(node, state) {
   imgArea.append(imgRight, imgLeft, divider, emptyOverlay);
   container.append(header, imgArea);
 
-  // scrub on left-button drag anywhere over the image area
+  // Slide mode: slider follows mouse without clicking
+  imgArea.addEventListener("pointermove", (event) => {
+    if (node.properties?.comparer_mode !== "Slide") return;
+    const rect = imgArea.getBoundingClientRect();
+    updateSlider(widget, ((event.clientX - rect.left) / rect.width) * 100);
+  });
+
+  imgArea.addEventListener("pointerleave", () => {
+    if (node.properties?.comparer_mode !== "Slide") return;
+    updateSlider(widget, 0);
+  });
+
+  // Drag mode: click and drag to scrub (default behaviour)
   imgArea.addEventListener("pointerdown", (event) => {
     if (event.button !== 0) return;
+    if (node.properties?.comparer_mode === "Slide") return;
     event.preventDefault();
     event.stopPropagation();
     imgArea.setPointerCapture?.(event.pointerId);
@@ -621,7 +643,8 @@ function setSliderData(widget, data) {
   widget.__badge.textContent = parts.join(" · ");
   widget.__badge.style.display = parts.length ? "" : "none";
   updateDims(widget);
-  updateSlider(widget, 50);
+  const isSlide = widget.parent?.properties?.comparer_mode === "Slide";
+  updateSlider(widget, isSlide ? 0 : 50);
 }
 
 function updateDims(widget) {
@@ -985,6 +1008,14 @@ function applyCollapseHooks(node) {
       content: on ? "Show Connections" : "Collapse Connections",
       callback: () => toggleCollapse(this),
     });
+    options.push({
+      content: `Slider Mode: ${this.properties?.comparer_mode === "Slide" ? "Slide" : "Drag"}`,
+      callback: () => {
+        this.properties.comparer_mode =
+          this.properties.comparer_mode === "Slide" ? "Drag" : "Slide";
+        this.graph?.setDirtyCanvas(true, true);
+      },
+    });
 
     const w = getState(this)?.sliderWidget;
     const cur = w?.__currentLeft;
@@ -1036,6 +1067,12 @@ function setupNode(node) {
 
     // Suppress the built-in image preview; our DOM slider owns the display.
     node.hideOutputImages = true;
+
+    // Ensure comparer_mode property exists with a default.
+    node.properties = node.properties || {};
+    if (typeof node.properties.comparer_mode !== "string") {
+      node.properties.comparer_mode = "Drag";
+    }
 
     clearStaleSliderWidget(node);
     applyCollapseHooks(node);

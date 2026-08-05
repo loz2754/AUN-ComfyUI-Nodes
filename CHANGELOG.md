@@ -11,6 +11,22 @@
 
 ### Notes
 
+## [2.12.1] - 2026-08-05
+
+### Added
+
+- AUNImageSliderComparer Slide mode: right-click menu now offers "Slider Mode" toggle to switch between Drag (click and drag) and Slide (hover to scrub) interaction modes.
+
+### Changed
+
+- Updated AUNImageSliderComparer description and documentation to reflect Drag/Slide mode options.
+
+### Fixed
+
+- AUNImageSliderComparer Slide mode: corrected clip direction so the right image appears from the left and expands rightward as the slider moves (was revealing from the opposite edge).
+
+### Notes
+
 ## [2.12.0] - 2026-08-04
 
 ### Added
