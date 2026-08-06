@@ -69,7 +69,11 @@ function getConnectedOutputLabel(node, slot) {
   if (!src || !src.outputs) return null;
   const out = src.outputs[link.origin_slot];
   if (!out) return null;
-  return out.label || out.name || null;
+  // Collapse handlers set slot.label to " " (space) to visually hide labels.
+  // Treat space-only labels as no label so downstream nodes fall back to name.
+  const label = out.label || "";
+  if (!label.trim()) return out.name || null;
+  return label || out.name || null;
 }
 
 function collectNames(node) {
@@ -874,9 +878,38 @@ function applyCollapseWidgets(node) {
 function toggleCollapse(node) {
   if (!node) return;
   node.properties = node.properties || {};
-  node.properties[COLLAPSE_KEY] = !isCollapsed(node);
+  const goingToCollapse = !isCollapsed(node);
+
+  if (goingToCollapse) {
+    // Save expanded height before collapsing so it survives F5.
+    node.properties[SAVED_HEIGHT_KEY] = node.size?.[1] ?? node.__aun_cmp_userHeight;
+  } else {
+    // Save collapsed height before expanding so it survives F5.
+    node.properties[SAVED_HEIGHT_COLLAPSED_KEY] = node.size?.[1] ?? node.__aun_cmp_userHeight;
+  }
+
+  node.properties[COLLAPSE_KEY] = goingToCollapse;
   applyCollapseWidgets(node);
   refreshMeta(node);
+
+  if (!goingToCollapse) {
+    // Restore expanded height when un-collapsing.
+    const expandedH = node.properties[SAVED_HEIGHT_KEY] || node.computeSize()?.[1];
+    if (expandedH > 0) {
+      node.__aun_cmp_userHeight = expandedH;
+      node.size[1] = expandedH;
+    }
+    delete node.properties[SAVED_HEIGHT_COLLAPSED_KEY];
+  } else {
+    // Restore collapsed height when collapsing.
+    const collapsedH = node.properties[SAVED_HEIGHT_COLLAPSED_KEY];
+    if (typeof collapsedH === "number" && collapsedH > 0) {
+      node.__aun_cmp_userHeight = collapsedH;
+      node.size[1] = collapsedH;
+    }
+    delete node.properties[SAVED_HEIGHT_KEY];
+  }
+
   node.graph?.setDirtyCanvas(true, true);
 }
 
@@ -923,12 +956,22 @@ function startSliderVisibilityLoop() {
 }
 startSliderVisibilityLoop();
 
+const SAVED_HEIGHT_KEY = "__aun_cmp_saved_height";
+const SAVED_HEIGHT_COLLAPSED_KEY = "__aun_cmp_saved_height_collapsed";
+
 function applyCollapseHooks(node) {
   if (node.__aun_cmp_collapse_hooked) return;
 
-  // Floor for computeSize: the user-set height is never shrunk by toggling
-  // collapse (mirrors the AUNShowAnyMulti save-height approach).
-  if (typeof node.__aun_cmp_userHeight !== "number") {
+  // Restore persisted height from properties, falling back to current size.
+  node.properties = node.properties || {};
+  const collapsed = isCollapsed(node);
+  const savedKey = collapsed ? SAVED_HEIGHT_COLLAPSED_KEY : SAVED_HEIGHT_KEY;
+  const persistedH = node.properties[savedKey];
+  if (typeof persistedH === "number" && persistedH > 0) {
+    node.__aun_cmp_userHeight = persistedH;
+    // Apply immediately so the height is correct even before computeSize runs.
+    node.size[1] = persistedH;
+  } else {
     node.__aun_cmp_userHeight = node.size?.[1] ?? 0;
   }
 
@@ -955,13 +998,18 @@ function applyCollapseHooks(node) {
     return s;
   };
 
-  // Track the user-set (expanded) height so it survives collapse/expand.
+  // Track the user-set height and persist to properties (both expanded/collapsed).
   const origResize = node.onResize;
   node.onResize = function () {
     origResize?.apply(this, arguments);
-    if (!this.properties?.[COLLAPSE_KEY]) {
-      this.__aun_cmp_userHeight = this.size?.[1] ?? this.__aun_cmp_userHeight;
-    }
+    // Skip saving during configure phase to prevent layout resizes from
+    // overwriting the restored user height.
+    if (this.__aun_configuring) return;
+    this.__aun_cmp_userHeight = this.size?.[1] ?? this.__aun_cmp_userHeight;
+    const key = this.properties?.[COLLAPSE_KEY]
+      ? SAVED_HEIGHT_COLLAPSED_KEY
+      : SAVED_HEIGHT_KEY;
+    this.properties[key] = this.__aun_cmp_userHeight;
   };
 
   // The native collapse dot toggles flags.collapsed; keep the DOM overlay in sync.
@@ -979,8 +1027,19 @@ function applyCollapseHooks(node) {
   // pre-restore (non-collapsed) state. Re-apply once configure finishes.
   const origConfigure = node.onConfigure;
   node.onConfigure = function () {
+    // Flag to prevent onResize from overwriting restored height during layout.
+    this.__aun_configuring = true;
     origConfigure?.apply(this, arguments);
+    // Restore persisted height from properties based on collapsed state.
+    const collapsed = isCollapsed(this);
+    const savedKey = collapsed ? SAVED_HEIGHT_COLLAPSED_KEY : SAVED_HEIGHT_KEY;
+    const persistedH = this.properties?.[savedKey];
+    if (typeof persistedH === "number" && persistedH > 0) {
+      this.__aun_cmp_userHeight = persistedH;
+      this.size[1] = persistedH;
+    }
     applyCollapseWidgets(this);
+    this.__aun_configuring = false;
   };
 
   const origDblClick = node.onDblClick;

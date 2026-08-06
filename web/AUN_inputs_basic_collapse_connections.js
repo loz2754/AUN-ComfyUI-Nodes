@@ -38,12 +38,12 @@ function setupNode(node) {
   node.onDrawForeground = function (ctx) {
     if (origDrawFg) origDrawFg.apply(this, arguments);
     const c = !!this.properties?.[PK];
+    if (!c) return;
     for (const out of this.outputs || []) {
-      if (c) {
-        out.label = " ";
-      } else {
-        delete out.label;
+      if (!out.__aun_collapse_origLabel && out.label && out.label !== " ") {
+        out.__aun_collapse_origLabel = out.label;
       }
+      out.label = " ";
     }
   };
 
@@ -66,6 +66,14 @@ function setupNode(node) {
       return;
 
     this.properties[PK] = !this.properties[PK];
+    if (!this.properties[PK]) {
+      for (const out of this.outputs || []) {
+        if (out.__aun_collapse_origLabel != null) {
+          out.label = out.__aun_collapse_origLabel;
+          delete out.__aun_collapse_origLabel;
+        }
+      }
+    }
     this.setSize([this.size[0], this.computeSize()[1]]);
     this.graph?.setDirtyCanvas(true, true);
   };
@@ -78,6 +86,14 @@ function setupNode(node) {
       content: on ? "Show Connections" : "Collapse Connections",
       callback: () => {
         this.properties[PK] = !on;
+        if (!this.properties[PK]) {
+          for (const out of this.outputs || []) {
+            if (out.__aun_collapse_origLabel != null) {
+              out.label = out.__aun_collapse_origLabel;
+              delete out.__aun_collapse_origLabel;
+            }
+          }
+        }
         this.setSize([this.size[0], this.computeSize()[1]]);
         this.graph?.setDirtyCanvas(true, true);
       },

@@ -186,6 +186,16 @@ const applyCollapse = (node) => {
     }
   }
 
+  if (!collapsed) {
+    for (const slot of [...(node.inputs || []), ...(node.outputs || [])]) {
+      if (node.widgets?.length && slot.widget) continue;
+      if (slot.__aun_collapse_origLabel != null) {
+        slot.label = slot.__aun_collapse_origLabel;
+        delete slot.__aun_collapse_origLabel;
+      }
+    }
+  }
+
   const width = node.size?.[0] ?? 240;
   if (typeof node.computeSize === "function") {
     const computed = node.computeSize([width, 0]);
@@ -228,13 +238,13 @@ const setupCollapseOverrides = (node) => {
   node.onDrawForeground = function (ctx) {
     if (origDrawFg) origDrawFg.apply(this, arguments);
     const c = !!this.properties?.[PK];
+    if (!c) return;
     for (const slot of [...(this.inputs || []), ...(this.outputs || [])]) {
       if (this.widgets?.length && slot.widget) continue;
-      if (c) {
-        slot.label = " ";
-      } else {
-        delete slot.label;
+      if (!slot.__aun_collapse_origLabel && slot.label && slot.label !== " ") {
+        slot.__aun_collapse_origLabel = slot.label;
       }
+      slot.label = " ";
     }
   };
 };

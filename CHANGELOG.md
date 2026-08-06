@@ -11,6 +11,26 @@
 
 ### Notes
 
+## [2.13.1] - 2026-08-06
+
+### Added
+
+### Changed
+
+- Global Collapse Connections: renamed setting to "⚠ EXPERIMENTAL — Global collapse connections (compact socket lines)" with prominent warning about potential clashes with core nodes and third-party custom node packs.
+- Global Collapse Connections: README updated with experimental warning.
+
+### Fixed
+
+- Global Collapse Connections: slot labels no longer overwritten on every frame draw, which broke the built-in "Rename Slot" feature (right-click slot dot). Labels are now saved before hiding and correctly restored when uncollapsing.
+- Global Collapse Connections: feature is now fully inert when disabled — no hooks installed on any nodes, no labels modified, no double-click or context menu interference.
+- Global Collapse Connections: labels now correctly preserved across collapse/uncollapse toggles.
+- Collapse Connections (all variants): fixed the same label overwrite issue in AUN KSampler, AUN Save Image, AUN Manual/Auto Image Switch, and AUN Inputs Basic collapse extensions.
+
+### Notes
+
+- This is a patch release fixing regressions introduced by the global collapse connections feature in v2.13.0.
+
 ## [2.13.0] - 2026-08-06
 
 ### Added

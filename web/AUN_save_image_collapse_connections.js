@@ -4,6 +4,7 @@ import { applyWidgetHiddenState } from "./widgets.js";
 const TARGET_CLASSES = new Set(["AUNSaveImage", "AUNSaveImageV2"]);
 
 const PK = "collapse_connections";
+const SAVED_HEIGHT_KEY = "__aun_saved_height";
 
 const HIDE_WIDGETS = new Set([
   "steps", "cfg", "modelname", "sampler_name", "scheduler",
@@ -27,6 +28,15 @@ function toggle(node) {
   if (!node) return;
   node.properties = node.properties || {};
   node.properties[PK] = !node.properties[PK];
+  if (!node.properties[PK]) {
+    for (const slot of [...(node.inputs || []), ...(node.outputs || [])]) {
+      if (node.widgets?.length && slot.widget) continue;
+      if (slot.__aun_collapse_origLabel != null) {
+        slot.label = slot.__aun_collapse_origLabel;
+        delete slot.__aun_collapse_origLabel;
+      }
+    }
+  }
   applyWidgetVisibility(node);
   node.graph?.setDirtyCanvas(true, true);
 }
@@ -54,21 +64,30 @@ function setupNode(node) {
       if (this.properties?.[PK]) {
         return [out?.[0] ?? 240, 100];
       }
-      const s = origComputeSize(out);
-      return [s[0], 100];
+      return origComputeSize(out);
+    };
+
+    const origResize = node.onResize;
+    node.onResize = function () {
+      origResize?.apply(this, arguments);
+      // Skip saving during configure phase to prevent layout resizes from
+      // overwriting the restored user height.
+      if (!this.__aun_configuring) {
+        this.properties[SAVED_HEIGHT_KEY] = this.size?.[1] ?? 100;
+      }
     };
 
     const origDrawFg = node.onDrawForeground;
     node.onDrawForeground = function (ctx) {
       if (origDrawFg) origDrawFg.apply(this, arguments);
       const c = !!this.properties?.[PK];
+      if (!c) return;
       for (const slot of [...(this.inputs || []), ...(this.outputs || [])]) {
         if (this.widgets?.length && slot.widget) continue;
-        if (c) {
-          slot.label = " ";
-        } else {
-          delete slot.label;
+        if (!slot.__aun_collapse_origLabel && slot.label && slot.label !== " ") {
+          slot.__aun_collapse_origLabel = slot.label;
         }
+        slot.label = " ";
       }
     };
 
@@ -116,8 +135,16 @@ function setupNode(node) {
     node.__aun_cfg_hooked = true;
     const origConfigure = node.onConfigure;
     node.onConfigure = function () {
+      // Flag to prevent onResize from overwriting restored height during layout.
+      this.__aun_configuring = true;
       origConfigure?.apply(this, arguments);
       applyWidgetVisibility(this);
+      // Restore persisted height from properties after workflow load.
+      const savedH = this.properties?.[SAVED_HEIGHT_KEY];
+      if (typeof savedH === "number" && savedH > 0) {
+        this.size[1] = savedH;
+      }
+      this.__aun_configuring = false;
     };
   }
 }

@@ -17,7 +17,11 @@ function shouldSkip(node) {
     node.__aun_cmp_collapse_hooked ||
     node.__aun_collapse_setup_done ||
     node.__AUN_compactInit ||
-    node.__AUN_stackInit
+    node.__AUN_stackInit ||
+    node.comfyClass === "AUNShowAnyMulti" ||
+    node.comfyClass === "AUNPassthroughAnyMulti" ||
+    node.comfyClass === "AUNImageSliderComparer" ||
+    node.comfyClass === "AUNAddToPromptMulti"
   );
 }
 
@@ -32,6 +36,16 @@ function applyCollapseState(node) {
   const origGetInputPos = node.__aun_gc_origGetInputPos;
   const origComputeSize = node.__aun_gc_origComputeSize;
   const origDrawFg = node.__aun_gc_origDrawFg;
+
+  if (!globalDefault) {
+    // Feature is off – restore original functions so the node behaves as
+    // though this extension never touched it.
+    node.getOutputPos = origGetOutputPos;
+    node.getInputPos = origGetInputPos;
+    node.computeSize = origComputeSize;
+    node.onDrawForeground = origDrawFg;
+    return;
+  }
 
   node.getOutputPos = function (index) {
     return isCollapsed(this) ? origGetOutputPos(0) : origGetOutputPos(index);
@@ -57,13 +71,14 @@ function applyCollapseState(node) {
   node.onDrawForeground = function (ctx) {
     if (origDrawFg) origDrawFg.apply(this, arguments);
     const c = isCollapsed(this);
+    if (!c) return;
     for (const slot of [...(this.inputs || []), ...(this.outputs || [])]) {
       if (isWidgetLinked(this, slot)) continue;
-      if (c) {
-        slot.label = " ";
-      } else {
-        delete slot.label;
+      // Save original label before hiding, then set to space.
+      if (!slot.__aun_gc_origLabel && slot.label && slot.label !== " ") {
+        slot.__aun_gc_origLabel = slot.label;
       }
+      slot.label = " ";
     }
   };
 }
@@ -84,6 +99,14 @@ function toggleNodeCollapse(node) {
     const h = node.computeSize()[1];
     node.setSize([node.size[0], h]);
   } else {
+    // Restore slot labels that were hidden during collapse.
+    for (const slot of [...(node.inputs || []), ...(node.outputs || [])]) {
+      if (isWidgetLinked(node, slot)) continue;
+      if (slot.__aun_gc_origLabel != null) {
+        slot.label = slot.__aun_gc_origLabel;
+        delete slot.__aun_gc_origLabel;
+      }
+    }
     const expandedH = node.properties[USER_HEIGHT_KEY] || node.computeSize()[1];
     node.setSize([node.size[0], expandedH]);
     delete node.properties[USER_HEIGHT_KEY];
@@ -93,6 +116,7 @@ function toggleNodeCollapse(node) {
 
 function hookNode(node) {
   if (!node || node.__aun_global_collapse_hooked) return;
+  if (!globalDefault) return;
   if (shouldSkip(node)) return;
 
   node.properties = node.properties || {};
@@ -162,6 +186,12 @@ function cleanupAllNodes(graph) {
       node.properties[PK] = false;
       applyCollapseState(node);
     }
+    // Restore original functions so the node behaves as though this
+    // extension never touched it.
+    if (node.__aun_gc_origGetOutputPos) node.getOutputPos = node.__aun_gc_origGetOutputPos;
+    if (node.__aun_gc_origGetInputPos) node.getInputPos = node.__aun_gc_origGetInputPos;
+    if (node.__aun_gc_origComputeSize) node.computeSize = node.__aun_gc_origComputeSize;
+    if (node.__aun_gc_origDrawFg != null) node.onDrawForeground = node.__aun_gc_origDrawFg;
   }
   forceGraphRedraw(app);
 }
@@ -173,14 +203,28 @@ app.registerExtension({
   async setup() {
     app.ui.settings.addSetting({
       id: SETTING_ID,
-      name: "Global collapse connections (compact socket lines)",
+      name: "⚠ EXPERIMENTAL — Global collapse connections (compact socket lines)",
       tooltip:
-        "Enable double-click or right-click to collapse socket lines on non-AUN nodes. AUN nodes with their own Collapse Connections or Compact Mode are unaffected.",
+        "EXPERIMENTAL: May cause issues with core ComfyUI nodes or other custom node packs. " +
+        "Enables double-click or right-click to collapse socket lines on non-AUN nodes. " +
+        "AUN nodes with their own Collapse Connections or Compact Mode are unaffected. " +
+        "If you experience unexpected behaviour, disable this setting immediately.",
       type: "boolean",
       defaultValue: false,
       onChange: (value) => {
         globalDefault = !!value;
-        if (!globalDefault) cleanupAllNodes(app.graph);
+        if (globalDefault) {
+          // Feature just enabled – hook every existing node that hasn't been
+          // hooked yet so nodes created while the setting was off get covered.
+          if (app.graph?._nodes) {
+            for (const node of app.graph._nodes) {
+              hookNode(node);
+              applyCollapseState(node);
+            }
+          }
+        } else {
+          cleanupAllNodes(app.graph);
+        }
       },
     });
   },

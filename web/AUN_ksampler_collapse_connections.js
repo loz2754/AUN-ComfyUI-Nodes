@@ -41,13 +41,13 @@ function setupNode(node) {
   node.onDrawForeground = function (ctx) {
     if (origDrawFg) origDrawFg.apply(this, arguments);
     const c = !!this.properties?.[PK];
+    if (!c) return;
     for (const slot of [...(this.inputs || []), ...(this.outputs || [])]) {
       if (this.widgets?.length && slot.widget) continue;
-      if (c) {
-        slot.label = " ";
-      } else {
-        delete slot.label;
+      if (!slot.__aun_collapse_origLabel && slot.label && slot.label !== " ") {
+        slot.__aun_collapse_origLabel = slot.label;
       }
+      slot.label = " ";
     }
   };
 
@@ -70,6 +70,15 @@ function setupNode(node) {
       return;
 
     this.properties[PK] = !this.properties[PK];
+    if (!this.properties[PK]) {
+      for (const slot of [...(this.inputs || []), ...(this.outputs || [])]) {
+        if (this.widgets?.length && slot.widget) continue;
+        if (slot.__aun_collapse_origLabel != null) {
+          slot.label = slot.__aun_collapse_origLabel;
+          delete slot.__aun_collapse_origLabel;
+        }
+      }
+    }
     this.setSize([this.size[0], this.computeSize()[1]]);
     this.graph?.setDirtyCanvas(true, true);
   };
@@ -82,6 +91,15 @@ function setupNode(node) {
       content: on ? "Show Connections" : "Collapse Connections",
       callback: () => {
         this.properties[PK] = !on;
+        if (!this.properties[PK]) {
+          for (const slot of [...(this.inputs || []), ...(this.outputs || [])]) {
+            if (this.widgets?.length && slot.widget) continue;
+            if (slot.__aun_collapse_origLabel != null) {
+              slot.label = slot.__aun_collapse_origLabel;
+              delete slot.__aun_collapse_origLabel;
+            }
+          }
+        }
         this.setSize([this.size[0], this.computeSize()[1]]);
         this.graph?.setDirtyCanvas(true, true);
       },
