@@ -189,9 +189,12 @@ const applyCollapse = (node) => {
   if (!collapsed) {
     for (const slot of [...(node.inputs || []), ...(node.outputs || [])]) {
       if (node.widgets?.length && slot.widget) continue;
-      if (slot.__aun_collapse_origLabel != null) {
-        slot.label = slot.__aun_collapse_origLabel;
+      if ('__aun_collapse_origLabel' in slot) {
+        delete slot.label;
         delete slot.__aun_collapse_origLabel;
+      }
+      if (slot.label === " ") {
+        delete slot.label;
       }
     }
   }
@@ -238,10 +241,19 @@ const setupCollapseOverrides = (node) => {
   node.onDrawForeground = function (ctx) {
     if (origDrawFg) origDrawFg.apply(this, arguments);
     const c = !!this.properties?.[PK];
-    if (!c) return;
     for (const slot of [...(this.inputs || []), ...(this.outputs || [])]) {
       if (this.widgets?.length && slot.widget) continue;
-      if (!slot.__aun_collapse_origLabel && slot.label && slot.label !== " ") {
+      if (!c) {
+        if ('__aun_collapse_origLabel' in slot) {
+          delete slot.label;
+          delete slot.__aun_collapse_origLabel;
+        }
+        if (slot.label === " ") {
+          delete slot.label;
+        }
+        continue;
+      }
+      if (!('__aun_collapse_origLabel' in slot)) {
         slot.__aun_collapse_origLabel = slot.label;
       }
       slot.label = " ";

@@ -71,11 +71,23 @@ function applyCollapseState(node) {
   node.onDrawForeground = function (ctx) {
     if (origDrawFg) origDrawFg.apply(this, arguments);
     const c = isCollapsed(this);
-    if (!c) return;
     for (const slot of [...(this.inputs || []), ...(this.outputs || [])]) {
       if (isWidgetLinked(this, slot)) continue;
-      // Save original label before hiding, then set to space.
-      if (!slot.__aun_gc_origLabel && slot.label && slot.label !== " ") {
+      if (!c) {
+        if ('__aun_gc_origLabel' in slot) {
+          delete slot.label;
+          delete slot.__aun_gc_origLabel;
+        }
+        if ('__aun_collapse_origLabel' in slot) {
+          delete slot.label;
+          delete slot.__aun_collapse_origLabel;
+        }
+        if (slot.label === " ") {
+          delete slot.label;
+        }
+        continue;
+      }
+      if (!('__aun_gc_origLabel' in slot)) {
         slot.__aun_gc_origLabel = slot.label;
       }
       slot.label = " ";
@@ -102,9 +114,16 @@ function toggleNodeCollapse(node) {
     // Restore slot labels that were hidden during collapse.
     for (const slot of [...(node.inputs || []), ...(node.outputs || [])]) {
       if (isWidgetLinked(node, slot)) continue;
-      if (slot.__aun_gc_origLabel != null) {
-        slot.label = slot.__aun_gc_origLabel;
+      if ('__aun_gc_origLabel' in slot) {
+        delete slot.label;
         delete slot.__aun_gc_origLabel;
+      }
+      if ('__aun_collapse_origLabel' in slot) {
+        delete slot.label;
+        delete slot.__aun_collapse_origLabel;
+      }
+      if (slot.label === " ") {
+        delete slot.label;
       }
     }
     const expandedH = node.properties[USER_HEIGHT_KEY] || node.computeSize()[1];
@@ -185,6 +204,21 @@ function cleanupAllNodes(graph) {
     if (node.properties?.[PK]) {
       node.properties[PK] = false;
       applyCollapseState(node);
+    }
+    // Restore slot labels before restoring original onDrawForeground.
+    for (const slot of [...(node.inputs || []), ...(node.outputs || [])]) {
+      if (isWidgetLinked(node, slot)) continue;
+      if ('__aun_gc_origLabel' in slot) {
+        delete slot.label;
+        delete slot.__aun_gc_origLabel;
+      }
+      if ('__aun_collapse_origLabel' in slot) {
+        delete slot.label;
+        delete slot.__aun_collapse_origLabel;
+      }
+      if (slot.label === " ") {
+        delete slot.label;
+      }
     }
     // Restore original functions so the node behaves as though this
     // extension never touched it.

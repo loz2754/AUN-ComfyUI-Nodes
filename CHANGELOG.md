@@ -11,6 +11,18 @@
 
 ### Notes
 
+## [2.13.2] - 2026-08-06
+
+### Added
+
+### Changed
+
+### Fixed
+
+- Slot labels appearing blank after restart on KSampler v3, Inputs Basic, Manual Auto Image Switch, Save Image, and Global Collapse nodes. Root cause: label save used truthy check (`slot.label &&`) which failed when `slot.label` was `undefined` (slots using `slot.name` for display), and restore tried to set the saved value instead of deleting the override to fall back to `slot.name`.
+
+### Notes
+
 ## [2.13.1] - 2026-08-06
 
 ### Added

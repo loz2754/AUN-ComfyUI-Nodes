@@ -38,9 +38,18 @@ function setupNode(node) {
   node.onDrawForeground = function (ctx) {
     if (origDrawFg) origDrawFg.apply(this, arguments);
     const c = !!this.properties?.[PK];
-    if (!c) return;
     for (const out of this.outputs || []) {
-      if (!out.__aun_collapse_origLabel && out.label && out.label !== " ") {
+      if (!c) {
+        if ('__aun_collapse_origLabel' in out) {
+          delete out.label;
+          delete out.__aun_collapse_origLabel;
+        }
+        if (out.label === " ") {
+          delete out.label;
+        }
+        continue;
+      }
+      if (!('__aun_collapse_origLabel' in out)) {
         out.__aun_collapse_origLabel = out.label;
       }
       out.label = " ";
@@ -68,9 +77,12 @@ function setupNode(node) {
     this.properties[PK] = !this.properties[PK];
     if (!this.properties[PK]) {
       for (const out of this.outputs || []) {
-        if (out.__aun_collapse_origLabel != null) {
-          out.label = out.__aun_collapse_origLabel;
+        if ('__aun_collapse_origLabel' in out) {
+          delete out.label;
           delete out.__aun_collapse_origLabel;
+        }
+        if (out.label === " ") {
+          delete out.label;
         }
       }
     }
@@ -88,9 +100,12 @@ function setupNode(node) {
         this.properties[PK] = !on;
         if (!this.properties[PK]) {
           for (const out of this.outputs || []) {
-            if (out.__aun_collapse_origLabel != null) {
-              out.label = out.__aun_collapse_origLabel;
+            if ('__aun_collapse_origLabel' in out) {
+              delete out.label;
               delete out.__aun_collapse_origLabel;
+            }
+            if (out.label === " ") {
+              delete out.label;
             }
           }
         }
