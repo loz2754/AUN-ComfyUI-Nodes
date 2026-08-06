@@ -9,7 +9,18 @@
 
 ### Fixed
 
+### Notes
+
+## [2.13.3] - 2026-08-06
+
+### Added
+
+### Changed
+
+### Fixed
+
 - Image slider comparer height regression: collapse/expand no longer restores height correctly after manual resize decrease was enabled. Added resize-handle drag detection (`__aun_cmp_resizing` flag) so `computeSize` skips the `Math.max(userH)` guard only during active drags, allowing decrease while preserving collapse/expand restoration.
+- Resize detection now uses correct LiteGraph properties (`node_over` instead of `node_under_mouse`, `resizing_node` as fallback).
 
 ### Notes
 
