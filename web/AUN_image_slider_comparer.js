@@ -961,43 +961,46 @@ startSliderVisibilityLoop();
 // Without this, computeSize enforces the old userH as a minimum during the
 // drag, preventing the user from shrinking the node below its previous height.
 (function setupResizeDetection() {
-  const RESIZE_HANDLE_PX = 8;
+  const RESIZE_HANDLE_PX = 10;
   let attached = false;
+  function getCanvasPos(e) {
+    const c = app?.canvas;
+    if (!c?.canvas || !c.ds) return null;
+    const rect = c.canvas.getBoundingClientRect();
+    const ds = c.ds;
+    return {
+      x: (e.clientX - rect.left) / ds.scale - ds.offset[0],
+      y: (e.clientY - rect.top) / ds.scale - ds.offset[1],
+    };
+  }
   function onPointerDown(e) {
     const c = app?.canvas;
-    if (!c) return;
-    if (e.button !== 0) return;
-    const ds = c.ds;
-    if (!ds) return;
-    const node = c.node_under_mouse;
+    if (!c || e.button !== 0) return;
+    const pos = getCanvasPos(e);
+    if (!pos) return;
+    // node_over is set by LiteGraph during mousemove, available on click.
+    const node = c.node_over;
     if (!node || node.__aun_cmp_userHeight == null) return;
-    const rect = c.canvas.getBoundingClientRect();
-    const mx = (e.clientX - rect.left) / ds.scale - ds.offset[0];
-    const my = (e.clientY - rect.top) / ds.scale - ds.offset[1];
     const nx = node.pos[0];
     const ny = node.pos[1];
     const nw = node.size?.[0] ?? 200;
     const nh = node.size?.[1] ?? 100;
+    // LiteGraph resize handle: 10×10 px square at bottom-right corner.
     if (
-      mx >= nx &&
-      mx <= nx + nw &&
-      my >= ny + nh - RESIZE_HANDLE_PX &&
-      my <= ny + nh
+      pos.x >= nx + nw - RESIZE_HANDLE_PX &&
+      pos.x <= nx + nw &&
+      pos.y >= ny + nh - RESIZE_HANDLE_PX &&
+      pos.y <= ny + nh
     ) {
       node.__aun_cmp_resizing = true;
     }
   }
-  function onPointerUp(e) {
+  function onPointerUp() {
     const c = app?.canvas;
     if (!c) return;
-    const node = c.node_under_mouse;
-    if (node?.__aun_cmp_resizing) node.__aun_cmp_resizing = false;
-  }
-  function onPointerLeave() {
-    const c = app?.canvas;
-    if (!c) return;
-    for (const node of c.graph?.nodes ?? []) {
-      if (node.__aun_cmp_resizing) node.__aun_cmp_resizing = false;
+    // Clear all nodes — the pointer may have moved off the original node.
+    for (const n of c.graph?.nodes ?? []) {
+      if (n.__aun_cmp_resizing) n.__aun_cmp_resizing = false;
     }
   }
   function tryAttach() {
@@ -1006,10 +1009,8 @@ startSliderVisibilityLoop();
     if (!canvas) return;
     canvas.addEventListener("pointerdown", onPointerDown);
     canvas.addEventListener("pointerup", onPointerUp);
-    canvas.addEventListener("pointerleave", onPointerLeave);
     attached = true;
   }
-  // Try immediately, then poll until the canvas is available.
   tryAttach();
   if (!attached) {
     const poll = setInterval(() => {
@@ -1060,7 +1061,9 @@ function applyCollapseHooks(node) {
       // decrease the height freely.  After the drag ends, the new height
       // is persisted by onResize and Math.max resumes protecting it from
       // LiteGraph's computeSize auto-shrink on subsequent layout passes.
-      if (userH > 0 && !this.__aun_cmp_resizing) s[1] = Math.max(s[1], userH);
+      // Check both our flag and LiteGraph's resizing_node for robustness.
+      const resizing = this.__aun_cmp_resizing || app?.canvas?.resizing_node === this;
+      if (userH > 0 && !resizing) s[1] = Math.max(s[1], userH);
     }
     return s;
   };
