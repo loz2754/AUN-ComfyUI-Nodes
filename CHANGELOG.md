@@ -11,6 +11,18 @@
 
 ### Notes
 
+## [2.13.0] - 2026-08-06
+
+### Added
+
+- Global Collapse Connections: a ComfyUI setting (Settings → AUN) that enables per-node collapse connections on any non-AUN node via double-click or right-click menu. AUN nodes with their own Collapse Connections or Compact Mode are excluded. Persists across F5 and tab switches. User-set node sizes are preserved.
+
+### Changed
+
+### Fixed
+
+### Notes
+
 ## [2.12.1] - 2026-08-05
 
 ### Added

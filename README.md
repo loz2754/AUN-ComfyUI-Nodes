@@ -385,6 +385,16 @@ AUN Inputs nodes (`AUNInputs`, `AUNInputsBasic`, `AUNInputsRefine`, `AUNInputsRe
 | Prompts Showcase | [![Prompts expanded](docs/example_workflows/AUNExampleWF-Prompts-NotCollapsed.png)](docs/example_workflows/AUNExampleWF-Prompts-NotCollapsed.png) | [![Prompts collapsed](docs/example_workflows/AUNExampleWF-Prompts.png)](docs/example_workflows/AUNExampleWF-Prompts.png) |
 | Image Slider Comparer | [![ImageSliderComparer expanded](docs/example_workflows/AUNExampleWF-ImageSliderComparer.png)](docs/example_workflows/AUNExampleWF-ImageSliderComparer.png) | [![ImageSliderComparer collapsed](docs/example_workflows/AUNExampleWF-ImageSliderComparer-Collapsed.png)](docs/example_workflows/AUNExampleWF-ImageSliderComparer-Collapsed.png) |
 
+#### Global Collapse Connections (Non-AUN Nodes)
+
+The same collapse connections behavior can be applied to **any non-AUN node** in your workflow via a ComfyUI setting.
+
+**Enable**: Settings → AUN → "Global collapse connections (compact socket lines)"
+
+**Use**: Once enabled, double-click any non-AUN node body or right-click and select "Collapse Connections" / "Show Connections" to toggle per-node. User-set node sizes are preserved across toggles and browser refreshes.
+
+**Scope**: AUN nodes that have their own Collapse Connections or Compact Mode implementations are unaffected — the setting only applies to nodes outside the AUN collection.
+
 <a id="cat-getting-started"></a>
 
 ## 🚀 **Getting Started**
