@@ -992,8 +992,6 @@ function applyCollapseHooks(node) {
         const rows = Math.max(ni, no);
         s[1] -= Math.max(0, rows - 1) * LiteGraph.NODE_SLOT_HEIGHT;
       }
-      const userH = this.__aun_cmp_userHeight;
-      if (userH > 0) s[1] = Math.max(s[1], userH);
     }
     return s;
   };
