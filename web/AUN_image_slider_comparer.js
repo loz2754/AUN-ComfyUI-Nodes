@@ -956,6 +956,69 @@ function startSliderVisibilityLoop() {
 }
 startSliderVisibilityLoop();
 
+// Detect resize-handle drags on the LiteGraph canvas so that computeSize
+// can skip the Math.max(userH) guard while the user is actively dragging.
+// Without this, computeSize enforces the old userH as a minimum during the
+// drag, preventing the user from shrinking the node below its previous height.
+(function setupResizeDetection() {
+  const RESIZE_HANDLE_PX = 8;
+  let attached = false;
+  function onPointerDown(e) {
+    const c = app?.canvas;
+    if (!c) return;
+    if (e.button !== 0) return;
+    const ds = c.ds;
+    if (!ds) return;
+    const node = c.node_under_mouse;
+    if (!node || node.__aun_cmp_userHeight == null) return;
+    const rect = c.canvas.getBoundingClientRect();
+    const mx = (e.clientX - rect.left) / ds.scale - ds.offset[0];
+    const my = (e.clientY - rect.top) / ds.scale - ds.offset[1];
+    const nx = node.pos[0];
+    const ny = node.pos[1];
+    const nw = node.size?.[0] ?? 200;
+    const nh = node.size?.[1] ?? 100;
+    if (
+      mx >= nx &&
+      mx <= nx + nw &&
+      my >= ny + nh - RESIZE_HANDLE_PX &&
+      my <= ny + nh
+    ) {
+      node.__aun_cmp_resizing = true;
+    }
+  }
+  function onPointerUp(e) {
+    const c = app?.canvas;
+    if (!c) return;
+    const node = c.node_under_mouse;
+    if (node?.__aun_cmp_resizing) node.__aun_cmp_resizing = false;
+  }
+  function onPointerLeave() {
+    const c = app?.canvas;
+    if (!c) return;
+    for (const node of c.graph?.nodes ?? []) {
+      if (node.__aun_cmp_resizing) node.__aun_cmp_resizing = false;
+    }
+  }
+  function tryAttach() {
+    if (attached) return;
+    const canvas = app?.canvas?.canvas;
+    if (!canvas) return;
+    canvas.addEventListener("pointerdown", onPointerDown);
+    canvas.addEventListener("pointerup", onPointerUp);
+    canvas.addEventListener("pointerleave", onPointerLeave);
+    attached = true;
+  }
+  // Try immediately, then poll until the canvas is available.
+  tryAttach();
+  if (!attached) {
+    const poll = setInterval(() => {
+      tryAttach();
+      if (attached) clearInterval(poll);
+    }, 200);
+  }
+})();
+
 const SAVED_HEIGHT_KEY = "__aun_cmp_saved_height";
 const SAVED_HEIGHT_COLLAPSED_KEY = "__aun_cmp_saved_height_collapsed";
 
@@ -992,6 +1055,12 @@ function applyCollapseHooks(node) {
         const rows = Math.max(ni, no);
         s[1] -= Math.max(0, rows - 1) * LiteGraph.NODE_SLOT_HEIGHT;
       }
+      const userH = this.__aun_cmp_userHeight;
+      // Skip height enforcement during active resize drag so the user can
+      // decrease the height freely.  After the drag ends, the new height
+      // is persisted by onResize and Math.max resumes protecting it from
+      // LiteGraph's computeSize auto-shrink on subsequent layout passes.
+      if (userH > 0 && !this.__aun_cmp_resizing) s[1] = Math.max(s[1], userH);
     }
     return s;
   };
