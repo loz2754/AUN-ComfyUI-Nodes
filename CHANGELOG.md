@@ -11,6 +11,24 @@
 
 ### Notes
 
+## [2.13.4] - 2026-08-07
+
+### Added
+
+- Collapse connections support for LoRA nodes: `AUNRandomLoraModelOnly`, `AUNRandomLoraModelOnlyMulti`, `AUNLoRAsByPromptIndex`, `AUNLoraStackWithTriggers`, `AUNLoraStackWithTriggersModelClip`
+- Collapse connections support for Universal controller nodes: `AUNMultiUniversal` (Node Controller), `AUNMultiGroupUniversal` (Group Controller)
+- Right-click menu entry "Collapse Connections" / "Show Connections" on supported nodes (independent of compact mode)
+
+### Changed
+
+### Fixed
+
+### Notes
+
+- Collapse connections is a per-node toggle via right-click menu only (not double-click)
+- Same property key `collapse_connections` used across all supported nodes
+- Supported nodes excluded from global collapse extension via SKIP_CLASSES
+
 ## [2.13.3] - 2026-08-06
 
 ### Added
