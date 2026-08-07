@@ -3,26 +3,34 @@ import { forceGraphRedraw } from "./index.js";
 
 const PK = "collapse_connections";
 const SETTING_ID = "AUN.CollapseConnections.Enabled";
+const SKIP_SETTING_ID = "AUN.CollapseConnections.SkipClasses";
 const USER_HEIGHT_KEY = "__aun_gc_userHeight";
 
+const SKIP_CLASSES = new Set([
+  "AUNInputs", "AUNInputsBasic", "AUNInputsRefine", "AUNInputsRefineBasic",
+  "AUNInputsDiffusers", "AUNInputsDiffusersBasic", "AUNInputsDiffusersRefineBasic",
+  "AUNInputsHybrid",
+  "AUNKSamplerPlusV2", "AUNKSamplerPlusv3", "AUNKSamplerPlusv4",
+  "AUNSaveImage", "AUNSaveImageV2",
+  "AUNShowAnyMulti", "AUNPassthroughAnyMulti",
+  "AUNImageSliderComparer", "AUNAddToPromptMulti",
+  "AUNManualAutoImageSwitch",
+  "AUNWildcardAddToPrompt",
+  "AUNLoraStackWithTriggers", "AUNLoraStackWithTriggersModelClip", "AUNLoRAsByPromptIndex", "AUNRandomLoraModelOnly", "AUNRandomLoraModelOnlyMulti",
+  "AUNMultiGroupUniversal", "AUNMultiUniversal",
+  "AUNMultiMuteIndex", "AUNMultiBypassIndex",
+  "AUNTextIndexSwitch4", "AUNTextIndexSwitch3", "AUNTextIndexSwitch", "AUNRandomTextIndexSwitch", "AUNRandomTextIndexSwitchV2",
+]);
+
 let globalDefault = false;
+let userSkipClasses = new Set();
 
 function isWidgetLinked(node, slot) {
   return !!(node.widgets?.length && slot.widget);
 }
 
 function shouldSkip(node) {
-  return (
-    node.__aun_collapse_hooked ||
-    node.__aun_cmp_collapse_hooked ||
-    node.__aun_collapse_setup_done ||
-    node.__AUN_compactInit ||
-    node.__AUN_stackInit ||
-    node.comfyClass === "AUNShowAnyMulti" ||
-    node.comfyClass === "AUNPassthroughAnyMulti" ||
-    node.comfyClass === "AUNImageSliderComparer" ||
-    node.comfyClass === "AUNAddToPromptMulti"
-  );
+  return SKIP_CLASSES.has(node.comfyClass) || userSkipClasses.has(node.comfyClass);
 }
 
 function isCollapsed(node) {
@@ -235,6 +243,31 @@ app.registerExtension({
   nodeCreated: (node) => hookNode(node),
   loadedGraphNode: (node) => hookNode(node),
   async setup() {
+    const skipSetting = app.ui.settings.addSetting({
+      id: SKIP_SETTING_ID,
+      name: "Collapse connections: extra node classes to skip",
+      tooltip:
+        "Comma-separated node class names to exclude from collapse connections (e.g. MyCustomNode, AnotherNode).",
+      type: (name, setter, value) => {
+        const el = document.createElement("textarea");
+        el.value = value || "";
+        el.rows = 4;
+        el.style.width = "100%";
+        el.placeholder = "e.g. MyCustomNode, AnotherNode";
+        el.addEventListener("change", () => setter(el.value));
+        return el;
+      },
+      defaultValue: "",
+      onChange: (value) => {
+        userSkipClasses = new Set(
+          (value || "").split(",").map((s) => s.trim()).filter(Boolean)
+        );
+      },
+    });
+    userSkipClasses = new Set(
+      (skipSetting.value || "").split(",").map((s) => s.trim()).filter(Boolean)
+    );
+
     app.ui.settings.addSetting({
       id: SETTING_ID,
       name: "⚠ EXPERIMENTAL — Global collapse connections (compact socket lines)",

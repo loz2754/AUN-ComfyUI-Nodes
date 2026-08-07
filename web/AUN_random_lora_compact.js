@@ -826,6 +826,15 @@ function setupNode(node) {
         applyCompact(this);
       },
     });
+    const ccOn = this.properties?.collapse_connections === true;
+    options.push({
+      content: ccOn ? "Show Connections" : "Collapse Connections",
+      callback: () => {
+        this.properties = this.properties || {};
+        this.properties.collapse_connections = !ccOn;
+        this.graph?.setDirtyCanvas(true, true);
+      },
+    });
   };
 
   const originalOnResize = node.onResize;
@@ -951,6 +960,48 @@ function setupNode(node) {
     hookWidgetRedraw(node, `lora_${i}`);
   }
   startSelectLiveMonitor(node);
+
+  // --- Collapse Connections (independent of compact mode) ---
+  const isWidgetLinked = (nd, slot) => !!(nd.widgets?.length && slot.widget);
+  const isCCollapsed = (nd) => nd.properties?.collapse_connections === true;
+
+  const ccOrigGetOutputPos = node.getOutputPos.bind(node);
+  node.getOutputPos = function getOutputPos(index) {
+    return isCCollapsed(this) ? ccOrigGetOutputPos(0) : ccOrigGetOutputPos(index);
+  };
+
+  const ccOrigGetInputPos = node.getInputPos.bind(node);
+  node.getInputPos = function getInputPos(index) {
+    return isCCollapsed(this) ? ccOrigGetInputPos(0) : ccOrigGetInputPos(index);
+  };
+
+  const ccOrigDrawFg = node.onDrawForeground;
+  node.onDrawForeground = function onDrawForeground(ctx) {
+    if (ccOrigDrawFg) ccOrigDrawFg.apply(this, arguments);
+    const c = isCCollapsed(this);
+    for (const slot of [...(this.inputs || []), ...(this.outputs || [])]) {
+      if (isWidgetLinked(this, slot)) continue;
+      if (c) {
+        if (!("___ccOrigLabel" in slot)) slot.___ccOrigLabel = slot.label;
+        slot.label = " ";
+      } else if ("___ccOrigLabel" in slot) {
+        slot.label = slot.___ccOrigLabel;
+        delete slot.___ccOrigLabel;
+      }
+    }
+  };
+
+  const ccOrigConfigure = node.onConfigure;
+  node.onConfigure = function onConfigure(...args) {
+    if (ccOrigConfigure) ccOrigConfigure.apply(this, args);
+    if (isCCollapsed(this)) {
+      for (const slot of [...(this.inputs || []), ...(this.outputs || [])]) {
+        if (isWidgetLinked(this, slot)) continue;
+        if (!("___ccOrigLabel" in slot)) slot.___ccOrigLabel = slot.label;
+        slot.label = " ";
+      }
+    }
+  };
 
   applyCompact(node);
 }

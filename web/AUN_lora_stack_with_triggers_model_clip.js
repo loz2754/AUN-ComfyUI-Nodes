@@ -1765,6 +1765,67 @@ app.registerExtension({
       ctx.fill();
       ctx.restore();
     };
+
+    // --- Collapse Connections (independent of compact mode) ---
+    const COLLAPSE_KEY = "collapse_connections";
+    const isWidgetLinked = (node, slot) => !!(node.widgets?.length && slot.widget);
+    const isCCollapsed = (node) => node.properties?.[COLLAPSE_KEY] === true;
+
+    const ccOrigGetOutputPos = nodeType.prototype.getOutputPos;
+    nodeType.prototype.getOutputPos = function getOutputPos(index) {
+      if (isCCollapsed(this)) return ccOrigGetOutputPos.call(this, 0);
+      return ccOrigGetOutputPos.call(this, index);
+    };
+
+    const ccOrigGetInputPos = nodeType.prototype.getInputPos;
+    nodeType.prototype.getInputPos = function getInputPos(index) {
+      if (isCCollapsed(this)) return ccOrigGetInputPos.call(this, 0);
+      return ccOrigGetInputPos.call(this, index);
+    };
+
+    const ccOrigDrawFg = nodeType.prototype.onDrawForeground;
+    nodeType.prototype.onDrawForeground = function onDrawForeground(ctx) {
+      ccOrigDrawFg?.apply(this, arguments);
+      const c = isCCollapsed(this);
+      for (const slot of [...(this.inputs || []), ...(this.outputs || [])]) {
+        if (isWidgetLinked(this, slot)) continue;
+        if (c) {
+          if (!("___ccOrigLabel" in slot)) slot.___ccOrigLabel = slot.label;
+          slot.label = " ";
+        } else if ("___ccOrigLabel" in slot) {
+          slot.label = slot.___ccOrigLabel;
+          delete slot.___ccOrigLabel;
+        }
+      }
+    };
+
+    const ccOrigMenu = nodeType.prototype.getExtraMenuOptions;
+    nodeType.prototype.getExtraMenuOptions = function getExtraMenuOptions(
+      graphcanvas,
+      options,
+    ) {
+      ccOrigMenu?.apply(this, arguments);
+      options.push({
+        content: isCCollapsed(this) ? "Show Connections" : "Collapse Connections",
+        callback: () => {
+          this.properties = this.properties || {};
+          this.properties[COLLAPSE_KEY] = !isCCollapsed(this);
+          this.graph?.setDirtyCanvas(true, true);
+        },
+      });
+    };
+
+    const ccOrigConfigure = nodeType.prototype.onConfigure;
+    nodeType.prototype.onConfigure = function onConfigure(...args) {
+      ccOrigConfigure?.apply(this, args);
+      if (isCCollapsed(this)) {
+        for (const slot of [...(this.inputs || []), ...(this.outputs || [])]) {
+          if (isWidgetLinked(this, slot)) continue;
+          if (!("___ccOrigLabel" in slot)) slot.___ccOrigLabel = slot.label;
+          slot.label = " ";
+        }
+      }
+    };
   },
 
   nodeCreated(node) {

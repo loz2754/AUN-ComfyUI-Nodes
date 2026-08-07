@@ -2269,6 +2269,57 @@ const extendNodePrototype = (nodeType, nodeData) => {
       content: compact ? "AUN: Show all controls" : "AUN: Compact mode",
       callback: () => this.__AUN_toggleCompactMode?.(!compact, { force: true }),
     });
+    const ccOn = this.properties?.collapse_connections === true;
+    options.push({
+      content: ccOn ? "Show Connections" : "Collapse Connections",
+      callback: () => {
+        this.properties = this.properties || {};
+        this.properties.collapse_connections = !ccOn;
+        this.graph?.setDirtyCanvas(true, true);
+      },
+    });
+  };
+
+  // --- Collapse Connections (independent of compact mode) ---
+  const COLLAPSE_KEY = "collapse_connections";
+  const isCCollapsed = (node) => node.properties?.[COLLAPSE_KEY] === true;
+
+  const ccOrigGetOutputPos = nodeType.prototype.getOutputPos;
+  nodeType.prototype.getOutputPos = function getOutputPos(index) {
+    if (isCCollapsed(this)) return ccOrigGetOutputPos.call(this, 0);
+    return ccOrigGetOutputPos.call(this, index);
+  };
+
+  const ccOrigGetInputPos = nodeType.prototype.getInputPos;
+  nodeType.prototype.getInputPos = function getInputPos(index) {
+    if (isCCollapsed(this)) return ccOrigGetInputPos.call(this, 0);
+    return ccOrigGetInputPos.call(this, index);
+  };
+
+  const ccOrigDrawFg = nodeType.prototype.onDrawForeground;
+  nodeType.prototype.onDrawForeground = function onDrawForeground(ctx) {
+    ccOrigDrawFg?.apply(this, arguments);
+    const c = isCCollapsed(this);
+    for (const slot of [...(this.inputs || []), ...(this.outputs || [])]) {
+      if (c) {
+        if (!("___ccOrigLabel" in slot)) slot.___ccOrigLabel = slot.label;
+        slot.label = " ";
+      } else if ("___ccOrigLabel" in slot) {
+        slot.label = slot.___ccOrigLabel;
+        delete slot.___ccOrigLabel;
+      }
+    }
+  };
+
+  const ccOrigConfigure = nodeType.prototype.onConfigure;
+  nodeType.prototype.onConfigure = function onConfigure(...args) {
+    ccOrigConfigure?.apply(this, args);
+    if (isCCollapsed(this)) {
+      for (const slot of [...(this.inputs || []), ...(this.outputs || [])]) {
+        if (!("___ccOrigLabel" in slot)) slot.___ccOrigLabel = slot.label;
+        slot.label = " ";
+      }
+    }
   };
 
   const originalOnPropertyChanged = nodeType.prototype.onPropertyChanged;
