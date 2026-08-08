@@ -5,6 +5,16 @@
 
 ### Added
 
+### Changed
+
+### Fixed
+
+### Notes
+
+## [2.14.0] - 2026-08-08
+
+### Added
+
 - AUN Scan And Show Widgets (`AUNScanAndShowWidgets`): scan any node by ID/title, display widget values as overlay cards, and provide up to 350 dynamic ANY-type output slots. Features filter modal (include/exclude wildcard patterns), collapse connections, type badge toggle, and max value length control.
 
 ### Changed
