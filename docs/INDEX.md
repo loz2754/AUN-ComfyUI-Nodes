@@ -65,6 +65,7 @@ Generated list of documentation files under `docs/`.
 - [AUNSaveImageV2](./AUNSaveImageV2_README.md)
 - [AUNSaveVideo](./AUNSaveVideo_README.md)
 - [AUNSaveVideoV2](./AUNSaveVideoV2_README.md)
+- [AUNScanAndShowWidgets](./AUNScanAndShowWidgets_README.md)
 - [AUNSetBypassByTitle](./AUNSetBypassByTitle_README.md)
 - [AUNSetBypassStateGroup](./AUNSetBypassStateGroup_README.md)
 - [AUNSetCollapseAndBypassStateAdvanced](./AUNSetCollapseAndBypassStateAdvanced_README.md)

@@ -1,6 +1,6 @@
 import os as _os_mod
 import re
-from typing import Dict, List, Tuple
+from typing import Dict
 
 from .logger import logger
 from .model_utils import (
@@ -14,16 +14,15 @@ class AUNExtractPowerLoras:
     Extract LoRA names (and strengths) from rgthree Power Lora Loader nodes in the graph/workflow.
 
     Outputs:
-    - loras_token (STRING): Grouped token string, sanitized for filenames.
-    - loras_names (STRING): Delimiter-joined short names with strengths, no parentheses.
-    - loras_list (STRING): Newline-separated base names (file stem, no extension) including labeled strengths when available, one per line.
+    - loras_names (STRING): Newline-separated descriptive entries, one per line.
+    - loras_list (STRING): Newline-separated A1111-style entries (e.g. <lora:name:strength>).
 
     """
 
     CATEGORY = "AUN Nodes/Utility"
-    DESCRIPTION = "Extract LoRA names (and strengths) from rgthree Power Lora Loader nodes in the graph/workflow. Outputs: - loras_token (STRING): Grouped token string, sanitized for filenames. - loras_names (STRING): Delimiter-joined short names with strengths, no parentheses. - loras_list (STRING): Newline-separated base names (file stem, no extension) including labeled strengths when available, one per line."
-    RETURN_TYPES = ("STRING", "STRING", "STRING")
-    RETURN_NAMES = ("loras_token", "loras_names", "loras_list")
+    DESCRIPTION = "Extract LoRA names (and strengths) from rgthree Power Lora Loader nodes in the graph/workflow. Optionally target specific nodes by ID. Outputs: - loras_names (STRING): Descriptive entries, one per line. - loras_list (STRING): A1111-style entries."
+    RETURN_TYPES = ("STRING", "STRING")
+    RETURN_NAMES = ("loras_names", "loras_list")
     FUNCTION = "extract"
 
     # (Dictionaries now imported from .model_utils)
@@ -32,7 +31,7 @@ class AUNExtractPowerLoras:
     def INPUT_TYPES(cls):
         return {
             "required": {                
-                "loras_delimiter": ("STRING", {"default": ";", "tooltip": "Delimiter between LoRA entries in the token (e.g. '+', '-', '_', ',', ';')."}),
+                "target_node_ids": ("STRING", {"default": "", "multiline": False, "tooltip": "Comma-separated node IDs to extract LoRAs from. Leave empty to extract from all LoRA loaders in the graph."}),
             },
             "hidden": {
                 "prompt": "PROMPT",
@@ -60,10 +59,11 @@ class AUNExtractPowerLoras:
         return extract_basic_loras_from_inputs(inputs)
 
     @staticmethod
-    def _extract_loras(prompt: Dict | None = None, extra_pnginfo: Dict | None = None) -> list[dict]:
+    def _extract_loras(prompt: Dict | None = None, extra_pnginfo: Dict | None = None, target_ids: set[str] | None = None) -> list[dict]:
         target_names = set(BASIC_LORA_TARGET_NAMES)
         all_items: list[dict] = []
         seen: set[tuple] = set()
+        has_target_ids = bool(target_ids)
 
         wf = None
         if isinstance(extra_pnginfo, dict):
@@ -103,6 +103,9 @@ class AUNExtractPowerLoras:
             if isinstance(prompt, dict):
                 for nid, node in prompt.items():
                     snid = str(nid)
+                    # Skip if targeting specific IDs and this isn't one of them
+                    if has_target_ids and snid not in target_ids:
+                        continue
                     # Check if bypassed (including namespaced IDs)
                     is_bypassed = False
                     if node_modes.get(snid) == 2:
@@ -131,6 +134,11 @@ class AUNExtractPowerLoras:
                 if node.get('mode', 0) == 2:
                     continue
 
+                nid = str(node.get('id', ''))
+                # Skip if targeting specific IDs and this isn't one of them
+                if has_target_ids and nid not in target_ids:
+                    continue
+
                 ntype = node.get('type') or node.get('class_type')
                 if ntype and ntype in target_names:
                     items = AUNExtractPowerLoras._extract_loras_from_inputs(node.get('inputs', {}))
@@ -143,33 +151,24 @@ class AUNExtractPowerLoras:
             pass
         return all_items
 
-    @staticmethod
-    def _build_loras(entries: list[str], delim: str) -> str:
-        if not entries:
-            return ""
-        # sanitize delimiter to be filename-safe and simple
-        delim = delim if isinstance(delim, str) and delim != "" else "+"
-        if any(c for c in delim if c not in "+-_. ,;"):
-            delim = "+"
-        joined = delim.join(entries)
-        return f"(LORAS-{joined})"
+    def extract(self, target_node_ids: str, prompt=None, extra_pnginfo=None):
+        # Parse target node IDs
+        target_ids = None
+        if target_node_ids and target_node_ids.strip():
+            target_ids = {nid.strip() for nid in target_node_ids.split(',') if nid.strip()}
 
-    def extract(self, loras_delimiter: str, prompt=None, extra_pnginfo=None):
-        items = AUNExtractPowerLoras._extract_loras(prompt, extra_pnginfo)
+        items = AUNExtractPowerLoras._extract_loras(prompt, extra_pnginfo, target_ids)
 
         def fmt_strength(v):
             try:
                 if v is None:
                     return None
-                s = f"{float(v):.2f}".rstrip('0').rstrip('.')
-                return s
+                return f"{float(v):.2f}"
             except Exception:
                 return None
 
-        entries = []
-        names_only = []
-        names_with_strengths = []
-        lines = []
+        descriptive_lines = []
+        a1111_lines = []
         raw_names = []
         for it in items:
             raw = it.get('name')
@@ -177,54 +176,41 @@ class AUNExtractPowerLoras:
                 continue
             raw_names.append(str(raw))
             base_name_only = _os_mod.path.splitext(_os_mod.path.basename(raw))[0]
+            base_name_with_ext = _os_mod.path.basename(raw)
             base = get_lora_short_name_common(raw)
             sm = it.get('strength')
             sc = it.get('strengthTwo') or it.get('strength_clip')
             sm_s = fmt_strength(sm)
             sc_s = fmt_strength(sc)
 
+            # Descriptive format: name (model strength X, clip strength Y)
             if sm_s and sc_s and sm_s != sc_s:
-                    token = f"{base}@{sm_s}-{sc_s}"
+                desc_line = f"{base_name_only} (model strength {sm_s}, clip strength {sc_s})"
             elif sm_s:
-                    token = f"{base}@{sm_s}"
+                desc_line = f"{base_name_only} (model strength {sm_s})"
             else:
-                    token = base
+                desc_line = base_name_only
 
-            # loras_names: always include strengths with short name using @
+            # A1111 format: <lora:name:strength> or <lora:name:model:clip>
             if sm_s and sc_s and sm_s != sc_s:
-                name_ws = f"{base}@{sm_s}-{sc_s}"
+                a1111_line = f"<lora:{base_name_with_ext}:{sm_s}:{sc_s}>"
             elif sm_s:
-                name_ws = f"{base}@{sm_s}"
+                a1111_line = f"<lora:{base_name_with_ext}:{sm_s}>"
             else:
-                name_ws = base
+                a1111_line = f"<lora:{base_name_with_ext}:1.0>"
 
-            # List should be base names and include labeled strengths when available
-            if sm_s and sc_s and sm_s != sc_s:
-                line = f"{base_name_only} (model strength {sm_s}, clip strength {sc_s})"
-            elif sm_s:
-                line = f"{base_name_only} (model strength {sm_s})"
-            else:
-                line = base_name_only
-            if base:
-                entries.append(token)
-                names_only.append(base)
-                names_with_strengths.append(name_ws)
-                lines.append(line)
+            if base_name_with_ext:
+                descriptive_lines.append(desc_line)
+                a1111_lines.append(a1111_line)
 
         try:
-            logger.info(f"AUNExtractPowerLoras: raw={raw_names} entries={entries}")
+            logger.info(f"AUNExtractPowerLoras: raw={raw_names}")
         except Exception:
             pass
 
-        # Reuse the same delimiter safety as in token build
-        safe_delim = loras_delimiter if isinstance(loras_delimiter, str) and loras_delimiter != "" else "+"
-        if any(c for c in safe_delim if c not in "+-_. ,;"):
-            safe_delim = "+"
-
-        token = AUNExtractPowerLoras._build_loras(entries, safe_delim)
-        names_str = safe_delim.join(names_with_strengths) if names_with_strengths else ""
-        list_text = "\n".join(lines) if lines else ""
-        return (token, names_str, list_text)
+        names_text = "\n".join(descriptive_lines) if descriptive_lines else ""
+        list_text = "\n".join(a1111_lines) if a1111_lines else ""
+        return (names_text, list_text)
 
 
 NODE_CLASS_MAPPINGS = {

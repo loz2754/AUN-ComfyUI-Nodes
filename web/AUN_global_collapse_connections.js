@@ -13,6 +13,7 @@ const SKIP_CLASSES = new Set([
   "AUNKSamplerPlusV2", "AUNKSamplerPlusv3", "AUNKSamplerPlusv4",
   "AUNSaveImage", "AUNSaveImageV2",
   "AUNShowAnyMulti", "AUNPassthroughAnyMulti",
+  "AUNScanAndShowWidgets",
   "AUNImageSliderComparer", "AUNAddToPromptMulti",
   "AUNManualAutoImageSwitch",
   "AUNWildcardAddToPrompt",

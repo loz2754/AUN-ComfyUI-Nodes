@@ -73,6 +73,21 @@ class AUNExtractWidgetValue:
     def _maybe_basename(s: str, enable: bool) -> str:
         if not enable or not isinstance(s, str):
             return s
+        stripped = s.strip()
+        # For JSON objects, try to extract path-like field values
+        if stripped.startswith("{"):
+            try:
+                import json
+                obj = json.loads(stripped)
+                if isinstance(obj, dict):
+                    # Look for common path-like fields (lora, model, checkpoint, etc.)
+                    for key in ("lora", "model", "checkpoint", "ckpt", "path", "name", "value"):
+                        val = obj.get(key)
+                        if isinstance(val, str) and ("/" in val or "\\" in val or re.search(r"\.(safetensors|ckpt|pt|bin|gguf)$", val, re.I)):
+                            return os.path.basename(val.replace("\\", "/"))
+            except (json.JSONDecodeError, AttributeError):
+                pass
+            return s
         norm = s.replace("\\", "/")
         # Basic heuristic: looks like a path or has typical model extensions
         if "/" in norm or re.search(r"\.(safetensors|ckpt|pt|bin|gguf)$", norm, re.I):

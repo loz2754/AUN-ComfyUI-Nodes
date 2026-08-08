@@ -679,22 +679,37 @@ app.registerExtension({
 
 });
 
-// ── Poll for connected node title changes ───────────────────────────
+// ── Poll for connected node title / label changes ──────────────────
 
 let lastTitles = {};
+
+function inputDisplayLabel(node, input) {
+  return (resolveGraphInput(node, input) || `output_${parseInt(input.name.substring(INPUT_PREFIX.length), 10)}`).replace(/\s+/g, " ").trim();
+}
+
+function labelsSig(node) {
+  return (node.inputs || [])
+    .filter((i) => i?.name?.startsWith(INPUT_PREFIX))
+    .map((i) => inputDisplayLabel(node, i))
+    .join("\u0001");
+}
+
 function pollForTitleChanges() {
   if (app?.graph?._nodes) {
     for (const node of app.graph._nodes) {
-      if (node.title !== lastTitles[node.id]) {
-        lastTitles[node.id] = node.title;
-        app.graph._nodes.forEach((n) => {
-          if (n.comfyClass === NODE_TYPE) updateInputLabels(n);
-        });
-        if (app.canvas) {
-          app.canvas.setDirty(true, true);
-          app.canvas.draw(true, true);
+      const changedTitle = node.title !== lastTitles[node.id];
+      if (changedTitle) lastTitles[node.id] = node.title;
+      if (node.comfyClass === NODE_TYPE) {
+        const sig = labelsSig(node);
+        if (changedTitle || sig !== node.__aun_lastSig) {
+          node.__aun_lastSig = sig;
+          updateInputLabels(node);
         }
       }
+    }
+    if (app.canvas) {
+      app.canvas.setDirty(true, true);
+      app.canvas.draw(true, true);
     }
   }
   requestAnimationFrame(pollForTitleChanges);

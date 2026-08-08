@@ -66,6 +66,7 @@ from .AUNRandomNumber import AUNRandomNumber
 from .AUNRandomTextIndexSwitch import AUNRandomTextIndexSwitch
 from .AUNRandomTextIndexSwitchV2 import AUNRandomTextIndexSwitchV2
 from .AUNRIFE import AUNRIFE
+from .AUNScanAndShowWidgets import AUNScanAndShowWidgets
 from .AUNSaveImage import AUNSaveImage
 from .AUNSaveImageV2 import AUNSaveImageV2
 from .AUNSaveVideo import AUNSaveVideo
@@ -163,6 +164,7 @@ NODE_CLASS_MAPPINGS = {
     "AUNRandomTextIndexSwitch": AUNRandomTextIndexSwitch,
     "AUNRandomTextIndexSwitchV2": AUNRandomTextIndexSwitchV2,
     "AUNRIFE": AUNRIFE,
+    "AUNScanAndShowWidgets": AUNScanAndShowWidgets,
     "AUNSaveImage": AUNSaveImage,
     "AUNSaveImageV2": AUNSaveImageV2,
     "AUNSaveVideo": AUNSaveVideo,
@@ -256,6 +258,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "AUNRandomTextIndexSwitch": "Random Text Index Switch",
     "AUNRandomTextIndexSwitchV2": "Random Text Index Switch V2",
     "AUNRIFE": "RIFE Frame Interpolation",
+    "AUNScanAndShowWidgets": "Scan And Show Widgets",
     "AUNSaveImage": "Save Image (Deprecated)",
     "AUNSaveImageV2": "AUN Save Image V2",
     "AUNSaveVideo": "Save Video (Deprecated)",
