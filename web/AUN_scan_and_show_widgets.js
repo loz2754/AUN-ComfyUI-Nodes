@@ -367,14 +367,41 @@ function ensureWidgetPickerOverlay() {
     };
 
     filterInput.oninput = buildList;
+    const closeOverlay = () => {
+      cleanup();
+      overlay.remove();
+    };
+    const cleanup = () => {
+      document.removeEventListener("click", outsideHandler, true);
+      document.removeEventListener("keydown", escHandler);
+    };
+    const outsideHandler = (event) => {
+      if (overlay.contains(event.target)) return;
+      closeOverlay();
+    };
+    const escHandler = (event) => {
+      if (event.key === "Escape") closeOverlay();
+    };
+
+    // Removing the overlay (e.g. when it is reopened) must also detach the
+    // document-level listeners to avoid leaks and stale closes.
+    const origRemove = overlay.remove.bind(overlay);
+    overlay.remove = () => {
+      cleanup();
+      origRemove();
+    };
+
     closeBtn.onclick = () => overlay.remove();
     clearBtn.onclick = () => {
       setSelectionNames(nodeRef, []);
       onChanged();
       buildList();
     };
-    overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
     document.body.appendChild(overlay);
+    setTimeout(() => {
+      document.addEventListener("click", outsideHandler, true);
+      document.addEventListener("keydown", escHandler);
+    }, 0);
     buildList();
     filterInput.focus();
   };

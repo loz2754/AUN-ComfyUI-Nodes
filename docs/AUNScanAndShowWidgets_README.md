@@ -10,7 +10,7 @@ Scan any node by ID or title, display all its widget values as overlay cards ins
 |-------|------|-------------|
 | `node_identifier` | STRING | Numeric ID or Title of the node to scan |
 | `basename_if_path` | BOOLEAN | If true, return only the basename for path-like values |
-| `concat_widget_name` | BOOLEAN | If true, prefix each string value with its widget name |
+| `concat_widget_name` | COMBO | Prefix each widget value with its widget name and a separator (`space` = `" "`, `space-space` = `" - "`, `;` = `";"`, `;space` = `"; "`, `-` = `"-"`, `none` = off) |
 
 > Hidden inputs kept in sync by the UI: `filter_include`, `filter_exclude_patterns`, and `widget_selection`.
 

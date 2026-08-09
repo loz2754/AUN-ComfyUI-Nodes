@@ -38,7 +38,8 @@ class AUNScanAndShowWidgets:
             },
             "optional": {
                 "basename_if_path": ("BOOLEAN", {"default": True, "tooltip": "If a value looks like a path, return only the basename."}),
-                "concat_widget_name": ("BOOLEAN", {"default": False, "tooltip": "If true, prefix each string value with its widget name and a dash."}),
+                "concat_widget_name": (["space", "space-space", ";", ";space", "-", "none"],
+                       {"default": "none", "tooltip": "Prefix each widget value with its widget name and a separator. 'none' disables the prefix."}),
                 "filter_include": ("STRING", {"default": "", "multiline": True, "tooltip": "Only keep widgets whose name matches one of these patterns (one per line, * = wildcard). Kept in sync with the F-button filter modal."}),
                 "filter_exclude_patterns": ("STRING", {"default": "", "multiline": True, "tooltip": "Hide widgets whose name matches one of these patterns (one per line, * = wildcard). Kept in sync with the F-button filter modal."}),
                 "widget_selection": ("STRING", {"default": "", "multiline": True, "tooltip": "Only show these widgets (one per line, or comma-separated). Set by the Select Widgets picker and acts as a whitelist: Include patterns are ignored while a selection is set, but Exclude patterns still apply."}),
@@ -272,7 +273,22 @@ class AUNScanAndShowWidgets:
             return "LIST"
         return "STRING"
 
-    def scan(self, node_identifier: str, basename_if_path: bool = True, concat_widget_name: bool = False,
+    CONCAT_SEPARATORS = {
+        "space": " ",
+        "space-space": " - ",
+        ";": ";",
+        ";space": "; ",
+        "-": "-",
+        "none": None,
+    }
+
+    @classmethod
+    def _concat_separator(cls, opt):
+        if opt in cls.CONCAT_SEPARATORS:
+            return cls.CONCAT_SEPARATORS[opt]
+        return " - " if opt is True else None
+
+    def scan(self, node_identifier: str, basename_if_path: bool = True, concat_widget_name: str = "none",
              filter_include: str = "", filter_exclude_patterns: str = "", widget_selection: str = "",
              prompt=None, extra_pnginfo=None, unique_id=None, **kwargs):
         ident = str(node_identifier).strip()
@@ -308,14 +324,13 @@ class AUNScanAndShowWidgets:
                     import json
                     display_val = json.dumps(wval, ensure_ascii=False, separators=(",", ":"))
 
+                out = display_val
                 if isinstance(display_val, str):
                     out = self._maybe_basename(display_val, basename_if_path)
-                    if concat_widget_name:
-                        out = f"{wname} - {out}"
-                    values.append(out)
-                else:
-                    out = display_val
-                    values.append(out)
+                sep = self._concat_separator(concat_widget_name)
+                if sep is not None:
+                    out = f"{wname}{sep}{out}"
+                values.append(out)
 
                 entries.append({
                     "type": self._infer_type(wval),
