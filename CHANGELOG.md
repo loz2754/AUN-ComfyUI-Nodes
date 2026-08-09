@@ -5,6 +5,16 @@
 
 ### Added
 
+### Changed
+
+### Fixed
+
+### Notes
+
+## [2.15.0] - 2026-08-09
+
+### Added
+
 - AUN Scan And Show Widgets (`AUNScanAndShowWidgets`): new "Select Widgets" picker — a searchable multi-select dropdown on the node body that whitelists exactly which widgets are shown/output. Selection is populated live from the scanned node, overrides Include patterns while active (Exclude still applies), and clears when the node identifier changes.
 
 ### Changed
@@ -12,7 +22,6 @@
 ### Fixed
 
 ### Notes
-
 ## [2.14.0] - 2026-08-08
 
 ### Added
