@@ -1,6 +1,6 @@
 [project]
 name = "aun-comfyui-nodes"
-description = "A collection of workflow helper nodes focused on organization + control (bypass/mute/collapse/group control), prompt/text utilities, file/path helpers, and image/video save helpers."
+description = "A comprehensive collection of custom nodes for ComfyUI which helps you to create compact, well-organised workflows. Includes a bunch of bypass/mute/collapse controllers, automatic file naming and saving, clever index-driven prompting that matches specific LoRAs to specific prompts. With in-built trigger words management, CivitAI lookup and more..."
 version = "2.15.0"
 license = {file = "LICENSE"} 
 # classifiers = [
