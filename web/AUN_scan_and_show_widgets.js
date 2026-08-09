@@ -1,4 +1,5 @@
 import { app } from "../../scripts/app.js";
+import { getWidget, chainWidgetCallback } from "./index.js";
 
 const NODE_TYPE = "AUNScanAndShowWidgets";
 const MAX_SLOTS = 350;
@@ -7,6 +8,8 @@ const SHOW_TYPES_KEY = "show_types";
 const MAX_VALUE_LEN_KEY = "max_value_len";
 const FILTER_INCLUDE_KEY = "filter_include";
 const FILTER_EXCLUDE_PATTERNS_KEY = "filter_exclude_patterns";
+const WIDGET_SELECTION_KEY = "widget_selection";
+const SCAN_IDENTIFIER_KEY = "aun_scan_identifier";
 
 const TYPE_COLORS = {
   IMAGE: "#64B5F6",
@@ -53,14 +56,6 @@ function nameMatchesAny(name, patterns) {
   });
 }
 
-function matchesFilter(node, name) {
-  const include = parsePatterns(node.properties?.[FILTER_INCLUDE_KEY]);
-  const exclude = parsePatterns(node.properties?.[FILTER_EXCLUDE_PATTERNS_KEY]);
-  if (include.length && !nameMatchesAny(name, include)) return false;
-  if (exclude.length && nameMatchesAny(name, exclude)) return false;
-  return true;
-}
-
 function filterNamesByPattern(node, widgetNames) {
   return widgetNames.filter(name => matchesFilter(node, name));
 }
@@ -73,6 +68,72 @@ function filterEntriesByPattern(node, entries) {
 function isFilterActive(node) {
   return !!(node.properties?.[FILTER_INCLUDE_KEY] || "").trim()
       || !!(node.properties?.[FILTER_EXCLUDE_PATTERNS_KEY] || "").trim();
+}
+
+// ── Widget Selection (whitelist picker) ────────────────────────────
+
+function parseSelectionNames(text) {
+  const out = [];
+  for (const chunk of String(text || "").split("\n")) {
+    for (const item of chunk.split(",")) {
+      const t = item.trim();
+      if (t && !out.includes(t)) out.push(t);
+    }
+  }
+  return out;
+}
+
+function getSelectionSet(node) {
+  const names = parseSelectionNames(node?.properties?.[WIDGET_SELECTION_KEY]);
+  return names.length ? new Set(names) : null;
+}
+
+function setSelectionNames(node, names) {
+  if (!node.properties) node.properties = {};
+  node.properties[WIDGET_SELECTION_KEY] = names.join("\n");
+}
+
+// Selection acts as a whitelist: it overrides the Include patterns but the
+// Exclude patterns still apply. Mirrors the backend's _filter_widgets().
+function matchesFilter(node, name) {
+  const sel = getSelectionSet(node);
+  if (sel && !sel.has(name)) return false;
+  const include = parsePatterns(node.properties?.[FILTER_INCLUDE_KEY]);
+  const exclude = parsePatterns(node.properties?.[FILTER_EXCLUDE_PATTERNS_KEY]);
+  if (include.length && !nameMatchesAny(name, include)) return false;
+  if (exclude.length && nameMatchesAny(name, exclude)) return false;
+  return true;
+}
+
+// Keep the hidden widget_selection widget value in sync with the selection
+// property so the backend receives it at execution time. Widget stays hidden
+// but serializes.
+function syncSelectionWidget(node) {
+  if (!node?.widgets) return;
+  for (const w of node.widgets) {
+    if (!w) continue;
+    if (w.name !== WIDGET_SELECTION_KEY) continue;
+    w.hidden = true;
+    const prop = node.properties?.[w.name];
+    if (typeof prop === "string" && w.value !== prop) {
+      w.value = prop;
+    }
+  }
+}
+
+// Keep the hidden filter widget values in sync with the filter properties so the
+// backend receives them at execution time. Widgets stay hidden but serialize.
+function syncFilterWidgets(node) {
+  if (!node?.widgets) return;
+  for (const w of node.widgets) {
+    if (!w) continue;
+    if (w.name !== FILTER_INCLUDE_KEY && w.name !== FILTER_EXCLUDE_PATTERNS_KEY) continue;
+    w.hidden = true;
+    const prop = node.properties?.[w.name];
+    if (typeof prop === "string" && w.value !== prop) {
+      w.value = prop;
+    }
+  }
 }
 
 function refreshNodeFilter(node) {
@@ -153,6 +214,216 @@ function installFilterTitleButton(node) {
   };
 }
 
+// ── Select Widgets Picker ──────────────────────────────────────────
+
+function getTargetIdentifier(node) {
+  const w = getWidget(node, "node_identifier");
+  return w ? String(w.value ?? "").trim() : "";
+}
+
+function findTargetNode(node) {
+  const ident = getTargetIdentifier(node);
+  if (!ident) return null;
+  const graph = node.graph ?? app.graph;
+  for (const n of graph?._nodes || []) {
+    if (!n || n === node) continue;
+    if (String(n.id) === ident || n.title === ident || n.localized_name === ident) return n;
+  }
+  return null;
+}
+
+function collectAvailableWidgetNames(node) {
+  const names = [];
+  const seen = new Set();
+  const target = findTargetNode(node);
+  if (target?.widgets) {
+    for (const w of target.widgets) {
+      if (!w || typeof w.name !== "string" || !w.name) continue;
+      if (!seen.has(w.name)) { seen.add(w.name); names.push(w.name); }
+    }
+  }
+  for (const nm of getWidgetNames(node) || []) {
+    if (typeof nm === "string" && nm && !seen.has(nm)) { seen.add(nm); names.push(nm); }
+  }
+  return names;
+}
+
+function updateSelectionButtonLabel(node) {
+  const btn = node.__aun_selection_btn;
+  if (!btn) return;
+  const sel = getSelectionSet(node);
+  btn.value = sel ? `${sel.size} selected` : "Select Widgets";
+}
+
+function openWidgetPicker(node) {
+  ensureWidgetPickerOverlay();
+  window.__AUNOpenWidgetPicker(node, () => collectAvailableWidgetNames(node), () => {
+    updateSelectionButtonLabel(node);
+    syncSelectionWidget(node);
+    refreshNodeFilter(node);
+    node.setDirtyCanvas?.(true, true);
+  });
+}
+
+let __aun_picker_overlay_ready = false;
+function ensureWidgetPickerOverlay() {
+  if (__aun_picker_overlay_ready) return;
+  __aun_picker_overlay_ready = true;
+
+  const style = document.createElement("style");
+  style.textContent = `
+    #AUN-widget-picker-overlay{position:fixed;z-index:99999;background:#222;border:1px solid #555;padding:10px;width:300px;max-height:420px;overflow:hidden;display:flex;flex-direction:column;font:12px sans-serif;color:#eee;box-shadow:0 4px 18px rgba(0,0,0,0.5);border-radius:4px;}
+    #AUN-widget-picker-overlay .header{display:flex;align-items:center;margin-bottom:6px;}
+    #AUN-widget-picker-overlay .header h3{margin:0;flex:1;font:600 13px sans-serif;}
+    #AUN-widget-picker-overlay .close-btn{cursor:pointer;color:#aaa;font-size:14px;line-height:1;}
+    #AUN-widget-picker-overlay .close-btn:hover{color:#fff;}
+    #AUN-widget-picker-overlay .hint{margin:0 0 6px;color:#888;font-size:11px;line-height:1.4;}
+    #AUN-widget-picker-overlay input[type=text]{width:100%;margin:0 0 6px;padding:4px;background:#111;color:#eee;border:1px solid #444;border-radius:2px;box-sizing:border-box;}
+    #AUN-widget-picker-overlay .list{flex:1;overflow:auto;}
+    #AUN-widget-picker-overlay .item{padding:4px 6px;cursor:pointer;border-radius:3px;margin:1px 0;background:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    #AUN-widget-picker-overlay .item:hover{background:#555;}
+    #AUN-widget-picker-overlay .item.on{background:#284;opacity:0.9;}
+    #AUN-widget-picker-overlay .footer{display:flex;justify-content:flex-end;gap:6px;margin-top:6px;}
+    #AUN-widget-picker-overlay .btn{padding:3px 10px;border-radius:3px;border:1px solid #555;background:#333;color:#ccc;cursor:pointer;font:12px sans-serif;}
+    #AUN-widget-picker-overlay .btn:hover{background:#444;}
+    #AUN-widget-picker-overlay .empty{padding:8px;color:#888;text-align:center;}
+  `;
+  document.head.appendChild(style);
+
+  window.__AUNOpenWidgetPicker = (nodeRef, getNamesFn, onChanged) => {
+    const existing = document.getElementById("AUN-widget-picker-overlay");
+    if (existing) existing.remove();
+
+    const overlay = document.createElement("div");
+    overlay.id = "AUN-widget-picker-overlay";
+
+    // Position beside the node (right, or left if it would overflow).
+    let left = 100, top = 100;
+    try {
+      if (nodeRef && app.canvas?.canvas) {
+        const canvas = app.canvas.canvas;
+        const rect = canvas.getBoundingClientRect();
+        const scale = app.canvas.ds?.scale || 1;
+        const ox = app.canvas.ds?.offset?.[0] || 0;
+        const oy = app.canvas.ds?.offset?.[1] || 0;
+        const sx = rect.left + (nodeRef.pos[0] + ox) * scale;
+        const sy = rect.top + (nodeRef.pos[1] + oy) * scale;
+        const nodeW = nodeRef.size?.[0] * scale || 300;
+        left = sx + nodeW + 10;
+        top = sy;
+        if (left + 300 > window.innerWidth) left = sx - 310;
+        if (top + 420 > window.innerHeight) top = Math.max(10, window.innerHeight - 430);
+        if (left < 10) left = 10;
+        if (top < 10) top = 10;
+      }
+    } catch (e) { /* keep defaults */ }
+    overlay.style.left = `${left}px`;
+    overlay.style.top = `${top}px`;
+
+    const names = getNamesFn();
+    const isSel = (n) => {
+      const s = getSelectionSet(nodeRef);
+      return !!s && s.has(n);
+    };
+
+    overlay.innerHTML = `
+      <div class="header"><h3>Select Widgets</h3><span class="close-btn">&times;</span></div>
+      <p class="hint">${names.length ? `Showing ${names.length} widget${names.length === 1 ? "" : "s"} from the scanned node. Click to toggle.` : "No widgets available yet. Run the workflow once, or check the node identifier."}</p>
+      <input type="text" placeholder="Filter...">
+      <div class="list"></div>
+      <div class="footer">
+        <button class="btn" data-action="clear">Clear</button>
+      </div>
+    `;
+
+    const listDiv = overlay.querySelector(".list");
+    const filterInput = overlay.querySelector("input");
+    const closeBtn = overlay.querySelector(".close-btn");
+    const clearBtn = overlay.querySelector('[data-action="clear"]');
+
+    const buildList = () => {
+      listDiv.innerHTML = "";
+      const filter = (filterInput.value || "").toLowerCase();
+      const shown = names.filter((n) => !filter || n.toLowerCase().includes(filter));
+      if (!shown.length) {
+        listDiv.innerHTML = `<div class="empty">No matching widgets</div>`;
+        return;
+      }
+      for (const n of shown) {
+        const row = document.createElement("div");
+        row.className = "item" + (isSel(n) ? " on" : "");
+        row.textContent = (isSel(n) ? "✔ " : "") + n;
+        row.title = n;
+        row.onclick = () => {
+          const cur = parseSelectionNames(nodeRef.properties?.[WIDGET_SELECTION_KEY]);
+          const idx = cur.indexOf(n);
+          if (idx === -1) cur.push(n); else cur.splice(idx, 1);
+          setSelectionNames(nodeRef, cur);
+          onChanged();
+          buildList();
+        };
+        listDiv.appendChild(row);
+      }
+    };
+
+    filterInput.oninput = buildList;
+    closeBtn.onclick = () => overlay.remove();
+    clearBtn.onclick = () => {
+      setSelectionNames(nodeRef, []);
+      onChanged();
+      buildList();
+    };
+    overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
+    document.body.appendChild(overlay);
+    buildList();
+    filterInput.focus();
+  };
+}
+
+// ── Select Widgets Button (node body) ──────────────────────────────
+
+function installWidgetPickerButton(node) {
+  if (node.__aun_selection_picker_hooked) return;
+  node.__aun_selection_picker_hooked = true;
+  node.properties = node.properties || {};
+  if (typeof node.properties[WIDGET_SELECTION_KEY] !== "string") node.properties[WIDGET_SELECTION_KEY] = "";
+
+  const btn = node.addWidget(
+    "button",
+    "Widgets",
+    "Select Widgets",
+    () => openWidgetPicker(node),
+    { serialize: false, tooltip: "Pick which widgets to show (multi-select). Selection clears when the node identifier changes." }
+  );
+  node.__aun_selection_btn = btn;
+  updateSelectionButtonLabel(node);
+}
+
+// ── Identifier change → clear filters ──────────────────────────────
+
+function setupIdentifierFilterReset(node) {
+  if (node.__aun_ident_reset_hooked) return;
+  const widget = getWidget(node, "node_identifier");
+  if (!widget) return;
+  node.__aun_ident_reset_hooked = true;
+
+  chainWidgetCallback(widget, function (value) {
+    const props = node.properties || (node.properties = {});
+    const prev = props[SCAN_IDENTIFIER_KEY];
+    if (String(value ?? "") === String(prev ?? "")) return;
+    props[SCAN_IDENTIFIER_KEY] = String(value ?? "");
+    const hadFilter = isFilterActive(node);
+    const hadSelection = !!getSelectionSet(node);
+    props[FILTER_INCLUDE_KEY] = "";
+    props[FILTER_EXCLUDE_PATTERNS_KEY] = "";
+    props[WIDGET_SELECTION_KEY] = "";
+    syncFilterWidgets(node);
+    syncSelectionWidget(node);
+    updateSelectionButtonLabel(node);
+    if (hadFilter || hadSelection) refreshNodeFilter(node);
+  });
+}
+
 // ── Filter Modal ───────────────────────────────────────────────────
 
 let activeModal = null;
@@ -227,6 +498,7 @@ function openFilterModal(node) {
   modal.querySelector("#aun-filter-apply").addEventListener("click", () => {
     node.properties[FILTER_INCLUDE_KEY] = modal.querySelector("#aun-filter-include").value;
     node.properties[FILTER_EXCLUDE_PATTERNS_KEY] = modal.querySelector("#aun-filter-exclude").value;
+    syncFilterWidgets(node);
     closeModal();
     refreshNodeFilter(node);
   });
@@ -268,6 +540,15 @@ function growToContentSize(node) {
   const oldW = node.size?.[0] ?? cs[0];
   node.size = [oldW, Math.max(node.size?.[1] ?? 0, cs[1])];
   node.setDirtyCanvas(true, true);
+}
+
+function resizeNodeToFit(node) {
+  if (!node || typeof node.computeSize !== "function") return;
+  const cs = node.computeSize();
+  if (!cs || cs.length < 2) return;
+  node.setSize([cs[0], cs[1]]);
+  const graph = node.graph ?? app.graph;
+  if (graph) graph.setDirtyCanvas(true, true);
 }
 
 // ── Overlay display ─────────────────────────────────────────────────
@@ -675,6 +956,12 @@ app.registerExtension({
     nodeType.prototype.onExecuted = function (message) {
       origOnExecuted?.apply(this, arguments);
 
+      const identWidget = getWidget(this, "node_identifier");
+      if (identWidget) {
+        this.properties = this.properties || {};
+        this.properties[SCAN_IDENTIFIER_KEY] = String(identWidget.value ?? "");
+      }
+
       if (message?.widget_names) {
         setWidgetNames(this, message.widget_names);
         syncOutputs(this, message.widget_names, message.entries);
@@ -697,7 +984,14 @@ app.registerExtension({
       origOnConfigure?.apply(this, arguments);
       this._aunFromWorkflow = true;
 
-      this._aunSavedHeight = this.size?.[1] ?? 0;
+      syncFilterWidgets(this);
+
+      const names = getWidgetNames(this);
+
+      // Preserve a manually-sized height only when the node has known widget
+      // names. A never-run node (no names) still carries the oversized
+      // definition outputs, so keep it minimal instead.
+      this._aunSavedHeight = names.length ? (this.size?.[1] ?? 0) : 0;
       const savedH = this._aunSavedHeight;
       this._aunOrigComputeSize = this.computeSize.bind(this);
       const origCS = this._aunOrigComputeSize;
@@ -709,9 +1003,11 @@ app.registerExtension({
         return s;
       };
 
-      const names = getWidgetNames(this);
       if (names.length) {
         syncOutputs(this, names, this._aunEntries);
+      } else {
+        syncOutputs(this, [], null);
+        resizeNodeToFit(this);
       }
 
       if (this.properties?.aun_entries) {
@@ -750,11 +1046,22 @@ app.registerExtension({
     node.properties = node.properties || {};
     if (typeof node.properties[FILTER_INCLUDE_KEY] !== "string") node.properties[FILTER_INCLUDE_KEY] = "";
     if (typeof node.properties[FILTER_EXCLUDE_PATTERNS_KEY] !== "string") node.properties[FILTER_EXCLUDE_PATTERNS_KEY] = "";
+    if (typeof node.properties[WIDGET_SELECTION_KEY] !== "string") node.properties[WIDGET_SELECTION_KEY] = "";
     trackedNodes.add(node);
     setupCollapseConnections(node);
     setupShowTypes(node);
     setupMaxValueLen(node);
     installFilterTitleButton(node);
+    setupIdentifierFilterReset(node);
+    installWidgetPickerButton(node);
+    syncFilterWidgets(node);
+    syncSelectionWidget(node);
+
+    // Fresh nodes carry all MAX_SLOTS outputs from the node definition,
+    // which makes them oversized before the first execution. Trim down to
+    // the known widget names (none yet) and size to the minimum.
+    syncOutputs(node, [], null);
+    resizeNodeToFit(node);
 
     requestAnimationFrame(() => {
       if (!node.__aun_recalc_done) {
@@ -785,11 +1092,16 @@ app.registerExtension({
     node.properties = node.properties || {};
     if (typeof node.properties[FILTER_INCLUDE_KEY] !== "string") node.properties[FILTER_INCLUDE_KEY] = "";
     if (typeof node.properties[FILTER_EXCLUDE_PATTERNS_KEY] !== "string") node.properties[FILTER_EXCLUDE_PATTERNS_KEY] = "";
+    if (typeof node.properties[WIDGET_SELECTION_KEY] !== "string") node.properties[WIDGET_SELECTION_KEY] = "";
     trackedNodes.add(node);
     setupCollapseConnections(node);
     setupShowTypes(node);
     setupMaxValueLen(node);
     installFilterTitleButton(node);
+    setupIdentifierFilterReset(node);
+    installWidgetPickerButton(node);
+    syncFilterWidgets(node);
+    syncSelectionWidget(node);
     startPollLoop();
   },
 });

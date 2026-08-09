@@ -24,7 +24,7 @@ class AUNScanAndShowWidgets:
     """
 
     CATEGORY = "AUN Nodes/Utility"
-    DESCRIPTION = "Scan a target node, display widget values as cards, and pass them through."
+    DESCRIPTION = "Scan a target node, display widget values as cards, and pass them through. Run the workflow (Queue Prompt) to populate the output slots and show the details. Use the F button in the node's title bar to open the widget filter (include/exclude wildcard patterns), or the Select Widgets picker to multi-select the exact widgets to show."
     RETURN_TYPES = tuple(any_type for _ in range(MAX_SLOTS))
     RETURN_NAMES = tuple(f"value_{i}" for i in range(1, MAX_SLOTS + 1))
     FUNCTION = "scan"
@@ -39,6 +39,9 @@ class AUNScanAndShowWidgets:
             "optional": {
                 "basename_if_path": ("BOOLEAN", {"default": True, "tooltip": "If a value looks like a path, return only the basename."}),
                 "concat_widget_name": ("BOOLEAN", {"default": False, "tooltip": "If true, prefix each string value with its widget name and a dash."}),
+                "filter_include": ("STRING", {"default": "", "multiline": True, "tooltip": "Only keep widgets whose name matches one of these patterns (one per line, * = wildcard). Kept in sync with the F-button filter modal."}),
+                "filter_exclude_patterns": ("STRING", {"default": "", "multiline": True, "tooltip": "Hide widgets whose name matches one of these patterns (one per line, * = wildcard). Kept in sync with the F-button filter modal."}),
+                "widget_selection": ("STRING", {"default": "", "multiline": True, "tooltip": "Only show these widgets (one per line, or comma-separated). Set by the Select Widgets picker and acts as a whitelist: Include patterns are ignored while a selection is set, but Exclude patterns still apply."}),
             },
             "hidden": {
                 "prompt": "PROMPT",
@@ -170,6 +173,54 @@ class AUNScanAndShowWidgets:
         return widgets
 
     @staticmethod
+    def _parse_patterns(text: Any) -> list[str]:
+        if not isinstance(text, str):
+            return []
+        return [line.strip() for line in text.split("\n") if line.strip()]
+
+    @staticmethod
+    def _parse_names(text: Any) -> list[str]:
+        if not isinstance(text, str):
+            return []
+        parts: list[str] = []
+        for chunk in text.split("\n"):
+            for item in chunk.split(","):
+                item = item.strip()
+                if item and item not in parts:
+                    parts.append(item)
+        return parts
+
+    @staticmethod
+    def _name_matches(name: str, pattern: str) -> bool:
+        if not isinstance(pattern, str):
+            return False
+        rx = "^" + re.escape(pattern).replace(r"\*", ".*") + "$"
+        return re.match(rx, name, re.IGNORECASE) is not None
+
+    @classmethod
+    def _filter_widgets(cls, widgets: list[tuple[str, Any]], include: str, exclude: str, selection: str = "") -> list[tuple[str, Any]]:
+        sel = cls._parse_names(selection)
+        exc = cls._parse_patterns(exclude)
+
+        if sel:
+            sset = set(sel)
+            working = [(name, value) for name, value in widgets if name in sset]
+        else:
+            inc = cls._parse_patterns(include)
+            working = []
+            for name, value in widgets:
+                if inc and not any(cls._name_matches(name, p) for p in inc):
+                    continue
+                working.append((name, value))
+
+        if exc:
+            working = [
+                (name, value) for name, value in working
+                if not any(cls._name_matches(name, p) for p in exc)
+            ]
+        return working
+
+    @staticmethod
     def _maybe_basename(s: str, enable: bool) -> str:
         if not enable or not isinstance(s, str):
             return s
@@ -222,6 +273,7 @@ class AUNScanAndShowWidgets:
         return "STRING"
 
     def scan(self, node_identifier: str, basename_if_path: bool = True, concat_widget_name: bool = False,
+             filter_include: str = "", filter_exclude_patterns: str = "", widget_selection: str = "",
              prompt=None, extra_pnginfo=None, unique_id=None, **kwargs):
         ident = str(node_identifier).strip()
 
@@ -232,7 +284,7 @@ class AUNScanAndShowWidgets:
         widgets = []
         target_title = None
         if node is not None:
-            widgets = self._collect_widgets(node)
+            widgets = self._filter_widgets(self._collect_widgets(node), filter_include, filter_exclude_patterns, widget_selection)
             meta = node.get("_meta", {})
             target_title = meta.get("title") or node.get("title") or node.get("localized_name")
 
