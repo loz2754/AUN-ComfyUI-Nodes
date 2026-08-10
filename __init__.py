@@ -205,7 +205,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "AUNBoolean": "Random Boolean",
     "AUNCFG": "CFG Selector",
     "AUNCheckpointLoaderWithClipSkip": "Ckpt Load With Clip Skip",
-    "AUNCollapseConnectionsController": "Collapse Connections Controller",
+    "AUNCollapseConnectionsController": "Collapse Connections",
     "AUNEmptyLatent": "Empty Latent",
     "AUNExtractModelName": "Extract Model Name",
     "AUNExtractPowerLoras": "Extract Power LoRAs",

@@ -31,7 +31,7 @@ const clampSlotCount = (value) => {
 const splitList = (value) => {
   if (!value) return [];
   return String(value)
-    .split(/[,\n;]+/)
+    .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
 };
@@ -351,7 +351,7 @@ const extendNodePrototype = (nodeType) => {
     if (this.__aun_ccc_lastWarn === warn) return false;
     this.__aun_ccc_lastWarn = warn;
     try {
-      this.setSize(this.computeSize());
+      this.setSize([this.size[0], this.computeSize()[1]]);
     } catch (_) {}
     return true;
   };

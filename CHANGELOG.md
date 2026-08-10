@@ -9,7 +9,7 @@
 
 ### Changed
 
-- Collapse Connections Controller: targeting is now by Node ID only (the `target_type_i` widget was removed) — matches how node IDs are referenced everywhere else in the pack, and avoids title ambiguity. Excluded IDs use `!`/`-` prefixes (e.g. `5, !12`).
+- Collapse Connections Controller: targeting is now by Node ID only (the `target_type_i` widget was removed) — matches how node IDs are referenced everywhere else in the pack, and avoids title ambiguity. IDs are comma-separated.
 
 ### Fixed
 

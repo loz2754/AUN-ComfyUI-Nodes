@@ -1,12 +1,9 @@
-import re
-
-
 class AUNCollapseConnectionsController:
-    """Control the 'collapse connections' behavior (compact socket lines) for nodes by ID.
+    """Hide the input/output slots of chosen nodes to reduce link lines between them.
 
-    Toggling a slot collapses/expands the targeted nodes instantly on the canvas. Requires the
-    '⚠ EXPERIMENTAL — Global collapse connections' setting (Settings → AUN) to be enabled;
-    otherwise the node does nothing (its overlay informs the user).
+    Toggling a slot hides or restores the target nodes' input/output slots instantly on the canvas.
+    Requires the '⚠ EXPERIMENTAL — Global collapse connections' setting (Settings → AUN) to be
+    enabled; otherwise the node does nothing (its overlay informs the user).
     """
 
     CATEGORY = "AUN Nodes/Node Control"
@@ -15,9 +12,10 @@ class AUNCollapseConnectionsController:
     RETURN_NAMES = ()
     OUTPUT_NODE = True
     DESCRIPTION = (
-        "Control 'collapse connections' (compact socket lines) for nodes by ID. "
-        "Slot switches apply instantly on the canvas; double-click the node for compact mode. "
-        "Requires the experimental 'Global collapse connections' setting to be enabled."
+        "Hide the input/output slots of chosen nodes to reduce link lines between them. "
+        "Toggled nodes take effect instantly on the canvas — their connection lines collapse into a "
+        "single point and expand back anytime. Target nodes by Node ID; requires the experimental "
+        "'Global collapse connections' setting (Settings → AUN) to be enabled."
     )
 
     @classmethod
@@ -26,7 +24,7 @@ class AUNCollapseConnectionsController:
             "required": {
                 "slot_count": ("INT", {
                     "default": 3, "min": 1, "max": 20, "step": 1,
-                    "tooltip": "Number of control slots to show (1-20)."
+                    "tooltip": "How many control slots to show (1-20)."
                 }),
             }
         }
@@ -34,12 +32,11 @@ class AUNCollapseConnectionsController:
         def slot_tooltip(text, slot_index):
             return text if slot_index == 1 else ""
 
-        label_tooltip = "Descriptive label for slot 1 (other slots follow the same layout)."
+        label_tooltip = "Name for slot 1 (other slots follow the same layout)."
         targets_tooltip = (
-            "Target node IDs for slot 1 (comma, semicolon, or newline separated). "
-            "Use '!' or '-' prefix for exclusion (e.g. '5, !12')."
+            "The node IDs slot 1 controls, separated by commas (e.g. '5, 12')."
         )
-        switch_tooltip = "Toggle state for slot 1. ▶ = collapse the targeted nodes' connections, ▼ = expand them."
+        switch_tooltip = "Turn slot 1 on to hide the target nodes' input/output slots, or off to show them again."
 
         for i in range(1, 21):
             inputs["required"][f"label_{i}"] = ("STRING", {
@@ -62,7 +59,7 @@ class AUNCollapseConnectionsController:
             "default": False,
             "label_on": "All ▶",
             "label_off": "Individual",
-            "tooltip": "ON = collapse all targeted nodes. OFF = use individual slot switches."
+            "tooltip": "On = hide slots for all targeted nodes at once. Off = control each slot individually."
         })
 
         return inputs
@@ -88,7 +85,7 @@ class AUNCollapseConnectionsController:
             targets_str = kwargs.get(f"targets_{i}", "0")
 
             if targets_str and targets_str != "0":
-                targets = [s.strip() for s in re.split(r"[,\n;]+", targets_str) if s.strip()]
+                targets = [s.strip() for s in targets_str.split(",") if s.strip()]
                 for t in targets:
                     # Prioritize True (Active) across overlapping slots
                     if id_states.get(t) is not True:
@@ -114,4 +111,4 @@ class AUNCollapseConnectionsController:
 
 
 NODE_CLASS_MAPPINGS = {"AUNCollapseConnectionsController": AUNCollapseConnectionsController}
-NODE_DISPLAY_NAME_MAPPINGS = {"AUNCollapseConnectionsController": "Collapse Connections Controller"}
+NODE_DISPLAY_NAME_MAPPINGS = {"AUNCollapseConnectionsController": "Collapse Connections"}

@@ -1,6 +1,6 @@
-# AUNCollapseConnectionsController — Collapse Connections Controller
+# AUNCollapseConnectionsController — Collapse Connections
 
-Purpose: Control the 'collapse connections' behavior (compact socket lines) for individual nodes, targeted by Node ID, using slot-based toggles modeled on the AUN Node Controller.
+Purpose: Hide the input/output slots of chosen nodes to reduce link lines between them. Each targeted node's connection lines collapse into a single point and can be expanded back anytime. Target nodes by Node ID using slot-based toggles.
 
 ## Prerequisite
 
@@ -11,10 +11,10 @@ The **⚠ EXPERIMENTAL — Global collapse connections** setting (Settings → A
 - `slot_count` (INT, 1–20): Number of control slots to show (default 3).
 - Per slot `i` (1–20):
   - `label_i` (STRING): Descriptive label for the slot. Used as the switch's label (and is what the switch shows in compact mode).
-  - `targets_i` (STRING): Target node IDs. Comma, semicolon, or newline separated. `!` / `-` prefixes mark exclusion (e.g. `5, !12`) — excluded IDs are never collapsed by this slot.
+  - `targets_i` (STRING): The node IDs this slot controls, separated by commas (e.g. `5, 12`).
   - `switch_i` (BOOLEAN):
-    - `Collapsed ▶`: hide socket labels and converge the target nodes' connection lines to a single point.
-    - `Expanded ▼`: restore the target nodes' socket labels and connection lines.
+    - `Collapsed ▶`: hide the target nodes' input/output slots so their link lines converge to a single point.
+    - `Expanded ▼`: restore the target nodes' slots and link lines.
 - `AllSwitch` (BOOLEAN): `All ▶` collapses all targeted nodes; `Individual` uses each slot's `switch_i`.
 
 ## Compact mode
