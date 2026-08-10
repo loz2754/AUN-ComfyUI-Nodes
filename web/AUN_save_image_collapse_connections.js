@@ -24,11 +24,13 @@ function applyWidgetVisibility(node) {
   }
 }
 
-function toggle(node) {
+function applyCollapse(node, next) {
   if (!node) return;
+  const target = !!next;
+  if (!!node.properties?.[PK] === target) return;
   node.properties = node.properties || {};
-  node.properties[PK] = !node.properties[PK];
-  if (!node.properties[PK]) {
+  node.properties[PK] = target;
+  if (!target) {
     for (const slot of [...(node.inputs || []), ...(node.outputs || [])]) {
       if (node.widgets?.length && slot.widget) continue;
       if ('__aun_collapse_origLabel' in slot) {
@@ -42,6 +44,11 @@ function toggle(node) {
   }
   applyWidgetVisibility(node);
   node.graph?.setDirtyCanvas(true, true);
+}
+
+function toggle(node) {
+  if (!node) return;
+  applyCollapse(node, !node.properties?.[PK]);
 }
 
 function setupNode(node) {
@@ -135,6 +142,10 @@ function setupNode(node) {
     };
 
     node.__aun_collapse_hooked = true;
+
+    // Remote control from AUNCollapseConnectionsController – mirrors the node's
+    // own toggle (no resize, so the user-set height / __aun_saved_height survive).
+    node.__aun_remoteCollapse = (next) => applyCollapse(node, next);
   }
 
   // Re-apply on every load: nodeCreated fires before properties are restored

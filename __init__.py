@@ -10,6 +10,7 @@ from .AUNBookmark import AUNBookmark
 from .AUNBoolean import AUNBoolean
 from .AUNCFG import AUNCFG
 from .AUNCkptClipSkip import AUNCheckpointLoaderWithClipSkip
+from .AUNCollapseConnectionsController import AUNCollapseConnectionsController
 from .AUNEmptyLatent import AUNEmptyLatent
 from .AUNExtractModelName import AUNExtractModelName
 from .AUNExtractPowerLoras import AUNExtractPowerLoras
@@ -108,6 +109,7 @@ NODE_CLASS_MAPPINGS = {
     "AUNBoolean": AUNBoolean,
     "AUNCFG": AUNCFG,
     "AUNCheckpointLoaderWithClipSkip": AUNCheckpointLoaderWithClipSkip,
+    "AUNCollapseConnectionsController": AUNCollapseConnectionsController,
     "AUNEmptyLatent": AUNEmptyLatent,
     "AUNExtractModelName": AUNExtractModelName,
     "AUNExtractPowerLoras": AUNExtractPowerLoras,
@@ -203,6 +205,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "AUNBoolean": "Random Boolean",
     "AUNCFG": "CFG Selector",
     "AUNCheckpointLoaderWithClipSkip": "Ckpt Load With Clip Skip",
+    "AUNCollapseConnectionsController": "Collapse Connections Controller",
     "AUNEmptyLatent": "Empty Latent",
     "AUNExtractModelName": "Extract Model Name",
     "AUNExtractPowerLoras": "Extract Power LoRAs",

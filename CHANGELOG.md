@@ -5,9 +5,15 @@
 
 ### Added
 
+- AUN Collapse Connections Controller (`AUNCollapseConnectionsController`): control the 'collapse connections' behavior (compact socket lines) for individual nodes targeted by Node ID. Modeled on the AUN Node Controller: up to 20 slots (`label_i`, `targets_i`, `switch_i`) plus an `AllSwitch`. Slot toggles now apply **instantly** on the canvas (like the double-click/right-click toggle) and slot switches auto-sync to the real collapse state of their targets. Has its own compact mode (double-click the node body or right-click → AUN: Compact mode) and can also drive AUN nodes that ship their own collapse-connections renderer. Requires the experimental 'Global collapse connections' setting to be enabled; while it is off the node shows a persistent warning overlay on its body.
+
 ### Changed
 
+- Collapse Connections Controller: targeting is now by Node ID only (the `target_type_i` widget was removed) — matches how node IDs are referenced everywhere else in the pack, and avoids title ambiguity. Excluded IDs use `!`/`-` prefixes (e.g. `5, !12`).
+
 ### Fixed
+
+- Collapse Connections Controller: remote collapse/expand of AUN nodes no longer overrides user-set node sizing. Remote toggles now mirror each AUN node's own collapse behavior — AUNSaveImage / AUNSaveImageV2 and AUNShowAnyMulti / AUNPassthroughAnyMulti keep their user-set height, while the AUN Inputs and AUN KSampler nodes still shrink/expand natively.
 
 ### Notes
 

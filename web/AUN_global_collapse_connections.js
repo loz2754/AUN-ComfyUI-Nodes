@@ -21,6 +21,7 @@ const SKIP_CLASSES = new Set([
   "AUNMultiGroupUniversal", "AUNMultiUniversal",
   "AUNMultiMuteIndex", "AUNMultiBypassIndex",
   "AUNTextIndexSwitch4", "AUNTextIndexSwitch3", "AUNTextIndexSwitch", "AUNRandomTextIndexSwitch", "AUNRandomTextIndexSwitchV2",
+  "AUNCollapseConnectionsController",
 ]);
 
 let globalDefault = false;
@@ -34,7 +35,7 @@ function shouldSkip(node) {
   return SKIP_CLASSES.has(node.comfyClass) || userSkipClasses.has(node.comfyClass);
 }
 
-function isCollapsed(node) {
+export function isConnectionCollapsed(node) {
   return typeof node.properties?.[PK] === "boolean" ? node.properties[PK] : false;
 }
 
@@ -57,16 +58,16 @@ function applyCollapseState(node) {
   }
 
   node.getOutputPos = function (index) {
-    return isCollapsed(this) ? origGetOutputPos(0) : origGetOutputPos(index);
+    return isConnectionCollapsed(this) ? origGetOutputPos(0) : origGetOutputPos(index);
   };
 
   node.getInputPos = function (index) {
-    return isCollapsed(this) ? origGetInputPos(0) : origGetInputPos(index);
+    return isConnectionCollapsed(this) ? origGetInputPos(0) : origGetInputPos(index);
   };
 
   node.computeSize = function (out) {
     const s = origComputeSize(out);
-    if (isCollapsed(this)) {
+    if (isConnectionCollapsed(this)) {
       const ni = this.inputs?.filter((i) => !isWidgetLinked(this, i)).length || 0;
       const no = this.outputs?.length || 0;
       const rows = Math.max(ni, no);
@@ -79,7 +80,7 @@ function applyCollapseState(node) {
 
   node.onDrawForeground = function (ctx) {
     if (origDrawFg) origDrawFg.apply(this, arguments);
-    const c = isCollapsed(this);
+    const c = isConnectionCollapsed(this);
     for (const slot of [...(this.inputs || []), ...(this.outputs || [])]) {
       if (isWidgetLinked(this, slot)) continue;
       if (!c) {
@@ -104,12 +105,11 @@ function applyCollapseState(node) {
   };
 }
 
-function toggleNodeCollapse(node) {
+function applyNodeCollapse(node, goingToCollapse) {
   if (!node) return;
   node.properties = node.properties || {};
-  const goingToCollapse = !isCollapsed(node);
 
-  if (goingToCollapse) {
+  if (goingToCollapse && !isConnectionCollapsed(node)) {
     node.properties[USER_HEIGHT_KEY] = node.size[1];
   }
 
@@ -141,6 +141,44 @@ function toggleNodeCollapse(node) {
   }
   node.graph?.setDirtyCanvas(true, true);
 }
+
+function toggleNodeCollapse(node) {
+  if (!node) return;
+  applyNodeCollapse(node, !isConnectionCollapsed(node));
+}
+
+// Programmatically collapse/expand a single node's connections. Used by the
+// AUNCollapseConnectionsController node; the caller gates on globalDefault.
+export function setNodeCollapseConnections(node, collapse) {
+  if (!node) return;
+  // User skip-list always wins – those nodes must never be touched.
+  if (userSkipClasses.has(node.comfyClass)) return;
+
+  const next = !!collapse;
+  if (isConnectionCollapsed(node) === next) return;
+
+  if (SKIP_CLASSES.has(node.comfyClass)) {
+    // AUN nodes ship their own collapse-connections renderer that reads
+    // properties[PK] live. Prefer a per-node hook that mirrors the node's own
+    // toggle (each node decides whether/how to resize); never force a size here,
+    // or user-set node sizing gets clobbered (e.g. AUNSaveImageV2, AUNShowAnyMulti).
+    if (typeof node.__aun_remoteCollapse === "function") {
+      node.__aun_remoteCollapse(next);
+      return;
+    }
+    node.properties = node.properties || {};
+    node.properties[PK] = next;
+    node.graph?.setDirtyCanvas(true, true);
+    return;
+  }
+
+  if (!node.__aun_global_collapse_hooked) hookNode(node);
+  applyNodeCollapse(node, next);
+}
+
+// Resolve a controller node's targets against the live graph is handled by the
+// AUNCollapseConnectionsController web extension (AUN_collapse_connections_controller.js),
+// which resolves targets itself and calls setNodeCollapseConnections per node.
 
 function hookNode(node) {
   if (!node || node.__aun_global_collapse_hooked) return;
@@ -181,7 +219,7 @@ function hookNode(node) {
     if (origMenu) origMenu.apply(this, [canvas, options]);
     if (!globalDefault) return;
     if (shouldSkip(this)) return;
-    const on = isCollapsed(this);
+    const on = isConnectionCollapsed(this);
     options.push(null, {
       content: on ? "Show Connections" : "Collapse Connections",
       callback: () => toggleNodeCollapse(this),
@@ -192,7 +230,7 @@ function hookNode(node) {
   node.onConfigure = function () {
     origConfigure?.apply(this, arguments);
     applyCollapseState(this);
-    if (isCollapsed(this)) {
+    if (isConnectionCollapsed(this)) {
       const h = this.computeSize()[1];
       this.setSize([this.size[0], h]);
     }
@@ -237,6 +275,11 @@ function cleanupAllNodes(graph) {
     if (node.__aun_gc_origDrawFg != null) node.onDrawForeground = node.__aun_gc_origDrawFg;
   }
   forceGraphRedraw(app);
+}
+
+// Read-only accessor for other extensions (e.g. the controller node overlay).
+export function isGlobalCollapseEnabled() {
+  return globalDefault;
 }
 
 app.registerExtension({

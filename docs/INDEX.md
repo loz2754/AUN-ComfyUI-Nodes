@@ -11,6 +11,7 @@ Generated list of documentation files under `docs/`.
 - [AUNBoolean](./AUNBoolean_README.md)
 - [AUNCFG](./AUNCFG_README.md)
 - [AUNCheckpointLoaderWithClipSkip](./AUNCheckpointLoaderWithClipSkip_README.md)
+- [AUNCollapseConnectionsController](./AUNCollapseConnectionsController_README.md)
 - [AUNEmptyLatent](./AUNEmptyLatent_README.md)
 - [AUNExtractModelName](./AUNExtractModelName_README.md)
 - [AUNExtractPowerLoras](./AUNExtractPowerLoras_README.md)

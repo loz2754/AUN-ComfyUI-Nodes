@@ -6,6 +6,7 @@ AUNAny.py
 AUNBookmark.py
 AUNBoolean.py
 AUNCFG.py
+AUNCollapseConnectionsController.py
 AUNCkptClipSkip.py
 AUNEmptyLatent.py
 AUNExtractModelName.py
@@ -70,6 +71,7 @@ docs/AUNBookmark_README.md
 docs/AUNBoolean_README.md
 docs/AUNCFG_README.md
 docs/AUNCheckpointLoaderWithClipSkip_README.md
+docs/AUNCollapseConnectionsController_README.md
 docs/AUNEmptyLatent_README.md
 docs/AUNExtractModelName_README.md
 docs/AUNExtractPowerLoras_README.md
@@ -144,7 +146,9 @@ web/AUNShowTextWithTitle.js
 web/AUN_any_index_switch_inputs.js
 web/AUN_bookmark.js
 web/AUN_bypass.js
+web/AUN_collapse_connections_controller.js
 web/AUN_get_connected_node_titles_labels.js
+web/AUN_global_collapse_connections.js
 web/AUN_inputs_hybrid_toggle.js
 web/AUN_multi_bypass_index_instant.js
 web/AUN_multi_index_instant.js

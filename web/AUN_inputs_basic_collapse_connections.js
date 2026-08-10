@@ -117,6 +117,29 @@ function setupNode(node) {
 
   node.__aun_collapse_hooked = true;
 
+  // Remote control from AUNCollapseConnectionsController – mirrors the node's
+  // own dbl-click toggle, including the native shrink/expand via setSize.
+  node.__aun_remoteCollapse = (next) => {
+    const target = !!next;
+    if (!!node.properties?.[PK] === target) return;
+    node.properties = node.properties || {};
+    node.properties[PK] = target;
+    if (!target) {
+      for (const slot of [...(node.inputs || []), ...(node.outputs || [])]) {
+        if (node.widgets?.length && slot.widget) continue;
+        if ('__aun_collapse_origLabel' in slot) {
+          delete slot.label;
+          delete slot.__aun_collapse_origLabel;
+        }
+        if (slot.label === " ") {
+          delete slot.label;
+        }
+      }
+    }
+    node.setSize([node.size[0], node.computeSize()[1]]);
+    node.graph?.setDirtyCanvas(true, true);
+  };
+
   if (node.properties[PK]) {
     node.setSize([node.size[0], node.computeSize()[1]]);
   }

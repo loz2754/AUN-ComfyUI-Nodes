@@ -522,6 +522,20 @@ function setupCollapseConnections(node) {
     this.graph?.setDirtyCanvas(true, true);
   }
 
+  // Remote control from AUNCollapseConnectionsController – mirrors toggleCollapse
+  // (no resize, so the user-set node height is preserved).
+  node.__aun_remoteCollapse = (next) => {
+    const target = !!next;
+    if (!!node.properties?.[COLLAPSE_KEY] === target) return;
+    node.properties = node.properties || {};
+    node.properties[COLLAPSE_KEY] = target;
+    if (!target) {
+      updateInputLabels(node);
+      updateOutputLabels(node);
+    }
+    node.graph?.setDirtyCanvas(true, true);
+  };
+
   const origDblClick = node.onDblClick;
   node.onDblClick = function (event, pos) {
     origDblClick?.apply(this, arguments);
