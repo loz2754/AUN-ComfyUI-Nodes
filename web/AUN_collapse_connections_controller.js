@@ -11,6 +11,7 @@ import {
   setNodeCollapseConnections,
   isGlobalCollapseEnabled,
   isConnectionCollapsed,
+  getAllNodesOffMode,
 } from "./AUN_global_collapse_connections.js";
 
 const NODE_TYPE = "AUNCollapseConnectionsController";
@@ -36,6 +37,15 @@ const splitList = (value) => {
     .filter(Boolean);
 };
 
+// Nodes that visibly benefit from collapsing: 2+ real connection slots
+// (widget-linked inputs like converted widgets don't count).
+const hasConnectionSlots = (node) =>
+  (node.inputs?.filter((i) => !i.widget).length || 0) + (node.outputs?.length || 0) >= 2;
+
+const getGraphNodes = (node) => node?.graph?._nodes || [];
+
+const getEligibleNodes = (node) => getGraphNodes(node).filter(hasConnectionSlots);
+
 // Resolve a slot's raw node IDs to live nodes.
 function resolveTargetIds(rawTargets) {
   const nodes = [];
@@ -50,11 +60,16 @@ const executeInstant = function executeInstant() {
   if (!this.widgets || this.configuring) return;
   if (!isGlobalCollapseEnabled()) return;
 
+  const allNodes = !!getWidget(this, "AllNodes")?.value;
+  const wasOn = !!this._AUN_allNodesWasOn;
+  this._AUN_allNodesWasOn = allNodes;
+
   const slotCount = clampSlotCount(getWidget(this, "slot_count")?.value);
   const allSwitch = !!getWidget(this, "AllSwitch")?.value;
 
   const active = new Set();
   const inactive = new Set();
+  const targeted = new Set();
 
   for (let slot = 1; slot <= slotCount; slot++) {
     const switchWidget = getWidget(this, `switch_${slot}`);
@@ -63,6 +78,7 @@ const executeInstant = function executeInstant() {
     if (!splitList(targets).length) continue;
     const isActive = !!switchWidget.value || allSwitch;
     for (const node of resolveTargetIds(targets)) {
+      targeted.add(node);
       // Active wins across overlapping slots.
       if (isActive) {
         active.add(node);
@@ -70,6 +86,26 @@ const executeInstant = function executeInstant() {
       } else if (!active.has(node)) {
         inactive.add(node);
       }
+    }
+  }
+
+  if (allNodes) {
+    for (const node of getEligibleNodes(this)) setNodeCollapseConnections(node, true);
+    forceGraphRedraw(app);
+    return;
+  }
+
+  if (wasOn) {
+    if (getAllNodesOffMode() === "expand") {
+      // Full reset: expand every node and skip slot logic this tick.
+      for (const node of getGraphNodes(this)) setNodeCollapseConnections(node, false);
+      forceGraphRedraw(app);
+      return;
+    }
+    // Return to slot control: release the nodes All Graph had collapsed,
+    // then let the slot logic below re-apply per-slot state.
+    for (const node of getEligibleNodes(this)) {
+      if (!targeted.has(node)) setNodeCollapseConnections(node, false);
     }
   }
 
@@ -101,6 +137,14 @@ const syncTogglesWithGraph = function syncTogglesWithGraph() {
 
   if (dirty) this.setDirtyCanvas?.(true, true);
   this._AUN_syncingToggles = false;
+
+  // While All Graph is ON, re-collapse every eligible node so newly added
+  // nodes (and state restored after a workflow load) stay covered.
+  if (getWidget(this, "AllNodes")?.value) {
+    for (const node of getEligibleNodes(this)) {
+      setNodeCollapseConnections(node, true);
+    }
+  }
 };
 
 const refreshWidgets = function refreshWidgets() {
@@ -136,6 +180,11 @@ const refreshWidgets = function refreshWidgets() {
       if (slotCount <= 1 && widget.value) {
         widget.value = false;
       }
+      continue;
+    }
+    if (widget?.name === "AllNodes") {
+      applyWidgetHiddenState(widget, false);
+      continue;
     }
   }
   this.setDirtyCanvas?.(true, true);
@@ -204,6 +253,13 @@ const decorateNode = (node) => {
     });
   }
 
+  const allNodesWidget = getWidget(node, "AllNodes");
+  if (allNodesWidget) {
+    chainWidgetCallback(allNodesWidget, () => {
+      node.__AUN_executeInstant?.();
+    });
+  }
+
   node.__AUN_toggleCompactMode = (nextState, { force = false } = {}) => {
     if (node.__AUN_toggleInProgress) return;
 
@@ -250,6 +306,7 @@ const decorateNode = (node) => {
   const originalConfigure = node.onConfigure;
   node.onConfigure = function onConfigure(...args) {
     originalConfigure?.apply(this, args);
+    this._AUN_allNodesWasOn = !!getWidget(this, "AllNodes")?.value;
     this.__AUN_refreshWidgets?.();
     this.syncTogglesWithGraph?.();
   };
@@ -365,33 +422,17 @@ app.registerExtension({
   },
 });
 
-// Apply the state snapshot the Python node sends when the workflow runs.
+// When the workflow runs, the Python node sends this event to re-apply state.
+// Delegate to executeInstant on every controller node — it reads the live widget
+// values (slots, AllSwitch, AllNodes) as the single source of truth.
 app.api.addEventListener("AUN_set_collapse_connections", (event) => {
-  const detail = event?.detail || {};
   if (!isGlobalCollapseEnabled()) return;
-  const groups = Array.isArray(detail.groups) ? detail.groups : [];
-
-  const active = new Set();
-  const inactive = new Set();
-
-  for (const group of groups) {
-    const targets = Array.isArray(group?.targets) ? group.targets : [];
-    if (!targets.length || group.type !== "ID") continue;
-    for (const id of targets) {
-      const node = findNodeById(id);
-      if (!node) continue;
-      if (group.is_active) {
-        active.add(node);
-        inactive.delete(node);
-      } else if (!active.has(node)) {
-        inactive.add(node);
-      }
+  for (const graph of getAllGraphs(app.graph)) {
+    if (!graph?._nodes) continue;
+    for (const node of graph._nodes) {
+      if (node?.type === NODE_TYPE) node.__AUN_executeInstant?.();
     }
   }
-
-  for (const node of active) setNodeCollapseConnections(node, true);
-  for (const node of inactive) setNodeCollapseConnections(node, false);
-  if (active.size || inactive.size) forceGraphRedraw(app);
 });
 
 setInterval(() => {

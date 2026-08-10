@@ -158,7 +158,7 @@ _AUN Node state controllers let you bypass, mute, and/or collapse nodes, keeping
 - Multi Mute Index (`AUNMultiMuteIndex`) same as Multi Bypass Index but mute instead of bypass.
 - Node Collapser & Bypasser Advanced (`AUNSetCollapseAndBypassStateAdvanced`) set collapse and bypass or mute state for multiple nodes. Has a combined override or separate toggles.
 - Node State Controller (`AUNNodeStateController`) control collapse + bypass or mute for nodes by ID, group, or title.
-- Collapse Connections (`AUNCollapseConnectionsController`) hides the input/output slots of chosen nodes to reduce link lines between them. Set up to 20 slots (label, targets, switch) plus an All switch; toggles apply instantly on the canvas and each targeted node's lines collapse into a single point. Double-click the node for compact mode. Requires the experimental 'Global collapse connections' setting (Settings → AUN) to be enabled; the node shows a warning overlay until it is.
+- Collapse Connections (`AUNCollapseConnectionsController`) hides the input/output slots of chosen nodes to reduce link lines between them. Set up to 20 slots (label, targets, switch) plus an All switch; toggles apply instantly on the canvas and each targeted node's lines collapse into a single point. An 'All Graph' toggle hides connections for every node in the graph with 2+ connection slots at once. Double-click the node for compact mode. Requires the experimental 'Global collapse connections' setting (Settings → AUN) to be enabled; the node shows a warning overlay until it is.
 
 ##### Workflow image showing the many uses of the AUN Node/Group Controllers - (drop image into Comfyui to load the workflow)
 

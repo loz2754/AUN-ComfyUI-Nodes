@@ -1,6 +1,6 @@
 # AUNCollapseConnectionsController — Collapse Connections
 
-Purpose: Hide the input/output slots of chosen nodes to reduce link lines between them. Each targeted node's connection lines collapse into a single point and can be expanded back anytime. Target nodes by Node ID using slot-based toggles.
+Purpose: Hide the input/output slots of chosen nodes to reduce link lines between them. Each targeted node's connection lines collapse into a single point and can be expanded back anytime. Target nodes by Node ID using slot-based toggles, or use the `AllNodes` toggle to hide connections for every node in the graph with 2 or more connection slots.
 
 ## Prerequisite
 
@@ -16,6 +16,16 @@ The **⚠ EXPERIMENTAL — Global collapse connections** setting (Settings → A
     - `Collapsed ▶`: hide the target nodes' input/output slots so their link lines converge to a single point.
     - `Expanded ▼`: restore the target nodes' slots and link lines.
 - `AllSwitch` (BOOLEAN): `All ▶` collapses all targeted nodes; `Individual` uses each slot's `switch_i`.
+- `AllNodes` (BOOLEAN): `All Graph ▶` hides the input/output slots of every node in the graph with **2 or more connection slots** (nodes with 0–1 slots are skipped because collapsing them is visually invisible). `Slot only` returns to normal slot-based control. The user "extra node classes to skip" setting is always respected.
+
+## All Graph toggle
+
+`AllNodes` is a bulk switch for the whole graph. While it is **on**, every eligible node is collapsed (this overrides the slot switches). How it behaves when switched **off** is chosen in **Settings → AUN → "Collapse Connections Controller: 'All Graph' off behavior"**:
+
+- **Return to slot control** (default): only the nodes All Graph had collapsed are re-expanded; nodes targeted by a slot continue to follow their slot switch.
+- **Expand everything**: every node in the graph is re-expanded (full reset).
+
+While All Graph is on, newly added nodes are collapsed automatically and manually expanded nodes are re-collapsed on the next refresh — turn All Graph off to expand individual nodes. The toggle itself is a directive and does not auto-sync to the graph state.
 
 ## Compact mode
 
@@ -23,7 +33,7 @@ The controller has its own compact mode (mirroring the AUN Node Controller):
 
 - **Double-click** the node body (not the title bar) to toggle it.
 - **Right-click → AUN: Compact mode** to toggle it.
-- In compact mode the `slot_count`, `label_i`, and `targets_i` widgets are hidden; only the named slot switches remain, each labelled with its `label_i` value (or `Slot N` when empty). The hidden widgets keep their values and are restored when you leave compact mode.
+- In compact mode the `slot_count`, `label_i`, and `targets_i` widgets are hidden; only the named slot switches remain (each labelled with its `label_i` value, or `Slot N` when empty), along with the `AllSwitch` and `AllNodes` toggles. The hidden widgets keep their values and are restored when you leave compact mode.
 
 ## Behavior notes
 
@@ -39,4 +49,4 @@ The controller has its own compact mode (mirroring the AUN Node Controller):
 ## Tips
 
 - Enable ComfyUI "Show Node IDs" when targeting by Node ID.
-- To apply collapse connections to every non-AUN node, enable the experimental setting directly instead of using this node.
+- To quickly hide connection lines for the whole graph, use the `AllNodes` toggle instead of setting up slots node by node.
