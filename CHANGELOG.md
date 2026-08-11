@@ -5,6 +5,16 @@
 
 ### Added
 
+### Changed
+
+### Fixed
+
+### Notes
+
+## [2.17.0] - 2026-08-11
+
+### Added
+
 - Collapse Connections Controller: new 'All Graph' run-bar button in ComfyUI's top action bar (toggleable via Settings → AUN). It is the only whole-graph control and collapses every eligible node in the graph directly, with or without a controller on the canvas.
 
 ### Changed
@@ -15,7 +25,6 @@
 ### Fixed
 
 ### Notes
-
 ## [2.16.0] - 2026-08-11
 
 ### Added
