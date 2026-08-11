@@ -14,9 +14,9 @@ class AUNCollapseConnectionsController:
     DESCRIPTION = (
         "Hide the input/output slots of chosen nodes to reduce link lines between them. "
         "Toggled nodes take effect instantly on the canvas — their connection lines collapse into a "
-        "single point and expand back anytime. Target nodes by Node ID, or use 'All Graph' to hide "
-        "connections for every node with 2 or more slots at once. Requires the experimental "
-        "'Global collapse connections' setting (Settings → AUN) to be enabled."
+        "single point and expand back anytime. Target nodes by Node ID. Use the 'All Graph' button in "
+        "ComfyUI's top action bar to hide connections for every node with 2 or more slots at once. "
+        "Requires the experimental 'Global collapse connections' setting (Settings → AUN) to be enabled."
     )
 
     @classmethod
@@ -58,22 +58,15 @@ class AUNCollapseConnectionsController:
         # AllSwitch at the bottom to match other multi-nodes
         inputs["required"]["AllSwitch"] = ("BOOLEAN", {
             "default": False,
-            "label_on": "All ▶",
-            "label_off": "Individual",
-            "tooltip": "On = hide slots for all targeted nodes at once. Off = control each slot individually."
-        })
-
-        # AllNodes toggle at the very bottom
-        inputs["required"]["AllNodes"] = ("BOOLEAN", {
-            "default": False,
-            "label_on": "All Graph ▶",
-            "label_off": "Slot only",
-            "tooltip": "On = hide the input/output slots of every node in the graph with 2 or more connection slots. Off = only nodes targeted by the slots are affected."
+            "label_on": "All slots ▶",
+            "label_off": "Individual slots",
+            "tooltip": "'All slots' hides the slots for all targeted nodes at once. "
+                       "'Individual slots' (default) controls each slot separately."
         })
 
         return inputs
 
-    def execute(self, slot_count, AllSwitch, AllNodes, **kwargs):
+    def execute(self, slot_count, AllSwitch, **kwargs):
         try:
             from server import PromptServer
         except Exception as e:
@@ -113,7 +106,6 @@ class AUNCollapseConnectionsController:
             PromptServer.instance.send_sync("AUN_set_collapse_connections", {
                 "groups": target_groups,
                 "slot_count": int(slot_count),
-                "all_nodes": bool(AllNodes),
             })
         except Exception as e:
             print(f"[AUNCollapseConnectionsController] Error sending event: {e}")

@@ -26,7 +26,6 @@ const SKIP_CLASSES = new Set([
 
 let globalDefault = false;
 let userSkipClasses = new Set();
-let allNodesOffMode = "slot";
 
 function isWidgetLinked(node, slot) {
   return !!(node.widgets?.length && slot.widget);
@@ -283,10 +282,6 @@ export function isGlobalCollapseEnabled() {
   return globalDefault;
 }
 
-export function getAllNodesOffMode() {
-  return allNodesOffMode;
-}
-
 app.registerExtension({
   name: "AUN.GlobalCollapseConnections",
   nodeCreated: (node) => hookNode(node),
@@ -316,28 +311,6 @@ app.registerExtension({
     userSkipClasses = new Set(
       (skipSetting.value || "").split(",").map((s) => s.trim()).filter(Boolean)
     );
-
-    app.ui.settings.addSetting({
-      id: "AUN.CollapseConnections.AllNodesOffMode",
-      name: "Collapse Connections Controller: 'All Graph' off behavior",
-      tooltip:
-        "When the 'All Graph' toggle on the Collapse Connections Controller is turned off: " +
-        "'Return to slot control' re-expands only the nodes All Graph collapsed, and slot switches keep working. " +
-        "'Expand everything' re-expands every node in the graph (full reset).",
-      type: (name, setter, value) => {
-        const el = document.createElement("select");
-        el.style.width = "100%";
-        el.add(new Option("Return to slot control", "slot"));
-        el.add(new Option("Expand everything", "expand"));
-        el.value = value === "expand" ? "expand" : "slot";
-        el.addEventListener("change", () => setter(el.value));
-        return el;
-      },
-      defaultValue: "slot",
-      onChange: (value) => {
-        allNodesOffMode = value === "expand" ? "expand" : "slot";
-      },
-    });
 
     app.ui.settings.addSetting({
       id: SETTING_ID,

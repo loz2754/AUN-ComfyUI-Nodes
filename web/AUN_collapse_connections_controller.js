@@ -11,7 +11,6 @@ import {
   setNodeCollapseConnections,
   isGlobalCollapseEnabled,
   isConnectionCollapsed,
-  getAllNodesOffMode,
 } from "./AUN_global_collapse_connections.js";
 
 const NODE_TYPE = "AUNCollapseConnectionsController";
@@ -42,10 +41,6 @@ const splitList = (value) => {
 const hasConnectionSlots = (node) =>
   (node.inputs?.filter((i) => !i.widget).length || 0) + (node.outputs?.length || 0) >= 2;
 
-const getGraphNodes = (node) => node?.graph?._nodes || [];
-
-const getEligibleNodes = (node) => getGraphNodes(node).filter(hasConnectionSlots);
-
 // Resolve a slot's raw node IDs to live nodes.
 function resolveTargetIds(rawTargets) {
   const nodes = [];
@@ -60,25 +55,19 @@ const executeInstant = function executeInstant() {
   if (!this.widgets || this.configuring) return;
   if (!isGlobalCollapseEnabled()) return;
 
-  const allNodes = !!getWidget(this, "AllNodes")?.value;
-  const wasOn = !!this._AUN_allNodesWasOn;
-  this._AUN_allNodesWasOn = allNodes;
-
   const slotCount = clampSlotCount(getWidget(this, "slot_count")?.value);
-  const allSwitch = !!getWidget(this, "AllSwitch")?.value;
+  const allSlots = !!getWidget(this, "AllSwitch")?.value;
 
   const active = new Set();
   const inactive = new Set();
-  const targeted = new Set();
 
   for (let slot = 1; slot <= slotCount; slot++) {
     const switchWidget = getWidget(this, `switch_${slot}`);
     if (!switchWidget || switchWidget.hidden) continue;
     const targets = getWidget(this, `targets_${slot}`)?.value;
     if (!splitList(targets).length) continue;
-    const isActive = !!switchWidget.value || allSwitch;
+    const isActive = !!switchWidget.value || allSlots;
     for (const node of resolveTargetIds(targets)) {
-      targeted.add(node);
       // Active wins across overlapping slots.
       if (isActive) {
         active.add(node);
@@ -86,26 +75,6 @@ const executeInstant = function executeInstant() {
       } else if (!active.has(node)) {
         inactive.add(node);
       }
-    }
-  }
-
-  if (allNodes) {
-    for (const node of getEligibleNodes(this)) setNodeCollapseConnections(node, true);
-    forceGraphRedraw(app);
-    return;
-  }
-
-  if (wasOn) {
-    if (getAllNodesOffMode() === "expand") {
-      // Full reset: expand every node and skip slot logic this tick.
-      for (const node of getGraphNodes(this)) setNodeCollapseConnections(node, false);
-      forceGraphRedraw(app);
-      return;
-    }
-    // Return to slot control: release the nodes All Graph had collapsed,
-    // then let the slot logic below re-apply per-slot state.
-    for (const node of getEligibleNodes(this)) {
-      if (!targeted.has(node)) setNodeCollapseConnections(node, false);
     }
   }
 
@@ -137,14 +106,6 @@ const syncTogglesWithGraph = function syncTogglesWithGraph() {
 
   if (dirty) this.setDirtyCanvas?.(true, true);
   this._AUN_syncingToggles = false;
-
-  // While All Graph is ON, re-collapse every eligible node so newly added
-  // nodes (and state restored after a workflow load) stay covered.
-  if (getWidget(this, "AllNodes")?.value) {
-    for (const node of getEligibleNodes(this)) {
-      setNodeCollapseConnections(node, true);
-    }
-  }
 };
 
 const refreshWidgets = function refreshWidgets() {
@@ -180,10 +141,6 @@ const refreshWidgets = function refreshWidgets() {
       if (slotCount <= 1 && widget.value) {
         widget.value = false;
       }
-      continue;
-    }
-    if (widget?.name === "AllNodes") {
-      applyWidgetHiddenState(widget, false);
       continue;
     }
   }
@@ -253,13 +210,6 @@ const decorateNode = (node) => {
     });
   }
 
-  const allNodesWidget = getWidget(node, "AllNodes");
-  if (allNodesWidget) {
-    chainWidgetCallback(allNodesWidget, () => {
-      node.__AUN_executeInstant?.();
-    });
-  }
-
   node.__AUN_toggleCompactMode = (nextState, { force = false } = {}) => {
     if (node.__AUN_toggleInProgress) return;
 
@@ -306,7 +256,6 @@ const decorateNode = (node) => {
   const originalConfigure = node.onConfigure;
   node.onConfigure = function onConfigure(...args) {
     originalConfigure?.apply(this, args);
-    this._AUN_allNodesWasOn = !!getWidget(this, "AllNodes")?.value;
     this.__AUN_refreshWidgets?.();
     this.syncTogglesWithGraph?.();
   };
@@ -344,6 +293,7 @@ const decorateNode = (node) => {
   setTimeout(() => {
     node.__AUN_refreshWidgets?.();
     node.syncTogglesWithGraph?.();
+    updateRunBarButton();
   }, 250);
 };
 
@@ -414,8 +364,111 @@ const extendNodePrototype = (nodeType) => {
   };
 };
 
+// ── Run-bar "All Graph" button ───────────────────────────────────────────────
+
+const RUN_BAR_SETTING_ID = "AUN.CollapseConnections.Controller.ShowRunBarButton";
+let runBarBtn = null;
+let showRunBarBtn = true;
+
+const getEligibleGraphNodes = (graph) =>
+  (graph?._nodes || []).filter(hasConnectionSlots);
+
+const isGraphAllCollapsed = (graph) => {
+  const eligible = getEligibleGraphNodes(graph);
+  return eligible.length > 0 && eligible.every((n) => isConnectionCollapsed(n));
+};
+
+function injectRunBarStyles() {
+  if (document.getElementById("aun-allgraph-btn-style")) return;
+  const style = document.createElement("style");
+  style.id = "aun-allgraph-btn-style";
+  style.textContent = `
+    .aun-allgraph-btn {
+      font-size: 12px;
+      line-height: 1;
+    }
+    .aun-allgraph-btn.aun-allgraph-on {
+      background-color: var(--primary-bg) !important;
+      color: var(--primary-fg) !important;
+    }
+    .aun-allgraph-btn.aun-allgraph-disabled {
+      opacity: 0.45;
+      cursor: default;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+function ensureRunBarButton() {
+  injectRunBarStyles();
+  if (!showRunBarBtn) return;
+  const group = app.menu?.actionsGroup;
+  if (!group?.element) return;
+  if (runBarBtn) {
+    if (runBarBtn.isConnected) return;
+    if (group.buttons?.includes(runBarBtn)) {
+      group.update();
+      return;
+    }
+  } else {
+    runBarBtn = document.createElement("button");
+    runBarBtn.type = "button";
+    runBarBtn.className = "comfyui-button aun-allgraph-btn";
+    runBarBtn.textContent = "All Graph";
+    runBarBtn.title =
+      "Collapse connections for every node with 2+ connection slots.";
+    runBarBtn.addEventListener("click", onRunBarButtonClick);
+  }
+  group.insert(runBarBtn, 0);
+}
+
+function removeRunBarButton() {
+  if (runBarBtn?.isConnected) runBarBtn.remove();
+}
+
+function updateRunBarButton() {
+  ensureRunBarButton();
+  if (!runBarBtn) return;
+  const on = isGraphAllCollapsed(app.graph);
+  runBarBtn.classList.toggle("aun-allgraph-on", on);
+  const disabled = !isGlobalCollapseEnabled();
+  runBarBtn.classList.toggle("aun-allgraph-disabled", disabled);
+  runBarBtn.style.pointerEvents = disabled ? "none" : "";
+}
+
+function onRunBarButtonClick() {
+  if (!isGlobalCollapseEnabled()) return;
+  const eligible = getEligibleGraphNodes(app.graph);
+  if (!eligible.length) return;
+  const target = !isGraphAllCollapsed(app.graph);
+  for (const node of eligible) setNodeCollapseConnections(node, target);
+  forceGraphRedraw(app);
+  updateRunBarButton();
+}
+
 app.registerExtension({
   name: "AUN.CollapseConnectionsController",
+  async setup() {
+    const setting = app.ui.settings.addSetting({
+      id: RUN_BAR_SETTING_ID,
+      name: "Collapse Connections Controller: show 'All Graph' run-bar button",
+      tooltip:
+        "Shows an 'All Graph' button in ComfyUI's top action bar that collapses " +
+        "connections for every node with 2+ connection slots.",
+      type: "boolean",
+      defaultValue: true,
+      onChange: (value) => {
+        showRunBarBtn = !!value;
+        if (showRunBarBtn) {
+          ensureRunBarButton();
+        } else {
+          removeRunBarButton();
+        }
+      },
+    });
+    showRunBarBtn = !!setting.value;
+    updateRunBarButton();
+  },
   async beforeRegisterNodeDef(nodeType, nodeData) {
     if (nodeData?.name !== NODE_TYPE) return;
     extendNodePrototype(nodeType);
@@ -424,8 +477,9 @@ app.registerExtension({
 
 // When the workflow runs, the Python node sends this event to re-apply state.
 // Delegate to executeInstant on every controller node — it reads the live widget
-// values (slots, AllSwitch, AllNodes) as the single source of truth.
+// values (slots, AllSwitch) as the single source of truth.
 app.api.addEventListener("AUN_set_collapse_connections", (event) => {
+  updateRunBarButton();
   if (!isGlobalCollapseEnabled()) return;
   for (const graph of getAllGraphs(app.graph)) {
     if (!graph?._nodes) continue;
@@ -437,6 +491,7 @@ app.api.addEventListener("AUN_set_collapse_connections", (event) => {
 
 setInterval(() => {
   try {
+    updateRunBarButton();
     for (const graph of getAllGraphs(app.graph)) {
       if (!graph._nodes) continue;
       for (const node of graph._nodes) {
