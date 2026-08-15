@@ -60,7 +60,7 @@ class AUNInputsRefine:
                 "aspect_ratio": (ASPECT_RATIO_NAMES, {"tooltip": "Select a predefined aspect ratio or ratio to automatically set width and height."}),
                 "aspect_mode": (ASPECT_MODE_OPTIONS, {"default": "Original", "tooltip": "Random swaps dimensions 50% of the time, Swap forces a swap, Original keeps the original order."}),
                 "batch_size": ("INT", {"default": 1, "min": 1, "max": 64, "tooltip": "Number of latent images to generate in a batch."}),
-                "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff, "tooltip": "The random seed for generation."}),
+                "seed": ("INT", {"default": 0, "min": -0xffffffffffffffff, "max": 0xffffffffffffffff, "tooltip": "The random seed for generation."}),
                 'MainFolder': ('STRING', {'multiline': False, 'default': 'MainFolder', "forceInput": False, "tooltip": "The main output folder for saved files."}),
                 'ManualName': ('STRING', {'multiline': False, 'default': 'Name', "forceInput": False, "tooltip": "The filename to use when 'name_mode' is set to Manual."}),
                 'name_mode': ("BOOLEAN", {"default": False, "label_on": "Manual", "label_off": "Auto", "tooltip": "Switch between automatic and manual filename modes."}),

@@ -205,7 +205,7 @@ class AUNInputsDiffusersRefineBasic:
                 ),
                 "seed": (
                     "INT",
-                    {"default": 0, "min": 0, "max": 0xFFFFFFFFFFFFFFFF, "tooltip": "Base seed."},
+                    {"default": 0, "min": -0xffffffffffffffff, "max": 0xFFFFFFFFFFFFFFFF, "tooltip": "Base seed."},
                 ),
                 "megapixels": MEGAPIXELS_WIDGET,
                 "multiple": MULTIPLE_WIDGET,

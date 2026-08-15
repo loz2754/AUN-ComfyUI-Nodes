@@ -238,7 +238,7 @@ class AUNInputsHybrid:
                 ),
                 "seed": (
                     "INT",
-                    {"default": 0, "min": 0, "max": 0xFFFFFFFFFFFFFFFF, "tooltip": "Base seed."},
+                    {"default": 0, "min": -0xffffffffffffffff, "max": 0xFFFFFFFFFFFFFFFF, "tooltip": "Base seed."},
                 ),
                 "MainFolder": (
                     "STRING",
