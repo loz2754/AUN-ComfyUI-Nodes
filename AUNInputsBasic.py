@@ -19,7 +19,7 @@ sampler = AnyType("*")
 
 
 class AUNInputsBasic:
-    DESCRIPTION = "A comprehensive 'all-in-one' node for setting up a generation pipeline. It loads a checkpoint, creates a latent image, and prepares various parameters for sampling and saving, all in one place.\n\nRight-click → \"Collapse Connections\" or double-click to hide output labels and converge connection lines."
+    DESCRIPTION = "A comprehensive 'all-in-one' node for setting up a generation pipeline. It loads a checkpoint, creates a latent image, and prepares various parameters for sampling and saving, all in one place.\n\nThe optional *_input sockets override the matching widget values (model, sampler, scheduler, cfg, steps, seed) when connected.\n\nRight-click → \"Collapse Connections\" or double-click to hide output labels and converge connection lines."
     # date_format = ["%Y%m%d%H%M%S",
     #                "%Y%m%d%H%M",
     #                "%Y%m%d",
@@ -41,9 +41,14 @@ class AUNInputsBasic:
     def INPUT_TYPES(s):
 
         return {
-            # "optional": {
-            #     "auto_name": ("STRING", {"multiline": False, "default": "Name", "forceInput": True, "tooltip": "Automatic name input, typically from a prompt node, used when 'name_mode' is set to Auto."}),
-            # },
+            "optional": {
+                "model_input": ("STRING", {"forceInput": True, "tooltip": "Checkpoint filename override. When connected, replaces 'ckpt_name' (resolved case-insensitively against installed checkpoints; falls back to the widget value if no match is found)."}),
+                "sampler_input": ("STRING", {"forceInput": True, "tooltip": "Sampler name override. When connected and non-empty, replaces the 'sampler' widget value."}),
+                "scheduler_input": ("STRING", {"forceInput": True, "tooltip": "Scheduler name override. When connected and non-empty, replaces the 'scheduler' widget value."}),
+                "cfg_input": ("FLOAT", {"forceInput": True, "tooltip": "CFG scale override. When connected, replaces the 'cfg' widget value."}),
+                "steps_input": ("INT", {"forceInput": True, "tooltip": "Steps override. When connected, replaces the 'steps' widget value."}),
+                "seed_input": ("INT", {"forceInput": True, "tooltip": "Seed override. When connected, replaces the 'seed' widget value."}),
+            },
             'required': {
                 "ckpt_name": (comfy_paths.get_filename_list("checkpoints"), {"tooltip": "The checkpoint model file to load."}),
                 "speed_lora": ("BOOLEAN", {"default": False, "label_on": "On", "label_off": "Off", "tooltip": "Enable or disable SpeedLoRA optimizations."}),
@@ -113,10 +118,56 @@ class AUNInputsBasic:
     FUNCTION = 'inputs'
     CATEGORY = 'AUN Nodes/Loaders+Inputs'
 
+    @staticmethod
+    def _clean_override(value):
+        if value is None:
+            return ""
+        s = str(value).strip()
+        return "" if s.lower() in ("", "none", "null") else s
+
+    @staticmethod
+    def _resolve_ckpt_name(override, current):
+        override = AUNInputsBasic._clean_override(override)
+        if not override:
+            return current
+        candidates = comfy_paths.get_filename_list("checkpoints")
+        lowered = override.lower()
+        for candidate in candidates:
+            if candidate.lower() == lowered:
+                return candidate
+        for ext in (".safetensors", ".ckpt", ".pt", ".gguf"):
+            for candidate in candidates:
+                if candidate.lower() == (override + ext).lower():
+                    return candidate
+        for candidate in candidates:
+            if os.path.basename(candidate).lower() == lowered:
+                return candidate
+        for ext in (".safetensors", ".ckpt", ".pt", ".gguf"):
+            for candidate in candidates:
+                if os.path.basename(candidate).lower() == (override + ext).lower():
+                    return candidate
+        print(f"AUNInputsBasic: checkpoint override '{override}' not found among {len(candidates)} installed checkpoints; falling back to widget value '{current}'.")
+        return current
+
     def inputs(self, ckpt_name, speed_lora, speed_lora_model, speed_lora_strength, clip_skip, 
                sampler, scheduler, cfg, steps, width, height, aspect_ratio, aspect_mode, batch_size, seed,
-               megapixels=1.0, multiple=8
+               megapixels=1.0, multiple=8, model_input="", sampler_input="", scheduler_input="", cfg_input=None, steps_input=None, seed_input=None
                ):
+        model_input = self._clean_override(model_input)
+        sampler_input = self._clean_override(sampler_input)
+        scheduler_input = self._clean_override(scheduler_input)
+        ckpt_name = self._resolve_ckpt_name(model_input, ckpt_name)
+        if sampler_input:
+            sampler = sampler_input
+        if scheduler_input:
+            scheduler = scheduler_input
+        if cfg_input is not None:
+            cfg = cfg_input
+        if steps_input is not None:
+            steps = steps_input
+        if seed_input is not None:
+            seed = seed_input
+
         ckpt_path = comfy_paths.get_full_path("checkpoints", ckpt_name)
         out = comfy.sd.load_checkpoint_guess_config(ckpt_path, output_vae=True, output_clip=True, embedding_directory=comfy_paths.get_folder_paths("embeddings"))
         model, clip, vae = out[0], out[1], out[2]

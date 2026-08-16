@@ -1,6 +1,6 @@
 [project]
 name = "aun-comfyui-nodes"
-description = "A comprehensive collection of custom nodes for ComfyUI which helps you to create compact, well-organised workflows. Includes a bunch of bypass/mute/collapse controllers, automatic file naming and saving, clever index-driven prompting that matches specific LoRAs to specific prompts. With in-built trigger words management, CivitAI lookup and more..."
+description = "A comprehensive collection of custom nodes for compact, well-organised workflows. Includes bypass/mute/collapse controls, auto file names, image saver, index-driven prompting that pairs LoRAs to specific prompts and triggers, image slider compares images with up to 5 pairs of images. Multi 'show-any' node that accepts any inputs and shows all within the node. Many  more..."
 version = "2.17.0"
 license = {file = "LICENSE"} 
 # classifiers = [

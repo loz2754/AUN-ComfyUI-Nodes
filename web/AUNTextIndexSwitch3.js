@@ -1,8 +1,24 @@
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
 
-const NODE_TYPES = ["AUNTextIndexSwitch3", "AUNTextIndexSwitch4"];
+const NODE_TYPES = ["AUNTextIndexSwitch3", "AUNTextIndexSwitch4", "AUNTextIndexSwitch5"];
+// Classes that have a built-in "mode" widget (Select/Increment/Random/Range)
+const MODE_WIDGET_CLASSES = new Set(["AUNTextIndexSwitch4", "AUNTextIndexSwitch5"]);
 const PROP_KEY = "_AUN_compactMode";
+// AUNTextIndexSwitch5's extra param outputs (slots 3-8), collapsed into a
+// single dot in compact mode.
+const PARAM_OUTPUTS = new Set([
+  "model",
+  "sampler",
+  "scheduler",
+  "cfg",
+  "steps",
+  "seed",
+]);
+
+function hasModeWidget(node) {
+  return !!node && MODE_WIDGET_CLASSES.has(node.comfyClass);
+}
 
 function getWidget(node, name) {
   return node?.widgets?.find((w) => w?.name === name) ?? null;
@@ -22,6 +38,32 @@ function setCompact(node, compact) {
   if (!node) return;
   node.properties = node.properties || {};
   node.properties[PROP_KEY] = !!compact;
+}
+
+// In compact mode the param output sockets converge to a single dot, so blank
+// their labels; restore them (and drop stray blanks) when expanded. The
+// text/label/index outputs and all input labels stay intact.
+function applyCompactSlotLabels(node) {
+  if (!node) return;
+  const compact = isCompact(node);
+  const slots = node.outputs || [];
+  for (const slot of slots) {
+    if (!slot || !PARAM_OUTPUTS.has(slot.name)) continue;
+    if (compact) {
+      if (!("__aun_compact_origLabel" in slot)) {
+        slot.__aun_compact_origLabel = slot.label;
+      }
+      slot.label = " ";
+    } else {
+      if ("__aun_compact_origLabel" in slot) {
+        slot.label = slot.__aun_compact_origLabel;
+        delete slot.__aun_compact_origLabel;
+      }
+      if (slot.label === " ") {
+        delete slot.label;
+      }
+    }
+  }
 }
 
 function isTargetNode(node) {
@@ -121,10 +163,6 @@ const compactOverlays = new WeakMap();
 
 // Track links that should be hidden (links going to hidden inputs on compact nodes)
 const hiddenLinks = new Set();
-
-function shouldHideLink(linkId) {
-  return hiddenLinks.has(linkId);
-}
 
 // Hook into ComfyUI's canvas drawing to skip hidden links
 if (!window.__AUN_linkFilterHook) {
@@ -230,30 +268,17 @@ if (!window.__AUN_linkFilterHook) {
   }
 }
 
-// Update hidden links set based on compact mode state
+// Track links into hidden inputs on compact nodes. Input wires are hidden for a
+// clean compact look; the text/label/index outputs and the converged param
+// output keep their wires.
 function updateHiddenLinks() {
   hiddenLinks.clear();
-
   if (!app?.graph) return;
-
   const nodes = app.graph._nodes || app.graph.nodes || [];
   for (const node of nodes) {
-    if (!isTargetNode(node)) continue;
-
-    if (!node.inputs) continue;
-
-    for (const input of node.inputs) {
-      if (!input || !input.link) continue;
-
-      // Hide links to text inputs in compact mode
-      if (input.name && input.name.startsWith("text")) {
-        if (isCompact(node)) {
-          hiddenLinks.add(input.link);
-        }
-      }
-
-      // Hide link to index input in compact mode
-      if (input.name === "index" && isCompact(node)) {
+    if (!isTargetNode(node) || !isCompact(node)) continue;
+    for (const input of node.inputs || []) {
+      if (input && input.link != null) {
         hiddenLinks.add(input.link);
       }
     }
@@ -356,13 +381,20 @@ function getCompactOverlay(node) {
   `;
   hint.textContent = "(dbl-click to view)";
 
+  const labelRow = document.createElement("div");
+  labelRow.style.cssText = `
+    display: flex;
+    align-items: center;
+  `;
+  labelRow.appendChild(label);
+  labelRow.appendChild(hint);
+
   const container = document.createElement("div");
   container.style.cssText = `
     display: flex;
     align-items: center;
   `;
-  container.appendChild(label);
-  container.appendChild(hint);
+  container.appendChild(labelRow);
   overlay.appendChild(container);
   document.body.appendChild(overlay);
 
@@ -681,8 +713,6 @@ if (!window.__AUN_compactOverlayUpdateLoop) {
 
   window.__AUN_compactOverlayUpdateLoop = setInterval(() => {
     if (!app?.graph) return;
-
-    // Update hidden links set
     updateHiddenLinks();
 
     const nodes = app.graph._nodes || app.graph.nodes || [];
@@ -948,6 +978,58 @@ function showCompactLabelPopup(node) {
   titleBar.appendChild(closeBtn);
   popup.appendChild(titleBar);
 
+  // Parameters section: the new output slots (model/sampler/scheduler/cfg/steps/seed)
+  const extracted = parseSwitchKeyValues(text);
+  const paramKeys = Object.keys(extracted);
+  if (paramKeys.length > 0) {
+    const paramsSection = document.createElement("div");
+    paramsSection.style.cssText = `
+      padding: 6px 8px;
+      background: #202020;
+      border: 1px solid #444;
+      border-radius: 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    `;
+    const paramsHeader = document.createElement("div");
+    paramsHeader.textContent = "Parameters";
+    paramsHeader.style.cssText = `
+      color: #b0b0b0;
+      font: bold 10px sans-serif;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    `;
+    paramsSection.appendChild(paramsHeader);
+    for (const key of paramKeys) {
+      const row = document.createElement("div");
+      row.style.cssText = `
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+      `;
+      const kLabel = document.createElement("span");
+      kLabel.textContent = `${AUN_SWITCH_KEY_LABELS[key] || key}:`;
+      kLabel.style.cssText = `
+        color: #9a9a9a;
+        font: 11px sans-serif;
+        white-space: nowrap;
+        min-width: 70px;
+      `;
+      const vLabel = document.createElement("span");
+      vLabel.textContent = extracted[key];
+      vLabel.style.cssText = `
+        color: #e0e0e0;
+        font: 12px monospace;
+        word-break: break-all;
+      `;
+      row.appendChild(kLabel);
+      row.appendChild(vLabel);
+      paramsSection.appendChild(row);
+    }
+    popup.appendChild(paramsSection);
+  }
+
   // Text content (read-only)
   const textDiv = document.createElement("div");
   textDiv.textContent = preview;
@@ -1124,6 +1206,61 @@ function showCompactLabelPopup(node) {
   });
 }
 
+// --- Slot key=value parsing (mirrors AUNTextIndexSwitch5 backend) ---
+const AUN_SWITCH_KNOWN_KEYS = ["model", "sampler", "scheduler", "cfg", "steps", "seed"];
+const AUN_SWITCH_KEY_LABELS = {
+  model: "Model",
+  sampler: "Sampler",
+  scheduler: "Scheduler",
+  cfg: "CFG",
+  steps: "Steps",
+  seed: "Seed",
+};
+// Same pattern as AUNTextIndexSwitch5._KEY_VALUE_RE:
+// key="..." | key='...' | key=token. Captures: 1=key, 2=double, 3=single, 4=unquoted.
+const AUN_SWITCH_KEY_VALUE_RE =
+  /(?<!\S)([A-Za-z_][A-Za-z0-9_]*)=(?:"([^"]*)"|'([^']*)'|([^\s"]+))/g;
+
+function parseSwitchKeyValues(text) {
+  const extracted = {};
+  if (!text) return extracted;
+  const re = new RegExp(AUN_SWITCH_KEY_VALUE_RE.source, "g");
+  let m;
+  while ((m = re.exec(text))) {
+    const key = (m[1] || "").toLowerCase();
+    if (!AUN_SWITCH_KNOWN_KEYS.includes(key)) continue;
+    let value = m[2] !== undefined ? m[2] : m[3] !== undefined ? m[3] : m[4];
+    if (value != null) value = value.replace(/,\s*$/, "");
+    if (value !== "") extracted[key] = value;
+  }
+  return extracted;
+}
+
+// --- Checkpoint dropdown picker ---
+let __aun_ckpt_list = null;
+let __aun_ckpt_list_promise = null;
+
+function fetchCheckpointList() {
+  if (__aun_ckpt_list) return Promise.resolve(__aun_ckpt_list);
+  if (__aun_ckpt_list_promise) return __aun_ckpt_list_promise;
+  __aun_ckpt_list_promise = (async () => {
+    try {
+      const resp = await api.fetchApi("/object_info/AUNInputsBasic");
+      const data = await resp.json();
+      const spec = data?.AUNInputsBasic?.input?.required?.ckpt_name;
+      if (Array.isArray(spec) && Array.isArray(spec[0])) {
+        __aun_ckpt_list = spec[0];
+        return __aun_ckpt_list;
+      }
+    } catch (e) {
+      console.warn("[AUNTextIndexSwitch3] Failed to load checkpoint list", e);
+    }
+    __aun_ckpt_list = [];
+    return __aun_ckpt_list;
+  })();
+  return __aun_ckpt_list_promise;
+}
+
 // Create and show a floating textarea popup for editing
 function showTextEditPopup(node, widgetName, widget, positionHint) {
   // Close any existing popup
@@ -1279,6 +1416,7 @@ function showTextEditPopup(node, widgetName, widget, positionHint) {
       widget.callback.call(widget, widget.value);
     }
     node.setDirtyCanvas?.(true, true);
+    updateCompactOverlay(node, undefined, true);
     // Restore original inputEl state
     textarea.style.cssText = originalStyles.cssText;
     textarea.hidden = originalStyles.hidden;
@@ -1324,6 +1462,57 @@ function showTextEditPopup(node, widgetName, widget, positionHint) {
   popup.style.left = `${left}px`;
   popup.style.top = `${top}px`;
   popup.style.width = `${popupWidth}px`;
+
+  // Model picker row: inserts "model=NAME" into the slot text at the cursor.
+  const modelBar = document.createElement("div");
+  modelBar.style.cssText =
+    "display:flex; align-items:center; gap:8px; padding:2px 4px;";
+  const modelLabel = document.createElement("span");
+  modelLabel.textContent = "Model:";
+  modelLabel.style.cssText =
+    "color:#b0b0b0; font: 11px sans-serif; white-space:nowrap;";
+  const modelSelect = document.createElement("select");
+  modelSelect.style.cssText =
+    "flex:1; min-width:0; background:#242424; color:#d8d8d8; border:1px solid #444; border-radius:4px; padding:3px; font-size:12px;";
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "— insert model=NAME —";
+  modelSelect.appendChild(placeholder);
+  modelBar.appendChild(modelLabel);
+  modelBar.appendChild(modelSelect);
+  popup.insertBefore(modelBar, buttonBar);
+
+  fetchCheckpointList().then((list) => {
+    for (const name of list || []) {
+      const opt = document.createElement("option");
+      opt.value = name;
+      opt.textContent = name;
+      modelSelect.appendChild(opt);
+    }
+  });
+
+  modelSelect.addEventListener("change", () => {
+    const val = modelSelect.value;
+    modelSelect.value = "";
+    if (!val) return;
+    const current = textarea.value || "";
+    const start = textarea.selectionStart ?? current.length;
+    const end = textarea.selectionEnd ?? current.length;
+    const before = current.slice(0, start);
+    const after = current.slice(end);
+    const sep = before && !before.endsWith("\n") ? "\n" : "";
+    const token = `model=${val}`;
+    textarea.value = before + sep + token + "\n" + after;
+    const caret = before.length + sep.length + token.length + 1;
+    try {
+      textarea.selectionStart = textarea.selectionEnd = caret;
+    } catch (e) {
+      /* ignore */
+    }
+    widget.value = textarea.value;
+    updateCompactOverlay(node, undefined, true);
+    textarea.focus();
+  });
 
   // Store original state for cleanup
   popup.__AUN_originalParent = originalParent;
@@ -1548,6 +1737,7 @@ function showTextEditPopupCentered(node, widgetName, widget) {
       widget.callback.call(widget, widget.value);
     }
     node.setDirtyCanvas?.(true, true);
+    updateCompactOverlay(node, undefined, true);
     // Restore original inputEl state
     textarea.style.cssText = originalStyles.cssText;
     textarea.hidden = originalStyles.hidden;
@@ -1671,7 +1861,7 @@ function patchTargetNode(node) {
 
   // Add callback to mode widget for AUNTextIndexSwitch4
   const modeWidget = getWidget(node, "mode");
-  if (modeWidget && node.comfyClass === "AUNTextIndexSwitch4") {
+  if (modeWidget && hasModeWidget(node)) {
     const origCb = modeWidget.callback;
     modeWidget.callback = function callback(value) {
       origCb?.call(modeWidget, value);
@@ -1939,7 +2129,7 @@ function updateNodeVisualState(node) {
   applyWidgetHiddenState(slotCountWidget, compact);
 
   // For AUNTextIndexSwitch4, show/hide widgets based on mode when in compact mode
-  if (node.comfyClass === "AUNTextIndexSwitch4" && compact) {
+  if (hasModeWidget(node) && compact) {
     const minimumWidget = getWidget(node, "minimum");
     const maximumWidget = getWidget(node, "maximum");
     const indexWidget = getWidget(node, "index");
@@ -2051,6 +2241,8 @@ function updateNodeVisualState(node) {
 
   node.widgets_dirty = true;
 
+  updateHiddenLinks();
+
   if (
     typeof node.computeSize === "function" &&
     typeof node.setSize === "function"
@@ -2071,6 +2263,7 @@ function updateNodeVisualState(node) {
   app.graph?.setDirtyCanvas?.(true, true);
 
   scheduleAutoHeightUpdate(node, 5, 50);
+  applyCompactSlotLabels(node);
 }
 
 // --- Utility Functions ---
@@ -2258,6 +2451,47 @@ try {
         });
         return options;
       };
+
+      // In compact mode the param outputs (model/sampler/scheduler/cfg/steps/
+      // seed on AUNTextIndexSwitch5) converge to a single dot at slot 3's
+      // position, while the text/label/index outputs stay at slots 0/1/2.
+      // node.outputs stay intact, so links, serialization, and execution are
+      // unaffected.
+      const origGetOutputPos = nodeType.prototype.getOutputPos;
+      if (typeof origGetOutputPos === "function") {
+        nodeType.prototype.getOutputPos = function getOutputPos(index) {
+          if (isCompact(this)) {
+            const slot = this.outputs?.[index];
+            if (slot && PARAM_OUTPUTS.has(slot.name)) {
+              return origGetOutputPos.call(this, 3);
+            }
+          }
+          return origGetOutputPos.apply(this, arguments);
+        };
+      }
+
+      // In compact mode the extra param outputs add height; collapse the space
+      // they would occupy so the node fits its visible content. Expanded nodes
+      // and nodes without param outputs are unchanged.
+      const origComputeSize = nodeType.prototype.computeSize;
+      if (typeof origComputeSize === "function") {
+        nodeType.prototype.computeSize = function computeSize(out) {
+          const s = origComputeSize.call(this, out);
+          if (isCompact(this) && LiteGraph?.NODE_SLOT_HEIGHT) {
+            const paramCount = (this.outputs || []).filter(
+              (slot) => slot && PARAM_OUTPUTS.has(slot.name),
+            ).length;
+            if (paramCount > 1) {
+              s[1] = Math.max(
+                (this.constructor?.slot_start_y || 0) +
+                  LiteGraph.NODE_SLOT_HEIGHT,
+                s[1] - (paramCount - 1) * LiteGraph.NODE_SLOT_HEIGHT,
+              );
+            }
+          }
+          return s;
+        };
+      }
 
       nodeType.prototype.__AUN_textIndexSwitch3ProtoInit = true;
     },

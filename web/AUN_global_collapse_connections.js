@@ -20,7 +20,7 @@ const SKIP_CLASSES = new Set([
   "AUNLoraStackWithTriggers", "AUNLoraStackWithTriggersModelClip", "AUNLoRAsByPromptIndex", "AUNRandomLoraModelOnly", "AUNRandomLoraModelOnlyMulti",
   "AUNMultiGroupUniversal", "AUNMultiUniversal",
   "AUNMultiMuteIndex", "AUNMultiBypassIndex",
-  "AUNTextIndexSwitch4", "AUNTextIndexSwitch3", "AUNTextIndexSwitch", "AUNRandomTextIndexSwitch", "AUNRandomTextIndexSwitchV2",
+  "AUNTextIndexSwitch4", "AUNTextIndexSwitch3", "AUNTextIndexSwitch", "AUNRandomTextIndexSwitch", "AUNRandomTextIndexSwitchV2", "AUNTextIndexSwitch5",
   "AUNCollapseConnectionsController",
 ]);
 

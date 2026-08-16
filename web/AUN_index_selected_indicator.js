@@ -6,6 +6,7 @@ const TARGET_CLASSES = new Set([
   "AUNRandomTextIndexSwitch",
   "AUNRandomTextIndexSwitchV2",
   "AUNTextIndexSwitch4",
+  "AUNTextIndexSwitch5",
 ]);
 
 // Only these nodes get the visual slot highlighter (blue strip + arrow).

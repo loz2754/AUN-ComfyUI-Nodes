@@ -89,6 +89,7 @@ from .AUNSwitchFloat import AUNSwitchFloat
 from .AUNTextIndexSwitch import AUNTextIndexSwitch
 from .AUNTextIndexSwitch3 import AUNTextIndexSwitch3
 from .AUNTextIndexSwitch4 import AUNTextIndexSwitch4
+from .AUNTextIndexSwitch5 import AUNTextIndexSwitch5
 from .AUNImageTitleMultiPreview import AUNImageTitleMultiPreview
 from .AUNTitleImagePreview import AUNTitleImagePreview
 from .AUNWildcardAddToPrompt import AUNWildcardAddToPrompt
@@ -187,6 +188,7 @@ NODE_CLASS_MAPPINGS = {
     "AUNTextIndexSwitch": AUNTextIndexSwitch,
     "AUNTextIndexSwitch3": AUNTextIndexSwitch3,
     "AUNTextIndexSwitch4": AUNTextIndexSwitch4,
+    "AUNTextIndexSwitch5": AUNTextIndexSwitch5,
     "AUNImageTitleMultiPreview": AUNImageTitleMultiPreview,
     "AUNTitleImagePreview": AUNTitleImagePreview,
     "AUNWildcardAddToPrompt": AUNWildcardAddToPrompt,
@@ -282,6 +284,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "AUNTextIndexSwitch": "Text Index Switch",
     "AUNTextIndexSwitch3": "Text Index Switch 3",
     "AUNTextIndexSwitch4": "Text Index Switch 4",
+    "AUNTextIndexSwitch5": "Text Index Switch 5",
     "AUNImageTitleMultiPreview": "AUN Image Title Multi Preview",
     "AUNTitleImagePreview": "Image Preview With Title",
     "AUNWildcardAddToPrompt": "AUN Wildcard Add-To-Prompt",

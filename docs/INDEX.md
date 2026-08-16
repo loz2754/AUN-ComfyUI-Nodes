@@ -79,6 +79,7 @@ Generated list of documentation files under `docs/`.
 - [AUNTextIndexSwitch](./AUNTextIndexSwitch_README.md)
 - [AUNTextIndexSwitch3](./AUNTextIndexSwitch3_README.md)
 - [AUNTextIndexSwitch4](./AUNTextIndexSwitch4_README.md)
+- [AUNTextIndexSwitch5](./AUNTextIndexSwitch5_README.md)
 - [AUNTitleImagePreview](./AUNTitleImagePreview_README.md)
 - [AUNWildcardAddToPrompt](./AUNWildcardAddToPrompt_README.md)
 - [TextSwitch2InputWithTextOutput](./TextSwitch2InputWithTextOutput_README.md)

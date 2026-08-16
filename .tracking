@@ -54,6 +54,7 @@ AUNStrip.py
 AUNSwitchFloat.py
 AUNTextIndexSwitch.py
 AUNTextIndexSwitch3.py
+AUNTextIndexSwitch5.py
 AUNTitleImagePreview.py
 CHANGELOG.md
 CONTRIBUTING.md
@@ -114,6 +115,7 @@ docs/AUNSingleLabelSwitch_README.md
 docs/AUNStrip_README.md
 docs/AUNSwitchFloat_README.md
 docs/AUNTextIndexSwitch3_README.md
+docs/AUNTextIndexSwitch5_README.md
 docs/AUNTextIndexSwitch_README.md
 docs/AUNTitleImagePreview_README.md
 docs/INDEX.md

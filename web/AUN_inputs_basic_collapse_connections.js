@@ -24,12 +24,22 @@ function setupNode(node) {
     return origGetOutputPos(index);
   };
 
+  const origGetInputPos = node.getInputPos.bind(node);
+  node.getInputPos = function (index) {
+    if (this.properties?.[PK]) return origGetInputPos(0);
+    return origGetInputPos(index);
+  };
+
   const origComputeSize = (node.computeSize || (() => node.size)).bind(node);
   node.computeSize = function (out) {
     const s = origComputeSize(out);
     if (this.properties?.[PK]) {
-      const n = this.outputs?.length || 0;
-      s[1] -= Math.max(0, n - 1) * LiteGraph.NODE_SLOT_HEIGHT;
+      const ni =
+        this.inputs?.filter((i) => !(this.widgets?.length && i.widget)).length ||
+        0;
+      const no = this.outputs?.length || 0;
+      const rows = Math.max(ni, no);
+      s[1] -= Math.max(0, rows - 1) * LiteGraph.NODE_SLOT_HEIGHT;
     }
     return s;
   };
@@ -38,21 +48,23 @@ function setupNode(node) {
   node.onDrawForeground = function (ctx) {
     if (origDrawFg) origDrawFg.apply(this, arguments);
     const c = !!this.properties?.[PK];
-    for (const out of this.outputs || []) {
+    const slots = [...(this.inputs || []), ...(this.outputs || [])];
+    for (const slot of slots) {
+      if (this.widgets?.length && slot.widget) continue;
       if (!c) {
-        if ('__aun_collapse_origLabel' in out) {
-          delete out.label;
-          delete out.__aun_collapse_origLabel;
+        if ('__aun_collapse_origLabel' in slot) {
+          delete slot.label;
+          delete slot.__aun_collapse_origLabel;
         }
-        if (out.label === " ") {
-          delete out.label;
+        if (slot.label === " ") {
+          delete slot.label;
         }
         continue;
       }
-      if (!('__aun_collapse_origLabel' in out)) {
-        out.__aun_collapse_origLabel = out.label;
+      if (!('__aun_collapse_origLabel' in slot)) {
+        slot.__aun_collapse_origLabel = slot.label;
       }
-      out.label = " ";
+      slot.label = " ";
     }
   };
 
@@ -76,13 +88,15 @@ function setupNode(node) {
 
     this.properties[PK] = !this.properties[PK];
     if (!this.properties[PK]) {
-      for (const out of this.outputs || []) {
-        if ('__aun_collapse_origLabel' in out) {
-          delete out.label;
-          delete out.__aun_collapse_origLabel;
+      const slots = [...(this.inputs || []), ...(this.outputs || [])];
+      for (const slot of slots) {
+        if (this.widgets?.length && slot.widget) continue;
+        if ('__aun_collapse_origLabel' in slot) {
+          delete slot.label;
+          delete slot.__aun_collapse_origLabel;
         }
-        if (out.label === " ") {
-          delete out.label;
+        if (slot.label === " ") {
+          delete slot.label;
         }
       }
     }
@@ -99,13 +113,15 @@ function setupNode(node) {
       callback: () => {
         this.properties[PK] = !on;
         if (!this.properties[PK]) {
-          for (const out of this.outputs || []) {
-            if ('__aun_collapse_origLabel' in out) {
-              delete out.label;
-              delete out.__aun_collapse_origLabel;
+          const slots = [...(this.inputs || []), ...(this.outputs || [])];
+          for (const slot of slots) {
+            if (this.widgets?.length && slot.widget) continue;
+            if ('__aun_collapse_origLabel' in slot) {
+              delete slot.label;
+              delete slot.__aun_collapse_origLabel;
             }
-            if (out.label === " ") {
-              delete out.label;
+            if (slot.label === " ") {
+              delete slot.label;
             }
           }
         }
