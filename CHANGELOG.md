@@ -5,6 +5,16 @@
 
 ### Added
 
+### Changed
+
+### Fixed
+
+### Notes
+
+## [2.18.0] - 2026-08-16
+
+### Added
+
 - AUNTextIndexSwitch5: like Text Index Switch 4 but also scans the selected text for `key=value` tokens (model, sampler, scheduler, cfg, steps, seed), outputs each as a typed value that can feed downstream nodes, and removes those tokens from the text output. In compact mode the param outputs converge to a single dot below the text/label/index outputs.
 - AUNInputsBasic: optional `model_input`, `sampler_input`, `scheduler_input`, `cfg_input`, `steps_input`, and `seed_input` sockets that override the matching widget values when connected. Checkpoint names are resolved case-insensitively against installed checkpoints (falls back to the widget value if no match).
 
@@ -16,7 +26,6 @@
 ### Fixed
 
 ### Notes
-
 ## [2.17.0] - 2026-08-11
 
 ### Added
