@@ -27,6 +27,7 @@ Generated list of documentation files under `docs/`.
 - [AUNImg2Img](./AUNImg2Img_README.md)
 - [AUNImgLoader](./AUNImgLoader_README.md)
 - [AUNInputsBasic](./AUNInputsBasic_README.md)
+- [AUNInputsBasicSwitch](./AUNInputsBasicSwitch_README.md)
 - [AUNInputsDiffusersBasic](./AUNInputsDiffusersBasic_README.md)
 - [AUNInputsDiffusersRefineBasic](./AUNInputsDiffusersRefineBasic_README.md)
 - [AUNInputsHybrid](./AUNInputsHybrid_README.md)

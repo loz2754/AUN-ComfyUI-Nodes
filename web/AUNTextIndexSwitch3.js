@@ -1,10 +1,18 @@
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
 
-const NODE_TYPES = ["AUNTextIndexSwitch3", "AUNTextIndexSwitch4", "AUNTextIndexSwitch5"];
+const NODE_TYPES = ["AUNTextIndexSwitch3", "AUNTextIndexSwitch4", "AUNTextIndexSwitch5", "AUNInputsBasicSwitch"];
 // Classes that have a built-in "mode" widget (Select/Increment/Random/Range)
-const MODE_WIDGET_CLASSES = new Set(["AUNTextIndexSwitch4", "AUNTextIndexSwitch5"]);
+const MODE_WIDGET_CLASSES = new Set(["AUNTextIndexSwitch4", "AUNTextIndexSwitch5", "AUNInputsBasicSwitch"]);
 const PROP_KEY = "_AUN_compactMode";
+// Extra layout height added before the loader block of AUNInputsBasicSwitch so
+// the model selector (ckpt_name) below it is not overlapped by the textarea.
+// The gap also hosts the "Inputs" section divider + note.
+const BOUNDARY_PAD = 24;
+const TEXT_SELECTION_PAD = 24;
+// Clearance between the output-rail anchor (where the divider line sits) and
+// the first widget, so the divider row + label never overlap widgets.
+const TEXT_SELECTION_ROW_GAP = 16;
 // AUNTextIndexSwitch5's extra param outputs (slots 3-8), collapsed into a
 // single dot in compact mode.
 const PARAM_OUTPUTS = new Set([
@@ -15,6 +23,45 @@ const PARAM_OUTPUTS = new Set([
   "steps",
   "seed",
 ]);
+// Only the switch5 classes have the param-output layout that converges in
+// compact mode. AUNInputsBasicSwitch shares PARAM_OUTPUTS slot names (sampler,
+// scheduler, cfg, steps, seed) but at different positions, so the convergence
+// and label-blanking must not apply to it.
+const PARAM_OUTPUT_CLASSES = new Set(["AUNTextIndexSwitch5"]);
+
+// "Collapse connections" state (same property key used by every other AUN
+// collapse implementation and the global collapse extension).
+const COLLAPSE_KEY = "collapse_connections";
+// AUNInputsBasicSwitch's switch outputs live at the END of its output rail and
+// must stay visible when connections are collapsed: the 13 param/loader outputs
+// before them converge to a single dot while text/label/index are remapped to
+// the rows freed up at the top of the rail.
+const SWITCH_OUTPUT_NAMES = new Set(["text", "label", "index"]);
+
+function isCollapseConnections(node) {
+  return !!node?.properties?.[COLLAPSE_KEY];
+}
+
+// Rail geometry of AUNInputsBasicSwitch under collapsed connections. Returns
+// { firstSwitch, switchCount, collapsedRows, rowExcess } where firstSwitch is
+// the output index of "text" (13), collapsedRows is how many rail rows the
+// collapsed layout occupies (params -> row 0, switch outputs -> rows 1..n) and
+// rowExcess is the number of rail rows saved versus the full 16-slot rail.
+function getCollapseRailMetrics(node) {
+  const outputs = node?.outputs || [];
+  const firstSwitch = outputs.findIndex(
+    (o) => o && SWITCH_OUTPUT_NAMES.has(o.name),
+  );
+  if (firstSwitch <= 0) return null;
+  const switchCount = outputs.length - firstSwitch;
+  const collapsedRows = 1 + switchCount;
+  return {
+    firstSwitch,
+    switchCount,
+    collapsedRows,
+    rowExcess: Math.max(0, outputs.length - collapsedRows),
+  };
+}
 
 function hasModeWidget(node) {
   return !!node && MODE_WIDGET_CLASSES.has(node.comfyClass);
@@ -45,6 +92,7 @@ function setCompact(node, compact) {
 // text/label/index outputs and all input labels stay intact.
 function applyCompactSlotLabels(node) {
   if (!node) return;
+  if (!PARAM_OUTPUT_CLASSES.has(node.comfyClass)) return;
   const compact = isCompact(node);
   const slots = node.outputs || [];
   for (const slot of slots) {
@@ -58,6 +106,34 @@ function applyCompactSlotLabels(node) {
       if ("__aun_compact_origLabel" in slot) {
         slot.label = slot.__aun_compact_origLabel;
         delete slot.__aun_compact_origLabel;
+      }
+      if (slot.label === " ") {
+        delete slot.label;
+      }
+    }
+  }
+}
+
+// When collapse connections is on for AUNInputsBasicSwitch the 13 param/loader
+// outputs converge to a single dot, so blank their labels (and every input
+// label, mirroring the other AUN collapse nodes). The text/label/index switch
+// outputs must stay visible, so they are never blanked here.
+function applyCollapseSlotLabels(node) {
+  if (!node || node.comfyClass !== "AUNInputsBasicSwitch") return;
+  const collapsed = isCollapseConnections(node);
+  const slots = [...(node.inputs || []), ...(node.outputs || [])];
+  for (const slot of slots) {
+    if (!slot) continue;
+    if (SWITCH_OUTPUT_NAMES.has(slot.name)) continue;
+    if (collapsed) {
+      if (!("__aun_collapse_origLabel" in slot)) {
+        slot.__aun_collapse_origLabel = slot.label;
+      }
+      slot.label = " ";
+    } else {
+      if ("__aun_collapse_origLabel" in slot) {
+        slot.label = slot.__aun_collapse_origLabel;
+        delete slot.__aun_collapse_origLabel;
       }
       if (slot.label === " ") {
         delete slot.label;
@@ -115,10 +191,20 @@ function ensureHiddenAwareWidget(widget) {
     }
 
     if (originalComputeSize) {
-      return originalComputeSize.apply(this, args);
+      const size = originalComputeSize.apply(this, args);
+      if (Array.isArray(size) && size.length >= 2) {
+        const pad =
+          (this.__AUN_boundaryPad ? BOUNDARY_PAD : 0) +
+          (this.__AUN_textSelPad ? TEXT_SELECTION_PAD : 0);
+        return [size[0], size[1] + pad];
+      }
     }
 
-    return [resolveWidth(), LiteGraph?.NODE_WIDGET_HEIGHT ?? 24];
+    const height = LiteGraph?.NODE_WIDGET_HEIGHT ?? 24;
+    const pad =
+      (this.__AUN_boundaryPad ? BOUNDARY_PAD : 0) +
+      (this.__AUN_textSelPad ? TEXT_SELECTION_PAD : 0);
+    return [resolveWidth(), height + pad];
   };
 }
 
@@ -157,6 +243,10 @@ function applyWidgetHiddenState(widget, hidden) {
 let currentPopup = null;
 let currentTooltip = null;
 let tooltipTimer = null;
+
+// Purpose text for each text slot, captured before the shared nodeDef tooltip
+// is blanked (node.constructor.nodeData is shared by all instances of a type).
+const __AUN_textPurposeCache = {};
 
 // Compact label overlay management
 const compactOverlays = new WeakMap();
@@ -301,7 +391,7 @@ function startOverlayRAF() {
     if (!app?.graph) return;
     updateHiddenLinks();
     updateAllCompactOverlayPositions();
-    if (!hasCompactNodes()) {
+    if (!hasCompactNodes() && !hasDividerNodes()) {
       cancelAnimationFrame(compactOverlayRAF);
       compactOverlayRAF = null;
     }
@@ -342,6 +432,9 @@ function updateAllCompactOverlayPositions() {
   for (const node of nodes) {
     if (isTargetNode(node) && isCompact(node)) {
       updateCompactOverlayPosition(node);
+    }
+    if (node.comfyClass === "AUNInputsBasicSwitch") {
+      updateDividerOverlayPosition(node);
     }
   }
 }
@@ -783,24 +876,23 @@ if (!window.__AUN_canvasObserver && app?.canvas?.canvas) {
   window.__AUN_canvasObserver = observer;
 }
 
-// Show tooltip with text preview (omit first line, show all remaining)
+// Show merged popup: muted slot-purpose header + text preview (omit first line)
 function showTextTooltip(widget, text) {
   hideTextTooltip();
 
   if (!widget || !widget.inputEl) return;
 
+  const purpose = widget.__aun_purposeTooltip || "";
   const textPreview = text || "";
-  if (!textPreview.trim()) return;
 
   // Split into lines and omit the first line
   const lines = textPreview.split("\n");
-  let previewLines = lines.length > 1 ? lines.slice(1) : [];
-
-  // If no lines after first, show nothing
-  if (previewLines.length === 0 || previewLines.every((l) => !l.trim())) return;
-
-  // Show ALL remaining lines (no truncation)
+  const previewLines = lines.length > 1 ? lines.slice(1) : [];
+  const hasContent = previewLines.some((l) => l.trim());
   const preview = previewLines.join("\n");
+
+  // Show nothing only when there is neither a purpose nor content to display
+  if (!purpose && !hasContent) return;
 
   const tooltip = document.createElement("div");
   tooltip.id = "AUN-text-tooltip";
@@ -811,8 +903,8 @@ function showTextTooltip(widget, text) {
     color: #d8d8d8;
     padding: 8px 12px;
     border-radius: 6px;
-    font-family: monospace;
-    font-size: 13px;
+    font-family: sans-serif;
+    font-size: 12px;
     line-height: 1.4;
     max-width: 400px;
     max-height: 300px;
@@ -820,15 +912,31 @@ function showTextTooltip(widget, text) {
     pointer-events: none;
     box-shadow: 0 2px 8px rgba(0,0,0,0.5);
     border: 1px solid rgba(255,255,255,0.1);
-    white-space: pre-wrap;
-    word-break: break-word;
   `;
-  tooltip.textContent = preview;
+
+  if (purpose) {
+    const purposeEl = document.createElement("div");
+    purposeEl.style.cssText =
+      "color:#a8d5a8;font-size:11px;line-height:1.4;" +
+      (hasContent
+        ? "padding-bottom:6px;margin-bottom:6px;border-bottom:1px solid rgba(255,255,255,0.12);"
+        : "");
+    purposeEl.textContent = purpose;
+    tooltip.appendChild(purposeEl);
+  }
+  if (hasContent) {
+    const contentEl = document.createElement("div");
+    contentEl.style.cssText =
+      "font-family:monospace;font-size:13px;line-height:1.4;" +
+      "white-space:pre-wrap;word-break:break-word;";
+    contentEl.textContent = preview;
+    tooltip.appendChild(contentEl);
+  }
 
   document.body.appendChild(tooltip);
   currentTooltip = tooltip;
 
-  // Position near cursor but keep on screen
+  // Position near the widget but keep on screen
   const rect = widget.inputEl.getBoundingClientRect();
   let left = rect.right + 10;
   let top = rect.top;
@@ -1817,6 +1925,40 @@ function setupTextEditHandlers(node) {
     const widget = getWidget(node, `text${i}`);
     if (!widget || !widget.inputEl) continue;
 
+    // Capture the slot-purpose tooltip and suppress the native popup so only
+    // the merged AUN popup (purpose + content) shows on hover.
+    //
+    // Text slots are DOM widgets (addMultilineWidget): the purpose text never
+    // lands on widget.tooltip/options.tooltip - it lives only on the node
+    // definition, which ComfyUI's DomWidget wrapper renders as a native `title`
+    // attribute on the dom-widget container (that is the "purpose tip" that
+    // clashes with our popup). node.constructor.nodeData is shared by every
+    // instance of the type, so once we blank it for one node the text is gone
+    // for the rest - cache it first and reuse the cache for later nodes.
+    const purposeKey = `${node.type || node.constructor?.name}:text${i}`;
+    let purpose =
+      widget.options?.tooltip ||
+      widget.tooltip ||
+      __AUN_textPurposeCache[purposeKey] ||
+      "";
+    if (!purpose) {
+      const nodeDefInput = node.constructor?.nodeData?.inputs?.[`text${i}`];
+      purpose = nodeDefInput?.tooltip || "";
+      if (purpose) {
+        __AUN_textPurposeCache[purposeKey] = purpose;
+        if (typeof nodeDefInput === "object") {
+          nodeDefInput.tooltip = "";
+        }
+      }
+    }
+    if (purpose) {
+      widget.__aun_purposeTooltip = purpose;
+      if (widget.options) widget.options.tooltip = "";
+      widget.tooltip = " ";
+      const container = widget.element?.parentElement || widget.inputEl?.parentElement;
+      container?.removeAttribute?.("title");
+    }
+
     // Double-click to open popup editor
     widget.inputEl.addEventListener("dblclick", (e) => {
       e.preventDefault();
@@ -1844,6 +1986,14 @@ function patchTargetNode(node) {
     return false;
   }
   node.__AUN_textIndexSwitch3Patched = true;
+
+  // Install the computeSize proxy on every widget so pad flags work anywhere.
+  // applyWidgetHiddenState installs it lazily, but always-visible widgets like
+  // the mode widget and the loader block would never get it, leaving section
+  // divider gaps silently un-applied.
+  for (const w of node.widgets || []) {
+    if (w && typeof w === "object") ensureHiddenAwareWidget(w);
+  }
 
   node.properties = node.properties || {};
   if (typeof node.properties[PROP_KEY] !== "boolean") {
@@ -1949,6 +2099,9 @@ function patchTargetNode(node) {
       }
     }
 
+    // Double-click toggles compact mode for every AUN node type (including
+    // AUNInputsBasicSwitch); collapse connections for AUNInputsBasicSwitch is
+    // toggled from the right-click menu and the collapse controller only.
     toggleCompactMode(this);
   };
 
@@ -2082,6 +2235,24 @@ function patchTargetNode(node) {
   startCompactLiveMonitor(node);
   scheduleAutoHeightUpdate(node, 5, 50);
 
+  // Remote control from AUNCollapseConnectionsController / the global collapse
+  // extension (AUNInputsBasicSwitch is in its SKIP_CLASSES, so controller
+  // actions are routed here). Mirrors the local toggle.
+  if (node.comfyClass === "AUNInputsBasicSwitch") {
+    node.__aun_remoteCollapse = (next) => {
+      const target = !!next;
+      if (node.properties?.[COLLAPSE_KEY] === target) return;
+      node.properties = node.properties || {};
+      node.properties[COLLAPSE_KEY] = target;
+      applyCollapseConnectionsState(node);
+    };
+
+    // Restore a collapsed layout loaded from a saved workflow.
+    if (isCollapseConnections(node)) {
+      applyCollapseConnectionsState(node);
+    }
+  }
+
   return true;
 }
 
@@ -2121,35 +2292,21 @@ function updateNodeVisualState(node) {
 
   const compact = isCompact(node);
 
-  // Get mode widget for AUNTextIndexSwitch4
-  const modeWidget = getWidget(node, "mode");
-  const mode = modeWidget?.value || "Random";
-
   // Hide slot_count widget in compact mode
   applyWidgetHiddenState(slotCountWidget, compact);
 
-  // For AUNTextIndexSwitch4, show/hide widgets based on mode when in compact mode
-  if (hasModeWidget(node) && compact) {
-    const minimumWidget = getWidget(node, "minimum");
-    const maximumWidget = getWidget(node, "maximum");
-    const indexWidget = getWidget(node, "index");
-    const rangeWidget = getWidget(node, "range");
-
-    // Hide all mode-specific widgets by default
-    applyWidgetHiddenState(minimumWidget, true);
-    applyWidgetHiddenState(maximumWidget, true);
-    applyWidgetHiddenState(indexWidget, true);
-    applyWidgetHiddenState(rangeWidget, true);
-
-    // Show only the widgets needed for the current mode
-    if (mode === "Select") {
-      applyWidgetHiddenState(indexWidget, false);
-    } else if (mode === "Increment" || mode === "Random") {
-      applyWidgetHiddenState(minimumWidget, false);
-      applyWidgetHiddenState(maximumWidget, false);
-    } else if (mode === "Range") {
-      applyWidgetHiddenState(rangeWidget, false);
-    }
+  // In compact mode hide only the numeric bounds (minimum/maximum). The mode,
+  // index and range widgets stay visible in both modes so selection can always
+  // be steered by hand. minimum/maximum sit above the mode widget and would
+  // push the widget column down 2 slots, so they stay hidden in compact.
+  // Re-showing in full mode is required: widgets hidden in compact would
+  // otherwise stay hidden when un-compacting.
+  if (hasModeWidget(node)) {
+    const show = !compact;
+    applyWidgetHiddenState(getWidget(node, "minimum"), !show);
+    applyWidgetHiddenState(getWidget(node, "maximum"), !show);
+    applyWidgetHiddenState(getWidget(node, "index"), false);
+    applyWidgetHiddenState(getWidget(node, "range"), false);
   }
 
   // Update text widgets
@@ -2157,7 +2314,70 @@ function updateNodeVisualState(node) {
     const textWidget = getWidget(node, `text${i}`);
     if (textWidget) {
       applyWidgetHiddenState(textWidget, compact || i > slotCount);
+      textWidget.__AUN_boundaryPad = false;
     }
+  }
+
+  // Boundary pad before the loader block (AUNInputsBasicSwitch only): full mode
+  // pads the last visible text slot, compact mode pads the last visible widget
+  // directly above ckpt_name (the range widget once min/max are hidden in
+  // compact, with mode/index/range staying visible). The gap hosts the "Inputs"
+  // section divider drawn in onDrawForeground.
+  if (node.comfyClass === "AUNInputsBasicSwitch") {
+    for (const w of node.widgets || []) {
+      if (w && typeof w === "object") w.__AUN_boundaryPad = false;
+    }
+
+    let padTarget = null;
+    if (!compact) {
+      padTarget = getWidget(node, `text${slotCount}`);
+    } else {
+      // Compact: pad the last visible widget directly above ckpt_name so the
+      // "Inputs" divider always sits in a gap. With min/max hidden in compact
+      // this is the range widget (mode/index stay visible above it).
+      const ckpt = getWidget(node, "ckpt_name");
+      if (ckpt) {
+        const widgets = node.widgets || [];
+        for (let i = widgets.indexOf(ckpt) - 1; i >= 0; i--) {
+          const w = widgets[i];
+          if (w && !w.hidden) {
+            padTarget = w;
+            break;
+          }
+        }
+      }
+    }
+    if (padTarget) padTarget.__AUN_boundaryPad = true;
+
+    // Start the widget area below the output rail so the "Text Selection"
+    // divider (drawn at the rail anchor) always has a clean gap at the top of
+    // the node instead of slicing through the first widget. LiteGraph lays out
+    // widgets from widgetStartY (normally just below the deepest slot, which
+    // for 16 outputs already sits right on top of the anchor).
+    const slotH = globalThis?.LiteGraph?.NODE_SLOT_HEIGHT ?? 20;
+    const outCount = (node.outputs || []).length;
+    if (outCount && slotH) {
+      // Collapsed connections shrink the output rail to a few rows (params
+      // converge to one dot, text/label/index remap to the freed-up rows), so
+      // the widget area moves up with it; the divider/overlay use the same row
+      // count so the anchor always sits just below the rail.
+      const metrics = getCollapseRailMetrics(node);
+      const rows = isCollapseConnections(node) && metrics
+        ? metrics.collapsedRows
+        : outCount;
+      const anchorY =
+        (node.constructor?.slot_start_y || 0) + (rows + 0.7) * slotH;
+      node.widgets_start_y = anchorY + TEXT_SELECTION_ROW_GAP;
+    }
+
+    // Text Selection divider gap: pads the widget at/just below the
+    // output-rail anchor so the divider line + label have a clean gap to sit in
+    // (below the widget, which keeps it clear of the last output slot's label).
+    for (const w of node.widgets || []) {
+      if (w && typeof w === "object") w.__AUN_textSelPad = false;
+    }
+    const straddler = getTextSelectionStraddler(node);
+    if (straddler) straddler.__AUN_textSelPad = true;
   }
 
   // Update index widget (for non-compact mode or other node types)
@@ -2264,6 +2484,7 @@ function updateNodeVisualState(node) {
 
   scheduleAutoHeightUpdate(node, 5, 50);
   applyCompactSlotLabels(node);
+  applyCollapseSlotLabels(node);
 }
 
 // --- Utility Functions ---
@@ -2277,6 +2498,24 @@ function toggleCompactMode(node) {
   // Force overlay update to prevent "disappearing" on toggle
   const idx = getEffectiveIndex(node);
   updateCompactOverlay(node, idx, true);
+}
+
+// Re-applies the collapsed-connections layout for AUNInputsBasicSwitch after
+// the property flips: slot labels, the rail/window geometry (widgets_start_y
+// and the divider/overlay anchors are all collapse-aware) and the node height.
+function applyCollapseConnectionsState(node) {
+  if (!node || node.comfyClass !== "AUNInputsBasicSwitch") return;
+  applyCollapseSlotLabels(node);
+  updateNodeVisualState(node);
+  updateDividerOverlayPosition(node);
+  scheduleOverlayUpdate();
+}
+
+function toggleCollapseConnections(node) {
+  if (!node) return;
+  node.properties = node.properties || {};
+  node.properties[COLLAPSE_KEY] = !isCollapseConnections(node);
+  applyCollapseConnectionsState(node);
 }
 
 function getActiveSlotTitle(node) {
@@ -2389,6 +2628,7 @@ function startCompactLiveMonitor(node) {
       ov.overlay.remove();
       compactOverlays.delete(node);
     }
+    cleanupDividerOverlay(node);
     return originalOnRemoved?.apply(this, arguments);
   };
 }
@@ -2406,6 +2646,237 @@ if (!CanvasRenderingContext2D.prototype.roundRect) {
     this.closePath();
     return this;
   };
+}
+
+// Draws the "Text Selection" section divider just below the last output slot
+// (the "index" output on AUNInputsBasicSwitch). Anchored to the output rail
+// instead of a widget because the mode widget jumps position in compact mode
+// depending on the selected mode; the output rail never moves.
+const TEXT_SELECTION_DIVIDER_NOTE = "Text Selection";
+
+// Text Selection divider overlays are DOM elements (not canvas) because the
+// node widgets render as opaque DOM on top of the canvas; a canvas line at
+// this height would be hidden behind them. The overlay is anchored to the
+// output rail so it never moves when the mode widget jumps in compact mode.
+const dividerOverlays = new WeakMap();
+
+function hasDividerNodes() {
+  if (!app?.graph) return false;
+  const nodes = app.graph._nodes || app.graph.nodes || [];
+  return nodes.some(
+    (node) =>
+      node.comfyClass === "AUNInputsBasicSwitch" && !node.flags?.collapsed,
+  );
+}
+
+function getDividerOverlay(node) {
+  if (dividerOverlays.has(node)) return dividerOverlays.get(node);
+
+  const overlay = document.createElement("div");
+  overlay.style.cssText = `
+    position: fixed;
+    z-index: 11;
+    pointer-events: none;
+    display: none;
+  `;
+
+  const lineStyle =
+    "flex: 1; height: 1px; background: rgba(255, 255, 255, 0.16);";
+
+  const leftLine = document.createElement("div");
+  leftLine.style.cssText = lineStyle;
+
+  const label = document.createElement("span");
+  label.textContent = TEXT_SELECTION_DIVIDER_NOTE;
+  label.style.cssText = `
+    flex: none;
+    padding: 0 8px;
+    color: rgba(255, 255, 255, 0.35);
+    font: 10px sans-serif;
+    white-space: nowrap;
+  `;
+
+  const rightLine = document.createElement("div");
+  rightLine.style.cssText = lineStyle;
+
+  overlay.appendChild(leftLine);
+  overlay.appendChild(label);
+  overlay.appendChild(rightLine);
+
+  document.body.appendChild(overlay);
+
+  const ov = { overlay, leftLine, label, rightLine };
+  dividerOverlays.set(node, ov);
+  return ov;
+}
+
+// Finds the widget whose vertical span contains the output-rail anchor (one
+// slot-step below the last output slot's center). The "Text Selection" divider
+// normally sits in the clean gap at the top of the widget area (widgets are
+// pushed below the anchor via node.widgets_start_y), in which case no widget
+// contains the anchor and this returns null. When a widget genuinely straddles
+// the anchor, this returns it and the divider is padded below it (see
+// updateNodeVisualState). Falls back to the last visible widget when the anchor
+// sits below every widget.
+function getTextSelectionStraddler(node) {
+  if (!node || node.comfyClass !== "AUNInputsBasicSwitch") return null;
+  const outputCount = (node.outputs || []).length;
+  const slotH = globalThis?.LiteGraph?.NODE_SLOT_HEIGHT ?? 20;
+  if (!outputCount || !slotH) return null;
+
+  const metrics = getCollapseRailMetrics(node);
+  const rows = isCollapseConnections(node) && metrics
+    ? metrics.collapsedRows
+    : outputCount;
+  const anchorY =
+    (node.constructor?.slot_start_y || 0) + (rows + 0.7) * slotH;
+  const visible = (node.widgets || []).filter((w) => w && !w.hidden);
+  const width = node.size?.[0];
+
+  for (const w of visible) {
+    const top = Number(w.last_y ?? w.y ?? 0);
+    if (top <= 0) continue;
+    // Widgets that start below the anchor are part of the section beneath the
+    // divider: the divider belongs in the gap above them, not in their span.
+    if (top > anchorY) return null;
+    let h = 0;
+    try {
+      const size =
+        typeof w.computeSize === "function" ? w.computeSize(width) : null;
+      if (Array.isArray(size) && size.length >= 2) h = Number(size[1]) || 0;
+    } catch (e) {
+      // ignore
+    }
+    if (anchorY <= top + h) return w;
+  }
+  return visible.length ? visible[visible.length - 1] : null;
+}
+
+function updateDividerOverlayPosition(node) {
+  if (
+    !node ||
+    node.comfyClass !== "AUNInputsBasicSwitch" ||
+    node.flags?.collapsed
+  ) {
+    const ov = dividerOverlays.get(node);
+    if (ov) ov.overlay.style.display = "none";
+    return;
+  }
+
+  const outputCount = (node.outputs || []).length;
+  const slotH = globalThis?.LiteGraph?.NODE_SLOT_HEIGHT ?? 20;
+  if (!outputCount || !slotH) return;
+
+  const canvas = app.canvas;
+  if (!canvas || !canvas.canvas || !canvas.ds) return;
+
+  try {
+    const ov = getDividerOverlay(node);
+    const canvasRect = canvas.canvas.getBoundingClientRect();
+    const scale = canvas.ds.scale;
+    const panOffsetX = canvas.ds.offset[0];
+    const panOffsetY = canvas.ds.offset[1];
+
+    // Snap to the gap created below the straddling widget (padded in
+    // updateNodeVisualState): divider sits at straddler.bottom + pad/2, which is
+    // always below the last output slot's label. Fall back to the output-rail
+    // anchor when the widget layout hasn't settled yet.
+    const metrics = getCollapseRailMetrics(node);
+    const rows = isCollapseConnections(node) && metrics
+      ? metrics.collapsedRows
+      : outputCount;
+    const anchor =
+      (node.constructor?.slot_start_y || 0) + (rows + 0.7) * slotH;
+    let y = 0;
+    const straddler = getTextSelectionStraddler(node);
+    if (straddler && straddler.__AUN_textSelPad) {
+      const top = Number(straddler.last_y ?? straddler.y ?? 0);
+      if (top > 0) {
+        let h = 0;
+        try {
+          const size =
+            typeof straddler.computeSize === "function"
+              ? straddler.computeSize(node.size?.[0])
+              : null;
+          if (Array.isArray(size) && size.length >= 2) h = Number(size[1]) || 0;
+        } catch (e) {
+          // ignore
+        }
+        y = top + h - TEXT_SELECTION_PAD / 2;
+      }
+    }
+    if (!(y > 0)) {
+      y = anchor;
+    }
+
+    // Never crowd the "Inputs" divider (drawn at ckptY - 9): if the snapped
+    // position would land within ~40px of it, drop back to the rail anchor.
+    const ckpt = getWidget(node, "ckpt_name");
+    if (ckpt) {
+      const ckptY = Number(ckpt.last_y ?? ckpt.y ?? 0);
+      if (ckptY > 0 && Math.abs(y - (ckptY - 9)) < 40) {
+        y = anchor;
+      }
+    }
+
+    const rowH = 14;
+    ov.overlay.style.display = "flex";
+    ov.overlay.style.alignItems = "center";
+    ov.overlay.style.left = `${
+      canvasRect.left + (node.pos[0] + panOffsetX) * scale + 8 * scale
+    }px`;
+    ov.overlay.style.top = `${
+      canvasRect.top + (node.pos[1] + panOffsetY) * scale + y * scale - rowH / 2
+    }px`;
+    ov.overlay.style.width = `${Math.max(0, node.size[0] - 16) * scale}px`;
+    ov.overlay.style.height = `${rowH}px`;
+  } catch (e) {
+    // Ignore positioning errors during drag/zoom.
+  }
+}
+
+function cleanupDividerOverlay(node) {
+  const ov = dividerOverlays.get(node);
+  if (ov) {
+    ov.overlay.remove();
+    dividerOverlays.delete(node);
+  }
+}
+
+// Draws the "Inputs" section divider in the BOUNDARY_PAD gap above the loader
+// block of AUNInputsBasicSwitch (drawn in both full and compact modes).
+const SECTION_DIVIDER_NOTE = "Inputs";
+
+function drawInputsSectionDivider(node, ctx) {
+  const ckptWidget = getWidget(node, "ckpt_name");
+  if (!ckptWidget) return;
+  const ckptY = Number(ckptWidget.last_y ?? ckptWidget.y ?? 0);
+  if (!(ckptY > 0)) return;
+
+  // Sit the divider a little closer to the loader block so the note has clear
+  // headroom and doesn't crowd the text widgets above the gap.
+  const y = ckptY - 9;
+  const x = node.size[0] / 2;
+
+  ctx.save();
+  ctx.font = "10px sans-serif";
+  const noteW = ctx.measureText(SECTION_DIVIDER_NOTE).width;
+  const gap = 8;
+
+  ctx.strokeStyle = "rgba(255,255,255,0.16)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(8, y);
+  ctx.lineTo(x - noteW / 2 - gap, y);
+  ctx.moveTo(x + noteW / 2 + gap, y);
+  ctx.lineTo(node.size[0] - 8, y);
+  ctx.stroke();
+
+  ctx.fillStyle = "rgba(255,255,255,0.35)";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(SECTION_DIVIDER_NOTE, x, y);
+  ctx.restore();
 }
 
 // --- EXTENSION REGISTRATION ---
@@ -2431,6 +2902,12 @@ try {
       nodeType.prototype.onDrawForeground = function onDrawForeground(ctx) {
         originalOnDrawFg?.apply(this, arguments);
         // Compact label is rendered as HTML overlay, not on canvas
+        if (
+          this.comfyClass === "AUNInputsBasicSwitch" &&
+          !this.flags?.collapsed
+        ) {
+          drawInputsSectionDivider(this, ctx);
+        }
       };
 
       const originalGetMenuOptions = nodeType.prototype.getMenuOptions;
@@ -2449,6 +2926,16 @@ try {
             scheduleAutoHeightUpdate(this);
           },
         });
+        if (this.comfyClass === "AUNInputsBasicSwitch") {
+          options.push({
+            content: isCollapseConnections(this)
+              ? "AUN: Show Connections"
+              : "AUN: Collapse Connections",
+            callback: () => {
+              toggleCollapseConnections(this);
+            },
+          });
+        }
         return options;
       };
 
@@ -2460,13 +2947,45 @@ try {
       const origGetOutputPos = nodeType.prototype.getOutputPos;
       if (typeof origGetOutputPos === "function") {
         nodeType.prototype.getOutputPos = function getOutputPos(index) {
-          if (isCompact(this)) {
+          if (isCompact(this) && PARAM_OUTPUT_CLASSES.has(this.comfyClass)) {
             const slot = this.outputs?.[index];
             if (slot && PARAM_OUTPUTS.has(slot.name)) {
               return origGetOutputPos.call(this, 3);
             }
           }
+          // Collapsed AUNInputsBasicSwitch: the 13 param/loader outputs all
+          // draw at slot 0, while text/label/index (the outputs at/after
+          // firstSwitch) remap to the rows freed up at the top of the rail so
+          // they stay visible. node.outputs are untouched, so links and
+          // serialization are unaffected.
+          if (
+            this.comfyClass === "AUNInputsBasicSwitch" &&
+            isCollapseConnections(this)
+          ) {
+            const metrics = getCollapseRailMetrics(this);
+            if (metrics) {
+              if (index < metrics.firstSwitch) {
+                return origGetOutputPos.call(this, 0);
+              }
+              return origGetOutputPos.call(this, index - metrics.firstSwitch + 1);
+            }
+          }
           return origGetOutputPos.apply(this, arguments);
+        };
+      }
+
+      // Collapsed AUNInputsBasicSwitch converges its (widget-linked) input slots
+      // to a single point, matching the other AUN collapse nodes.
+      const origGetInputPos = nodeType.prototype.getInputPos;
+      if (typeof origGetInputPos === "function") {
+        nodeType.prototype.getInputPos = function getInputPos(index) {
+          if (
+            this.comfyClass === "AUNInputsBasicSwitch" &&
+            isCollapseConnections(this)
+          ) {
+            return origGetInputPos.call(this, 0);
+          }
+          return origGetInputPos.apply(this, arguments);
         };
       }
 
@@ -2476,8 +2995,32 @@ try {
       const origComputeSize = nodeType.prototype.computeSize;
       if (typeof origComputeSize === "function") {
         nodeType.prototype.computeSize = function computeSize(out) {
+          // Collapsed AUNInputsBasicSwitch: the rail shrank to a few rows and
+          // widgets_start_y moved up with it, so the 16-row slot floor can beat
+          // the widget term and leave a tall empty node (especially when compact
+          // mode hides most widgets). Compute against the full rail height
+          // (widget term always wins there), then drop the collapsed rail rows.
+          if (
+            this.comfyClass === "AUNInputsBasicSwitch" &&
+            isCollapseConnections(this) &&
+            LiteGraph?.NODE_SLOT_HEIGHT
+          ) {
+            const metrics = getCollapseRailMetrics(this);
+            if (metrics) {
+              const slotH = LiteGraph.NODE_SLOT_HEIGHT;
+              const savedWsy = this.widgets_start_y;
+              if (typeof savedWsy === "number") {
+                this.widgets_start_y =
+                  savedWsy + metrics.rowExcess * slotH;
+                const s2 = origComputeSize.call(this, out);
+                this.widgets_start_y = savedWsy;
+                s2[1] -= metrics.rowExcess * slotH;
+                return s2;
+              }
+            }
+          }
           const s = origComputeSize.call(this, out);
-          if (isCompact(this) && LiteGraph?.NODE_SLOT_HEIGHT) {
+          if (isCompact(this) && PARAM_OUTPUT_CLASSES.has(this.comfyClass) && LiteGraph?.NODE_SLOT_HEIGHT) {
             const paramCount = (this.outputs || []).filter(
               (slot) => slot && PARAM_OUTPUTS.has(slot.name),
             ).length;
@@ -2498,6 +3041,10 @@ try {
 
     nodeCreated(node) {
       patchTargetNode(node);
+      if (node.comfyClass === "AUNInputsBasicSwitch") {
+        updateDividerOverlayPosition(node);
+        scheduleOverlayUpdate();
+      }
     },
 
     loadedGraphNode(node) {

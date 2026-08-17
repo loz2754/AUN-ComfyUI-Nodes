@@ -300,6 +300,7 @@ Works best when coupled with AUN Save Image.
 
 - Inputs (`AUNInputs`) a comprehensive 'all-in-one' node for setting up a generation pipeline. It loads a checkpoint, creates a latent image, and prepares various parameters for sampling and saving, all in one place.
 - Inputs Basic (`AUNInputsBasic`) is a lighter all-in-one setup node for loading a checkpoint, choosing sampler settings, and creating an empty latent batch.
+- Inputs Basic + Prompt Switch (`AUNInputsBasicSwitch`) fuses a text index switch with Inputs Basic into a single node: select one of up to 20 text slots and load the checkpoint, latent and sampler settings in one place. `key=value` tokens in the selected text override the matching loader widgets and are removed from the text output.
 - Inputs Diffusers (`AUNInputsDiffusers`) loads a standalone diffusion UNet with separate CLIP and VAE files, while keeping the fuller AUN Inputs-style naming and save-prep outputs.
 - Inputs Diffusers Basic (`AUNInputsDiffusersBasic`) keeps the diffusion-only loading flow but strips it back to the lighter basic contract: model loading, sampler settings, and empty latent creation.
 - Inputs Diffusers Refine Basic (`AUNInputsDiffusersRefineBasic`) extends the diffusion-only basic flow with an optional separate refine diffusion model while still avoiding the older naming and save-prep outputs.
@@ -374,6 +375,8 @@ Deprecation note: the full input-style nodes (`AUNInputs`, `AUNInputsDiffusers`,
 #### Collapse Connections
 
 AUN Inputs nodes (`AUNInputs`, `AUNInputsBasic`, `AUNInputsRefine`, `AUNInputsRefineBasic`, `AUNInputsDiffusers`, `AUNInputsDiffusersBasic`, `AUNInputsDiffusersRefineBasic`, `AUNInputsHybrid`), AUN KSampler nodes (`AUNKSamplerPlusV2`, `AUNKSamplerPlusv3`, `AUNKSamplerPlusv4`) and Show Any Multi (`AUNShowAnyMulti`) feature a **collapse connections** mode that hides all slot labels and converges all connection lines to a single point, making complex workflows visually cleaner.
+
+`AUNInputsBasicSwitch` also features collapse connections: its 13 param/loader outputs converge to a single point while the `text`, `label` and `index` switch outputs stay visible and keep their connections, so the node remains usable for its model/clip/vae/sampler plumbing and its prompt switching at the same time. Toggle it from the right-click menu ("Collapse Connections" / "Show Connections") or via a Collapse Connections controller node — double-click toggles its compact mode instead.
 
 **Toggle**: Right-click → "Collapse Connections" / "Show Connections", or double-click anywhere on the node body (excluding the title bar and widgets). The node height reduces to match the collapsed slot area while preserving user-set width.
 

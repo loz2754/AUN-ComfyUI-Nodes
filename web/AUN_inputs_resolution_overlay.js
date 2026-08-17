@@ -3,6 +3,7 @@ import { api } from "../../scripts/api.js";
 
 const TARGET_CLASSES = new Set([
     "AUNInputsBasic",
+    "AUNInputsBasicSwitch",
     "AUNInputs",
     "AUNInputsRefine",
     "AUNInputsRefineBasic",

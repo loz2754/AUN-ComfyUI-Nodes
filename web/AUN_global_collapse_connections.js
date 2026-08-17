@@ -21,6 +21,7 @@ const SKIP_CLASSES = new Set([
   "AUNMultiGroupUniversal", "AUNMultiUniversal",
   "AUNMultiMuteIndex", "AUNMultiBypassIndex",
   "AUNTextIndexSwitch4", "AUNTextIndexSwitch3", "AUNTextIndexSwitch", "AUNRandomTextIndexSwitch", "AUNRandomTextIndexSwitchV2", "AUNTextIndexSwitch5",
+  "AUNInputsBasicSwitch",
   "AUNCollapseConnectionsController",
 ]);
 

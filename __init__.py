@@ -30,6 +30,7 @@ from .AUNImg2Img import AUNImg2Img
 from .AUNImgLoader import AUNImgLoader
 from .AUNInputs import AUNInputs
 from .AUNInputsBasic import AUNInputsBasic
+from .AUNInputsBasicSwitch import AUNInputsBasicSwitch
 from .AUNInputsDiffusers import AUNInputsDiffusers
 from .AUNInputsDiffusersBasic import AUNInputsDiffusersBasic
 from .AUNInputsDiffusersRefineBasic import AUNInputsDiffusersRefineBasic
@@ -130,6 +131,7 @@ NODE_CLASS_MAPPINGS = {
     "AUNImgLoader": AUNImgLoader,
     "AUNInputs": AUNInputs,
     "AUNInputsBasic": AUNInputsBasic,
+    "AUNInputsBasicSwitch": AUNInputsBasicSwitch,
     "AUNInputsDiffusers": AUNInputsDiffusers,
     "AUNInputsDiffusersBasic": AUNInputsDiffusersBasic,
     "AUNInputsDiffusersRefineBasic": AUNInputsDiffusersRefineBasic,
@@ -226,6 +228,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "AUNImgLoader": "Image Loader",
     "AUNInputs": "Inputs",
     "AUNInputsBasic": "Inputs Basic",
+    "AUNInputsBasicSwitch": "Inputs Basic + Prompt Switch",
     "AUNInputsDiffusers": "Inputs Diffusers",
     "AUNInputsDiffusersBasic": "Inputs Diffusers Basic",
     "AUNInputsDiffusersRefineBasic": "Inputs Diffusers Refine Basic",
