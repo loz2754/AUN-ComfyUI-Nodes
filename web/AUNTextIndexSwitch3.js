@@ -1,9 +1,9 @@
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
 
-const NODE_TYPES = ["AUNTextIndexSwitch3", "AUNTextIndexSwitch4", "AUNTextIndexSwitch5", "AUNInputsBasicSwitch"];
+const NODE_TYPES = ["AUNTextIndexSwitch3", "AUNTextIndexSwitch4", "AUNTextIndexSwitch5", "AUNTextIndexSwitch5Diffusers", "AUNInputsBasicSwitch"];
 // Classes that have a built-in "mode" widget (Select/Increment/Random/Range)
-const MODE_WIDGET_CLASSES = new Set(["AUNTextIndexSwitch4", "AUNTextIndexSwitch5", "AUNInputsBasicSwitch"]);
+const MODE_WIDGET_CLASSES = new Set(["AUNTextIndexSwitch4", "AUNTextIndexSwitch5", "AUNTextIndexSwitch5Diffusers", "AUNInputsBasicSwitch"]);
 const PROP_KEY = "_AUN_compactMode";
 // Extra layout height added before the loader block of AUNInputsBasicSwitch so
 // the model selector (ckpt_name) below it is not overlapped by the textarea.
@@ -17,6 +17,10 @@ const TEXT_SELECTION_ROW_GAP = 16;
 // single dot in compact mode.
 const PARAM_OUTPUTS = new Set([
   "model",
+  "diffusion_name",
+  "clip_name",
+  "vae_name",
+  "clip_type",
   "sampler",
   "scheduler",
   "cfg",
@@ -27,7 +31,7 @@ const PARAM_OUTPUTS = new Set([
 // compact mode. AUNInputsBasicSwitch shares PARAM_OUTPUTS slot names (sampler,
 // scheduler, cfg, steps, seed) but at different positions, so the convergence
 // and label-blanking must not apply to it.
-const PARAM_OUTPUT_CLASSES = new Set(["AUNTextIndexSwitch5"]);
+const PARAM_OUTPUT_CLASSES = new Set(["AUNTextIndexSwitch5", "AUNTextIndexSwitch5Diffusers"]);
 
 // "Collapse connections" state (same property key used by every other AUN
 // collapse implementation and the global collapse extension).
@@ -1315,9 +1319,13 @@ function showCompactLabelPopup(node) {
 }
 
 // --- Slot key=value parsing (mirrors AUNTextIndexSwitch5 backend) ---
-const AUN_SWITCH_KNOWN_KEYS = ["model", "sampler", "scheduler", "cfg", "steps", "seed"];
+const AUN_SWITCH_KNOWN_KEYS = ["model", "diffusion_name", "clip_name", "vae_name", "clip_type", "sampler", "scheduler", "cfg", "steps", "seed"];
 const AUN_SWITCH_KEY_LABELS = {
   model: "Model",
+  diffusion_name: "Diffusion Model",
+  clip_name: "CLIP",
+  vae_name: "VAE",
+  clip_type: "CLIP Type",
   sampler: "Sampler",
   scheduler: "Scheduler",
   cfg: "CFG",
@@ -1367,6 +1375,48 @@ function fetchCheckpointList() {
     return __aun_ckpt_list;
   })();
   return __aun_ckpt_list_promise;
+}
+
+// --- Diffusers file list dropdown pickers ---
+const __aun_diffusers_cache = {};
+
+function fetchDiffusersFileList(folderKey) {
+  if (__aun_diffusers_cache[folderKey]) return Promise.resolve(__aun_diffusers_cache[folderKey]);
+  const promise = (async () => {
+    try {
+      const resp = await api.fetchApi("/object_info/AUNInputsDiffusersBasic");
+      const data = await resp.json();
+      const spec = data?.AUNInputsDiffusersBasic?.input?.required?.[folderKey];
+      if (Array.isArray(spec) && Array.isArray(spec[0])) {
+        __aun_diffusers_cache[folderKey] = spec[0];
+        return spec[0];
+      }
+    } catch (e) {
+      console.warn(`[AUNTextIndexSwitch3] Failed to load ${folderKey} list`, e);
+    }
+    __aun_diffusers_cache[folderKey] = [];
+    return [];
+  })();
+  __aun_diffusers_cache[folderKey] = promise;
+  return promise;
+}
+
+function fetchDiffusionModelList() { return fetchDiffusersFileList("diffusion_name"); }
+function fetchClipList() { return fetchDiffusersFileList("clip_name"); }
+function fetchVaeList() { return fetchDiffusersFileList("vae_name"); }
+
+async function fetchClipTypeList() {
+  try {
+    const resp = await api.fetchApi("/object_info/AUNInputsDiffusersBasic");
+    const data = await resp.json();
+    const spec = data?.AUNInputsDiffusersBasic?.input?.required?.clip_type;
+    if (Array.isArray(spec) && Array.isArray(spec[0])) {
+      return spec[0];
+    }
+  } catch (e) {
+    console.warn("[AUNTextIndexSwitch3] Failed to load clip_type list", e);
+  }
+  return ["Stable Diffusion"];
 }
 
 // Create and show a floating textarea popup for editing
@@ -1571,56 +1621,121 @@ function showTextEditPopup(node, widgetName, widget, positionHint) {
   popup.style.top = `${top}px`;
   popup.style.width = `${popupWidth}px`;
 
-  // Model picker row: inserts "model=NAME" into the slot text at the cursor.
-  const modelBar = document.createElement("div");
-  modelBar.style.cssText =
-    "display:flex; align-items:center; gap:8px; padding:2px 4px;";
-  const modelLabel = document.createElement("span");
-  modelLabel.textContent = "Model:";
-  modelLabel.style.cssText =
-    "color:#b0b0b0; font: 11px sans-serif; white-space:nowrap;";
-  const modelSelect = document.createElement("select");
-  modelSelect.style.cssText =
-    "flex:1; min-width:0; background:#242424; color:#d8d8d8; border:1px solid #444; border-radius:4px; padding:3px; font-size:12px;";
-  const placeholder = document.createElement("option");
-  placeholder.value = "";
-  placeholder.textContent = "— insert model=NAME —";
-  modelSelect.appendChild(placeholder);
-  modelBar.appendChild(modelLabel);
-  modelBar.appendChild(modelSelect);
-  popup.insertBefore(modelBar, buttonBar);
+  // Determine if this is a diffusers variant node
+  const isDiffusers = node.comfyClass === "AUNTextIndexSwitch5Diffusers";
 
-  fetchCheckpointList().then((list) => {
-    for (const name of list || []) {
-      const opt = document.createElement("option");
-      opt.value = name;
-      opt.textContent = name;
-      modelSelect.appendChild(opt);
-    }
-  });
+  if (isDiffusers) {
+    // Diffusers variant: show diffusion_name, clip_name, vae_name, clip_type dropdowns
+    const diffusersFields = [
+      { key: "diffusion_name", label: "Diffusion:", fetcher: fetchDiffusionModelList, placeholder: "— insert diffusion_name= —" },
+      { key: "clip_name", label: "CLIP:", fetcher: fetchClipList, placeholder: "— insert clip_name= —" },
+      { key: "vae_name", label: "VAE:", fetcher: fetchVaeList, placeholder: "— insert vae_name= —" },
+      { key: "clip_type", label: "CLIP Type:", fetcher: fetchClipTypeList, placeholder: "— insert clip_type= —" },
+    ];
 
-  modelSelect.addEventListener("change", () => {
-    const val = modelSelect.value;
-    modelSelect.value = "";
-    if (!val) return;
-    const current = textarea.value || "";
-    const start = textarea.selectionStart ?? current.length;
-    const end = textarea.selectionEnd ?? current.length;
-    const before = current.slice(0, start);
-    const after = current.slice(end);
-    const sep = before && !before.endsWith("\n") ? "\n" : "";
-    const token = `model=${val}`;
-    textarea.value = before + sep + token + "\n" + after;
-    const caret = before.length + sep.length + token.length + 1;
-    try {
-      textarea.selectionStart = textarea.selectionEnd = caret;
-    } catch (e) {
-      /* ignore */
+    for (const field of diffusersFields) {
+      const row = document.createElement("div");
+      row.style.cssText =
+        "display:flex; align-items:center; gap:8px; padding:2px 4px;";
+      const lbl = document.createElement("span");
+      lbl.textContent = field.label;
+      lbl.style.cssText =
+        "color:#b0b0b0; font: 11px sans-serif; white-space:nowrap;";
+      const select = document.createElement("select");
+      select.style.cssText =
+        "flex:1; min-width:0; background:#242424; color:#d8d8d8; border:1px solid #444; border-radius:4px; padding:3px; font-size:12px;";
+      const ph = document.createElement("option");
+      ph.value = "";
+      ph.textContent = field.placeholder;
+      select.appendChild(ph);
+      row.appendChild(lbl);
+      row.appendChild(select);
+      popup.insertBefore(row, buttonBar);
+
+      field.fetcher().then((list) => {
+        for (const name of list || []) {
+          const opt = document.createElement("option");
+          opt.value = name;
+          opt.textContent = name;
+          select.appendChild(opt);
+        }
+      });
+
+      select.addEventListener("change", () => {
+        const val = select.value;
+        select.value = "";
+        if (!val) return;
+        const current = textarea.value || "";
+        const start = textarea.selectionStart ?? current.length;
+        const end = textarea.selectionEnd ?? current.length;
+        const before = current.slice(0, start);
+        const after = current.slice(end);
+        const sep = before && !before.endsWith("\n") ? "\n" : "";
+        const token = `${field.key}=${val}`;
+        textarea.value = before + sep + token + "\n" + after;
+        const caret = before.length + sep.length + token.length + 1;
+        try {
+          textarea.selectionStart = textarea.selectionEnd = caret;
+        } catch (e) {
+          /* ignore */
+        }
+        widget.value = textarea.value;
+        updateCompactOverlay(node, undefined, true);
+        textarea.focus();
+      });
     }
-    widget.value = textarea.value;
-    updateCompactOverlay(node, undefined, true);
-    textarea.focus();
-  });
+  } else {
+    // Standard checkpoint variant: show Model dropdown
+    const modelBar = document.createElement("div");
+    modelBar.style.cssText =
+      "display:flex; align-items:center; gap:8px; padding:2px 4px;";
+    const modelLabel = document.createElement("span");
+    modelLabel.textContent = "Model:";
+    modelLabel.style.cssText =
+      "color:#b0b0b0; font: 11px sans-serif; white-space:nowrap;";
+    const modelSelect = document.createElement("select");
+    modelSelect.style.cssText =
+      "flex:1; min-width:0; background:#242424; color:#d8d8d8; border:1px solid #444; border-radius:4px; padding:3px; font-size:12px;";
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = "— insert model=NAME —";
+    modelSelect.appendChild(placeholder);
+    modelBar.appendChild(modelLabel);
+    modelBar.appendChild(modelSelect);
+    popup.insertBefore(modelBar, buttonBar);
+
+    fetchCheckpointList().then((list) => {
+      for (const name of list || []) {
+        const opt = document.createElement("option");
+        opt.value = name;
+        opt.textContent = name;
+        modelSelect.appendChild(opt);
+      }
+    });
+
+    modelSelect.addEventListener("change", () => {
+      const val = modelSelect.value;
+      modelSelect.value = "";
+      if (!val) return;
+      const current = textarea.value || "";
+      const start = textarea.selectionStart ?? current.length;
+      const end = textarea.selectionEnd ?? current.length;
+      const before = current.slice(0, start);
+      const after = current.slice(end);
+      const sep = before && !before.endsWith("\n") ? "\n" : "";
+      const token = `model=${val}`;
+      textarea.value = before + sep + token + "\n" + after;
+      const caret = before.length + sep.length + token.length + 1;
+      try {
+        textarea.selectionStart = textarea.selectionEnd = caret;
+      } catch (e) {
+        /* ignore */
+      }
+      widget.value = textarea.value;
+      updateCompactOverlay(node, undefined, true);
+      textarea.focus();
+    });
+  }
 
   // Store original state for cleanup
   popup.__AUN_originalParent = originalParent;

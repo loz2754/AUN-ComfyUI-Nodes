@@ -7,6 +7,7 @@ const TARGET_CLASSES = new Set([
   "AUNRandomTextIndexSwitchV2",
   "AUNTextIndexSwitch4",
   "AUNTextIndexSwitch5",
+  "AUNTextIndexSwitch5Diffusers",
   "AUNInputsBasicSwitch",
 ]);
 

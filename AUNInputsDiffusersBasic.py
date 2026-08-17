@@ -20,7 +20,7 @@ sampler = AnyType("*")
 
 
 class AUNInputsDiffusersBasic:
-    DESCRIPTION = "A lightweight diffusion-model setup node that loads a standalone UNet with explicit CLIP and VAE files, prepares common sampler settings, and creates an empty latent batch.\n\nRight-click → \"Collapse Connections\" or double-click to hide output labels and converge connection lines."
+    DESCRIPTION = "A lightweight diffusion-model setup node that loads a standalone UNet with explicit CLIP and VAE files, prepares common sampler settings, and creates an empty latent batch.\n\nThe optional *_input sockets override the matching widget values (diffusion, clip, vae, clip_type, sampler, scheduler, cfg, steps, seed) when connected.\n\nRight-click → \"Collapse Connections\" or double-click to hide output labels and converge connection lines."
 
     _NO_DIFFUSION = "<no diffusion models found>"
     _NO_CLIP = "<no clip files found>"
@@ -29,6 +29,39 @@ class AUNInputsDiffusersBasic:
 
     def __init__(self):
         pass
+
+    @staticmethod
+    def _clean_override(value):
+        if value is None:
+            return ""
+        s = str(value).strip()
+        return "" if s.lower() in ("", "none", "null") else s
+
+    @staticmethod
+    def _resolve_name(override, current, folder_key, label):
+        override = AUNInputsDiffusersBasic._clean_override(override)
+        if not override:
+            return current
+        candidates = comfy_paths.get_filename_list(folder_key)
+        if not candidates:
+            return current
+        lowered = override.lower()
+        for candidate in candidates:
+            if candidate.lower() == lowered:
+                return candidate
+        for ext in (".safetensors", ".ckpt", ".pt", ".gguf"):
+            for candidate in candidates:
+                if candidate.lower() == (override + ext).lower():
+                    return candidate
+        for candidate in candidates:
+            if os.path.basename(candidate).lower() == lowered:
+                return candidate
+        for ext in (".safetensors", ".ckpt", ".pt", ".gguf"):
+            for candidate in candidates:
+                if os.path.basename(candidate).lower() == (override + ext).lower():
+                    return candidate
+        print(f"AUNInputsDiffusersBasic: {label} override '{override}' not found among {len(candidates)} installed files; falling back to widget value '{current}'.")
+        return current
 
     @staticmethod
     def _choices_or_placeholder(entries, placeholder):
@@ -70,6 +103,17 @@ class AUNInputsDiffusersBasic:
         clip_type_choices, clip_type_meta = cls._clip_type_field()
 
         return {
+            "optional": {
+                "diffusion_input": ("STRING", {"forceInput": True, "tooltip": "Diffusion-model filename override. When connected, replaces 'diffusion_name' (resolved case-insensitively against installed diffusion models; falls back to the widget value if no match is found)."}),
+                "clip_input": ("STRING", {"forceInput": True, "tooltip": "CLIP filename override. When connected, replaces 'clip_name' (resolved case-insensitively against installed CLIP files; falls back to the widget value if no match is found)."}),
+                "vae_input": ("STRING", {"forceInput": True, "tooltip": "VAE filename override. When connected, replaces 'vae_name' (resolved case-insensitively against installed VAE files; falls back to the widget value if no match is found)."}),
+                "clip_type_input": ("STRING", {"forceInput": True, "tooltip": "CLIP type override. When connected and non-empty, replaces the 'clip_type' widget value."}),
+                "sampler_input": ("STRING", {"forceInput": True, "tooltip": "Sampler name override. When connected and non-empty, replaces the 'sampler' widget value."}),
+                "scheduler_input": ("STRING", {"forceInput": True, "tooltip": "Scheduler name override. When connected and non-empty, replaces the 'scheduler' widget value."}),
+                "cfg_input": ("FLOAT", {"forceInput": True, "tooltip": "CFG scale override. When connected, replaces the 'cfg' widget value."}),
+                "steps_input": ("INT", {"forceInput": True, "tooltip": "Steps override. When connected, replaces the 'steps' widget value."}),
+                "seed_input": ("INT", {"forceInput": True, "tooltip": "Seed override. When connected, replaces the 'seed' widget value."}),
+            },
             "required": {
                 "diffusion_name": (
                     diffusion_files,
@@ -284,7 +328,38 @@ class AUNInputsDiffusersBasic:
         seed,
         megapixels=1.0,
         multiple=8,
+        diffusion_input="",
+        clip_input="",
+        vae_input="",
+        clip_type_input="",
+        sampler_input="",
+        scheduler_input="",
+        cfg_input=None,
+        steps_input=None,
+        seed_input=None,
     ):
+        diffusion_input = self._clean_override(diffusion_input)
+        clip_input = self._clean_override(clip_input)
+        vae_input = self._clean_override(vae_input)
+        clip_type_input = self._clean_override(clip_type_input)
+        sampler_input = self._clean_override(sampler_input)
+        scheduler_input = self._clean_override(scheduler_input)
+
+        diffusion_name = self._resolve_name(diffusion_input, diffusion_name, "diffusion_models", "diffusion model")
+        clip_name = self._resolve_name(clip_input, clip_name, "clip", "CLIP")
+        vae_name = self._resolve_name(vae_input, vae_name, "vae", "VAE")
+        if clip_type_input:
+            clip_type = clip_type_input
+        if sampler_input:
+            sampler = sampler_input
+        if scheduler_input:
+            scheduler = scheduler_input
+        if cfg_input is not None:
+            cfg = cfg_input
+        if steps_input is not None:
+            steps = steps_input
+        if seed_input is not None:
+            seed = seed_input
         model, clip, vae = self._load_diffusion_bundle(diffusion_name, clip_name, clip_type, vae_name)
 
         try:
@@ -324,6 +399,10 @@ class AUNInputsDiffusersBasic:
             seed,
             int(batch_size),
         )
+
+    @classmethod
+    def IS_CHANGED(cls, **kwargs):
+        return float("nan")
 
 
 NODE_CLASS_MAPPINGS = {
