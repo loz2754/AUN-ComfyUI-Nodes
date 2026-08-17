@@ -11,6 +11,19 @@
 
 ### Notes
 
+## [2.20.0] - 2026-08-17
+
+### Added
+
+- AUNInputsDiffusersBasic: 9 optional override input sockets (`diffusion_input`, `clip_input`, `vae_input`, `clip_type_input`, `sampler_input`, `scheduler_input`, `cfg_input`, `steps_input`, `seed_input`) with case-insensitive filename resolution and `IS_CHANGED` for forced re-execution.
+- AUNTextIndexSwitch5Diffusers: diffusers variant of Text Index Switch 5 that parses diffusers-specific `key=value` tokens (`diffusion_name`, `clip_name`, `vae_name`, `clip_type`) and outputs each as a typed value. Editor popup provides dropdown selectors for diffusion model, CLIP, VAE, and CLIP type files.
+
+### Changed
+
+### Fixed
+
+### Notes
+
 ## [2.19.0] - 2026-08-17
 
 ### Added
