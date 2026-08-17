@@ -11,6 +11,21 @@
 
 ### Notes
 
+## [2.19.0] - 2026-08-17
+
+### Added
+
+- AUNInputsBasicSwitch: fuses a text index switch with Inputs Basic into a single node — select one of up to 20 text slots and load the checkpoint, latent, and sampler settings in one place. Selected text is scanned for `key=value` tokens (`model`, `sampler`, `scheduler`, `cfg`, `steps`, `seed`) which override matching loader widgets and are removed from the text output.
+
+### Changed
+
+- AUNTextIndexSwitch3 compact mode refactor: param output sockets converge to a single dot and node height shrinks to fit visible content.
+- AUNInputsBasicSwitch integrated into collapse connections, index selected indicator, and resolution overlay systems.
+
+### Fixed
+
+### Notes
+
 ## [2.18.0] - 2026-08-16
 
 ### Added
