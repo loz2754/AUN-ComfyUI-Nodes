@@ -283,6 +283,16 @@ export function isGlobalCollapseEnabled() {
   return globalDefault;
 }
 
+// Returns true when a node can be programmatically collapsed via
+// setNodeCollapseConnections (e.g. by the All Graph button or the controller's
+// target slots). Non-SKIP_CLASSES nodes are always eligible (handled by the
+// global collapse system). SKIP_CLASSES nodes are only eligible when they ship
+// their own __aun_remoteCollapse hook.
+export function canRemoteCollapse(node) {
+  if (!shouldSkip(node)) return true;
+  return typeof node.__aun_remoteCollapse === "function";
+}
+
 app.registerExtension({
   name: "AUN.GlobalCollapseConnections",
   nodeCreated: (node) => hookNode(node),

@@ -11,6 +11,7 @@ import {
   setNodeCollapseConnections,
   isGlobalCollapseEnabled,
   isConnectionCollapsed,
+  canRemoteCollapse,
 } from "./AUN_global_collapse_connections.js";
 
 const NODE_TYPE = "AUNCollapseConnectionsController";
@@ -371,7 +372,9 @@ let runBarBtn = null;
 let showRunBarBtn = true;
 
 const getEligibleGraphNodes = (graph) =>
-  (graph?._nodes || []).filter(hasConnectionSlots);
+  (graph?._nodes || []).filter(
+    (node) => hasConnectionSlots(node) && canRemoteCollapse(node),
+  );
 
 const isGraphAllCollapsed = (graph) => {
   const eligible = getEligibleGraphNodes(graph);

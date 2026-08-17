@@ -2305,7 +2305,7 @@ const extendNodePrototype = (nodeType, nodeData) => {
         if (!("___ccOrigLabel" in slot)) slot.___ccOrigLabel = slot.label;
         slot.label = " ";
       } else if ("___ccOrigLabel" in slot) {
-        slot.label = slot.___ccOrigLabel;
+        delete slot.label;
         delete slot.___ccOrigLabel;
       }
     }

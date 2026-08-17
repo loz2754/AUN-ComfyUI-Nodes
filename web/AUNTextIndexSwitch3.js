@@ -132,7 +132,7 @@ function applyCollapseSlotLabels(node) {
       slot.label = " ";
     } else {
       if ("__aun_collapse_origLabel" in slot) {
-        slot.label = slot.__aun_collapse_origLabel;
+        delete slot.label;
         delete slot.__aun_collapse_origLabel;
       }
       if (slot.label === " ") {
