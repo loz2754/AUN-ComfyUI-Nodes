@@ -194,13 +194,13 @@ function findMatch(node) {
   return null;
 }
 
-// Data source: prefer the node's own execution results (cached via 'executed' event),
-// fall back to a live widget-based match (works pre-execution for unconnected phrases).
+// Data source: prefer the node's own execution results (cached via the
+// 'AUN_keyword_preset_selector_executed' event), fall back to a live
+// widget-based match (works pre-execution for unconnected phrases).
 function getMatchData(node) {
   const last = node.__AUN_kpsLast;
-  if (last && (last.keyword || last.index > 0) && last.value != null) {
-    const index = Number.isFinite(last.index) ? last.index : 0;
-    return { index, keyword: String(last.keyword ?? ""), value: String(last.value) };
+  if (last && last.keyword && last.index > 0 && last.value != null) {
+    return { index: Number(last.index), keyword: String(last.keyword), value: String(last.value) };
   }
   return findMatch(node);
 }
@@ -281,15 +281,24 @@ function syncAndPositionFooter(node) {
   }
 
   const match = getMatchData(node);
-  if (!match) {
-    el.style.display = "none";
-    return;
-  }
-
-  const text = `${match.index} ${match.keyword}: ${match.value}`;
+  console.log("[AUN-KPS] footer", {
+    compact,
+    footerHeight,
+    occluded,
+    match,
+    nodePos: node.pos,
+    nodeSize: node.size,
+  });
+  const text = match ? `${match.index} ${match.keyword}: ${match.value}` : "no keyword match";
   if (el.__AUN_footerCache !== text) {
     el.__AUN_footerCache = text;
     el.textContent = text;
+  }
+
+  if (!match) {
+    el.style.opacity = "0.55";
+  } else {
+    el.style.opacity = "1";
   }
 
   const h = node.size?.[1] ?? 100;
@@ -371,26 +380,6 @@ function updateVisibility(node) {
 
   ensureFooter(node);
   if (compact) startCompactFooterRAF();
-}
-
-function cacheExecutedOutputs(nodeId, output) {
-  if (!output || !app?.graph) return;
-  let node = app.graph.getNodeById?.(nodeId);
-  if (!node) {
-    const numericId = parseInt(nodeId, 10);
-    if (!Number.isNaN(numericId)) {
-      node = app.graph.getNodeById?.(numericId);
-    }
-  }
-  if (!node) return;
-  const isKps = node?.comfyClass === NODE_CLASS || node?.type === NODE_CLASS;
-  if (!isKps) return;
-
-  node.__AUN_kpsLast = {
-    value: output.selected_value ?? output[0] ?? null,
-    keyword: output.matched_keyword ?? output[1] ?? null,
-    index: output.matched_index ?? output[2] ?? 0,
-  };
 }
 
 app.registerExtension({
@@ -477,15 +466,25 @@ app.registerExtension({
   },
 });
 
-api.addEventListener("executed", ({ detail }) => {
-  if (!detail) return;
-  cacheExecutedOutputs(detail.node, detail.output);
-  if (compactFooterRAF != null) {
-    const nodes = app?.graph?._nodes || [];
-    for (const node of nodes) {
-      if ((node?.comfyClass === NODE_CLASS || node?.type === NODE_CLASS) && isCompact(node)) {
-        syncAndPositionFooter(node);
-      }
+api.addEventListener("AUN_keyword_preset_selector_executed", ({ detail }) => {
+  if (!detail || !app?.graph) return;
+  let node = app.graph.getNodeById?.(detail.node_id);
+  if (!node) {
+    const numericId = parseInt(detail.node_id, 10);
+    if (!Number.isNaN(numericId)) {
+      node = app.graph.getNodeById?.(numericId);
     }
+  }
+  if (!node) return;
+  const isKps = node?.comfyClass === NODE_CLASS || node?.type === NODE_CLASS;
+  if (!isKps) return;
+
+  node.__AUN_kpsLast = {
+    value: detail.selected_value ?? null,
+    keyword: detail.matched_keyword ?? "",
+    index: detail.matched_index ?? 0,
+  };
+  if (isCompact(node)) {
+    syncAndPositionFooter(node);
   }
 });

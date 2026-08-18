@@ -81,6 +81,10 @@ class AUNKeywordPresetSelector:
         visible_inputs = max(self.MIN_VISIBLE_INPUTS, min(int(visible_inputs or 5), self.MAX_INPUTS))
         search = reference_phrase if case_sensitive else reference_phrase.lower()
 
+        selected_value = ""
+        matched_keyword = ""
+        matched_index = 0
+
         for i in range(1, visible_inputs + 1):
             keyword = kwargs.get("keyword%d" % i, "")
             if not keyword:
@@ -88,10 +92,34 @@ class AUNKeywordPresetSelector:
             match_kw = keyword if case_sensitive else keyword.lower()
             if match_kw in search:
                 preset_val = kwargs.get("preset%d" % i, "")
-                return (preset_val, keyword, i)
+                selected_value = preset_val
+                matched_keyword = keyword
+                matched_index = i
+                break
 
-        fallback_val = kwargs.get("preset_default", "")
-        return (fallback_val, "", 0)
+        if matched_index == 0:
+            selected_value = kwargs.get("preset_default", "")
+
+        self._notify_executed(unique_id, selected_value, matched_keyword, matched_index)
+        return (selected_value, matched_keyword, matched_index)
+
+    def _notify_executed(self, unique_id, selected_value, matched_keyword, matched_index):
+        if unique_id is None:
+            return
+        try:
+            from server import PromptServer  # type: ignore[import-not-found]
+
+            PromptServer.instance.send_sync(
+                "AUN_keyword_preset_selector_executed",
+                {
+                    "node_id": str(unique_id),
+                    "selected_value": str(selected_value),
+                    "matched_keyword": str(matched_keyword),
+                    "matched_index": int(matched_index),
+                },
+            )
+        except Exception:
+            pass
 
 
 NODE_CLASS_MAPPINGS = {
