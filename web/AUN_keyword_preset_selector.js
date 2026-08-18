@@ -202,6 +202,12 @@ function getMatchData(node) {
   if (last && last.keyword && last.index > 0 && last.value != null) {
     return { index: Number(last.index), keyword: String(last.keyword), value: String(last.value) };
   }
+  const state = last ? JSON.stringify(last) : "no-cache";
+  if (getMatchData._lastLogState !== state) {
+    getMatchData._lastLogState = state;
+    const refW = getWidget(node, "reference_phrase");
+    console.log("[AUN-KPS] no cache match", { state, phraseWidget: refW?.value ?? null });
+  }
   return findMatch(node);
 }
 
@@ -484,6 +490,11 @@ api.addEventListener("AUN_keyword_preset_selector_executed", ({ detail }) => {
     keyword: detail.matched_keyword ?? "",
     index: detail.matched_index ?? 0,
   };
+  console.log("[AUN-KPS] executed event received", {
+    nodeId: node.id,
+    comfyClass: node.comfyClass,
+    cached: node.__AUN_kpsLast,
+  });
   if (isCompact(node)) {
     syncAndPositionFooter(node);
   }

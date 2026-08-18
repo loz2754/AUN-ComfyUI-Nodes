@@ -118,8 +118,14 @@ class AUNKeywordPresetSelector:
                     "matched_index": int(matched_index),
                 },
             )
-        except Exception:
-            pass
+            print(
+                "[AUN-KPS] notify sent",
+                {"node_id": str(unique_id), "selected_value": str(selected_value),
+                 "matched_keyword": str(matched_keyword), "matched_index": int(matched_index)},
+                flush=True,
+            )
+        except Exception as exc:
+            print("[AUN-KPS] notify FAILED", repr(exc), flush=True)
 
 
 NODE_CLASS_MAPPINGS = {
