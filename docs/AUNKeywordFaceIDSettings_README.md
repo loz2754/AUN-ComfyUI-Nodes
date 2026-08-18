@@ -30,9 +30,11 @@ Each preset row `N` has a `keywordN` (STRING) plus the same 8 setting widgets as
 
 ## Outputs
 
-- `preset` (STRING), `weight` (FLOAT), `weight_type` (STRING)
-- `preset_faceid` (STRING), `lora_strength` (FLOAT)
-- `weight_faceid` (FLOAT), `weight_faceidv2` (FLOAT), `weight_type_faceid` (STRING)
+- `preset` (COMBO), `weight` (FLOAT), `weight_type` (COMBO)
+- `preset_faceid` (COMBO), `lora_strength` (FLOAT)
+- `weight_faceid` (FLOAT), `weight_faceidv2` (FLOAT), `weight_type_faceid` (COMBO)
+
+The four combo outputs (`preset`, `weight_type`, `preset_faceid`, `weight_type_faceid`) are typed as their option lists so they connect to `COMBO` widget inputs (such as a subgraph's exposed proxy widgets) and pass validation. They carry plain strings at runtime — the exact option text from the dropdowns.
 - `matched_keyword` (STRING): The matched keyword (empty when nothing matches).
 - `matched_index` (INT): The matched preset row (0 when nothing matches).
 - `settings_text` (STRING): The matched settings rendered as a Python-style tuple, e.g. `('PLUS FACE (portraits)', 0.3, 'prompt is more important', 'FACEID PLUS V2', 0.5, 0.8, 1.8, 'linear')` — handy for file naming.

@@ -122,7 +122,7 @@ class AUNKeywordFaceIDSettings:
             "hidden": {"unique_id": "UNIQUE_ID", "extra_pnginfo": "EXTRA_PNGINFO"},
         }
 
-    RETURN_TYPES = ("STRING", "FLOAT", "STRING", "STRING", "FLOAT", "FLOAT", "FLOAT", "STRING", "STRING", "INT", "STRING")
+    RETURN_TYPES = (UNIFIED_PRESETS, "FLOAT", WEIGHT_TYPES_SIMPLE, FACEID_PRESETS, "FLOAT", "FLOAT", "FLOAT", WEIGHT_TYPES, "STRING", "INT", "STRING")
     RETURN_NAMES = (
         "preset", "weight", "weight_type", "preset_faceid", "lora_strength",
         "weight_faceid", "weight_faceidv2", "weight_type_faceid",
