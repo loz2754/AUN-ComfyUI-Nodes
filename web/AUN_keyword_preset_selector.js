@@ -58,8 +58,8 @@ function updateVisibility(node) {
     applyWidgetHiddenState(getWidget(node, "preset" + i), !show);
   }
 
-  // Default preset always visible
-  applyWidgetHiddenState(getWidget(node, "preset_default"), false);
+  // Default preset follows compact mode
+  applyWidgetHiddenState(getWidget(node, "preset_default"), compact);
 
   resizeNode(node);
   node.setDirtyCanvas?.(true, true);
