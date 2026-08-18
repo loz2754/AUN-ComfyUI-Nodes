@@ -23,6 +23,7 @@ const SKIP_CLASSES = new Set([
   "AUNTextIndexSwitch4", "AUNTextIndexSwitch3", "AUNTextIndexSwitch", "AUNRandomTextIndexSwitch", "AUNRandomTextIndexSwitchV2", "AUNTextIndexSwitch5", "AUNTextIndexSwitch5Diffusers",
   "AUNInputsBasicSwitch",
   "AUNCollapseConnectionsController",
+  "AUNKeywordPresetSelector",
 ]);
 
 let globalDefault = false;
