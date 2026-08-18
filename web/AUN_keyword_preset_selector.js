@@ -151,9 +151,13 @@ function traceLinkValue(startLink, visited, depth) {
 function getReferencePhrase(node) {
   const refWidget = getWidget(node, "reference_phrase");
   if (!refWidget) return "";
-  if (refWidget.input?.link != null) {
-    const traced = traceLinkValue(refWidget.input.link, new Set());
+  const refInput = node.inputs?.find(
+    (inp) => inp.name === "reference_phrase" || inp.widget?.name === "reference_phrase"
+  );
+  if (refInput?.link != null) {
+    const traced = traceLinkValue(refInput.link, new Set());
     if (traced != null) return traced;
+    return "";
   }
   return String(refWidget?.value ?? "").trim();
 }
@@ -280,7 +284,7 @@ let compactBoxRAF = null;
 function hasCompactKpsNodes() {
   if (!app?.graph) return false;
   const nodes = app.graph._nodes || app.graph.nodes || [];
-  return nodes.some((n) => n?.comfyClass === NODE_CLASS && isCompact(n));
+  return nodes.some((n) => (n?.comfyClass === NODE_CLASS || n?.type === NODE_CLASS) && isCompact(n));
 }
 
 function startCompactBoxRAF() {
@@ -296,7 +300,7 @@ function startCompactBoxRAF() {
     }
     const nodes = app.graph._nodes || app.graph.nodes || [];
     for (const node of nodes) {
-      if (node?.comfyClass === NODE_CLASS && isCompact(node)) {
+      if ((node?.comfyClass === NODE_CLASS || node?.type === NODE_CLASS) && isCompact(node)) {
         syncAndPositionBox(node);
       }
     }
@@ -339,6 +343,8 @@ function updateVisibility(node) {
   forceRedraw(node);
 
   ensureBox(node);
+  const box = node.__AUN_kpsBox;
+  if (box) box.style.display = compact ? "grid" : "none";
   if (compact) startCompactBoxRAF();
 }
 
