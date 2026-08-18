@@ -7,7 +7,9 @@ const MAX_SLOTS = 20;
 const PROP_KEY = "_AUN_compactMode";
 const PROP_SHOW_BOX = "_AUN_showMatchBox";
 const TITLE_H = 28;
-const FOOTER_H = 42;
+const FOOTER_H = 70;
+const FOOTER_PAD = 12;
+const FOOTER_BOTTOM = 4;
 
 function getVisibleCount(node) {
   const w = getWidget(node, "visible_inputs");
@@ -61,8 +63,36 @@ function getFooterHeight(node) {
   return FOOTER_H;
 }
 
+function getRailBottomY(node) {
+  const slotH = globalThis.LiteGraph?.NODE_SLOT_HEIGHT ?? 20;
+  const rows = node?.outputs?.length ?? 0;
+  return Math.max(0, (rows - 1 + 0.7) * slotH);
+}
+
 function getMinimumCompactHeight(node) {
-  return TITLE_H + 4 + getFooterHeight(node) + 4;
+  const footerH = getFooterHeight(node);
+  const base = Math.max(TITLE_H, getRailBottomY(node));
+  return footerH > 0 ? base + FOOTER_PAD + footerH + FOOTER_BOTTOM : base + FOOTER_BOTTOM;
+}
+
+function drawFooterBox(ctx, node) {
+  const footerH = getFooterHeight(node);
+  if (footerH <= 0 || node.__AUN_nodeBeingDragged) return;
+  const w = node?.size?.[0] ?? 300;
+  const x0 = 8;
+  const x1 = w - 8;
+  const y0 = getRailBottomY(node) + FOOTER_PAD;
+  const y1 = y0 + footerH;
+  ctx.save();
+  ctx.fillStyle = "rgba(255,255,255,0.07)";
+  ctx.beginPath();
+  if (typeof ctx.roundRect === "function") {
+    ctx.roundRect(x0, y0, x1 - x0, y1 - y0, 4);
+  } else {
+    ctx.rect(x0, y0, x1 - x0, y1 - y0);
+  }
+  ctx.fill();
+  ctx.restore();
 }
 
 function ensureFooterStyles() {
@@ -73,17 +103,33 @@ function ensureFooterStyles() {
       position: absolute;
       z-index: 12;
       display: none;
+      overflow-y: auto;
       box-sizing: border-box;
-      pointer-events: none;
+      pointer-events: auto;
       font: 11px sans-serif;
       color: rgba(220,220,220,0.9);
       padding: 2px 6px;
       background: transparent;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      white-space: normal;
+      word-break: break-word;
       border-radius: 0;
       border: none;
+    }
+    .AUN-kps-footer::-webkit-scrollbar {
+      width: 5px;
+    }
+    .AUN-kps-footer::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .AUN-kps-footer::-webkit-scrollbar-thumb {
+      background: rgba(255,255,255,0.2);
+      border-radius: 3px;
+    }
+    .AUN-kps-footer::-webkit-scrollbar-thumb:hover {
+      background: rgba(255,255,255,0.35);
+    }
+    .AUN-kps-footer b {
+      font-weight: 700;
     }
   `);
 }
@@ -243,7 +289,7 @@ function syncAndPositionFooter(node) {
   const el = ensureFooter(node);
   const compact = isCompact(node);
 
-  if (!compact) {
+  if (!compact || node.__AUN_nodeBeingDragged) {
     el.style.display = "none";
     return;
   }
@@ -284,7 +330,15 @@ function syncAndPositionFooter(node) {
   const text = match ? `${match.index} ${match.keyword}: ${match.value}` : "no keyword match";
   if (el.__AUN_footerCache !== text) {
     el.__AUN_footerCache = text;
-    el.textContent = text;
+    el.textContent = "";
+    if (match) {
+      const b = document.createElement("b");
+      b.textContent = `${match.index} ${match.keyword}:`;
+      el.appendChild(b);
+      el.appendChild(document.createTextNode(` ${match.value}`));
+    } else {
+      el.textContent = "no keyword match";
+    }
   }
 
   if (!match) {
@@ -293,9 +347,8 @@ function syncAndPositionFooter(node) {
     el.style.opacity = "1";
   }
 
-  const h = node.size?.[1] ?? 100;
-  const y0 = h - footerHeight + 3;
-  const y1 = h - 6;
+  const y0 = getRailBottomY(node) + FOOTER_PAD;
+  const y1 = y0 + footerHeight;
   const nodeX = node.pos[0];
   const nodeY = node.pos[1];
   const graphLeft = nodeX + 8;
@@ -315,33 +368,26 @@ function syncAndPositionFooter(node) {
   });
 }
 
-let compactFooterRAF = null;
-function hasCompactKpsNodes() {
-  if (!app?.graph) return false;
-  const nodes = app.graph._nodes || app.graph.nodes || [];
-  return nodes.some((n) => (n?.comfyClass === NODE_CLASS || n?.type === NODE_CLASS) && isCompact(n));
-}
-
-function startCompactFooterRAF() {
-  if (compactFooterRAF != null) return;
-  const tick = () => {
-    if (!hasCompactKpsNodes()) {
-      compactFooterRAF = null;
-      return;
+function setupDragMonitor() {
+  const canvas = app?.canvas;
+  if (!canvas || canvas.__AUN_dragMonitorSetup) return;
+  canvas.__AUN_dragMonitorSetup = true;
+  const origOnNodeDragStart = canvas.onNodeDragStart;
+  canvas.onNodeDragStart = function (event, node_being_dragged) {
+    if (node_being_dragged) {
+      node_being_dragged.__AUN_nodeBeingDragged = true;
     }
-    if (!app?.graph) {
-      compactFooterRAF = null;
-      return;
-    }
-    const nodes = app.graph._nodes || app.graph.nodes || [];
-    for (const node of nodes) {
-      if ((node?.comfyClass === NODE_CLASS || node?.type === NODE_CLASS) && isCompact(node)) {
-        syncAndPositionFooter(node);
+    return origOnNodeDragStart?.apply(this, arguments);
+  };
+  const origOnNodeDragEnd = canvas.onNodeDragEnd;
+  canvas.onNodeDragEnd = function (event) {
+    if (canvas.graph?._nodes) {
+      for (const n of canvas.graph._nodes) {
+        n.__AUN_nodeBeingDragged = false;
       }
     }
-    compactFooterRAF = requestAnimationFrame(tick);
+    return origOnNodeDragEnd?.apply(this, arguments);
   };
-  compactFooterRAF = requestAnimationFrame(tick);
 }
 
 function updateVisibility(node) {
@@ -371,13 +417,27 @@ function updateVisibility(node) {
   forceRedraw(node);
 
   ensureFooter(node);
-  if (compact) startCompactFooterRAF();
+  syncAndPositionFooter(node);
 }
 
 app.registerExtension({
   name: "AUN.KeywordPresetSelector",
   async beforeRegisterNodeDef(nodeType, nodeData) {
     if (nodeData.name !== NODE_CLASS) return;
+
+    setupDragMonitor();
+
+    const origComputeSize = nodeType.prototype.computeSize;
+    if (typeof origComputeSize === "function") {
+      nodeType.prototype.computeSize = function (out) {
+        if (isCompact(this)) {
+          const s = origComputeSize.call(this, out);
+          s[1] = getMinimumCompactHeight(this);
+          return s;
+        }
+        return origComputeSize.apply(this, arguments);
+      };
+    }
 
     const onNodeCreated = nodeType.prototype.onNodeCreated;
     nodeType.prototype.onNodeCreated = function () {
@@ -417,9 +477,8 @@ app.registerExtension({
     const protoOrigDrawFg = nodeType.prototype.onDrawForeground;
     nodeType.prototype.onDrawForeground = function (ctx) {
       protoOrigDrawFg?.apply(this, arguments);
-      if (isCompact(this)) {
-        syncAndPositionFooter(this);
-      }
+      drawFooterBox(ctx, this);
+      syncAndPositionFooter(this);
     };
 
     const originalGetMenuOptions = nodeType.prototype.getMenuOptions;

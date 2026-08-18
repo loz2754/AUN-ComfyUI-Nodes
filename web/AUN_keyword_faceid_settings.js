@@ -7,7 +7,14 @@ const MAX_SLOTS = 6;
 const PROP_KEY = "_AUN_compactMode";
 const PROP_SHOW_BOX = "_AUN_showMatchBox";
 const TITLE_H = 28;
-const FOOTER_H = 42;
+const FOOTER_H = 70;
+const FOOTER_PAD = 12;
+const FOOTER_BOTTOM = 4;
+const PARAM_OUTPUTS = new Set([
+  "preset", "weight", "weight_type", "preset_faceid", "lora_strength",
+  "weight_faceid", "weight_faceidv2", "weight_type_faceid",
+]);
+const VISIBLE_OUTPUTS = ["matched_keyword", "matched_index", "settings_text"];
 
 const SETTING_KEYS = [
   "preset", "weight", "weight_type",
@@ -48,6 +55,28 @@ function setShowBox(node, show) {
   node.properties[PROP_SHOW_BOX] = !!show;
 }
 
+function applyCompactSlotLabels(node) {
+  const compact = isCompact(node);
+  const slots = node.outputs || [];
+  for (const slot of slots) {
+    if (!slot || !PARAM_OUTPUTS.has(slot.name)) continue;
+    if (compact) {
+      if (!("__aun_compact_origLabel" in slot)) {
+        slot.__aun_compact_origLabel = slot.label;
+      }
+      slot.label = " ";
+    } else {
+      if ("__aun_compact_origLabel" in slot) {
+        slot.label = slot.__aun_compact_origLabel;
+        delete slot.__aun_compact_origLabel;
+      }
+      if (slot.label === " ") {
+        delete slot.label;
+      }
+    }
+  }
+}
+
 function resizeNode(node) {
   if (typeof node?.computeSize === "function") {
     try {
@@ -68,8 +97,35 @@ function getFooterHeight(node) {
   return FOOTER_H;
 }
 
+function getRailBottomY() {
+  const slotH = globalThis.LiteGraph?.NODE_SLOT_HEIGHT ?? 20;
+  return (VISIBLE_OUTPUTS.length + 0.7) * slotH;
+}
+
 function getMinimumCompactHeight(node) {
-  return TITLE_H + 4 + getFooterHeight(node) + 4;
+  const footerH = getFooterHeight(node);
+  const base = Math.max(TITLE_H, getRailBottomY());
+  return footerH > 0 ? base + FOOTER_PAD + footerH + FOOTER_BOTTOM : base + FOOTER_BOTTOM;
+}
+
+function drawFooterBox(ctx, node) {
+  const footerH = getFooterHeight(node);
+  if (footerH <= 0 || node.__AUN_nodeBeingDragged) return;
+  const w = node?.size?.[0] ?? 300;
+  const x0 = 8;
+  const x1 = w - 8;
+  const y0 = getRailBottomY() + FOOTER_PAD;
+  const y1 = y0 + footerH;
+  ctx.save();
+  ctx.fillStyle = "rgba(255,255,255,0.07)";
+  ctx.beginPath();
+  if (typeof ctx.roundRect === "function") {
+    ctx.roundRect(x0, y0, x1 - x0, y1 - y0, 4);
+  } else {
+    ctx.rect(x0, y0, x1 - x0, y1 - y0);
+  }
+  ctx.fill();
+  ctx.restore();
 }
 
 function ensureFooterStyles() {
@@ -80,17 +136,33 @@ function ensureFooterStyles() {
       position: absolute;
       z-index: 12;
       display: none;
+      overflow-y: auto;
       box-sizing: border-box;
-      pointer-events: none;
+      pointer-events: auto;
       font: 11px sans-serif;
       color: rgba(220,220,220,0.9);
       padding: 2px 6px;
       background: transparent;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      white-space: normal;
+      word-break: break-word;
       border-radius: 0;
       border: none;
+    }
+    .AUN-faceid-footer::-webkit-scrollbar {
+      width: 5px;
+    }
+    .AUN-faceid-footer::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .AUN-faceid-footer::-webkit-scrollbar-thumb {
+      background: rgba(255,255,255,0.2);
+      border-radius: 3px;
+    }
+    .AUN-faceid-footer::-webkit-scrollbar-thumb:hover {
+      background: rgba(255,255,255,0.35);
+    }
+    .AUN-faceid-footer b {
+      font-weight: 700;
     }
   `);
 }
@@ -222,13 +294,34 @@ function getMatchData(node) {
   return findMatch(node);
 }
 
-function formatFooter(match) {
+function pyFloat(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return "0.0";
+  return n % 1 === 0 ? `${n}.0` : String(n);
+}
+
+function pyStr(v) {
+  return `'${String(v ?? "")}'`;
+}
+
+function settingsTuple(match) {
   return (
-    `#${match.index} ${match.keyword} | ` +
-    `preset=${match.preset} w=${match.weight} wt=${match.weight_type} | ` +
-    `preset=${match.preset_faceid} ls=${match.lora_strength} ` +
-    `w=${match.weight_faceid} wv2=${match.weight_faceidv2} wt=${match.weight_type_faceid}`
+    `(${pyStr(match.preset)}, ${pyFloat(match.weight)}, ${pyStr(match.weight_type)}, ` +
+    `${pyStr(match.preset_faceid)}, ${pyFloat(match.lora_strength)}, ` +
+    `${pyFloat(match.weight_faceid)}, ${pyFloat(match.weight_faceidv2)}, ${pyStr(match.weight_type_faceid)})`
   );
+}
+
+function formatFooter(match) {
+  return `${footerLabel(match)} ${settingsTuple(match)}`;
+}
+
+function footerLabel(match) {
+  return `#${match.index} ${match.keyword}`;
+}
+
+function footerDetail(match) {
+  return ` ${settingsTuple(match)}`;
 }
 
 function graphToScreen(canvasRect, graphX, graphY, scale, offsetX, offsetY) {
@@ -269,7 +362,7 @@ function syncAndPositionFooter(node) {
   const el = ensureFooter(node);
   const compact = isCompact(node);
 
-  if (!compact) {
+  if (!compact || node.__AUN_nodeBeingDragged) {
     el.style.display = "none";
     return;
   }
@@ -310,7 +403,15 @@ function syncAndPositionFooter(node) {
   const text = match ? formatFooter(match) : "no keyword match";
   if (el.__AUN_footerCache !== text) {
     el.__AUN_footerCache = text;
-    el.textContent = text;
+    el.textContent = "";
+    if (match) {
+      const b = document.createElement("b");
+      b.textContent = footerLabel(match);
+      el.appendChild(b);
+      el.appendChild(document.createTextNode(footerDetail(match)));
+    } else {
+      el.textContent = "no keyword match";
+    }
   }
 
   if (!match) {
@@ -319,9 +420,8 @@ function syncAndPositionFooter(node) {
     el.style.opacity = "1";
   }
 
-  const h = node.size?.[1] ?? 100;
-  const y0 = h - footerHeight + 3;
-  const y1 = h - 6;
+  const y0 = getRailBottomY() + FOOTER_PAD;
+  const y1 = y0 + footerHeight;
   const nodeX = node.pos[0];
   const nodeY = node.pos[1];
   const graphLeft = nodeX + 8;
@@ -341,34 +441,33 @@ function syncAndPositionFooter(node) {
   });
 }
 
-let compactFooterRAF = null;
-function hasCompactNodes() {
-  if (!app?.graph) return false;
-  const nodes = app.graph._nodes || app.graph.nodes || [];
-  return nodes.some((n) => (n?.comfyClass === NODE_CLASS || n?.type === NODE_CLASS) && isCompact(n));
-}
-
-function startCompactFooterRAF() {
-  if (compactFooterRAF != null) return;
-  const tick = () => {
-    if (!hasCompactNodes() || !app?.graph) {
-      compactFooterRAF = null;
-      return;
+function setupDragMonitor() {
+  const canvas = app?.canvas;
+  if (!canvas || canvas.__AUN_dragMonitorSetup) return;
+  canvas.__AUN_dragMonitorSetup = true;
+  const origOnNodeDragStart = canvas.onNodeDragStart;
+  canvas.onNodeDragStart = function (event, node_being_dragged) {
+    if (node_being_dragged) {
+      node_being_dragged.__AUN_nodeBeingDragged = true;
     }
-    const nodes = app.graph._nodes || app.graph.nodes || [];
-    for (const node of nodes) {
-      if ((node?.comfyClass === NODE_CLASS || node?.type === NODE_CLASS) && isCompact(node)) {
-        syncAndPositionFooter(node);
+    return origOnNodeDragStart?.apply(this, arguments);
+  };
+  const origOnNodeDragEnd = canvas.onNodeDragEnd;
+  canvas.onNodeDragEnd = function (event) {
+    if (canvas.graph?._nodes) {
+      for (const n of canvas.graph._nodes) {
+        n.__AUN_nodeBeingDragged = false;
       }
     }
-    compactFooterRAF = requestAnimationFrame(tick);
+    return origOnNodeDragEnd?.apply(this, arguments);
   };
-  compactFooterRAF = requestAnimationFrame(tick);
 }
 
 function updateVisibility(node) {
   const count = getVisibleCount(node);
   const compact = isCompact(node);
+
+  applyCompactSlotLabels(node);
 
   applyWidgetHiddenState(getWidget(node, "visible_inputs"), compact);
   applyWidgetHiddenState(getWidget(node, "case_sensitive"), compact);
@@ -397,13 +496,46 @@ function updateVisibility(node) {
   forceRedraw(node);
 
   ensureFooter(node);
-  if (compact) startCompactFooterRAF();
+  syncAndPositionFooter(node);
 }
 
 app.registerExtension({
   name: "AUN.KeywordFaceIDSettings",
   async beforeRegisterNodeDef(nodeType, nodeData) {
     if (nodeData.name !== NODE_CLASS) return;
+
+    setupDragMonitor();
+
+    const origGetOutputPos = nodeType.prototype.getOutputPos;
+    if (typeof origGetOutputPos === "function") {
+      nodeType.prototype.getOutputPos = function (index) {
+        if (isCompact(this)) {
+          const slot = this.outputs?.[index];
+          if (slot) {
+            if (PARAM_OUTPUTS.has(slot.name)) {
+              return origGetOutputPos.call(this, 0);
+            }
+            const visibleIndex = VISIBLE_OUTPUTS.indexOf(slot.name);
+            if (visibleIndex >= 0) {
+              return origGetOutputPos.call(this, visibleIndex + 1);
+            }
+          }
+        }
+        return origGetOutputPos.apply(this, arguments);
+      };
+    }
+
+    const origComputeSize = nodeType.prototype.computeSize;
+    if (typeof origComputeSize === "function") {
+      nodeType.prototype.computeSize = function (out) {
+        if (isCompact(this)) {
+          const s = origComputeSize.call(this, out);
+          s[1] = getMinimumCompactHeight(this);
+          return s;
+        }
+        return origComputeSize.apply(this, arguments);
+      };
+    }
 
     const onNodeCreated = nodeType.prototype.onNodeCreated;
     nodeType.prototype.onNodeCreated = function () {
@@ -443,9 +575,8 @@ app.registerExtension({
     const protoOrigDrawFg = nodeType.prototype.onDrawForeground;
     nodeType.prototype.onDrawForeground = function (ctx) {
       protoOrigDrawFg?.apply(this, arguments);
-      if (isCompact(this)) {
-        syncAndPositionFooter(this);
-      }
+      drawFooterBox(ctx, this);
+      syncAndPositionFooter(this);
     };
 
     const originalGetMenuOptions = nodeType.prototype.getMenuOptions;
