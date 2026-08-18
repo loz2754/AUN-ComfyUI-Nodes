@@ -238,18 +238,13 @@ function positionRowsCore(node, canvasRect, scale, offsetX, offsetY, occluded) {
     return;
   }
 
-  const canvasRectLocal = canvasRect;
   const ds = app?.canvas?.ds;
   if (!ds) {
     for (const row of rows) row.root.style.display = "none";
     return;
   }
 
-  const scale = ds.scale || 1;
-  const offsetX = ds.offset?.[0] ?? 0;
-  const offsetY = ds.offset?.[1] ?? 0;
-
-  const nodeScreen = graphToScreen(canvasRectLocal, node.pos[0], node.pos[1], scale, offsetX, offsetY);
+  const nodeScreen = graphToScreen(canvasRect, node.pos[0], node.pos[1], scale, offsetX, offsetY);
   const nodeW = (node.size?.[0] ?? 300) * scale;
   const nodeH = (node.size?.[1] ?? 100) * scale;
   const padding = 20;
@@ -263,9 +258,6 @@ function positionRowsCore(node, canvasRect, scale, offsetX, offsetY, occluded) {
     for (const row of rows) row.root.style.display = "none";
     return;
   }
-
-  const count = getVisibleCount(node);
-  const baseY = TITLE_H + 4;
 
   let rowIndex = 0;
   for (let i = 1; i <= MAX_SLOTS; i++) {
@@ -287,10 +279,10 @@ function positionRowsCore(node, canvasRect, scale, offsetX, offsetY, occluded) {
     const localTop = TITLE_H + 4 + rowIndex * (ROW_H + ROW_GAP);
     const graphLeft = node.pos[0] + SIDE_PAD;
     const graphTop = node.pos[1] + localTop;
-    const screenPos = graphToScreen(node.__AUN_canvasRect || { left: 0, top: 0 }, graphLeft, graphTop, scale, offsetX, offsetY);
+    const screenPos = graphToScreen(canvasRect, graphLeft, graphTop, scale, offsetX, offsetY);
     const graphRight = graphLeft + (node.size[0] - SIDE_PAD * 2);
     const graphBottom = graphTop + ROW_H;
-    const screenBR = graphToScreen(node.__AUN_canvasRect || { left: 0, top: 0 }, graphRight, graphBottom, scale, offsetX, offsetY);
+    const screenBR = graphToScreen(canvasRect, graphRight, graphBottom, scale, offsetX, offsetY);
 
     Object.assign(row.root.style, {
       display: "grid",
