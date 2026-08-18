@@ -35,6 +35,7 @@ Generated list of documentation files under `docs/`.
 - [AUNInputsRefine](./AUNInputsRefine_README.md)
 - [AUNInputsRefineBasic](./AUNInputsRefineBasic_README.md)
 - [AUNFilenameResolverPreviewV2](./AUNFilenameResolverPreviewV2_README.md)
+- [AUNKeywordFaceIDSettings](./AUNKeywordFaceIDSettings_README.md)
 - [AUNKSamplerPlusv3](./AUNKSamplerPlusv3_README.md)
 - [KSamplerInputs](./KSamplerInputs_README.md)
 - [MainFolderManualName](./MainFolderManualName_README.md)
