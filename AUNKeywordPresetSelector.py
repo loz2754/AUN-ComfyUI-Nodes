@@ -47,7 +47,7 @@ class AUNKeywordPresetSelector:
                 "STRING",
                 {
                     "default": "",
-                    "tooltip": "Keyword %d to match against the reference phrase. Matched as a substring." % i,
+                    "tooltip": "Keyword %d to match against the reference phrase. Matched as a substring. Comma-separated to allow multiple keywords on this row (any one matching activates it)." % i,
                 },
             )
             inputs["optional"]["preset%d" % i] = (
@@ -86,15 +86,18 @@ class AUNKeywordPresetSelector:
         matched_index = 0
 
         for i in range(1, visible_inputs + 1):
-            keyword = kwargs.get("keyword%d" % i, "")
-            if not keyword:
+            raw = kwargs.get("keyword%d" % i, "")
+            sub_keywords = [k.strip() for k in str(raw).split(",") if k.strip()]
+            if not sub_keywords:
                 continue
-            match_kw = keyword if case_sensitive else keyword.lower()
-            if match_kw in search:
-                preset_val = kwargs.get("preset%d" % i, "")
-                selected_value = preset_val
-                matched_keyword = keyword
-                matched_index = i
+            for sub in sub_keywords:
+                match_kw = sub if case_sensitive else sub.lower()
+                if match_kw in search:
+                    selected_value = kwargs.get("preset%d" % i, "")
+                    matched_keyword = sub
+                    matched_index = i
+                    break
+            if matched_index:
                 break
 
         if matched_index == 0:

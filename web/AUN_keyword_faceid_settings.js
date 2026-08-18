@@ -184,7 +184,7 @@ function disposeFooter(node) {
 
 const skipWidgetNames = new Set([
   "index", "mode", "seed", "strength", "apply_lora", "visible_inputs", "case_sensitive",
-  "reference_phrase",
+  "reference_phrase", "manual_preset", "manual_priority",
   ...DEFAULT_KEYS,
   "preset", "weight", "weight_type", "preset_faceid", "lora_strength",
   "weight_faceid", "weight_faceidv2", "weight_type_faceid",
@@ -266,6 +266,30 @@ function getRowSettings(node, i) {
   return out;
 }
 
+function getDefaults(node) {
+  const out = {};
+  for (const key of SETTING_KEYS) {
+    const w = getWidget(node, `${key}_default`);
+    out[key] = w?.value ?? null;
+  }
+  return out;
+}
+
+function getManualBundle(node) {
+  const mp = String(getWidget(node, "manual_preset")?.value ?? "AUTO");
+  if (mp === "DEFAULT") return getDefaults(node);
+  const m = /^PRESET (\d+)$/i.exec(mp);
+  if (m) return getRowSettings(node, Number(m[1]));
+  return null;
+}
+
+function splitKeywords(raw) {
+  return String(raw ?? "")
+    .split(",")
+    .map((k) => k.trim())
+    .filter(Boolean);
+}
+
 function findMatch(node) {
   const ref = getReferencePhrase(node);
   if (!ref) return null;
@@ -275,18 +299,33 @@ function findMatch(node) {
   const count = getVisibleCount(node);
 
   for (let i = 1; i <= count; i++) {
-    const kw = getWidget(node, "keyword" + i);
-    const kwVal = String(kw?.value ?? "").trim();
-    if (!kwVal) continue;
-    const matchKw = cs ? kwVal : kwVal.toLowerCase();
-    if (search.includes(matchKw)) {
-      return { index: i, keyword: kwVal, ...getRowSettings(node, i) };
+    const kws = splitKeywords(getWidget(node, "keyword" + i)?.value);
+    for (const kw of kws) {
+      const matchKw = cs ? kw : kw.toLowerCase();
+      if (search.includes(matchKw)) {
+        return { index: i, keyword: kw, ...getRowSettings(node, i) };
+      }
     }
   }
   return null;
 }
 
 function getMatchData(node) {
+  const manual = getManualBundle(node);
+  if (manual) {
+    const manualWins =
+      String(getWidget(node, "manual_priority")?.value ?? "") === "Manual wins";
+    if (manualWins) {
+      return { index: 0, keyword: "", ...manual };
+    }
+    const last = node.__AUN_faceidLast;
+    if (last && last.keyword && last.index > 0 && last.weight != null) {
+      return last;
+    }
+    const matched = findMatch(node);
+    if (matched) return matched;
+    return { index: 0, keyword: "", ...manual };
+  }
   const last = node.__AUN_faceidLast;
   if (last && last.keyword && last.index > 0 && last.weight != null) {
     return last;
@@ -317,7 +356,7 @@ function formatFooter(match) {
 }
 
 function footerLabel(match) {
-  return `#${match.index} ${match.keyword}`;
+  return match.index > 0 ? `#${match.index} ${match.keyword}` : "manual";
 }
 
 function footerDetail(match) {
@@ -472,6 +511,8 @@ function updateVisibility(node) {
   applyWidgetHiddenState(getWidget(node, "visible_inputs"), compact);
   applyWidgetHiddenState(getWidget(node, "case_sensitive"), compact);
   applyWidgetHiddenState(getWidget(node, "reference_phrase"), compact);
+  applyWidgetHiddenState(getWidget(node, "manual_preset"), compact);
+  applyWidgetHiddenState(getWidget(node, "manual_priority"), compact);
 
   for (const key of DEFAULT_KEYS) {
     applyWidgetHiddenState(getWidget(node, key), compact);

@@ -218,6 +218,13 @@ function getReferencePhrase(node) {
   return String(refWidget?.value ?? "").trim();
 }
 
+function splitKeywords(raw) {
+  return String(raw ?? "")
+    .split(",")
+    .map((k) => k.trim())
+    .filter(Boolean);
+}
+
 function findMatch(node) {
   const ref = getReferencePhrase(node);
   if (!ref) return null;
@@ -227,14 +234,13 @@ function findMatch(node) {
   const count = getVisibleCount(node);
 
   for (let i = 1; i <= count; i++) {
-    const kw = getWidget(node, "keyword" + i);
-    const pr = getWidget(node, "preset" + i);
-    const kwVal = String(kw?.value ?? "").trim();
-    const prVal = String(pr?.value ?? "").trim();
-    if (!kwVal) continue;
-    const matchKw = cs ? kwVal : kwVal.toLowerCase();
-    if (search.includes(matchKw)) {
-      return { index: i, keyword: kwVal, value: prVal };
+    const kws = splitKeywords(getWidget(node, "keyword" + i)?.value);
+    for (const kw of kws) {
+      const matchKw = cs ? kw : kw.toLowerCase();
+      if (search.includes(matchKw)) {
+        const prVal = String(getWidget(node, "preset" + i)?.value ?? "").trim();
+        return { index: i, keyword: kw, value: prVal };
+      }
     }
   }
   return null;

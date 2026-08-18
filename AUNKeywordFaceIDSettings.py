@@ -59,6 +59,14 @@ class AUNKeywordFaceIDSettings:
                 "default": False,
                 "tooltip": "If enabled, keyword matching is case-sensitive.",
             }),
+            "manual_preset": (["AUTO", "DEFAULT", "PRESET 1", "PRESET 2", "PRESET 3", "PRESET 4", "PRESET 5", "PRESET 6"], {
+                "default": "AUTO",
+                "tooltip": "Manual preset override. A preset is the full 8-settings bundle of one keyword row (PRESET 1-6) or the *_default bundle (DEFAULT). AUTO keeps keyword matching; DEFAULT forces the default bundle; PRESET N forces that row's 8 settings.",
+            }),
+            "manual_priority": (["Manual wins", "Keyword wins"], {
+                "default": "Manual wins",
+                "tooltip": "When manual_preset is not AUTO: 'Manual wins' forces the manual preset even over a matched keyword; 'Keyword wins' uses the matched keyword row and falls back to the manual preset only when nothing matches. Ignored when manual_preset is AUTO.",
+            }),
         }
 
         optional = {
@@ -93,7 +101,7 @@ class AUNKeywordFaceIDSettings:
         for i in range(1, cls.MAX_INPUTS + 1):
             optional["keyword%d" % i] = ("STRING", {
                 "default": "",
-                "tooltip": "Keyword %d to match against the reference phrase. Matched as a substring." % i,
+                "tooltip": "Keyword %d to match against the reference phrase. Matched as a substring. Comma-separated to allow multiple keywords on this row (any one matching activates it)." % i,
             })
             optional["preset%d" % i] = (cls.UNIFIED_PRESETS, {
                 "default": "PLUS FACE (portraits)",
@@ -139,6 +147,9 @@ class AUNKeywordFaceIDSettings:
         "weight_type, preset_faceid, lora_strength, weight_faceid, weight_faceidv2, "
         "weight_type_faceid. Outputs are typed so they can be wired straight into the "
         "subgraph's exposed inputs. Falls back to the *_default settings when nothing matches. "
+        "A manual preset override (manual_preset + manual_priority) can force any of the six "
+        "preset rows or the default bundle, either overriding matched keywords ('Manual wins') "
+        "or serving as a fallback when nothing matches ('Keyword wins'). "
         "settings_text renders the matched settings as a Python-style tuple for file naming."
     )
 
@@ -154,41 +165,69 @@ class AUNKeywordFaceIDSettings:
             return default
         return max(low, min(v, high))
 
-    def _select_settings(self, visible_inputs, case_sensitive, reference_phrase, kwargs):
+    def _select_settings(self, visible_inputs, case_sensitive, reference_phrase, manual_preset, manual_priority, kwargs):
         search = reference_phrase if case_sensitive else reference_phrase.lower()
 
         matched = None
         matched_keyword = ""
         matched_index = 0
         for i in range(1, visible_inputs + 1):
-            keyword = kwargs.get("keyword%d" % i, "")
-            if not keyword:
+            raw = kwargs.get("keyword%d" % i, "")
+            sub_keywords = [k.strip() for k in str(raw).split(",") if k.strip()]
+            if not sub_keywords:
                 continue
-            match_kw = keyword if case_sensitive else keyword.lower()
-            if match_kw in search:
-                matched = i
-                matched_keyword = keyword
-                matched_index = i
+            for sub in sub_keywords:
+                match_kw = sub if case_sensitive else sub.lower()
+                if match_kw in search:
+                    matched = i
+                    matched_keyword = sub
+                    matched_index = i
+                    break
+            if matched is not None:
                 break
 
-        if matched is not None:
-            preset = kwargs.get("preset%d" % matched, "PLUS FACE (portraits)")
-            weight = self._clamp(kwargs.get("weight%d" % matched, 1.0), -1, 3, 1.0)
-            weight_type = kwargs.get("weight_type%d" % matched, "prompt is more important")
-            preset_faceid = kwargs.get("preset_faceid%d" % matched, "FACEID PLUS V2")
-            lora_strength = self._clamp(kwargs.get("lora_strength%d" % matched, 0.6), 0, 1, 0.6)
-            weight_faceid = self._clamp(kwargs.get("weight_faceid%d" % matched, 1.0), -1, 3, 1.0)
-            weight_faceidv2 = self._clamp(kwargs.get("weight_faceidv2%d" % matched, 1.0), -1, 5, 1.0)
-            weight_type_faceid = kwargs.get("weight_type_faceid%d" % matched, "linear")
-        else:
-            preset = kwargs.get("preset_default", "PLUS FACE (portraits)")
-            weight = self._clamp(kwargs.get("weight_default", 1.0), -1, 3, 1.0)
-            weight_type = kwargs.get("weight_type_default", "prompt is more important")
-            preset_faceid = kwargs.get("preset_faceid_default", "FACEID PLUS V2")
-            lora_strength = self._clamp(kwargs.get("lora_strength_default", 0.6), 0, 1, 0.6)
-            weight_faceid = self._clamp(kwargs.get("weight_faceid_default", 1.0), -1, 3, 1.0)
-            weight_faceidv2 = self._clamp(kwargs.get("weight_faceidv2_default", 1.0), -1, 5, 1.0)
-            weight_type_faceid = kwargs.get("weight_type_faceid_default", "linear")
+        def _row(i):
+            return (
+                kwargs.get("preset%d" % i, "PLUS FACE (portraits)"),
+                self._clamp(kwargs.get("weight%d" % i, 1.0), -1, 3, 1.0),
+                kwargs.get("weight_type%d" % i, "prompt is more important"),
+                kwargs.get("preset_faceid%d" % i, "FACEID PLUS V2"),
+                self._clamp(kwargs.get("lora_strength%d" % i, 0.6), 0, 1, 0.6),
+                self._clamp(kwargs.get("weight_faceid%d" % i, 1.0), -1, 3, 1.0),
+                self._clamp(kwargs.get("weight_faceidv2%d" % i, 1.0), -1, 5, 1.0),
+                kwargs.get("weight_type_faceid%d" % i, "linear"),
+            )
+
+        def _defaults():
+            return (
+                kwargs.get("preset_default", "PLUS FACE (portraits)"),
+                self._clamp(kwargs.get("weight_default", 1.0), -1, 3, 1.0),
+                kwargs.get("weight_type_default", "prompt is more important"),
+                kwargs.get("preset_faceid_default", "FACEID PLUS V2"),
+                self._clamp(kwargs.get("lora_strength_default", 0.6), 0, 1, 0.6),
+                self._clamp(kwargs.get("weight_faceid_default", 1.0), -1, 3, 1.0),
+                self._clamp(kwargs.get("weight_faceidv2_default", 1.0), -1, 5, 1.0),
+                kwargs.get("weight_type_faceid_default", "linear"),
+            )
+
+        chosen = _row(matched) if matched is not None else _defaults()
+
+        if manual_preset and manual_preset != "AUTO":
+            if manual_preset == "DEFAULT":
+                manual = _defaults()
+            else:
+                try:
+                    manual = _row(int(manual_preset.rsplit(" ", 1)[-1]))
+                except (ValueError, TypeError):
+                    manual = _defaults()
+            if manual_priority == "Manual wins" or matched is None:
+                chosen = manual
+
+        if manual_preset and manual_preset != "AUTO" and manual_priority == "Manual wins":
+            matched_keyword = ""
+            matched_index = 0
+
+        preset, weight, weight_type, preset_faceid, lora_strength, weight_faceid, weight_faceidv2, weight_type_faceid = chosen
 
         settings_text = str((
             str(preset), float(weight), str(weight_type),
@@ -204,11 +243,13 @@ class AUNKeywordFaceIDSettings:
         )
 
     def select_settings(self, visible_inputs, case_sensitive, reference_phrase="",
+                        manual_preset="AUTO", manual_priority="Manual wins",
                         unique_id=None, extra_pnginfo=None, **kwargs):
         visible_inputs = max(self.MIN_VISIBLE_INPUTS,
                              min(int(visible_inputs or self.MIN_VISIBLE_INPUTS), self.MAX_INPUTS))
 
-        result = self._select_settings(visible_inputs, case_sensitive, reference_phrase, kwargs)
+        result = self._select_settings(visible_inputs, case_sensitive, reference_phrase,
+                                       manual_preset, manual_priority, kwargs)
 
         self._notify_executed(unique_id, result)
 
