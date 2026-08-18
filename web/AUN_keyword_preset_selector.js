@@ -1,13 +1,12 @@
 import { app } from "../../scripts/app.js";
-import { applyWidgetHiddenState, ensureHiddenAware, getWidget, injectStyles, forceRedraw } from "./index.js";
+import { applyWidgetHiddenState, ensureHiddenAware, getWidget, injectStyles, forceRedraw, isNodeCollapsed } from "./index.js";
 
 const NODE_CLASS = "AUNKeywordPresetSelector";
 const MAX_SLOTS = 20;
 const PROP_KEY = "_AUN_compactMode";
-const ROW_H = 22;
-const ROW_GAP = 2;
-const SIDE_PAD = 10;
 const TITLE_H = 28;
+const SIDE_PAD = 10;
+const BOX_H = 22;
 
 function getVisibleCount(node) {
   const w = getWidget(node, "visible_inputs");
@@ -47,152 +46,138 @@ function resizeNode(node) {
 }
 
 function getMinimumCompactHeight(node) {
-  const count = getVisibleCount(node);
-  let visible = 0;
-  for (let i = 1; i <= count; i++) {
-    const kw = getWidget(node, "keyword" + i);
-    const pr = getWidget(node, "preset" + i);
-    if (kw?.value || pr?.value) visible++;
-  }
-  const def = getWidget(node, "preset_default");
-  if (def?.value) visible++;
-  if (visible === 0) visible = 1;
-  return TITLE_H + 4 + visible * ROW_H + Math.max(0, visible - 1) * ROW_GAP + 6;
+  return TITLE_H + 8;
 }
 
-function ensureRowStyles() {
-  if (globalThis.__AUN_kps_styles) return;
-  globalThis.__AUN_kps_styles = true;
-  injectStyles("AUN-kps-row-styles", `
-    .AUN-kps-row {
+function ensureBoxStyles() {
+  if (globalThis.__AUN_kps_box_styles) return;
+  globalThis.__AUN_kps_box_styles = true;
+  injectStyles("AUN-kps-box-styles", `
+    .AUN-kps-box {
       position: fixed;
       z-index: 12;
+      height: ${BOX_H}px;
       display: grid;
-      grid-template-columns: 18px 1fr 1.8fr;
-      gap: 5px;
+      grid-template-columns: minmax(0, 1fr);
       align-items: center;
-      padding: 0;
-      border-radius: 0;
-      background: transparent;
-      border: none;
-      box-shadow: none;
-      box-sizing: border-box;
-      pointer-events: none;
-      overflow: visible;
-      font: 11px sans-serif;
-    }
-    .AUN-kps-row .AUN-kps-idx {
-      color: #777;
-      text-align: right;
-      padding-right: 4px;
-      font-weight: 500;
-      white-space: nowrap;
-    }
-    .AUN-kps-row .AUN-kps-kw {
+      padding: 0 8px;
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 4px;
+      background: rgba(30,30,30,0.95);
       color: #e0e0e0;
+      box-sizing: border-box;
+      font: 11px sans-serif;
+      font-weight: 500;
+      box-shadow: inset 0 1px 2px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.05);
       overflow: hidden;
       white-space: nowrap;
       text-overflow: ellipsis;
-      min-width: 0;
+      pointer-events: none;
     }
-    .AUN-kps-row .AUN-kps-val {
-      color: #7ca0b8;
-      overflow: hidden;
-      white-space: nowrap;
-      text-overflow: ellipsis;
-      min-width: 0;
-    }
-    .AUN-kps-row.match {
-      background: rgba(80,180,80,0.15);
-      border: 1px solid rgba(80,180,80,0.4);
-      border-radius: 3px;
-      padding: 0 4px;
-    }
-    .AUN-kps-row.match .AUN-kps-idx { color: #5c5; }
-    .AUN-kps-row.match .AUN-kps-kw { color: #8f8; }
-    .AUN-kps-row.match .AUN-kps-val { color: #9f9; }
   `);
 }
 
-function buildRow(node, i) {
-  ensureRowStyles();
-  const root = document.createElement("div");
-  root.className = "AUN-kps-row";
-  root.dataset.slot = String(i);
-
-  const idxEl = document.createElement("span");
-  idxEl.className = "AUN-kps-idx";
-  idxEl.textContent = i;
-
-  const kwEl = document.createElement("span");
-  kwEl.className = "AUN-kps-kw";
-
-  const valEl = document.createElement("span");
-  valEl.className = "AUN-kps-val";
-
-  root.append(idxEl, kwEl, valEl);
-  document.body.appendChild(root);
-
-  return { root, idxEl, kwEl, valEl };
+function ensureBox(node) {
+  if (node.__AUN_kpsBox) return node.__AUN_kpsBox;
+  ensureBoxStyles();
+  const box = document.createElement("div");
+  box.className = "AUN-kps-box";
+  document.body.appendChild(box);
+  node.__AUN_kpsBox = box;
+  return box;
 }
 
-function ensureRows(node) {
-  if (Array.isArray(node.__AUN_kpsRows)) return node.__AUN_kpsRows;
-  const rows = [];
-  for (let i = 1; i <= MAX_SLOTS; i++) {
-    rows.push(buildRow(node, i));
+function disposeBox(node) {
+  if (node.__AUN_kpsBox?.parentNode) {
+    node.__AUN_kpsBox.remove();
   }
-  node.__AUN_kpsRows = rows;
-  return rows;
+  node.__AUN_kpsBox = null;
 }
 
-function disposeRows(node) {
-  const rows = node.__AUN_kpsRows;
-  if (Array.isArray(rows)) {
-    for (const row of rows) {
-      if (row.root?.parentNode) row.root.remove();
+const skipWidgetNames = new Set(["index", "mode", "seed", "strength", "apply_lora", "visible_inputs", "case_sensitive", "reference_phrase", "preset_default"]);
+
+function traceLinkValue(startLink, visited, depth) {
+  depth = depth || 0;
+  if (!startLink || depth > 8) return undefined;
+  const link = app.graph.links?.get?.(startLink);
+  if (!link?.origin_id) return undefined;
+  const n = app.graph.getNodeById?.(link.origin_id);
+  if (!n) return undefined;
+  if (visited.has(n.id)) return undefined;
+  visited.add(n.id);
+
+  const nodeType = (n.type || "").toUpperCase();
+  if (nodeType.includes("SWITCH") || nodeType.includes("RANDOM")) {
+    const idxW = n.widgets?.find(w => w.name === "index");
+    if (idxW) {
+      const idx = n.__AUN_lastExecutedIndex ?? (parseInt(idxW.value) || 1);
+      const textN = n.widgets?.find(w => w.name === `text${idx}`);
+      if (textN && typeof textN.value === "string" && textN.value) {
+        return textN.value.split("\n")[0].trim();
+      }
     }
-    node.__AUN_kpsRows = null;
   }
+  if (n.__AUN_lastOutput_label != null) return String(n.__AUN_lastOutput_label);
+  if (n.__AUN_lastOutput_text != null) return String(n.__AUN_lastOutput_text);
+  if (n.__AUN_lastOutput_prompt_title != null) return String(n.__AUN_lastOutput_prompt_title);
+  const labelSlotIdx = n.outputs?.findIndex(o => o.name === "label");
+  const preferredSlot = labelSlotIdx >= 0 ? labelSlotIdx : link.origin_slot;
+  const slotKey = `__AUN_lastOutput_${preferredSlot}`;
+  if (n[slotKey] != null) return String(n[slotKey]);
+  const connectedSlotKey = `__AUN_lastOutput_${link.origin_slot}`;
+  if (n[connectedSlotKey] != null) return String(n[connectedSlotKey]);
+  if (n.__AUN_lastOutput != null) return String(n.__AUN_lastOutput);
+  if (n.__AUN_loraMultiLastLabel != null) return String(n.__AUN_loraMultiLastLabel);
+
+  const textWidget = n.widgets?.find((w) => {
+    const name = (w.name || "").toLowerCase();
+    if (skipWidgetNames.has(name)) return false;
+    const type = (w.type || "").toUpperCase();
+    return (
+      type === "TEXT" || type === "STRING" || type === "CUSTOMTEXT" ||
+      name === "value" || name === "text" || name === "label" ||
+      name === "output_text" || name === "result"
+    );
+  });
+  if (textWidget && typeof textWidget.value === "string" && textWidget.value) {
+    const hasInputLinks = n.inputs?.some(inp => inp.link);
+    if (!hasInputLinks) return textWidget.value;
+  }
+  const srcInput = n.inputs?.[link.origin_slot];
+  if (srcInput?.link) return traceLinkValue(srcInput.link, visited, depth + 1);
+  return undefined;
 }
 
-function syncRow(node, row, i) {
+function getReferencePhrase(node) {
+  const refWidget = getWidget(node, "reference_phrase");
+  if (!refWidget) return "";
+  if (refWidget.input?.link != null) {
+    const traced = traceLinkValue(refWidget.input.link, new Set());
+    if (traced != null) return traced;
+  }
+  return String(refWidget?.value ?? "").trim();
+}
+
+function findMatch(node) {
+  const ref = getReferencePhrase(node);
+  if (!ref) return null;
+  const csWidget = getWidget(node, "case_sensitive");
+  const cs = !!csWidget?.value;
+  const search = cs ? ref : ref.toLowerCase();
   const count = getVisibleCount(node);
-  const compact = isCompact(node);
-  const show = i <= count && compact;
 
-  if (!show) {
-    row.root.style.display = "none";
-    return;
+  for (let i = 1; i <= count; i++) {
+    const kw = getWidget(node, "keyword" + i);
+    const pr = getWidget(node, "preset" + i);
+    const kwVal = String(kw?.value ?? "").trim();
+    const prVal = String(pr?.value ?? "").trim();
+    if (!kwVal) continue;
+    const matchKw = cs ? kwVal : kwVal.toLowerCase();
+    if (search.includes(matchKw)) {
+      return { index: i, keyword: kwVal, value: prVal };
+    }
   }
-
-  const kw = getWidget(node, "keyword" + i);
-  const pr = getWidget(node, "preset" + i);
-  const kwVal = String(kw?.value ?? "").trim();
-  const prVal = String(pr?.value ?? "").trim();
-
-  if (!kwVal && !prVal) {
-    row.root.style.display = "none";
-    return;
-  }
-
-  row.root.style.display = "grid";
-  row.idxEl.textContent = i;
-  row.kwEl.textContent = kwVal || "\u2014";
-  row.valEl.textContent = prVal || "\u2014";
-
-  // Check match: first keyword that is substring of reference_phrase
-  const ref = getWidget(node, "reference_phrase");
-  const cs = getWidget(node, "case_sensitive");
-  const csVal = !!cs?.value;
-  const refVal = String(ref?.value ?? "").trim();
-  let match = false;
-  if (refVal && kwVal) {
-    const search = csVal ? refVal : refVal.toLowerCase();
-    const matchKw = csVal ? kwVal : kwVal.toLowerCase();
-    if (search.includes(matchKw)) match = true;
-  }
-  row.root.classList.toggle("match", match);
+  return null;
 }
 
 function graphToScreen(canvasRect, graphX, graphY, scale, offsetX, offsetY) {
@@ -213,7 +198,7 @@ function isNodeOccluded(node, canvasRect, scale, offsetX, offsetY) {
   for (const other of nodes) {
     if (!other || other === node) continue;
     if ((other.index ?? -1) <= (node.index ?? -2)) continue;
-    if (other.flags?.collapsed) continue;
+    if (isNodeCollapsed(other)) continue;
 
     const otherScreen = graphToScreen(canvasRect, other.pos[0], other.pos[1], scale, offsetX, offsetY);
     const otherRight = otherScreen.x + (other.size?.[0] ?? 300) * scale;
@@ -229,18 +214,27 @@ function isNodeOccluded(node, canvasRect, scale, offsetX, offsetY) {
   return false;
 }
 
-function positionRowsCore(node, canvasRect, scale, offsetX, offsetY, occluded) {
-  const rows = ensureRows(node);
+function syncAndPositionBox(node) {
+  const box = ensureBox(node);
   const compact = isCompact(node);
 
-  if (!compact || occluded) {
-    for (const row of rows) row.root.style.display = "none";
+  if (!compact) {
+    box.style.display = "none";
     return;
   }
 
-  const ds = app?.canvas?.ds;
-  if (!ds) {
-    for (const row of rows) row.root.style.display = "none";
+  const canvas = app?.canvas;
+  if (!canvas || !canvas.canvas || !canvas.ds) {
+    box.style.display = "none";
+    return;
+  }
+  const canvasRect = canvas.canvas.getBoundingClientRect();
+  const scale = canvas.ds.scale || 1;
+  const offsetX = canvas.ds.offset?.[0] ?? 0;
+  const offsetY = canvas.ds.offset?.[1] ?? 0;
+
+  if (isNodeCollapsed(node) || isNodeOccluded(node, canvasRect, scale, offsetX, offsetY)) {
+    box.style.display = "none";
     return;
   }
 
@@ -248,118 +242,73 @@ function positionRowsCore(node, canvasRect, scale, offsetX, offsetY, occluded) {
   const nodeW = (node.size?.[0] ?? 300) * scale;
   const nodeH = (node.size?.[1] ?? 100) * scale;
   const padding = 20;
-  const nodeOnScreen =
-    nodeScreen.x + nodeW + padding > canvasRect.left &&
-    nodeScreen.x - padding < canvasRect.right &&
-    nodeScreen.y + nodeH + padding > canvasRect.top &&
-    nodeScreen.y - padding < canvasRect.bottom;
-
-  if (!nodeOnScreen) {
-    for (const row of rows) row.root.style.display = "none";
+  if (
+    nodeScreen.x + nodeW + padding < canvasRect.left ||
+    nodeScreen.x - padding > canvasRect.right ||
+    nodeScreen.y + nodeH + padding < canvasRect.top ||
+    nodeScreen.y - padding > canvasRect.bottom
+  ) {
+    box.style.display = "none";
     return;
   }
 
-  let rowIndex = 0;
-  for (let i = 1; i <= MAX_SLOTS; i++) {
-    const row = ensureRows(node)[i - 1];
-    if (i > getVisibleCount(node)) {
-      row.root.style.display = "none";
-      continue;
-    }
-    const kw = getWidget(node, "keyword" + i);
-    const pr = getWidget(node, "preset" + i);
-    const kwVal = String(kw?.value ?? "").trim();
-    const prVal = String(pr?.value ?? "").trim();
-    if (!kwVal && !prVal) {
-      row.root.style.display = "none";
-      continue;
-    }
-
-    syncRow(node, row, i);
-    const localTop = TITLE_H + 4 + rowIndex * (ROW_H + ROW_GAP);
-    const graphLeft = node.pos[0] + SIDE_PAD;
-    const graphTop = node.pos[1] + localTop;
-    const screenPos = graphToScreen(canvasRect, graphLeft, graphTop, scale, offsetX, offsetY);
-    const graphRight = graphLeft + (node.size[0] - SIDE_PAD * 2);
-    const graphBottom = graphTop + ROW_H;
-    const screenBR = graphToScreen(canvasRect, graphRight, graphBottom, scale, offsetX, offsetY);
-
-    Object.assign(row.root.style, {
-      display: "grid",
-      left: `${screenPos.x}px`,
-      top: `${screenPos.y}px`,
-      width: `${Math.max(120, screenBR.x - screenPos.x)}px`,
-      height: `${Math.max(ROW_H, screenBR.y - screenPos.y)}px`,
-    });
-    rowIndex++;
-  }
-}
-
-function positionRows(node, ctx) {
-  if (!ctx?.canvas) return;
-  const canvasRect = ctx.canvas.getBoundingClientRect();
-  node.__AUN_canvasRect = canvasRect;
-  const ds = app?.canvas?.ds;
-  if (!ds) return;
-  const scale = ds.scale || 1;
-  const offsetX = ds.offset?.[0] ?? 0;
-  const offsetY = ds.offset?.[1] ?? 0;
-
-  const occluded = isNodeOccluded(node, canvasRect, scale, offsetX, offsetY);
-  positionRowsCore(node, canvasRect, scale, offsetX, offsetY, occluded);
-}
-
-function positionRowsFromCanvas(node) {
-  if (!isCompact(node)) {
-    const rows = node.__AUN_kpsRows;
-    if (Array.isArray(node.__AUN_kpsRows)) {
-      for (const row of rows) row.root.style.display = "none";
-    }
+  const match = findMatch(node);
+  if (!match) {
+    box.style.display = "none";
     return;
   }
-  const canvas = app?.canvas;
-  if (!canvas || !canvas.canvas || !canvas.ds) return;
-  const canvasRect = canvas.canvas.getBoundingClientRect();
-  const scale = canvas.ds.scale || 1;
-  const offsetX = canvas.ds.offset?.[0] ?? 0;
-  const offsetY = canvas.ds.offset?.[1] ?? 0;
-  const occluded = isNodeOccluded(node, canvasRect, scale, offsetX, offsetY);
-  positionRowsCore(node, canvasRect, scale, offsetX, offsetY, occluded);
+
+  box.textContent = `${match.index} ${match.keyword}: ${match.value}`;
+  box.style.display = "grid";
+
+  const graphLeft = node.pos[0] + SIDE_PAD;
+  const graphTop = node.pos[1] + TITLE_H + 4;
+  const screenPos = graphToScreen(canvasRect, graphLeft, graphTop, scale, offsetX, offsetY);
+  const graphRight = graphLeft + (node.size[0] - SIDE_PAD * 2);
+  const graphBottom = graphTop + BOX_H;
+  const screenBR = graphToScreen(canvasRect, graphRight, graphBottom, scale, offsetX, offsetY);
+
+  Object.assign(box.style, {
+    left: `${screenPos.x}px`,
+    top: `${screenPos.y}px`,
+    width: `${Math.max(120, screenBR.x - screenPos.x)}px`,
+    height: `${Math.max(BOX_H, screenBR.y - screenPos.y)}px`,
+  });
 }
 
-let compactRowsRAF = null;
+let compactBoxRAF = null;
 function hasCompactKpsNodes() {
   if (!app?.graph) return false;
   const nodes = app.graph._nodes || app.graph.nodes || [];
   return nodes.some((n) => n?.comfyClass === NODE_CLASS && isCompact(n));
 }
 
-function startCompactRowsRAF() {
-  if (compactRowsRAF != null) return;
+function startCompactBoxRAF() {
+  if (compactBoxRAF != null) return;
   const tick = () => {
     if (!hasCompactKpsNodes()) {
-      compactRowsRAF = null;
+      compactBoxRAF = null;
       return;
     }
     if (!app?.graph) {
-      compactRowsRAF = null;
+      compactBoxRAF = null;
       return;
     }
     const nodes = app.graph._nodes || app.graph.nodes || [];
     for (const node of nodes) {
       if (node?.comfyClass === NODE_CLASS && isCompact(node)) {
-        positionRowsFromCanvas(node);
+        syncAndPositionBox(node);
       }
     }
-    compactRowsRAF = requestAnimationFrame(tick);
+    compactBoxRAF = requestAnimationFrame(tick);
   };
-  compactRowsRAF = requestAnimationFrame(tick);
+  compactBoxRAF = requestAnimationFrame(tick);
 }
 
-function stopCompactRowsRAF() {
-  if (compactRowsRAF != null) {
-    cancelAnimationFrame(compactRowsRAF);
-    compactRowsRAF = null;
+function stopCompactBoxRAF() {
+  if (compactBoxRAF != null) {
+    cancelAnimationFrame(compactBoxRAF);
+    compactBoxRAF = null;
   }
 }
 
@@ -367,22 +316,18 @@ function updateVisibility(node) {
   const count = getVisibleCount(node);
   const compact = isCompact(node);
 
-  // Hide/show configuration widgets in compact mode
   applyWidgetHiddenState(getWidget(node, "visible_inputs"), compact);
   applyWidgetHiddenState(getWidget(node, "case_sensitive"), compact);
   applyWidgetHiddenState(getWidget(node, "reference_phrase"), compact);
 
-  // Hide/show keyword/preset pairs based on visible_inputs
   for (let i = 1; i <= MAX_SLOTS; i++) {
     const show = i <= count && !compact;
     applyWidgetHiddenState(getWidget(node, "keyword" + i), !show);
     applyWidgetHiddenState(getWidget(node, "preset" + i), !show);
   }
 
-  // Default preset follows compact mode
   applyWidgetHiddenState(getWidget(node, "preset_default"), compact);
 
-  // Set compact node height
   if (compact) {
     const h = getMinimumCompactHeight(node);
     if (node.size) node.size[1] = h;
@@ -393,9 +338,8 @@ function updateVisibility(node) {
   node.setDirtyCanvas?.(true, true);
   forceRedraw(node);
 
-  // Ensure rows exist and trigger RAF
-  ensureRows(node);
-  if (compact) startCompactRowsRAF();
+  ensureBox(node);
+  if (compact) startCompactBoxRAF();
 }
 
 app.registerExtension({
@@ -418,7 +362,6 @@ app.registerExtension({
         };
       }
 
-      // Double-click to toggle compact mode
       const originalDblClick = this.onDblClick;
       this.onDblClick = function (event, pos) {
         originalDblClick?.apply(this, arguments);
@@ -426,11 +369,10 @@ app.registerExtension({
         toggleCompactMode(this);
       };
 
-      // onRemoved cleanup
       const originalOnRemoved = this.onRemoved;
       this.onRemoved = function () {
         originalOnRemoved?.apply(this, arguments);
-        disposeRows(this);
+        disposeBox(this);
       };
     };
 
@@ -440,16 +382,14 @@ app.registerExtension({
       updateVisibility(this);
     };
 
-    // Chain onDrawForeground for row positioning
     const protoOrigDrawFg = nodeType.prototype.onDrawForeground;
     nodeType.prototype.onDrawForeground = function (ctx) {
       protoOrigDrawFg?.apply(this, arguments);
-      if (isCompact(this) && !this.__AUN_nodeBeingDragged) {
-        positionRows(this, ctx);
+      if (isCompact(this)) {
+        syncAndPositionBox(this);
       }
     };
 
-    // Right-click menu for compact mode toggle
     const originalGetMenuOptions = nodeType.prototype.getMenuOptions;
     nodeType.prototype.getMenuOptions = function () {
       const options = originalGetMenuOptions
