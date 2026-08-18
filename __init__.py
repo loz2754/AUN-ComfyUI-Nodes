@@ -40,6 +40,7 @@ from .AUNInputsRefineBasic import AUNInputsRefineBasic
 from .AUNKSamplerPlusV2 import AUNKSamplerPlusV2
 from .AUNKSamplerPlusv3 import AUNKSamplerPlusv3
 from .AUNKSamplerPlusv4 import AUNKSamplerPlusv4
+from .AUNKeywordPresetSelector import AUNKeywordPresetSelector
 from .AUNLoraStackWithTriggers import AUNLoraStackWithTriggers
 from .AUNLoraStackWithTriggersModelClip import AUNLoraStackWithTriggersModelClip
 from .AUNManualAutoImageSwitch import AUNManualAutoImageSwitch
@@ -142,6 +143,7 @@ NODE_CLASS_MAPPINGS = {
     "AUNKSamplerPlusV2": AUNKSamplerPlusV2,
     "AUNKSamplerPlusv3": AUNKSamplerPlusv3,
     "AUNKSamplerPlusv4": AUNKSamplerPlusv4,
+    "AUNKeywordPresetSelector": AUNKeywordPresetSelector,
     "AUNLoraStackWithTriggers": AUNLoraStackWithTriggers,
     "AUNLoraStackWithTriggersModelClip": AUNLoraStackWithTriggersModelClip,
     "AUNManualAutoImageSwitch": AUNManualAutoImageSwitch,
@@ -240,6 +242,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "AUNKSamplerPlusV2": "AUN KSampler PlusV2 (Deprecated)",
     "AUNKSamplerPlusv3": "AUN KSampler PlusV3",
     "AUNKSamplerPlusv4": "AUN KSampler 2-Model",
+    "AUNKeywordPresetSelector": "Keyword Preset Selector",
     "AUNLoraStackWithTriggers": "LoRA Stack With Triggers",
     "AUNLoraStackWithTriggersModelClip": "LoRA Stack With Triggers (Model+Clip)",
     "AUNManualAutoImageSwitch": "Manual/Auto Image Switch",

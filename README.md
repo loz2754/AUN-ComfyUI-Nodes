@@ -199,6 +199,7 @@ To provide a fast, visually consistent understanding of node states, AUN nodes u
 - Add-To-Prompt Multi (`AUNAddToPromptMulti`) multi-addon prompt builder with up to 10 switchable addon slots. Each addon can be enabled/disabled individually and placed before or after the main prompt. Supports dynamic prompts and compact mode with overlay checkboxes and order selectors. TIP: Double-click the node or right-click and select 'Compact mode' to hide configuration widgets.
 - AUN Wildcard Add-To-Prompt (`AUNWildcardAddToPrompt`) randomizes wildcard syntax (`__name__`, `{a|b|c}`) each execution, then conditionally adds the populated text to a prompt (always, never, or 50/50 random). A wildcard selector discovers and quick-inserts available wildcard tokens.
 - Negative Prompt Selector (`AUNMultiNegPrompt`) selects one of the 10 preset negative prompts to use.
+- Keyword Preset Selector (`AUNKeywordPresetSelector`) selects a preset value based on keyword matching in a reference phrase. Keywords are matched as substrings (case-insensitive by default). First match wins (top-to-bottom order). Useful for automating workflow selection based on text analysis. Outputs the matched preset value, the matched keyword, and the matched index.
 
 </details>
 
