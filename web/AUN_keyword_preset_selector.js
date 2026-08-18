@@ -1,13 +1,13 @@
 import { app } from "../../scripts/app.js";
-import { applyWidgetHiddenState, ensureHiddenAware, getWidget, forceRedraw, isNodeCollapsed } from "./index.js";
+import { api } from "../../scripts/api.js";
+import { applyWidgetHiddenState, ensureHiddenAware, getWidget, injectStyles, forceRedraw, isNodeCollapsed } from "./index.js";
 
 const NODE_CLASS = "AUNKeywordPresetSelector";
 const MAX_SLOTS = 20;
 const PROP_KEY = "_AUN_compactMode";
+const PROP_SHOW_BOX = "_AUN_showMatchBox";
 const TITLE_H = 28;
-const SIDE_PAD = 10;
-const BOX_H = 22;
-const BOX_GAP = 4;
+const FOOTER_H = 42;
 
 function getVisibleCount(node) {
   const w = getWidget(node, "visible_inputs");
@@ -31,6 +31,16 @@ function toggleCompactMode(node) {
   updateVisibility(node);
 }
 
+function showBox(node) {
+  return node?.properties?.[PROP_SHOW_BOX] !== false;
+}
+
+function setShowBox(node, show) {
+  if (!node) return;
+  node.properties = node.properties || {};
+  node.properties[PROP_SHOW_BOX] = !!show;
+}
+
 function resizeNode(node) {
   if (typeof node?.computeSize === "function") {
     try {
@@ -46,8 +56,51 @@ function resizeNode(node) {
   }
 }
 
-function getMinimumCompactHeight() {
-  return TITLE_H + BOX_GAP + BOX_H + BOX_GAP;
+function getFooterHeight(node) {
+  if (!isCompact(node) || isNodeCollapsed(node) || !showBox(node)) return 0;
+  return FOOTER_H;
+}
+
+function getMinimumCompactHeight(node) {
+  return TITLE_H + 4 + getFooterHeight(node) + 4;
+}
+
+function ensureFooterStyles() {
+  if (globalThis.__AUN_kps_footer_styles) return;
+  globalThis.__AUN_kps_footer_styles = true;
+  injectStyles("AUN-kps-footer-styles", `
+    .AUN-kps-footer {
+      position: absolute;
+      z-index: 12;
+      display: none;
+      box-sizing: border-box;
+      pointer-events: none;
+      font: 11px sans-serif;
+      color: rgba(220,220,220,0.9);
+      padding: 2px 6px;
+      background: transparent;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      border-radius: 0;
+      border: none;
+    }
+  `);
+}
+
+function ensureFooter(node) {
+  if (node.__AUN_kpsFooter) return node.__AUN_kpsFooter;
+  ensureFooterStyles();
+  const el = document.createElement("div");
+  el.className = "AUN-kps-footer";
+  document.body.appendChild(el);
+  node.__AUN_kpsFooter = el;
+  return el;
+}
+
+function disposeFooter(node) {
+  node.__AUN_kpsFooter?.remove?.();
+  node.__AUN_kpsFooter = null;
 }
 
 const skipWidgetNames = new Set(["index", "mode", "seed", "strength", "apply_lora", "visible_inputs", "case_sensitive", "reference_phrase", "preset_default"]);
@@ -141,38 +194,153 @@ function findMatch(node) {
   return null;
 }
 
-function drawMatchBox(ctx, node, match) {
-  const w = node.size?.[0] ?? 300;
-  const x0 = SIDE_PAD;
-  const y0 = TITLE_H + BOX_GAP;
-  const boxW = Math.max(120, w - SIDE_PAD * 2);
-  const boxH = BOX_H;
+// Data source: prefer the node's own execution results (cached via 'executed' event),
+// fall back to a live widget-based match (works pre-execution for unconnected phrases).
+function getMatchData(node) {
+  const last = node.__AUN_kpsLast;
+  if (last && (last.keyword || last.index > 0) && last.value != null) {
+    const index = Number.isFinite(last.index) ? last.index : 0;
+    return { index, keyword: String(last.keyword ?? ""), value: String(last.value) };
+  }
+  return findMatch(node);
+}
 
-  ctx.save();
-  ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
-  ctx.beginPath();
-  ctx.roundRect(x0, y0, boxW, boxH, 4);
-  ctx.fill();
+function graphToScreen(canvasRect, graphX, graphY, scale, offsetX, offsetY) {
+  return {
+    x: canvasRect.left + (graphX + offsetX) * scale,
+    y: canvasRect.top + (graphY + offsetY) * scale
+  };
+}
+
+function isNodeOccluded(node, canvasRect, scale, offsetX, offsetY) {
+  const nodes = app?.graph?._nodes;
+  if (!nodes) return false;
+
+  const selfScreen = graphToScreen(canvasRect, node.pos[0], node.pos[1], scale, offsetX, offsetY);
+  const selfRight = selfScreen.x + (node.size?.[0] ?? 300) * scale;
+  const selfBottom = selfScreen.y + (node.size?.[1] ?? 100) * scale;
+
+  for (const other of nodes) {
+    if (!other || other === node) continue;
+    if ((other.index ?? -1) <= (node.index ?? -2)) continue;
+    if (isNodeCollapsed(other)) continue;
+
+    const otherScreen = graphToScreen(canvasRect, other.pos[0], other.pos[1], scale, offsetX, offsetY);
+    const otherRight = otherScreen.x + (other.size?.[0] ?? 300) * scale;
+    const otherBottom = otherScreen.y + (other.size?.[1] ?? 100) * scale;
+
+    if (!(otherRight <= selfScreen.x ||
+          otherScreen.x >= selfRight ||
+          otherBottom <= selfScreen.y ||
+          otherScreen.y >= selfBottom)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function syncAndPositionFooter(node) {
+  const el = ensureFooter(node);
+  const compact = isCompact(node);
+
+  if (!compact) {
+    el.style.display = "none";
+    return;
+  }
+
+  const canvas = app?.canvas;
+  if (!canvas || !canvas.canvas || !canvas.ds) {
+    el.style.display = "none";
+    return;
+  }
+  const canvasRect = canvas.canvas.getBoundingClientRect();
+  const scale = canvas.ds.scale || 1;
+  const offsetX = canvas.ds.offset?.[0] ?? 0;
+  const offsetY = canvas.ds.offset?.[1] ?? 0;
+
+  const occluded = isNodeOccluded(node, canvasRect, scale, offsetX, offsetY);
+  const footerHeight = getFooterHeight(node);
+
+  if (footerHeight <= 0 || occluded) {
+    el.style.display = "none";
+    return;
+  }
+
+  const nodeScreen = graphToScreen(canvasRect, node.pos[0], node.pos[1], scale, offsetX, offsetY);
+  const nodeW = (node.size?.[0] ?? 300) * scale;
+  const nodeH = (node.size?.[1] ?? 100) * scale;
+  const padding = 20;
+  if (
+    nodeScreen.x + nodeW + padding < canvasRect.left ||
+    nodeScreen.x - padding > canvasRect.right ||
+    nodeScreen.y + nodeH + padding < canvasRect.top ||
+    nodeScreen.y - padding > canvasRect.bottom
+  ) {
+    el.style.display = "none";
+    return;
+  }
+
+  const match = getMatchData(node);
+  if (!match) {
+    el.style.display = "none";
+    return;
+  }
 
   const text = `${match.index} ${match.keyword}: ${match.value}`;
-  ctx.fillStyle = "rgba(220, 220, 220, 0.95)";
-  ctx.font = "11px sans-serif";
-  ctx.textAlign = "left";
-  ctx.textBaseline = "middle";
-
-  const maxWidth = boxW - 8;
-  const metrics = ctx.measureText(text);
-  let displayText = text;
-  if (metrics.width > maxWidth) {
-    const ellipsis = "\u2026";
-    let truncated = text;
-    while (ctx.measureText(truncated + ellipsis).width > maxWidth && truncated.length > 0) {
-      truncated = truncated.slice(0, -1);
-    }
-    displayText = truncated + ellipsis;
+  if (el.__AUN_footerCache !== text) {
+    el.__AUN_footerCache = text;
+    el.textContent = text;
   }
-  ctx.fillText(displayText, x0 + 4, y0 + boxH / 2);
-  ctx.restore();
+
+  const h = node.size?.[1] ?? 100;
+  const y0 = h - footerHeight + 3;
+  const y1 = h - 6;
+  const nodeX = node.pos[0];
+  const nodeY = node.pos[1];
+  const graphLeft = nodeX + 8;
+  const graphTop = nodeY + y0;
+  const graphRight = nodeX + (node.size?.[0] ?? 300) - 8;
+  const graphBottom = nodeY + y1;
+
+  const screenTL = graphToScreen(canvasRect, graphLeft, graphTop, scale, offsetX, offsetY);
+  const screenBR = graphToScreen(canvasRect, graphRight, graphBottom, scale, offsetX, offsetY);
+
+  Object.assign(el.style, {
+    display: "block",
+    left: `${screenTL.x}px`,
+    top: `${screenTL.y}px`,
+    width: `${Math.max(20, screenBR.x - screenTL.x)}px`,
+    height: `${Math.max(20, screenBR.y - screenTL.y)}px`,
+  });
+}
+
+let compactFooterRAF = null;
+function hasCompactKpsNodes() {
+  if (!app?.graph) return false;
+  const nodes = app.graph._nodes || app.graph.nodes || [];
+  return nodes.some((n) => (n?.comfyClass === NODE_CLASS || n?.type === NODE_CLASS) && isCompact(n));
+}
+
+function startCompactFooterRAF() {
+  if (compactFooterRAF != null) return;
+  const tick = () => {
+    if (!hasCompactKpsNodes()) {
+      compactFooterRAF = null;
+      return;
+    }
+    if (!app?.graph) {
+      compactFooterRAF = null;
+      return;
+    }
+    const nodes = app.graph._nodes || app.graph.nodes || [];
+    for (const node of nodes) {
+      if ((node?.comfyClass === NODE_CLASS || node?.type === NODE_CLASS) && isCompact(node)) {
+        syncAndPositionFooter(node);
+      }
+    }
+    compactFooterRAF = requestAnimationFrame(tick);
+  };
+  compactFooterRAF = requestAnimationFrame(tick);
 }
 
 function updateVisibility(node) {
@@ -192,7 +360,7 @@ function updateVisibility(node) {
   applyWidgetHiddenState(getWidget(node, "preset_default"), compact);
 
   if (compact) {
-    const h = getMinimumCompactHeight();
+    const h = getMinimumCompactHeight(node);
     if (node.size) node.size[1] = h;
   } else {
     resizeNode(node);
@@ -200,6 +368,29 @@ function updateVisibility(node) {
 
   node.setDirtyCanvas?.(true, true);
   forceRedraw(node);
+
+  ensureFooter(node);
+  if (compact) startCompactFooterRAF();
+}
+
+function cacheExecutedOutputs(nodeId, output) {
+  if (!output || !app?.graph) return;
+  let node = app.graph.getNodeById?.(nodeId);
+  if (!node) {
+    const numericId = parseInt(nodeId, 10);
+    if (!Number.isNaN(numericId)) {
+      node = app.graph.getNodeById?.(numericId);
+    }
+  }
+  if (!node) return;
+  const isKps = node?.comfyClass === NODE_CLASS || node?.type === NODE_CLASS;
+  if (!isKps) return;
+
+  node.__AUN_kpsLast = {
+    value: output.selected_value ?? output[0] ?? null,
+    keyword: output.matched_keyword ?? output[1] ?? null,
+    index: output.matched_index ?? output[2] ?? 0,
+  };
 }
 
 app.registerExtension({
@@ -228,6 +419,12 @@ app.registerExtension({
         if (Array.isArray(pos) && typeof pos[1] === "number" && pos[1] < 0) return;
         toggleCompactMode(this);
       };
+
+      const originalOnRemoved = this.onRemoved;
+      this.onRemoved = function () {
+        originalOnRemoved?.apply(this, arguments);
+        disposeFooter(this);
+      };
     };
 
     const onConfigure = nodeType.prototype.onConfigure;
@@ -240,10 +437,7 @@ app.registerExtension({
     nodeType.prototype.onDrawForeground = function (ctx) {
       protoOrigDrawFg?.apply(this, arguments);
       if (isCompact(this)) {
-        const match = findMatch(this);
-        if (match) {
-          drawMatchBox(ctx, this, match);
-        }
+        syncAndPositionFooter(this);
       }
     };
 
@@ -261,6 +455,13 @@ app.registerExtension({
           updateVisibility(this);
         },
       });
+      options.push({
+        content: showBox(this) ? "AUN: Hide match box" : "AUN: Show match box",
+        callback: () => {
+          setShowBox(this, !showBox(this));
+          updateVisibility(this);
+        },
+      });
       return options;
     };
   },
@@ -274,4 +475,17 @@ app.registerExtension({
     if (node.comfyClass !== NODE_CLASS) return;
     requestAnimationFrame(() => updateVisibility(node));
   },
+});
+
+api.addEventListener("executed", ({ detail }) => {
+  if (!detail) return;
+  cacheExecutedOutputs(detail.node, detail.output);
+  if (compactFooterRAF != null) {
+    const nodes = app?.graph?._nodes || [];
+    for (const node of nodes) {
+      if ((node?.comfyClass === NODE_CLASS || node?.type === NODE_CLASS) && isCompact(node)) {
+        syncAndPositionFooter(node);
+      }
+    }
+  }
 });
