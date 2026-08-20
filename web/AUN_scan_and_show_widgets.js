@@ -699,7 +699,7 @@ function graphToScreen(canvasRect, gx, gy, scale, offsetX, offsetY) {
 }
 
 function isNodeOccluded(node, canvasRect, scale, offsetX, offsetY) {
-  const nodes = app?.graph?._nodes;
+  const nodes = app.canvas?.graph?._nodes;
   if (!nodes) return false;
 
   const selfScreen = graphToScreen(canvasRect, node.pos[0], node.pos[1], scale, offsetX, offsetY);
@@ -746,6 +746,7 @@ function positionOverlay(node) {
   const state = overlayRegistry.get(id);
   if (!state) return;
   if (!node.graph) { state.overlay.style.display = "none"; return; }
+  if (node.graph !== app.canvas?.graph) { state.overlay.style.display = "none"; return; }
 
   const canvas = app.canvas;
   if (!canvas?.canvas || node.flags?.collapsed) { state.overlay.style.display = "none"; return; }
@@ -787,12 +788,11 @@ function positionOverlay(node) {
 (function startOverlayLoop() {
   function tick() {
     for (const [id, state] of overlayRegistry) {
-      const node = app.graph?.getNodeById(id);
+      const node = app.canvas?.graph?.getNodeById(id);
       if (node) {
         positionOverlay(node);
       } else {
-        state.overlay.remove();
-        overlayRegistry.delete(id);
+        state.overlay.style.display = "none";
       }
     }
     requestAnimationFrame(tick);

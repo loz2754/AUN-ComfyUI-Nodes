@@ -379,7 +379,7 @@ function graphToScreen(canvasRect, gx, gy, scale, offsetX, offsetY) {
 }
 
 function isNodeOccluded(node, canvasRect, scale, offsetX, offsetY) {
-  const nodes = app?.graph?._nodes;
+  const nodes = app.canvas?.graph?._nodes;
   if (!nodes) return false;
 
   const selfScreen = graphToScreen(canvasRect, node.pos[0], node.pos[1], scale, offsetX, offsetY);
@@ -412,6 +412,11 @@ function positionOverlay(node) {
   if (!state) return;
 
   if (!node.graph) {
+    state.overlay.style.display = "none";
+    return;
+  }
+
+  if (node.graph !== app.canvas?.graph) {
     state.overlay.style.display = "none";
     return;
   }
@@ -466,12 +471,11 @@ function positionOverlay(node) {
 function startOverlayLoop() {
   function tick() {
     for (const [id, state] of overlayRegistry) {
-      const node = app.graph?.getNodeById(id);
+      const node = app.canvas?.graph?.getNodeById(id);
       if (node) {
         positionOverlay(node);
       } else {
-        state.overlay.remove();
-        overlayRegistry.delete(id);
+        state.overlay.style.display = "none";
       }
     }
     requestAnimationFrame(tick);
@@ -775,8 +779,8 @@ function inputDisplayLabel(node, input) {
 }
 
 function pollForTitleChanges() {
-  if (app?.graph?._nodes) {
-    for (const node of app.graph._nodes) {
+  if (app.canvas?.graph?._nodes) {
+    for (const node of app.canvas.graph._nodes) {
       node.__aun_sig = node.__aun_sig || {};
       const changedTitle = node.title !== lastTitles[node.id];
       if (changedTitle) lastTitles[node.id] = node.title;
@@ -789,7 +793,7 @@ function pollForTitleChanges() {
         }
       }
     }
-    app.graph._nodes.forEach((n) => {
+    (app.canvas?.graph?._nodes ?? []).forEach((n) => {
       if (n.comfyClass === NODE_TYPE) {
         const sig = labelsSig(n);
         if (sig !== n.__aun_lastSig) {

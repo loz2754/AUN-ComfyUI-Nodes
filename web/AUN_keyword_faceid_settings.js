@@ -14,14 +14,13 @@ const PARAM_OUTPUTS = new Set([
   "preset", "weight", "weight_type", "preset_faceid", "lora_strength",
   "weight_faceid", "weight_faceidv2", "weight_type_faceid",
 ]);
-const VISIBLE_OUTPUTS = ["matched_keyword", "matched_index", "settings_text"];
+const VISIBLE_OUTPUTS = ["matched_keyword", "matched_index", "settings_text", "preset_number"];
 
 const SETTING_KEYS = [
   "preset", "weight", "weight_type",
   "preset_faceid", "lora_strength",
   "weight_faceid", "weight_faceidv2", "weight_type_faceid",
 ];
-const DEFAULT_KEYS = SETTING_KEYS.map((k) => `${k}_default`);
 
 function getVisibleCount(node) {
   const w = getWidget(node, "visible_inputs");
@@ -59,7 +58,7 @@ function applyCompactSlotLabels(node) {
   const compact = isCompact(node);
   const slots = node.outputs || [];
   for (const slot of slots) {
-    if (!slot || !PARAM_OUTPUTS.has(slot.name)) continue;
+    if (!slot) continue;
     if (compact) {
       if (!("__aun_compact_origLabel" in slot)) {
         slot.__aun_compact_origLabel = slot.label;
@@ -99,7 +98,7 @@ function getFooterHeight(node) {
 
 function getRailBottomY() {
   const slotH = globalThis.LiteGraph?.NODE_SLOT_HEIGHT ?? 20;
-  return (VISIBLE_OUTPUTS.length + 0.7) * slotH;
+  return (1 + 0.7) * slotH;
 }
 
 function getMinimumCompactHeight(node) {
@@ -174,18 +173,21 @@ function ensureFooter(node) {
   el.className = "AUN-faceid-footer";
   document.body.appendChild(el);
   node.__AUN_faceidFooter = el;
+  activeFooters.set(node.id, node);
   return el;
 }
 
 function disposeFooter(node) {
   node.__AUN_faceidFooter?.remove?.();
   node.__AUN_faceidFooter = null;
+  activeFooters.delete(node.id);
 }
+
+const activeFooters = new Map();
 
 const skipWidgetNames = new Set([
   "index", "mode", "seed", "strength", "apply_lora", "visible_inputs", "case_sensitive",
-  "reference_phrase", "manual_preset", "manual_priority",
-  ...DEFAULT_KEYS,
+  "reference_phrase", "manual_preset", "match_keywords",
   "preset", "weight", "weight_type", "preset_faceid", "lora_strength",
   "weight_faceid", "weight_faceidv2", "weight_type_faceid",
 ]);
@@ -266,20 +268,9 @@ function getRowSettings(node, i) {
   return out;
 }
 
-function getDefaults(node) {
-  const out = {};
-  for (const key of SETTING_KEYS) {
-    const w = getWidget(node, `${key}_default`);
-    out[key] = w?.value ?? null;
-  }
-  return out;
-}
-
 function getManualBundle(node) {
-  const mp = String(getWidget(node, "manual_preset")?.value ?? "AUTO");
-  if (mp === "DEFAULT") return getDefaults(node);
-  const m = /^PRESET (\d+)$/i.exec(mp);
-  if (m) return getRowSettings(node, Number(m[1]));
+  const mp = Number(getWidget(node, "manual_preset")?.value ?? 1);
+  if (mp >= 1 && mp <= MAX_SLOTS) return getRowSettings(node, mp);
   return null;
 }
 
@@ -311,26 +302,21 @@ function findMatch(node) {
 }
 
 function getMatchData(node) {
-  const manual = getManualBundle(node);
-  if (manual) {
-    const manualWins =
-      String(getWidget(node, "manual_priority")?.value ?? "") === "Manual wins";
-    if (manualWins) {
-      return { index: 0, keyword: "", ...manual };
-    }
-    const last = node.__AUN_faceidLast;
-    if (last && last.keyword && last.index > 0 && last.weight != null) {
-      return last;
-    }
-    const matched = findMatch(node);
-    if (matched) return matched;
-    return { index: 0, keyword: "", ...manual };
-  }
   const last = node.__AUN_faceidLast;
-  if (last && last.keyword && last.index > 0 && last.weight != null) {
+  if (last && last.index > 0) {
     return last;
   }
-  return findMatch(node);
+
+  const manual = getManualBundle(node);
+  const mp = Number(getWidget(node, "manual_preset")?.value ?? 1);
+  const keywordsOn = String(getWidget(node, "match_keywords")?.value ?? "Yes") === "Yes";
+
+  if (keywordsOn) {
+    const matched = findMatch(node);
+    if (matched) return matched;
+  }
+  if (manual) return { index: mp, keyword: "", ...manual };
+  return null;
 }
 
 function pyFloat(v) {
@@ -356,7 +342,9 @@ function formatFooter(match) {
 }
 
 function footerLabel(match) {
-  return match.index > 0 ? `#${match.index} ${match.keyword}` : "manual";
+  if (match.index > 0 && match.keyword) return `#${match.index} ${match.keyword}`;
+  if (match.index > 0) return `preset ${match.index}`;
+  return "no match";
 }
 
 function footerDetail(match) {
@@ -371,7 +359,7 @@ function graphToScreen(canvasRect, graphX, graphY, scale, offsetX, offsetY) {
 }
 
 function isNodeOccluded(node, canvasRect, scale, offsetX, offsetY) {
-  const nodes = app?.graph?._nodes;
+  const nodes = app.canvas?.graph?._nodes;
   if (!nodes) return false;
 
   const selfScreen = graphToScreen(canvasRect, node.pos[0], node.pos[1], scale, offsetX, offsetY);
@@ -411,6 +399,12 @@ function syncAndPositionFooter(node) {
     el.style.display = "none";
     return;
   }
+
+  if (node.graph && node.graph !== app.canvas?.graph) {
+    el.style.display = "none";
+    return;
+  }
+
   const canvasRect = canvas.canvas.getBoundingClientRect();
   const scale = canvas.ds.scale || 1;
   const offsetX = canvas.ds.offset?.[0] ?? 0;
@@ -502,21 +496,57 @@ function setupDragMonitor() {
   };
 }
 
+let footerRAF = null;
+
+function startFooterRAF() {
+  if (footerRAF) return;
+  function rafLoop() {
+    footerRAF = requestAnimationFrame(rafLoop);
+    if (!app?.canvas?.graph) return;
+    const currentGraph = app.canvas.graph;
+    for (const [nodeId, node] of activeFooters) {
+      if (node.type === undefined) {
+        activeFooters.delete(nodeId);
+        continue;
+      }
+      if (node.graph !== currentGraph) {
+        const el = node.__AUN_faceidFooter;
+        if (el) el.style.display = "none";
+        continue;
+      }
+      syncAndPositionFooter(node);
+    }
+    if (activeFooters.size === 0) {
+      cancelAnimationFrame(footerRAF);
+      footerRAF = null;
+    }
+  }
+  rafLoop();
+}
+
+function scheduleFooterUpdate() {
+  startFooterRAF();
+}
+
 function updateVisibility(node) {
   const count = getVisibleCount(node);
   const compact = isCompact(node);
 
   applyCompactSlotLabels(node);
 
+  const mpW = getWidget(node, "manual_preset");
+  if (mpW) {
+    const opts = Array.from({ length: count }, (_, i) => String(i + 1));
+    mpW.options = mpW.options || {};
+    mpW.options.values = opts;
+    if (!opts.includes(String(mpW.value))) {
+      mpW.value = opts[opts.length - 1];
+    }
+  }
+
   applyWidgetHiddenState(getWidget(node, "visible_inputs"), compact);
   applyWidgetHiddenState(getWidget(node, "case_sensitive"), compact);
-  applyWidgetHiddenState(getWidget(node, "reference_phrase"), compact);
-  applyWidgetHiddenState(getWidget(node, "manual_preset"), compact);
-  applyWidgetHiddenState(getWidget(node, "manual_priority"), compact);
-
-  for (const key of DEFAULT_KEYS) {
-    applyWidgetHiddenState(getWidget(node, key), compact);
-  }
+  applyWidgetHiddenState(getWidget(node, "match_keywords"), compact);
 
   for (let i = 1; i <= MAX_SLOTS; i++) {
     const show = i <= count && !compact;
@@ -536,8 +566,17 @@ function updateVisibility(node) {
   node.setDirtyCanvas?.(true, true);
   forceRedraw(node);
 
-  ensureFooter(node);
-  syncAndPositionFooter(node);
+  if (compact) {
+    ensureFooter(node);
+    activeFooters.set(node.id, node);
+    scheduleFooterUpdate();
+  } else {
+    const el = node.__AUN_faceidFooter;
+    if (el) {
+      el.style.display = "none";
+      activeFooters.delete(node.id);
+    }
+  }
 }
 
 app.registerExtension({
@@ -551,16 +590,7 @@ app.registerExtension({
     if (typeof origGetOutputPos === "function") {
       nodeType.prototype.getOutputPos = function (index) {
         if (isCompact(this)) {
-          const slot = this.outputs?.[index];
-          if (slot) {
-            if (PARAM_OUTPUTS.has(slot.name)) {
-              return origGetOutputPos.call(this, 0);
-            }
-            const visibleIndex = VISIBLE_OUTPUTS.indexOf(slot.name);
-            if (visibleIndex >= 0) {
-              return origGetOutputPos.call(this, visibleIndex + 1);
-            }
-          }
+          return origGetOutputPos.call(this, 0);
         }
         return origGetOutputPos.apply(this, arguments);
       };
@@ -617,7 +647,6 @@ app.registerExtension({
     nodeType.prototype.onDrawForeground = function (ctx) {
       protoOrigDrawFg?.apply(this, arguments);
       drawFooterBox(ctx, this);
-      syncAndPositionFooter(this);
     };
 
     const originalGetMenuOptions = nodeType.prototype.getMenuOptions;
@@ -680,6 +709,7 @@ api.addEventListener("AUN_keyword_faceid_settings_executed", ({ detail }) => {
     weight_faceid: detail.weight_faceid ?? null,
     weight_faceidv2: detail.weight_faceidv2 ?? null,
     weight_type_faceid: detail.weight_type_faceid ?? null,
+    preset_number: detail.preset_number ?? "",
   };
   if (isCompact(node)) {
     syncAndPositionFooter(node);

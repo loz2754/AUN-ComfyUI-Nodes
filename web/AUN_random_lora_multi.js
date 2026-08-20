@@ -202,7 +202,7 @@ function normalizeNodeId(raw) {
 }
 
 function findGraphNodeByEventId(rawNodeId) {
-  const graph = app?.graph;
+  const graph = app?.canvas?.graph;
   if (!graph) return null;
 
   const normalized = normalizeNodeId(rawNodeId);
@@ -227,7 +227,7 @@ function forceRedraw(node) {
   node?.setDirty?.(true, true);
   // Mark the canvas dirty and force a full redraw (foreground + background)
   app?.canvas?.setDirty?.(true, true);
-  app?.graph?.setDirtyCanvas?.(true, true);
+  app?.canvas?.graph?.setDirtyCanvas?.(true, true);
   // Force immediate redraw by directly invoking the canvas draw loop
   if (app?.canvas) {
     // Force a full redraw (foreground + background)
@@ -248,7 +248,7 @@ function scheduleGlobalRedraw() {
       }
     }
     app?.canvas?.setDirty?.(true, true);
-    app?.graph?.setDirtyCanvas?.(true, true);
+    app?.canvas?.graph?.setDirtyCanvas?.(true, true);
     // Draw twice to ensure foreground is rendered
     app?.canvas?.draw?.(true, true);
     requestAnimationFrame(() => {
@@ -1322,7 +1322,10 @@ function disposeCompactRows(node) {
   }
   node.__AUN_loraMultiCompactFooter?.remove?.();
   node.__AUN_loraMultiCompactFooter = null;
+  allCompactRowNodes.delete(node);
 }
+
+const allCompactRowNodes = new Set();
 
 function ensureCompactRows(node) {
   if (Array.isArray(node.__AUN_loraMultiCompactRows)) {
@@ -1336,6 +1339,7 @@ function ensureCompactRows(node) {
     }
   }
   node.__AUN_loraMultiCompactRows = rows;
+  allCompactRowNodes.add(node);
   return rows;
 }
 
@@ -1398,7 +1402,7 @@ function graphToScreen(canvasRect, graphX, graphY, scale, offsetX, offsetY) {
  * Returns true if the node is occluded and overlay rows should be hidden.
  */
 function isNodeOccluded(node, canvasRect, scale, offsetX, offsetY) {
-  const nodes = app?.graph?._nodes;
+  const nodes = app.canvas?.graph?._nodes;
   if (!nodes) return false;
 
   // Compute this node's screen-space bounding box
@@ -1604,6 +1608,11 @@ function positionCompactRows(node, ctx) {
 function positionCompactRowsFromCanvas(node) {
   if (!isTargetNode(node)) return;
   const rows = ensureCompactRows(node);
+  if (node.graph && node.graph !== app.canvas?.graph) {
+    for (const row of rows) row.root.style.display = "none";
+    if (node.__AUN_loraMultiCompactFooter) node.__AUN_loraMultiCompactFooter.style.display = "none";
+    return;
+  }
   const compact = isCompact(node);
   const collapsed = isNodeCollapsed(node);
   if (!compact || collapsed) {
@@ -1640,26 +1649,32 @@ function positionCompactRowsFromCanvas(node) {
 
 let compactRowsRAF = null;
 function hasCompactLoraMultiNodes() {
-  if (!app?.graph) return false;
-  const nodes = app.graph._nodes || app.graph.nodes || [];
+  if (!app?.canvas?.graph) return false;
+  const nodes = app.canvas.graph._nodes || app.canvas.graph.nodes || [];
   return nodes.some((n) => isTargetNode(n) && isCompact(n));
 }
 
 function startCompactRowsRAF() {
   if (compactRowsRAF != null) return;
   const tick = () => {
-    if (!hasCompactLoraMultiNodes()) {
+    if (!hasCompactLoraMultiNodes() && allCompactRowNodes.size === 0) {
       compactRowsRAF = null;
       return;
     }
-    if (!app?.graph) {
+    if (!app?.canvas?.graph) {
       compactRowsRAF = null;
       return;
     }
-    const nodes = app.graph._nodes || app.graph.nodes || [];
+    const nodes = app.canvas.graph._nodes || app.canvas.graph.nodes || [];
     for (const node of nodes) {
       if (isTargetNode(node) && isCompact(node)) {
         positionCompactRowsFromCanvas(node);
+      }
+    }
+    for (const n of allCompactRowNodes) {
+      if (n.graph !== app.canvas?.graph && n.__AUN_loraMultiCompactRows) {
+        for (const row of n.__AUN_loraMultiCompactRows) row.root.style.display = "none";
+        if (n.__AUN_loraMultiCompactFooter) n.__AUN_loraMultiCompactFooter.style.display = "none";
       }
     }
     compactRowsRAF = requestAnimationFrame(tick);
@@ -1909,9 +1924,9 @@ function startCompactLiveMonitor(node) {
       return String(labelW?.value ?? "");
     }
     // Simple one-level trace: follow the link and read cached output
-    const link = app.graph.links?.get?.(labelInput.link);
+    const link = app.canvas?.graph.links?.get?.(labelInput.link);
     if (!link?.origin_id) return "";
-    const srcNode = app.graph.getNodeById?.(link.origin_id);
+    const srcNode = app.canvas?.graph.getNodeById?.(link.origin_id);
     if (!srcNode) return "";
     if (srcNode.__AUN_lastOutput_label != null) return String(srcNode.__AUN_lastOutput_label);
     if (srcNode.__AUN_lastOutput_text != null) return String(srcNode.__AUN_lastOutput_text);
@@ -2050,8 +2065,8 @@ function setupNode(node) {
 }
 
 function initExistingNodes() {
-  if (!app?.graph) return;
-  const nodes = app.graph._nodes || app.graph.nodes || [];
+  if (!app?.canvas?.graph) return;
+  const nodes = app.canvas.graph._nodes || app.canvas.graph.nodes || [];
   let initialized = false;
   for (const node of nodes) {
     if (isTargetNode(node) && !node.__AUN_loraMultiCompactInit) {
@@ -2086,12 +2101,12 @@ app.registerExtension({
     // These fire when the switch executes in Random/Increment/Range mode
     api.addEventListener("AUN_random_text_index_selected", ({ detail }) => {
       console.log("[AUN] AUN_random_text_index_selected received:", detail);
-      if (!detail || !app?.graph) return;
+      if (!detail || !app?.canvas?.graph) return;
       const nodeId = detail?.node_id;
       if (!nodeId) return;
 
       // Find the switch node
-      const switchNode = app.graph.getNodeById?.(nodeId) || app.graph.getNodeById?.(parseInt(nodeId, 10));
+      const switchNode = app.canvas.graph.getNodeById?.(nodeId) || app.canvas.graph.getNodeById?.(parseInt(nodeId, 10));
       if (!switchNode) {
         console.log("[AUN] AUN_random_text_index_selected: node", nodeId, "not found");
         return;
@@ -2124,12 +2139,12 @@ app.registerExtension({
     // Listen for AUN_prompt_cycler_selected events from AUNPromptCycler nodes
     // These fire when the cycler executes and selects a prompt
     api.addEventListener("AUN_prompt_cycler_selected", ({ detail }) => {
-      if (!detail || !app?.graph) return;
+      if (!detail || !app?.canvas?.graph) return;
       const nodeId = detail?.node_id;
       if (!nodeId) return;
 
       // Find the cycler node
-      const cyclerNode = app.graph.getNodeById?.(nodeId) || app.graph.getNodeById?.(parseInt(nodeId, 10));
+      const cyclerNode = app.canvas.graph.getNodeById?.(nodeId) || app.canvas.graph.getNodeById?.(parseInt(nodeId, 10));
       if (!cyclerNode) return;
 
       const promptTitle = detail?.prompt_title;
@@ -2153,11 +2168,11 @@ app.registerExtension({
       if (!nodeId || !output) return;
 
       // Try both string and numeric node ID
-      let node = app.graph.getNodeById?.(nodeId);
+      let node = app.canvas?.graph.getNodeById?.(nodeId);
       if (!node) {
         const numericId = parseInt(nodeId, 10);
         if (!Number.isNaN(numericId)) {
-          node = app.graph.getNodeById?.(numericId);
+          node = app.canvas?.graph.getNodeById?.(numericId);
         }
       }
       if (!node) return;
@@ -2194,7 +2209,7 @@ app.registerExtension({
     });
 
     api.addEventListener("AUN_random_lora_multi_selected", ({ detail }) => {
-      if (!detail || !app?.graph) return;
+      if (!detail || !app?.canvas?.graph) return;
 
       const node = findGraphNodeByEventId(detail.node_id);
       if (!isTargetNode(node)) return;
@@ -2397,9 +2412,9 @@ app.registerExtension({
         function traceLinkValue(startLink, visited, depth) {
           depth = depth || 0;
           if (!startLink) return undefined;
-          const link = app.graph.links?.get?.(startLink);
+          const link = app.canvas?.graph.links?.get?.(startLink);
           if (!link?.origin_id) return undefined;
-          const n = app.graph.getNodeById?.(link.origin_id);
+          const n = app.canvas?.graph.getNodeById?.(link.origin_id);
           if (!n) return undefined;
           if (visited.has(n.id)) return undefined;
           visited.add(n.id);

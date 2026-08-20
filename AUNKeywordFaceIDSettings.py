@@ -59,13 +59,13 @@ class AUNKeywordFaceIDSettings:
                 "default": False,
                 "tooltip": "If enabled, keyword matching is case-sensitive.",
             }),
-            "manual_preset": (["AUTO", "DEFAULT", "PRESET 1", "PRESET 2", "PRESET 3", "PRESET 4", "PRESET 5", "PRESET 6"], {
-                "default": "AUTO",
-                "tooltip": "Manual preset override. A preset is the full 8-settings bundle of one keyword row (PRESET 1-6) or the *_default bundle (DEFAULT). AUTO keeps keyword matching; DEFAULT forces the default bundle; PRESET N forces that row's 8 settings.",
+            "manual_preset": (["1", "2", "3", "4", "5", "6"], {
+                "default": "1",
+                "tooltip": "Which preset row (1-6) to use as the active bundle. Clamped to visible_inputs. With match_keywords=No, this is always used. With match_keywords=Yes, keywords can override it when they match.",
             }),
-            "manual_priority": (["Manual wins", "Keyword wins"], {
-                "default": "Manual wins",
-                "tooltip": "When manual_preset is not AUTO: 'Manual wins' forces the manual preset even over a matched keyword; 'Keyword wins' uses the matched keyword row and falls back to the manual preset only when nothing matches. Ignored when manual_preset is AUTO.",
+            "match_keywords": (["Yes", "No"], {
+                "default": "Yes",
+                "tooltip": "Yes: keywords in reference_phrase are matched; the first matching row's settings are used, falling back to manual_preset when nothing matches. No: keywords are ignored; manual_preset is always used.",
             }),
         }
 
@@ -75,26 +75,6 @@ class AUNKeywordFaceIDSettings:
                 "forceInput": True,
                 "multiline": True,
                 "tooltip": "Text to scan for keywords. Keywords are matched as substrings.",
-            }),
-            "preset_default": (cls.UNIFIED_PRESETS, {
-                "default": "PLUS FACE (portraits)",
-                "tooltip": "IPAdapterUnifiedLoader preset used when no keyword matches.",
-            }),
-            "weight_default": cls._weight_spec("IPAdapterSimple weight used when no keyword matches."),
-            "weight_type_default": (cls.WEIGHT_TYPES_SIMPLE, {
-                "default": "prompt is more important",
-                "tooltip": "IPAdapterSimple weight_type used when no keyword matches.",
-            }),
-            "preset_faceid_default": (cls.FACEID_PRESETS, {
-                "default": "FACEID PLUS V2",
-                "tooltip": "IPAdapterUnifiedLoaderFaceID preset used when no keyword matches.",
-            }),
-            "lora_strength_default": cls._lora_strength_spec("FaceID LoRA strength used when no keyword matches."),
-            "weight_faceid_default": cls._weight_spec("IPAdapterFaceID weight used when no keyword matches."),
-            "weight_faceidv2_default": cls._weight_faceidv2_spec("IPAdapterFaceID weight_faceidv2 used when no keyword matches."),
-            "weight_type_faceid_default": (cls.WEIGHT_TYPES, {
-                "default": "linear",
-                "tooltip": "IPAdapterFaceID weight_type used when no keyword matches.",
             }),
         }
 
@@ -130,11 +110,11 @@ class AUNKeywordFaceIDSettings:
             "hidden": {"unique_id": "UNIQUE_ID", "extra_pnginfo": "EXTRA_PNGINFO"},
         }
 
-    RETURN_TYPES = (UNIFIED_PRESETS, "FLOAT", WEIGHT_TYPES_SIMPLE, FACEID_PRESETS, "FLOAT", "FLOAT", "FLOAT", WEIGHT_TYPES, "STRING", "INT", "STRING")
+    RETURN_TYPES = (UNIFIED_PRESETS, "FLOAT", WEIGHT_TYPES_SIMPLE, FACEID_PRESETS, "FLOAT", "FLOAT", "FLOAT", WEIGHT_TYPES, "STRING", "INT", "STRING", "STRING")
     RETURN_NAMES = (
         "preset", "weight", "weight_type", "preset_faceid", "lora_strength",
         "weight_faceid", "weight_faceidv2", "weight_type_faceid",
-        "matched_keyword", "matched_index", "settings_text",
+        "matched_keyword", "matched_index", "settings_text", "preset_number",
     )
     FUNCTION = "select_settings"
     CATEGORY = "AUN Nodes/IPAdapter"
@@ -165,26 +145,30 @@ class AUNKeywordFaceIDSettings:
             return default
         return max(low, min(v, high))
 
-    def _select_settings(self, visible_inputs, case_sensitive, reference_phrase, manual_preset, manual_priority, kwargs):
+    def _select_settings(self, visible_inputs, case_sensitive, reference_phrase, manual_preset, match_keywords, **kwargs):
+        manual_n = min(int(manual_preset), visible_inputs)
+        keywords_on = match_keywords == "Yes"
+
         search = reference_phrase if case_sensitive else reference_phrase.lower()
 
         matched = None
         matched_keyword = ""
         matched_index = 0
-        for i in range(1, visible_inputs + 1):
-            raw = kwargs.get("keyword%d" % i, "")
-            sub_keywords = [k.strip() for k in str(raw).split(",") if k.strip()]
-            if not sub_keywords:
-                continue
-            for sub in sub_keywords:
-                match_kw = sub if case_sensitive else sub.lower()
-                if match_kw in search:
-                    matched = i
-                    matched_keyword = sub
-                    matched_index = i
+        if keywords_on:
+            for i in range(1, visible_inputs + 1):
+                raw = kwargs.get("keyword%d" % i, "")
+                sub_keywords = [k.strip() for k in str(raw).split(",") if k.strip()]
+                if not sub_keywords:
+                    continue
+                for sub in sub_keywords:
+                    match_kw = sub if case_sensitive else sub.lower()
+                    if match_kw in search:
+                        matched = i
+                        matched_keyword = sub
+                        matched_index = i
+                        break
+                if matched is not None:
                     break
-            if matched is not None:
-                break
 
         def _row(i):
             return (
@@ -198,34 +182,11 @@ class AUNKeywordFaceIDSettings:
                 kwargs.get("weight_type_faceid%d" % i, "linear"),
             )
 
-        def _defaults():
-            return (
-                kwargs.get("preset_default", "PLUS FACE (portraits)"),
-                self._clamp(kwargs.get("weight_default", 1.0), -1, 3, 1.0),
-                kwargs.get("weight_type_default", "prompt is more important"),
-                kwargs.get("preset_faceid_default", "FACEID PLUS V2"),
-                self._clamp(kwargs.get("lora_strength_default", 0.6), 0, 1, 0.6),
-                self._clamp(kwargs.get("weight_faceid_default", 1.0), -1, 3, 1.0),
-                self._clamp(kwargs.get("weight_faceidv2_default", 1.0), -1, 5, 1.0),
-                kwargs.get("weight_type_faceid_default", "linear"),
-            )
-
-        chosen = _row(matched) if matched is not None else _defaults()
-
-        if manual_preset and manual_preset != "AUTO":
-            if manual_preset == "DEFAULT":
-                manual = _defaults()
-            else:
-                try:
-                    manual = _row(int(manual_preset.rsplit(" ", 1)[-1]))
-                except (ValueError, TypeError):
-                    manual = _defaults()
-            if manual_priority == "Manual wins" or matched is None:
-                chosen = manual
-
-        if manual_preset and manual_preset != "AUTO" and manual_priority == "Manual wins":
-            matched_keyword = ""
-            matched_index = 0
+        if matched is not None:
+            chosen = _row(matched)
+        else:
+            chosen = _row(manual_n)
+            matched_index = manual_n
 
         preset, weight, weight_type, preset_faceid, lora_strength, weight_faceid, weight_faceidv2, weight_type_faceid = chosen
 
@@ -235,21 +196,23 @@ class AUNKeywordFaceIDSettings:
             float(weight_faceid), float(weight_faceidv2), str(weight_type_faceid),
         ))
 
+        preset_number = "FaceIDPreset-%d" % matched_index
+
         return (
             str(preset), float(weight), str(weight_type),
             str(preset_faceid), float(lora_strength),
             float(weight_faceid), float(weight_faceidv2), str(weight_type_faceid),
-            str(matched_keyword), int(matched_index), settings_text,
+            str(matched_keyword), int(matched_index), settings_text, preset_number,
         )
 
     def select_settings(self, visible_inputs, case_sensitive, reference_phrase="",
-                        manual_preset="AUTO", manual_priority="Manual wins",
+                        manual_preset="1", match_keywords="Yes",
                         unique_id=None, extra_pnginfo=None, **kwargs):
         visible_inputs = max(self.MIN_VISIBLE_INPUTS,
                              min(int(visible_inputs or self.MIN_VISIBLE_INPUTS), self.MAX_INPUTS))
 
         result = self._select_settings(visible_inputs, case_sensitive, reference_phrase,
-                                       manual_preset, manual_priority, kwargs)
+                                       manual_preset, match_keywords, **kwargs)
 
         self._notify_executed(unique_id, result)
 
@@ -275,6 +238,7 @@ class AUNKeywordFaceIDSettings:
                     "weight_type_faceid": result[7],
                     "matched_keyword": result[8],
                     "matched_index": int(result[9]),
+                    "preset_number": result[11],
                 },
             )
         except Exception:

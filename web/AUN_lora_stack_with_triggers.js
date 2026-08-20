@@ -46,7 +46,7 @@ function isRestoringLayout(node) {
 function forceRedraw(node) {
   node?.setDirtyCanvas?.(true, true);
   if (isRestoringLayout(node)) return;
-  app?.graph?.setDirtyCanvas?.(true, true);
+  app?.canvas?.graph?.setDirtyCanvas?.(true, true);
   app?.canvas?.setDirty?.(true, true);
 }
 
@@ -657,12 +657,15 @@ function buildCompactRow(node, slotIndex) {
   };
 }
 
+const allCompactRowNodes = new Set();
+
 function ensureCompactRows(node) {
   if (Array.isArray(node.__AUN_compactRows)) return node.__AUN_compactRows;
   node.__AUN_compactRows = [];
   for (let i = 1; i <= MAX_SLOTS; i += 1) {
     node.__AUN_compactRows.push(buildCompactRow(node, i));
   }
+  allCompactRowNodes.add(node);
   return node.__AUN_compactRows;
 }
 
@@ -671,6 +674,7 @@ function disposeCompactRows(node) {
     row.root?.remove?.();
   }
   node.__AUN_compactRows = null;
+  allCompactRowNodes.delete(node);
 }
 
 function syncCompactRow(node, row) {
@@ -701,7 +705,7 @@ function graphToScreen(canvasRect, graphX, graphY, scale, offsetX, offsetY) {
  * Returns true if the node is occluded and overlay rows should be hidden.
  */
 function isNodeOccluded(node, canvasRect, scale, offsetX, offsetY) {
-  const nodes = app?.graph?._nodes;
+  const nodes = app.canvas?.graph?._nodes;
   if (!nodes) return false;
 
   // Compute this node's screen-space bounding box
@@ -804,6 +808,10 @@ function positionCompactRows(node, ctx) {
 function positionCompactRowsFromCanvas(node) {
   if (!isTargetNode(node)) return;
   const rows = ensureCompactRows(node);
+  if (node.graph && node.graph !== app.canvas?.graph) {
+    for (const row of rows) row.root.style.display = "none";
+    return;
+  }
   const compact = isCompact(node);
   const collapsed = isNodeCollapsed(node);
   if (!compact || collapsed) {
@@ -837,8 +845,8 @@ function positionCompactRowsFromCanvas(node) {
 
 let compactRowsRAF = null;
 function hasCompactLoraNodes() {
-  if (!app?.graph) return false;
-  const nodes = app.graph._nodes || app.graph.nodes || [];
+  if (!app?.canvas?.graph) return false;
+  const nodes = app.canvas.graph._nodes || app.canvas.graph.nodes || [];
   return nodes.some((n) => isTargetNode(n) && isCompact(n));
 }
 
@@ -846,14 +854,19 @@ function startCompactRowsRAF() {
   if (compactRowsRAF) return;
   function rafLoop() {
     compactRowsRAF = requestAnimationFrame(rafLoop);
-    if (!app?.graph) return;
-    const nodes = app.graph._nodes || app.graph.nodes || [];
+    if (!app?.canvas?.graph) return;
+    const nodes = app.canvas.graph._nodes || app.canvas.graph.nodes || [];
     for (const n of nodes) {
       if (isTargetNode(n) && isCompact(n)) {
         positionCompactRowsFromCanvas(n);
       }
     }
-    if (!hasCompactLoraNodes()) {
+    for (const n of allCompactRowNodes) {
+      if (n.graph !== app.canvas?.graph && n.__AUN_compactRows) {
+        for (const row of n.__AUN_compactRows) row.root.style.display = "none";
+      }
+    }
+    if (!hasCompactLoraNodes() && allCompactRowNodes.size === 0) {
       cancelAnimationFrame(compactRowsRAF);
       compactRowsRAF = null;
     }

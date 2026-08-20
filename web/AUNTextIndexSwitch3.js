@@ -125,7 +125,7 @@ function applyCompactSlotLabels(node) {
 function applyCollapseSlotLabels(node) {
   if (!node || node.comfyClass !== "AUNInputsBasicSwitch") return;
   const collapsed = isCollapseConnections(node);
-  const slots = [...(node.inputs || []), ...(node.outputs || [])];
+  const slots = node.outputs || [];
   for (const slot of slots) {
     if (!slot) continue;
     if (SWITCH_OUTPUT_NAMES.has(slot.name)) continue;
@@ -136,7 +136,7 @@ function applyCollapseSlotLabels(node) {
       slot.label = " ";
     } else {
       if ("__aun_collapse_origLabel" in slot) {
-        delete slot.label;
+        slot.label = slot.__aun_collapse_origLabel;
         delete slot.__aun_collapse_origLabel;
       }
       if (slot.label === " ") {
@@ -253,7 +253,7 @@ let tooltipTimer = null;
 const __AUN_textPurposeCache = {};
 
 // Compact label overlay management
-const compactOverlays = new WeakMap();
+const compactOverlays = new Map();
 
 // Track links that should be hidden (links going to hidden inputs on compact nodes)
 const hiddenLinks = new Set();
@@ -383,8 +383,8 @@ let pendingOverlayUpdate = null;
 let compactOverlayRAF = null;
 
 function hasCompactNodes() {
-  if (!app?.graph) return false;
-  const nodes = app.graph._nodes || app.graph.nodes || [];
+  if (!app?.canvas?.graph) return false;
+  const nodes = app.canvas.graph._nodes || app.canvas.graph.nodes || [];
   return nodes.some((node) => isTargetNode(node) && isCompact(node));
 }
 
@@ -392,7 +392,7 @@ function startOverlayRAF() {
   if (compactOverlayRAF) return;
   function rafLoop() {
     compactOverlayRAF = requestAnimationFrame(rafLoop);
-    if (!app?.graph) return;
+    if (!app?.canvas?.graph) return;
     updateHiddenLinks();
     updateAllCompactOverlayPositions();
     if (!hasCompactNodes() && !hasDividerNodes()) {
@@ -430,9 +430,9 @@ function scheduleOverlayUpdate() {
 
 // Update all compact overlay positions (called during canvas transformations)
 function updateAllCompactOverlayPositions() {
-  if (!app?.graph) return;
+  if (!app?.canvas?.graph) return;
 
-  const nodes = app.graph._nodes || app.graph.nodes || [];
+  const nodes = app.canvas.graph._nodes || app.canvas.graph.nodes || [];
   for (const node of nodes) {
     if (isTargetNode(node) && isCompact(node)) {
       updateCompactOverlayPosition(node);
@@ -558,6 +558,12 @@ function updateCompactOverlayPosition(node) {
     return;
   }
 
+  if (node.graph && node.graph !== app.canvas?.graph) {
+    const ov = compactOverlays.get(node);
+    if (ov) ov.overlay.style.display = "none";
+    return;
+  }
+
   const ov = compactOverlays.get(node);
   if (!ov || ov.overlay.style.display === "none") {
     return;
@@ -644,8 +650,8 @@ function isNodeCovered(node) {
   // Check if any node with higher z-order overlaps any part of this node's bounding box.
   // Returns true if the node is occluded and overlay should be hidden.
   // Matches the approach in AUN_random_lora_multi.js isNodeOccluded.
-  if (!app?.graph) return false;
-  const nodes = app.graph._nodes || app.graph.nodes || [];
+  if (!app?.canvas?.graph) return false;
+  const nodes = app.canvas.graph._nodes || app.canvas.graph.nodes || [];
   const nodeZ = node.index ?? -2;
 
   // Full node bounds in graph coordinates
@@ -679,6 +685,12 @@ function isNodeCovered(node) {
 
 function updateCompactOverlay(node, overrideIndex, force = false) {
   if (!node || !isCompact(node)) {
+    const ov = compactOverlays.get(node);
+    if (ov) ov.overlay.style.display = "none";
+    return;
+  }
+
+  if (node.graph && node.graph !== app.canvas?.graph) {
     const ov = compactOverlays.get(node);
     if (ov) ov.overlay.style.display = "none";
     return;
@@ -812,11 +824,30 @@ if (!window.__AUN_compactOverlayUpdateLoop) {
     if (!app?.graph) return;
     updateHiddenLinks();
 
-    const nodes = app.graph._nodes || app.graph.nodes || [];
+    const currentGraph = app.canvas?.graph;
+    const nodes = currentGraph?._nodes || currentGraph?.nodes || [];
+    const activeIds = new Set();
     for (const node of nodes) {
       if (isTargetNode(node)) {
+        activeIds.add(node.id);
         const effectiveIdx = getEffectiveIndex(node);
         updateCompactOverlay(node, effectiveIdx);
+      }
+      if (node.comfyClass === "AUNInputsBasicSwitch") {
+        activeIds.add(node.id);
+        updateDividerOverlayPosition(node);
+      }
+    }
+
+    for (const [node, ov] of compactOverlays) {
+      if (!activeIds.has(node.id)) {
+        ov.overlay.style.display = "none";
+        node.__AUN_lastOverlayCovered = true;
+      }
+    }
+    for (const [node, ov] of dividerOverlays) {
+      if (!activeIds.has(node.id)) {
+        ov.overlay.style.display = "none";
       }
     }
 
@@ -2773,11 +2804,11 @@ const TEXT_SELECTION_DIVIDER_NOTE = "Text Selection";
 // node widgets render as opaque DOM on top of the canvas; a canvas line at
 // this height would be hidden behind them. The overlay is anchored to the
 // output rail so it never moves when the mode widget jumps in compact mode.
-const dividerOverlays = new WeakMap();
+const dividerOverlays = new Map();
 
 function hasDividerNodes() {
-  if (!app?.graph) return false;
-  const nodes = app.graph._nodes || app.graph.nodes || [];
+  if (!app?.canvas?.graph) return false;
+  const nodes = app.canvas.graph._nodes || app.canvas.graph.nodes || [];
   return nodes.some(
     (node) =>
       node.comfyClass === "AUNInputsBasicSwitch" && !node.flags?.collapsed,
@@ -2873,6 +2904,12 @@ function updateDividerOverlayPosition(node) {
     node.comfyClass !== "AUNInputsBasicSwitch" ||
     node.flags?.collapsed
   ) {
+    const ov = dividerOverlays.get(node);
+    if (ov) ov.overlay.style.display = "none";
+    return;
+  }
+
+  if (node.graph && node.graph !== app.canvas?.graph) {
     const ov = dividerOverlays.get(node);
     if (ov) ov.overlay.style.display = "none";
     return;
@@ -3125,12 +3162,15 @@ try {
               const slotH = LiteGraph.NODE_SLOT_HEIGHT;
               const savedWsy = this.widgets_start_y;
               if (typeof savedWsy === "number") {
-                this.widgets_start_y =
-                  savedWsy + metrics.rowExcess * slotH;
-                const s2 = origComputeSize.call(this, out);
-                this.widgets_start_y = savedWsy;
-                s2[1] -= metrics.rowExcess * slotH;
-                return s2;
+                try {
+                  this.widgets_start_y =
+                    savedWsy + metrics.rowExcess * slotH;
+                  const s2 = origComputeSize.call(this, out);
+                  s2[1] -= metrics.rowExcess * slotH;
+                  return s2;
+                } finally {
+                  this.widgets_start_y = savedWsy;
+                }
               }
             }
           }
@@ -3203,7 +3243,7 @@ if (typeof app?.extensionLib?.registerCallback === "function") {
       const pginfo = app.globalData.aun_pginfo;
       for (const nodeId in pginfo) {
         if (NODE_TYPES.includes(pginfo[nodeId]?.node)) {
-          const node = app.graph?.getNodeById?.(parseInt(nodeId));
+          const node = app.canvas?.graph?.getNodeById?.(parseInt(nodeId));
           if (node) {
             const slotCountWidget = getWidget(node, "slot_count");
             const indexWidget = getWidget(node, "index");

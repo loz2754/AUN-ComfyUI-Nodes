@@ -119,7 +119,7 @@ function normalizeNodeId(raw) {
 }
 
 function findGraphNodeByEventId(rawNodeId) {
-  const graph = app?.graph;
+  const graph = app?.canvas?.graph;
   if (!graph) return null;
 
   const normalized = normalizeNodeId(rawNodeId);
@@ -141,7 +141,7 @@ function findGraphNodeByEventId(rawNodeId) {
 
 function forceRedraw(node) {
   node?.setDirtyCanvas?.(true, true);
-  app?.graph?.setDirtyCanvas?.(true, true);
+  app?.canvas?.graph?.setDirtyCanvas?.(true, true);
   app?.canvas?.setDirty?.(true, true);
 }
 
@@ -394,6 +394,8 @@ function ensureInfoButtonStyles() {
   window.__AUNRandomLoraInfoButtonStyle = style;
 }
 
+const allInfoButtons = new Set();
+
 function ensureInfoButton(node) {
   ensureInfoButtonStyles();
   if (node.__AUN_randomLoraInfoButton) return node.__AUN_randomLoraInfoButton;
@@ -421,6 +423,8 @@ function ensureInfoButton(node) {
 
   document.body.appendChild(button);
   node.__AUN_randomLoraInfoButton = button;
+  allInfoButtons.add(node);
+  startInfoButtonRAF();
   return button;
 }
 
@@ -429,7 +433,7 @@ function ensureInfoButton(node) {
  * Returns true if the node is occluded and overlay should be hidden.
  */
 function isNodeOccluded(node, canvasRect, scale, ctxTransform) {
-  const nodes = app?.graph?._nodes;
+  const nodes = app.canvas?.graph?._nodes;
   if (!nodes) return false;
 
   // Build a DOMMatrix from the canvas transform to convert local coords to screen space
@@ -470,6 +474,10 @@ function isNodeOccluded(node, canvasRect, scale, ctxTransform) {
 
 function positionInfoButton(node, ctx) {
   const button = ensureInfoButton(node);
+  if (node.graph && node.graph !== app.canvas?.graph) {
+    button.style.display = "none";
+    return;
+  }
   const compact = isCompact(node);
   const collapsed = isNodeCollapsed(node);
   const selectedLora = resolveSelectedLoraValue(node);
@@ -518,6 +526,26 @@ function positionInfoButton(node, ctx) {
     width: `${Math.max(INFO_BUTTON_SIZE, bottomRight.x - topLeft.x)}px`,
     height: `${Math.max(INFO_BUTTON_SIZE, bottomRight.y - topLeft.y)}px`,
   });
+}
+
+let infoButtonRAF = null;
+function startInfoButtonRAF() {
+  if (infoButtonRAF) return;
+  function rafLoop() {
+    infoButtonRAF = requestAnimationFrame(rafLoop);
+    if (!app?.canvas?.graph) return;
+    for (const n of allInfoButtons) {
+      const btn = n.__AUN_randomLoraInfoButton;
+      if (btn && n.graph !== app.canvas?.graph) {
+        btn.style.display = "none";
+      }
+    }
+    if (allInfoButtons.size === 0) {
+      cancelAnimationFrame(infoButtonRAF);
+      infoButtonRAF = null;
+    }
+  }
+  rafLoop();
 }
 
 // Make a widget return height 0 when hidden.
@@ -633,6 +661,7 @@ function startSelectLiveMonitor(node) {
     }
     node.__AUN_randomLoraInfoButton?.remove?.();
     node.__AUN_randomLoraInfoButton = null;
+    allInfoButtons.delete(node);
     return originalOnRemoved?.apply(this, arguments);
   };
 }
@@ -1011,7 +1040,7 @@ app.registerExtension({
 
   async setup() {
     api.addEventListener("AUN_random_lora_selected", ({ detail }) => {
-      if (!detail || !app?.graph) return;
+      if (!detail || !app?.canvas?.graph) return;
 
       const node = findGraphNodeByEventId(detail.node_id);
       if (!isTargetNode(node)) return;

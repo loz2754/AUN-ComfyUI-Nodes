@@ -53,7 +53,7 @@ function setupNode(node) {
       if (this.widgets?.length && slot.widget) continue;
       if (!c) {
         if ('__aun_collapse_origLabel' in slot) {
-          delete slot.label;
+          slot.label = slot.__aun_collapse_origLabel;
           delete slot.__aun_collapse_origLabel;
         }
         if (slot.label === " ") {
@@ -92,7 +92,7 @@ function setupNode(node) {
       for (const slot of slots) {
         if (this.widgets?.length && slot.widget) continue;
         if ('__aun_collapse_origLabel' in slot) {
-          delete slot.label;
+          slot.label = slot.__aun_collapse_origLabel;
           delete slot.__aun_collapse_origLabel;
         }
         if (slot.label === " ") {
@@ -117,7 +117,7 @@ function setupNode(node) {
           for (const slot of slots) {
             if (this.widgets?.length && slot.widget) continue;
             if ('__aun_collapse_origLabel' in slot) {
-              delete slot.label;
+              slot.label = slot.__aun_collapse_origLabel;
               delete slot.__aun_collapse_origLabel;
             }
             if (slot.label === " ") {
@@ -144,7 +144,7 @@ function setupNode(node) {
       for (const slot of [...(node.inputs || []), ...(node.outputs || [])]) {
         if (node.widgets?.length && slot.widget) continue;
         if ('__aun_collapse_origLabel' in slot) {
-          delete slot.label;
+          slot.label = slot.__aun_collapse_origLabel;
           delete slot.__aun_collapse_origLabel;
         }
         if (slot.label === " ") {

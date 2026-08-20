@@ -34,8 +34,12 @@ function isWidgetLinked(node, slot) {
   return !!(node.widgets?.length && slot.widget);
 }
 
+function isSubgraphNode(node) {
+  return !!(node.getInnerGraph?.() || node.subgraph || node.inner_graph);
+}
+
 function shouldSkip(node) {
-  return SKIP_CLASSES.has(node.comfyClass) || userSkipClasses.has(node.comfyClass);
+  return isSubgraphNode(node) || SKIP_CLASSES.has(node.comfyClass) || userSkipClasses.has(node.comfyClass);
 }
 
 export function isConnectionCollapsed(node) {
@@ -88,11 +92,11 @@ function applyCollapseState(node) {
       if (isWidgetLinked(this, slot)) continue;
       if (!c) {
         if ('__aun_gc_origLabel' in slot) {
-          delete slot.label;
+          slot.label = slot.__aun_gc_origLabel;
           delete slot.__aun_gc_origLabel;
         }
         if ('__aun_collapse_origLabel' in slot) {
-          delete slot.label;
+          slot.label = slot.__aun_collapse_origLabel;
           delete slot.__aun_collapse_origLabel;
         }
         if (slot.label === " ") {
@@ -127,11 +131,11 @@ function applyNodeCollapse(node, goingToCollapse) {
     for (const slot of [...(node.inputs || []), ...(node.outputs || [])]) {
       if (isWidgetLinked(node, slot)) continue;
       if ('__aun_gc_origLabel' in slot) {
-        delete slot.label;
+        slot.label = slot.__aun_gc_origLabel;
         delete slot.__aun_gc_origLabel;
       }
       if ('__aun_collapse_origLabel' in slot) {
-        delete slot.label;
+        slot.label = slot.__aun_collapse_origLabel;
         delete slot.__aun_collapse_origLabel;
       }
       if (slot.label === " ") {
@@ -259,11 +263,11 @@ function cleanupAllNodes(graph) {
     for (const slot of [...(node.inputs || []), ...(node.outputs || [])]) {
       if (isWidgetLinked(node, slot)) continue;
       if ('__aun_gc_origLabel' in slot) {
-        delete slot.label;
+        slot.label = slot.__aun_gc_origLabel;
         delete slot.__aun_gc_origLabel;
       }
       if ('__aun_collapse_origLabel' in slot) {
-        delete slot.label;
+        slot.label = slot.__aun_collapse_origLabel;
         delete slot.__aun_collapse_origLabel;
       }
       if (slot.label === " ") {

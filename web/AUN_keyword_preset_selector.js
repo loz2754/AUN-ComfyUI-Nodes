@@ -154,9 +154,9 @@ const skipWidgetNames = new Set(["index", "mode", "seed", "strength", "apply_lor
 function traceLinkValue(startLink, visited, depth) {
   depth = depth || 0;
   if (!startLink || depth > 8) return undefined;
-  const link = app.graph.links?.get?.(startLink);
+  const link = app.canvas?.graph.links?.get?.(startLink);
   if (!link?.origin_id) return undefined;
-  const n = app.graph.getNodeById?.(link.origin_id);
+  const n = app.canvas?.graph.getNodeById?.(link.origin_id);
   if (!n) return undefined;
   if (visited.has(n.id)) return undefined;
   visited.add(n.id);
@@ -265,7 +265,7 @@ function graphToScreen(canvasRect, graphX, graphY, scale, offsetX, offsetY) {
 }
 
 function isNodeOccluded(node, canvasRect, scale, offsetX, offsetY) {
-  const nodes = app?.graph?._nodes;
+  const nodes = app.canvas?.graph?._nodes;
   if (!nodes) return false;
 
   const selfScreen = graphToScreen(canvasRect, node.pos[0], node.pos[1], scale, offsetX, offsetY);
