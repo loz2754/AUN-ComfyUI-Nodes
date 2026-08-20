@@ -5,6 +5,16 @@
 
 ### Added
 
+### Changed
+
+### Fixed
+
+### Notes
+
+## [2.21.0] - 2026-08-20
+
+### Added
+
 - AUNKeywordPresetSelector: keyword-matched preset selector with compact mode, footer overlay, and right-click menu controls.
 - AUNKeywordFaceIDSettings: keyword-matched FaceID/IPAdapter settings selector with compact mode, preset_number output, and match_keywords toggle.
 - Collapse connections: subgraph nodes are now skipped by All Graph and double-click collapse to prevent interference with ComfyUI's subgraph expand/collapse.
@@ -23,7 +33,6 @@
 - Compact overlay data structures changed from WeakMap to Map for reliable iteration.
 
 ### Notes
-
 ## [2.20.0] - 2026-08-17
 
 ## [2.20.0] - 2026-08-17
