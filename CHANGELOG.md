@@ -5,11 +5,26 @@
 
 ### Added
 
+- AUNKeywordPresetSelector: keyword-matched preset selector with compact mode, footer overlay, and right-click menu controls.
+- AUNKeywordFaceIDSettings: keyword-matched FaceID/IPAdapter settings selector with compact mode, preset_number output, and match_keywords toggle.
+- Collapse connections: subgraph nodes are now skipped by All Graph and double-click collapse to prevent interference with ComfyUI's subgraph expand/collapse.
+
 ### Changed
+
+- AUNKeywordFaceIDSettings: removed separate default settings block; manual_preset (1-6) always selects the active bundle. Replaced manual_priority with match_keywords (Yes/No) toggle. Added preset_number output.
+- Overlay positioning now uses app.canvas?.graph instead of app.graph so overlays correctly hide when entering subgraphs.
+- Collapse slot label restore: replaced delete slot.label with proper restore from backup across AUNTextIndexSwitch3, AUN_global_collapse_connections, and AUN_inputs_basic_collapse_connections.
 
 ### Fixed
 
+- AUNInputsBasicSwitch widget names (mode, sampler, index, range) no longer blanked by collapse_connections — applyCollapseSlotLabels now only affects output slot labels.
+- computeSize override in AUNTextIndexSwitch3 uses try/finally to prevent widgets_start_y corruption on exception.
+- Compact/divider overlays hide instead of being destroyed for nodes outside the current graph.
+- Compact overlay data structures changed from WeakMap to Map for reliable iteration.
+
 ### Notes
+
+## [2.20.0] - 2026-08-17
 
 ## [2.20.0] - 2026-08-17
 
