@@ -11,6 +11,22 @@
 
 ### Notes
 
+## [2.22.0] - 2026-08-21
+
+### Added
+
+- AUN Bookmark Jump: draggable canvas buttons that simulate keypresses to jump to AUN Bookmark nodes. Buttons track canvas position (world coordinates), auto-populate labels from bookmark node titles, support rename/change key/remove via right-click context menu. "+" button in menu bar with ComfyUI Settings toggle to hide it.
+
+### Changed
+
+- AUNUniversalInstant: added `__aun_remoteCollapse` method for remote control from AUNCollapseConnectionsController. Collapse toggle now properly restores slot labels when disabling collapse.
+
+### Fixed
+
+### Notes
+
+- Removed AUNBookmarkButton node (replaced by frontend-only Bookmark Jump extension).
+
 ## [2.21.0] - 2026-08-20
 
 ### Added

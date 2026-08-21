@@ -2184,6 +2184,29 @@ const decorateNode = (node, nodeData) => {
     this.__AUN_toggleCompactMode?.();
   };
 
+  // Remote control from AUNCollapseConnectionsController
+  node.__aun_remoteCollapse = (next) => {
+    const target = !!next;
+    const PK = "collapse_connections";
+    if (!!node.properties?.[PK] === target) return;
+    node.properties = node.properties || {};
+    node.properties[PK] = target;
+    if (!target) {
+      for (const slot of [...(node.inputs || []), ...(node.outputs || [])]) {
+        if (node.widgets?.length && slot.widget) continue;
+        if ("___ccOrigLabel" in slot) {
+          slot.label = slot.___ccOrigLabel;
+          delete slot.___ccOrigLabel;
+        }
+        if (slot.label === " ") {
+          delete slot.label;
+        }
+      }
+    }
+    node.setSize([node.size[0], node.computeSize()[1]]);
+    node.graph?.setDirtyCanvas(true, true);
+  };
+
   const trackedWidgets = [
     "control_mode",
     "Index",
@@ -2275,6 +2298,19 @@ const extendNodePrototype = (nodeType, nodeData) => {
       callback: () => {
         this.properties = this.properties || {};
         this.properties.collapse_connections = !ccOn;
+        if (!this.properties.collapse_connections) {
+          for (const slot of [...(this.inputs || []), ...(this.outputs || [])]) {
+            if (this.widgets?.length && slot.widget) continue;
+            if ("___ccOrigLabel" in slot) {
+              slot.label = slot.___ccOrigLabel;
+              delete slot.___ccOrigLabel;
+            }
+            if (slot.label === " ") {
+              delete slot.label;
+            }
+          }
+        }
+        this.setSize([this.size[0], this.computeSize()[1]]);
         this.graph?.setDirtyCanvas(true, true);
       },
     });
@@ -2283,6 +2319,7 @@ const extendNodePrototype = (nodeType, nodeData) => {
   // --- Collapse Connections (independent of compact mode) ---
   const COLLAPSE_KEY = "collapse_connections";
   const isCCollapsed = (node) => node.properties?.[COLLAPSE_KEY] === true;
+  const isWidgetLinked = (node, slot) => !!(node.widgets?.length && slot.widget);
 
   const ccOrigGetOutputPos = nodeType.prototype.getOutputPos;
   nodeType.prototype.getOutputPos = function getOutputPos(index) {
@@ -2296,16 +2333,32 @@ const extendNodePrototype = (nodeType, nodeData) => {
     return ccOrigGetInputPos.call(this, index);
   };
 
+  const ccOrigComputeSize = (
+    nodeType.prototype.computeSize || (() => nodeType.prototype.size)
+  ).bind(nodeType.prototype);
+  nodeType.prototype.computeSize = function computeSize(out) {
+    const s = ccOrigComputeSize.call(this, out);
+    if (isCCollapsed(this)) {
+      const ni =
+        this.inputs?.filter((i) => !isWidgetLinked(this, i)).length || 0;
+      const no = this.outputs?.length || 0;
+      const rows = Math.max(ni, no);
+      s[1] -= Math.max(0, rows - 1) * LiteGraph.NODE_SLOT_HEIGHT;
+    }
+    return s;
+  };
+
   const ccOrigDrawFg = nodeType.prototype.onDrawForeground;
   nodeType.prototype.onDrawForeground = function onDrawForeground(ctx) {
     ccOrigDrawFg?.apply(this, arguments);
     const c = isCCollapsed(this);
     for (const slot of [...(this.inputs || []), ...(this.outputs || [])]) {
+      if (isWidgetLinked(this, slot)) continue;
       if (c) {
         if (!("___ccOrigLabel" in slot)) slot.___ccOrigLabel = slot.label;
         slot.label = " ";
       } else if ("___ccOrigLabel" in slot) {
-        delete slot.label;
+        slot.label = slot.___ccOrigLabel;
         delete slot.___ccOrigLabel;
       }
     }
@@ -2316,6 +2369,7 @@ const extendNodePrototype = (nodeType, nodeData) => {
     ccOrigConfigure?.apply(this, args);
     if (isCCollapsed(this)) {
       for (const slot of [...(this.inputs || []), ...(this.outputs || [])]) {
+        if (isWidgetLinked(this, slot)) continue;
         if (!("___ccOrigLabel" in slot)) slot.___ccOrigLabel = slot.label;
         slot.label = " ";
       }
