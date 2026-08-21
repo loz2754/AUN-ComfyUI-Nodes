@@ -45,8 +45,10 @@ class AUNManualAutoImageSwitch:
                     "forceInput": False,
                     "tooltip": "A manually specified name to use instead of the automatic filename."
                 }),
-                "name_mode": (["Auto", "Manual"], {
-                    "default": "Auto",
+                "name_mode": ("BOOLEAN", {
+                    "default": True,
+                    "label_on": "Auto",
+                    "label_off": "Manual",
                     "tooltip": "Auto passes through the image and Filename. Manual returns a blank image and uses ManualName."
                 }),
                 "show_overlay": ("BOOLEAN", {
@@ -157,8 +159,7 @@ class AUNManualAutoImageSwitch:
         return float("nan")
 
     def output(self, image, Filename, width, height, ManualName, name_mode, show_overlay=True, overlay_text="No image loaded", background_color="181818", text_color="E6E6E6", box_color="000000"):
-        resolved_mode = self._to_bool(name_mode)
-        selected_filename = ManualName if resolved_mode else Filename
+        selected_filename = Filename if name_mode else ManualName
         output_image = self._blank_image(
             width,
             height,
@@ -168,8 +169,8 @@ class AUNManualAutoImageSwitch:
             text_color=text_color,
             box_color=box_color,
             like_image=image,
-        ) if resolved_mode else image
-        return selected_filename, ManualName, resolved_mode, output_image
+        ) if not name_mode else image
+        return selected_filename, ManualName, name_mode, output_image
 
 
 NODE_CLASS_MAPPINGS = {

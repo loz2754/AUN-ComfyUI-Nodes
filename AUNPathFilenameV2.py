@@ -31,7 +31,7 @@ class AUNPathFilenameV2:
             "Subfolder_A": ("STRING", {"multiline": False, "default": "", "tooltip": "First level of custom subfolders. Add more levels by adding a / between them."}),
             "Subfolder_B": ("STRING", {"multiline": False, "default": "", "tooltip": "Second level of custom subfolders."}),
             "manual_name": ("STRING", {"multiline": False, "default": "Name", "tooltip": "Manual base name used when Name Mode is Manual."}),
-            "name_mode": ("BOOLEAN", {"default": False, "label_on": "Manual", "label_off": "Auto", "tooltip": "Manual uses manual_name. Auto uses auto_name."}),
+            "name_mode": ("BOOLEAN", {"default": True, "label_on": "Auto", "label_off": "Manual", "tooltip": "Manual uses manual_name. Auto uses auto_name."}),
             "Date": ("BOOLEAN", {"default": True, "label_on": "On", "label_off": "Off", "tooltip": "Include the date placeholder (%date%) in the filename."}),
             "prefix_1": ("STRING", {"multiline": False, "default": "", "tooltip": "First custom prefix for the filename."}),
             "prefix_2": ("STRING", {"multiline": False, "default": "", "tooltip": "Second custom prefix for the filename."}),
@@ -85,13 +85,13 @@ class AUNPathFilenameV2:
 
     def generate_path_v2(self, **kwargs):
         date_subfolder = kwargs.get("Date_Subfolder", True)
-        name_mode = kwargs.get("name_mode", False)
+        name_mode = kwargs.get("name_mode", True)
         manual_name = kwargs.get("manual_name", "Name")
         auto_name = kwargs.get("auto_name", "Name")
         max_num_words = kwargs.get("max_num_words", 1)
         delimiter = kwargs.get("delimiter", " ")
 
-        base_name = manual_name if name_mode else crop_name(auto_name, max_num_words)
+        base_name = manual_name if not name_mode else crop_name(auto_name, max_num_words)
         name_parts = [base_name, kwargs.get("prefix_1", ""), kwargs.get("prefix_2", "")]
 
         if kwargs.get("Date", True):
