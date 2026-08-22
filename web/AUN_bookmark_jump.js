@@ -205,6 +205,10 @@ function getCanvasScale() {
   return app.canvas?.ds?.scale || 1;
 }
 
+function getActiveGraphId() {
+  return app.graph?.id ?? app.canvas?.graph?.id ?? null;
+}
+
 function promptForKey(currentKey) {
   return new Promise((resolve) => {
     const overlay = document.createElement("div");
@@ -382,6 +386,11 @@ document.addEventListener("keydown", (e) => {
 });
 
 function positionButton(el, data) {
+  const activeGraphId = getActiveGraphId();
+  if (activeGraphId && data.graphId && data.graphId !== activeGraphId) {
+    el.style.display = "none";
+    return;
+  }
   const scale = getCanvasScale();
   const screen = worldToScreen(data.x, data.y);
   const pad = 4 * scale;
@@ -400,6 +409,13 @@ function startRafLoop() {
     for (const [id, state] of buttonEls) {
       const data = buttonsData.find((b) => b.id === id);
       if (!data || !state.el) continue;
+      if (data.graphId == null) {
+        const activeGraphId = getActiveGraphId();
+        if (activeGraphId) {
+          data.graphId = activeGraphId;
+          saveButtons();
+        }
+      }
       if (!state.dragging) positionButton(state.el, data);
     }
     requestAnimationFrame(tick);
@@ -493,7 +509,7 @@ async function addButton() {
   const key = await promptForKey("");
   if (!key) return;
   const pos = getDefaultWorldPos();
-  const data = { id: genId(), key, x: pos.x, y: pos.y };
+  const data = { id: genId(), key, x: pos.x, y: pos.y, graphId: getActiveGraphId() };
   buttonsData.push(data);
   saveButtons();
   createJumpButtonEl(data);
