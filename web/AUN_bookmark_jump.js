@@ -143,13 +143,18 @@ function simulateKeypress(key) {
   }));
 }
 
-function findBookmarkTitleByKey(key) {
-  if (!app.graph || !app.graph._nodes) return null;
-  const node = app.graph._nodes.find((n) => {
+function findBookmarkNodeByKey(key) {
+  const graph = app.canvas?.graph ?? app.graph;
+  if (!graph || !graph._nodes) return null;
+  return graph._nodes.find((n) => {
     if (n.comfyClass !== "AUNBookmark") return false;
     const w = n.widgets.find((w) => w.name === "shortcut_key");
     return (w?.value || "").toLowerCase().trim() === key.toLowerCase().trim();
-  });
+  }) || null;
+}
+
+function findBookmarkTitleByKey(key) {
+  const node = findBookmarkNodeByKey(key);
   if (!node) return null;
   const title = node.title || "";
   return title === "\ud83d\udd16" ? null : title;
@@ -203,10 +208,6 @@ function screenToWorld(sx, sy) {
 
 function getCanvasScale() {
   return app.canvas?.ds?.scale || 1;
-}
-
-function getActiveGraphId() {
-  return app.graph?.id ?? app.canvas?.graph?.id ?? null;
 }
 
 function promptForKey(currentKey) {
@@ -386,11 +387,6 @@ document.addEventListener("keydown", (e) => {
 });
 
 function positionButton(el, data) {
-  const activeGraphId = getActiveGraphId();
-  if (activeGraphId && data.graphId && data.graphId !== activeGraphId) {
-    el.style.display = "none";
-    return;
-  }
   const scale = getCanvasScale();
   const screen = worldToScreen(data.x, data.y);
   const pad = 4 * scale;
@@ -409,14 +405,13 @@ function startRafLoop() {
     for (const [id, state] of buttonEls) {
       const data = buttonsData.find((b) => b.id === id);
       if (!data || !state.el) continue;
-      if (data.graphId == null) {
-        const activeGraphId = getActiveGraphId();
-        if (activeGraphId) {
-          data.graphId = activeGraphId;
-          saveButtons();
-        }
+      if (state.dragging) continue;
+      if (findBookmarkNodeByKey(data.key)) {
+        updateButtonLabel(state.el, data);
+        positionButton(state.el, data);
+      } else {
+        state.el.style.display = "none";
       }
-      if (!state.dragging) positionButton(state.el, data);
     }
     requestAnimationFrame(tick);
   }
@@ -509,7 +504,7 @@ async function addButton() {
   const key = await promptForKey("");
   if (!key) return;
   const pos = getDefaultWorldPos();
-  const data = { id: genId(), key, x: pos.x, y: pos.y, graphId: getActiveGraphId() };
+  const data = { id: genId(), key, x: pos.x, y: pos.y };
   buttonsData.push(data);
   saveButtons();
   createJumpButtonEl(data);
