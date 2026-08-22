@@ -22,6 +22,7 @@ const SKIP_CLASSES = new Set([
   "AUNMultiMuteIndex", "AUNMultiBypassIndex",
   "AUNTextIndexSwitch4", "AUNTextIndexSwitch3", "AUNTextIndexSwitch", "AUNRandomTextIndexSwitch", "AUNRandomTextIndexSwitchV2", "AUNTextIndexSwitch5", "AUNTextIndexSwitch5Diffusers",
   "AUNInputsBasicSwitch",
+  "TextSwitch2InputWithTextOutput",
   "AUNCollapseConnectionsController",
   "AUNKeywordFaceIDSettings",
   "AUNKeywordPresetSelector",
