@@ -6,6 +6,7 @@ from .AUNAddToPrompt import AUNAddToPrompt
 from .AUNAddToPromptMulti import AUNAddToPromptMulti
 from .AUNAny import AUNAny
 from .AUNAnyIndexSwitch import AUNAnyIndexSwitch
+from .AUNAutoPopulatePresets import AUNAutoPopulatePresets
 from .AUNBookmark import AUNBookmark
 from .AUNBoolean import AUNBoolean
 from .AUNCFG import AUNCFG
@@ -110,6 +111,7 @@ NODE_CLASS_MAPPINGS = {
     "AUNAddToPromptMulti": AUNAddToPromptMulti,
     "AUNAny": AUNAny,
     "AUNAnyIndexSwitch": AUNAnyIndexSwitch,
+    "AUNAutoPopulatePresets": AUNAutoPopulatePresets,
     "AUNBookmark": AUNBookmark,
     "AUNBoolean": AUNBoolean,
     "AUNCFG": AUNCFG,
@@ -211,6 +213,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "AUNAddToPromptMulti": "Add-To-Prompt (Multi)",
     "AUNAny": "Any",
     "AUNAnyIndexSwitch": "AUN Any Index Switch",
+    "AUNAutoPopulatePresets": "Auto-Populate Presets",
     "AUNBookmark": "AUN Bookmark",
     "AUNBoolean": "Random Boolean",
     "AUNCFG": "CFG Selector",

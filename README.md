@@ -357,6 +357,7 @@ Deprecation note: the full input-style nodes (`AUNInputs`, `AUNInputsDiffusers`,
 - AUN Any Index Switch (`AUNAnyIndexSwitch`) switch between up to 20 inputs of any type based on an index number. Only the selected input is evaluated and output. Also outputs the label of the selected input, taken from the connected node's title or the connected output slot's label.
 - CFG Selector (`AUNCFG`) a CFG scale selector with finer control.
 - Extract Model Name (`AUNExtractModelName`) extract a model name from a specific node (by numeric ID) for use in filenames.
+- Auto-Populate Presets (`AUNAutoPopulatePresets`) scan a target node and extract all its widget definitions (combo options, INT, FLOAT, BOOLEAN, STRING). The frontend creates a row-based keyword selector whose per-row widgets match the target's widget types. Wire the outputs into the target node's inputs to drive it from keyword presets.
 - Extract Widget Value (`AUNExtractWidgetValue`) extract a widget/input value from a specific node by numeric ID and widget name.
 - Get Active Node Title (`AUNGetActiveNodeTitle`) scans a user-defined list of node titles and outputs the title of the first node in that list which is currently active (not bypassed) in the workflow.
 - Get Connected Node Titles (`AUNGetConnectedNodeTitles`) gets the titles of up to 10 connected nodes.
