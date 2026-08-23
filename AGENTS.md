@@ -39,6 +39,15 @@ ComfyUI custom node pack (Python + JS). Nodes are discovered at ComfyUI startup;
 - Overlay display pattern: fixed-position DOM elements positioned via RAF loop against canvas coordinates.
 - Height persistence: save height in `onConfigure` → `_aunSavedHeight`, restore in `nodeCreated` via `requestAnimationFrame`.
 
+**JS utilities (import from `web/index.js`):**
+- `utils.js` — `isCompact()`, `setCompact()`, `forceRedraw()`
+- `widgets.js` — `getWidget()`, `ensureHiddenAware()`, `applyWidgetHiddenState()`
+- `graph-traversal.js` — `getAllGraphs()`, `findNodeById()`
+- `event-bus.js` — `EventBus` (subscribe/unsubscribe events)
+- `tooltip.js` — `showTooltip()`, `formatLoraTooltip()`
+- `aun_lora_dropdown_shared.js` — `makeLoraLabelClickable()`
+- `aun_lora_info_shared.js` — `openLoraInfoDialog()`
+
 ## Key gotchas
 
 - `NODE_CLASS_MAPPINGS` keys are workflow identifiers — never rename/remove without migration.
@@ -46,3 +55,30 @@ ComfyUI custom node pack (Python + JS). Nodes are discovered at ComfyUI startup;
 - `install.py` exists for ComfyUI-Manager compatibility — keep it in sync with `requirements.txt`.
 - After adding a new doc page under `docs/`, add it to `docs/INDEX.md`.
 - The `Collapse Connections` global extension (`AUN_global_collapse_connections.js`) has a `SKIP_CLASSES` set — add new AUN node class names there if they have their own collapse behavior.
+
+## Token-saving rules
+
+- NEVER search or scan the parent ComfyUI directory tree. All code lives in this repo only.
+- When fixing a bug or editing a node, read only the specific file(s) involved — do NOT explore the full codebase.
+- Use `grep` with narrow patterns (e.g. class name, function name) instead of broad glob searches.
+- If you need to understand how a node works, read that node's file directly — don't scan `nodes/` or `web/` recursively.
+- Do not read files you haven't been asked about or that aren't directly relevant to the change.
+- When the user provides a file path or location hint, go directly there — do not search or browse around it.
+- When making edits to any files, do not rewrite the whole file unless explicitly told to. Use targeted, minimal edits instead.
+- Keep explanations and output minimal unless asked for detail.
+- Do not narrate before acting — just do it.
+- Batch related operations together instead of doing one at a time.
+- Only use tools that are actually needed for the task.
+
+## Shared utilities
+
+**Python utilities:**
+- `logger.py` — AUN logger, `log_exception()`
+- `misc.py` — `AnyType`, `tensor2pil()`, path helpers, video/image constants
+- `model_utils.py` — `MODEL_SHORT_NAMES`, `SAMPLER_SHORT_NAMES`, `get_short_name()`
+- `aun_lora_extraction_shared.py` — `extract_basic_loras_from_inputs()` (supports multiple loader formats)
+- `aun_path_filename_shared.py` — Placeholder tokens (`%model_short%`, `%sampler_name%`, etc.), `build_template_filename()`, `resolve_template()`
+
+**Shared patterns:**
+- Compact mode: `_AUN_compactMode` property, `isCompact()`/`setCompact()` in `utils.js`
+- Filename templates: `%token%` style from `aun_path_filename_shared.py`

@@ -1,0 +1,12 @@
+{
+  "compaction": {
+    "auto": true,
+    "prune": true,
+    "reserved": 10000
+  },
+  "small_model": "opencode/big-pickle",
+  "subagent_depth": 0,
+  "permission": {
+    "bash": "ask"
+  }
+}
