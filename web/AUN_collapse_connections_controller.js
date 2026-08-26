@@ -407,6 +407,8 @@ function ensureRunBarButton() {
   if (!showRunBarBtn) return;
   const group = app.menu?.actionsGroup;
   if (!group?.element) return;
+  // Skip if another extension (e.g. aun-node-control) already created an "All Graph" button
+  if (!runBarBtn && group.element.querySelector('button')?.textContent?.trim() === "All Graph") return;
   if (runBarBtn) {
     if (runBarBtn.isConnected) return;
     if (group.buttons?.includes(runBarBtn)) {
