@@ -28,7 +28,8 @@ class AUNMultiGroupUniversal:
     def INPUT_TYPES(cls):
         # Define the base required inputs
         inputs = {
-            "required": {
+            "required": {},
+            "optional": {
                 "mode": (["Bypass", "Mute", "Collapse", "Bypass+Collapse", "Mute+Collapse"], {
                     "default": "Bypass",
                     "tooltip": "Choose how to disable nodes in groups: Bypass (🔴), Mute (🔇), Collapse (▶), or combinations."
@@ -58,11 +59,11 @@ class AUNMultiGroupUniversal:
         
         # Pre-define 20 slots in required to ensure proper validation and widget behavior
         for i in range(1, 21):
-            inputs["required"][f"group_name_{i}"] = ("STRING", {
+            inputs["optional"][f"group_name_{i}"] = ("STRING", {
                 "default": "",
                 "tooltip": f"Group name(s) for slot {i} (newline, comma, or semicolon separated). Use '!' or '-' prefix for exclusion (e.g. 'image, !load')."
             })
-            inputs["required"][f"switch_{i}"] = ("BOOLEAN", {
+            inputs["optional"][f"switch_{i}"] = ("BOOLEAN", {
                 "default": False, 
                 "label_on": "Active 🟢", 
                 "label_off": "Bypass 🔴",
@@ -70,21 +71,22 @@ class AUNMultiGroupUniversal:
             })
             
         # AllSwitch at the bottom to match other multi-nodes
-        inputs["required"]["AllSwitch"] = ("BOOLEAN", {
+        inputs["optional"]["AllSwitch"] = ("BOOLEAN", {
             "default": False, 
             "label_on": "All 🟢", 
             "label_off": "Individual",
             "tooltip": "ON = all groups active (🟢). OFF = use individual group switches."
         })
-        inputs["required"]["control_mode"] = (["manual", "index-driven"], {
+        inputs["optional"]["control_mode"] = (["manual", "index-driven"], {
             "default": "manual",
             "tooltip": "manual = use the slot toggles directly. index-driven = activate the slot matching the Index input."
         })
-        inputs["required"]["Index"] = ("INT", {
+        inputs["optional"]["Index"] = ("INT", {
             "default": 0, "min": 0, "max": 20, "step": 1,
+            "forceInput": True,
             "tooltip": "When control_mode is index-driven, activate only this slot. 0 means all slots inactive."
         })
-        inputs["required"]["show_AllSwitch"] = ("BOOLEAN", {
+        inputs["optional"]["show_AllSwitch"] = ("BOOLEAN", {
             "default": False,
             "tooltip": "Show the AllSwitch toggle even in compact mode."
         })
@@ -115,7 +117,7 @@ class AUNMultiGroupUniversal:
             return time.time_ns()
         return False
 
-    def execute(self, mode, slot_count, toggle_restriction, use_all_groups, show_outputs, AllSwitch, control_mode="manual", Index=0, unique_id=None, all_groups_state="", **kwargs):
+    def execute(self, mode="Bypass", slot_count=3, toggle_restriction="default", use_all_groups=False, show_outputs=True, AllSwitch=False, control_mode="manual", Index=0, show_AllSwitch=False, unique_id=None, all_groups_state="", **kwargs):
         try:
             if control_mode == "index-driven":
                 use_all_groups = False

@@ -1,5 +1,9 @@
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
+import {
+  captureAunWidgetValues,
+  restoreAunWidgetValues,
+} from "./aun_persistence_shared.js";
 
 const MAX_SLOTS = 20;
 const LIST_SPLITTER = /[,\n;]+/;
@@ -62,6 +66,7 @@ const getWidget = (node, name) => {
 
 const applyWidgetHiddenState = (widget, hidden) => {
   if (!widget) return;
+  ensureHiddenAwareWidget(widget);
   widget.hidden = hidden;
   widget.__AUN_visible = !hidden;
 };
@@ -110,6 +115,53 @@ const ensureWidgetTracking = (node) => {
   node.__AUN_syncWidgetVisibility = () => syncWidgetVisibility(node);
 };
 
+const ensureWidgetSerialization = (node) => {
+  if (!node || node.__AUN_widgetSerializationSetup) return;
+  if (typeof node.serialize !== "function") return;
+  node.__AUN_widgetSerializationSetup = true;
+  const originalSerialize = node.serialize;
+  node.serialize = function serializeWithAllWidgets(...args) {
+    captureAunWidgetValues(this);
+    return originalSerialize.apply(this, args);
+  };
+};
+
+const getLegacyWidgetNames = (node) => {
+  const names = ["mode", "slot_count", "toggle_restriction"];
+  if (node?.__AUN_isGroupNode) names.push("use_all_groups");
+  names.push("show_outputs");
+  for (let slot = 1; slot <= MAX_SLOTS; slot++) {
+    names.push(
+      ...(node?.__AUN_isGroupNode
+        ? [`group_name_${slot}`, `switch_${slot}`]
+        : [`label_${slot}`, `targets_${slot}`, `switch_${slot}`, `target_type_${slot}`]),
+    );
+  }
+  names.push("AllSwitch", "control_mode", "Index", "show_AllSwitch");
+  return names;
+};
+
+const restoreConfiguredWidgetValues = (node, data) => {
+  if (!node || !data) return;
+  const named = data.widgets_values_named;
+  if (named && typeof named === "object" && !Array.isArray(named)) {
+    Object.entries(named).forEach(([name, value]) => {
+      const widget = getWidget(node, name);
+      if (widget) widget.value = value;
+    });
+    return;
+  }
+
+  if (!Array.isArray(data.widgets_values)) return;
+  const names = getLegacyWidgetNames(node);
+  names.forEach((name, index) => {
+    const widget = getWidget(node, name);
+    if (widget && index < data.widgets_values.length) {
+      widget.value = data.widgets_values[index];
+    }
+  });
+};
+
 const getAllTrackedWidgets = (node) =>
   node?.__AUN_allWidgets || node?.widgets || [];
 
@@ -136,21 +188,6 @@ const syncWidgetBackedInputVisibility = (node) => {
   const inputs = Array.isArray(node.inputs) ? node.inputs : [];
   inputs.forEach((input) => {
     if (!input?.widget) return;
-    const hidden = !!input.widget.hidden;
-    input.hidden = hidden;
-    input.disabled = hidden && input.link == null;
-    if (hidden) {
-      if (input.__AUN_savedType == null) {
-        input.__AUN_savedType = input.type;
-      }
-      if (input.link == null) {
-        input.type = "__AUN_HIDDEN__";
-      }
-      return;
-    }
-    if (input.__AUN_savedType != null) {
-      input.type = input.__AUN_savedType;
-    }
   });
 };
 
@@ -173,16 +210,7 @@ const syncModeDrivenControlInputs = (node, indexDriven) => {
 
     if (shouldHide == null) return;
 
-    input.hidden = shouldHide;
-    input.disabled = shouldHide && input.link == null;
-    if (shouldHide) {
-      if (input.link == null) {
-        input.type = "__AUN_HIDDEN__";
-      }
-      return;
-    }
-
-    input.type = visibleType;
+    if (!shouldHide && visibleType) input.type = visibleType;
   });
 };
 
@@ -1551,7 +1579,6 @@ const refreshWidgets = function refreshWidgets() {
   this.__AUN_syncWidgetVisibility?.();
   syncWidgetBackedInputVisibility(this);
   syncModeDrivenControlInputs(this, indexDriven);
-  syncModeDrivenControlInputOrder(this);
   normalizeNamedWidgetInputType(this, "Index", "INT");
   this.__AUN_updateAutoHeight?.();
   scheduleAutoHeightUpdate(this);
@@ -1865,6 +1892,7 @@ const executeInstant = function executeInstant() {
     }),
   );
   this._AUN_lastInstantExecution = Date.now();
+  captureAunWidgetValues(this);
 };
 
 const deriveStateChanges = (mode) => {
@@ -2035,6 +2063,8 @@ const decorateNode = (node, nodeData) => {
     node.widgets?.some((w) => w.name === "targets_1");
   if (!node.__AUN_isGroupNode && !node.__AUN_isUniversalNode) return;
   ensureWidgetTracking(node);
+  ensureWidgetSerialization(node);
+  restoreAunWidgetValues(node);
 
   node.__AUN_updateAutoHeight = () => {
     // Always recompute height from the currently visible widgets so the node
@@ -2256,6 +2286,8 @@ const decorateNode = (node, nodeData) => {
       this.syncTogglesWithGraph?.();
     }
   };
+
+  captureAunWidgetValues(node);
 };
 
 const extendNodePrototype = (nodeType, nodeData) => {
@@ -2274,8 +2306,10 @@ const extendNodePrototype = (nodeType, nodeData) => {
   };
 
   const originalOnConfigure = nodeType.prototype.onConfigure;
-  nodeType.prototype.onConfigure = function onConfigure() {
+  nodeType.prototype.onConfigure = function onConfigure(data) {
     originalOnConfigure?.apply(this, arguments);
+    restoreConfiguredWidgetValues(this, data);
+    restoreAunWidgetValues(this);
     this.__AUN_sanitizeWidgets?.();
     this.__AUN_refreshWidgets?.();
     this.refreshGroupDropdowns?.(true);
@@ -2333,9 +2367,10 @@ const extendNodePrototype = (nodeType, nodeData) => {
     return ccOrigGetInputPos.call(this, index);
   };
 
-  const ccOrigComputeSize = (
-    nodeType.prototype.computeSize || (() => nodeType.prototype.size)
-  ).bind(nodeType.prototype);
+  const ccOrigComputeSize =
+    nodeType.prototype.computeSize || function originalComputeSize() {
+      return this.size;
+    };
   nodeType.prototype.computeSize = function computeSize(out) {
     const s = ccOrigComputeSize.call(this, out);
     if (isCCollapsed(this)) {
