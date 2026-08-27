@@ -5,6 +5,16 @@
 
 ### Added
 
+### Changed
+
+### Fixed
+
+### Notes
+
+## [2.23.0] - 2026-08-27
+
+### Added
+
 - AUNAutoPopulatePresets: new node for auto-populating preset configurations.
 - Widget value persistence for universal/group multi-nodes (via `aun_persistence_shared.js`).
 
@@ -20,7 +30,6 @@
 ### Notes
 
 - Added `opencode.json` for agent configuration.
-
 ## [2.22.0] - 2026-08-21
 
 ### Added
