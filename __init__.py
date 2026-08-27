@@ -6,7 +6,7 @@ from .AUNAddToPrompt import AUNAddToPrompt
 from .AUNAddToPromptMulti import AUNAddToPromptMulti
 from .AUNAny import AUNAny
 from .AUNAnyIndexSwitch import AUNAnyIndexSwitch
-from .AUNAutoPopulatePresets import AUNAutoPopulatePresets
+from .AUNApplyPresetToNode import AUNApplyPresetToNode
 from .AUNBookmark import AUNBookmark
 from .AUNBoolean import AUNBoolean
 from .AUNCFG import AUNCFG
@@ -56,6 +56,7 @@ from .AUNMultiUniversal import AUNMultiUniversal
 from .AUNNameCrop import AUNNameCrop
 from .AUNNodeStateController import AUNNodeStateController
 from .AUNPathFilename import AUNPathFilename
+from .AUNPresetManager import AUNPresetManager
 from .AUNPromptCycler import AUNPromptCycler
 from .AUNPathFilenameV2 import AUNPathFilenameV2
 from .AUNPathFilenameVideo import AUNPathFilenameVideo
@@ -111,7 +112,7 @@ NODE_CLASS_MAPPINGS = {
     "AUNAddToPromptMulti": AUNAddToPromptMulti,
     "AUNAny": AUNAny,
     "AUNAnyIndexSwitch": AUNAnyIndexSwitch,
-    "AUNAutoPopulatePresets": AUNAutoPopulatePresets,
+    "AUNApplyPresetToNode": AUNApplyPresetToNode,
     "AUNBookmark": AUNBookmark,
     "AUNBoolean": AUNBoolean,
     "AUNCFG": AUNCFG,
@@ -161,6 +162,7 @@ NODE_CLASS_MAPPINGS = {
     "AUNNameCrop": AUNNameCrop,
     "AUNNodeStateController": AUNNodeStateController,
     "AUNPathFilename": AUNPathFilename,
+    "AUNPresetManager": AUNPresetManager,
     "AUNPromptCycler": AUNPromptCycler,
     "AUNPathFilenameV2": AUNPathFilenameV2,
     "AUNPathFilenameVideo": AUNPathFilenameVideo,
@@ -213,7 +215,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "AUNAddToPromptMulti": "Add-To-Prompt (Multi)",
     "AUNAny": "Any",
     "AUNAnyIndexSwitch": "AUN Any Index Switch",
-    "AUNAutoPopulatePresets": "Auto-Populate Presets",
+    "AUNApplyPresetToNode": "Apply Preset To Node",
     "AUNBookmark": "AUN Bookmark",
     "AUNBoolean": "Random Boolean",
     "AUNCFG": "CFG Selector",
@@ -262,6 +264,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "AUNNameCrop": "Name Crop",
     "AUNNodeStateController": "Node State Controller",
     "AUNPathFilename": "Path Filename (Legacy)",
+    "AUNPresetManager": "Preset Manager",
     "AUNPathFilenameV2": "Path Filename V2",
     "AUNPathFilenameVideo": "Path Filename Video (Legacy)",
     "AUNPathFilenameVideoV2": "Path Filename Video V2",

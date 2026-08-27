@@ -5,11 +5,22 @@
 
 ### Added
 
+- AUNPresetManager: scan-and-load preset manager with keyword matching, live-setup dialog, preset1 auto-run, expandable scrollable footer with draggable scrollbar, and compact mode with auto-title.
+- AUNApplyPresetToNode: queue-time value application with local preview footer, `only_widgets` wildcard filter, `aliases` source=target mapping, and compact mode.
+- Live preview footer on Preset Manager — changing preset number or settings instantly shows the stored values without waiting for a run.
+
 ### Changed
 
-### Fixed
+- Replaced AUNAutoPopulatePresets with the two-node preset architecture (Preset Manager + Apply Preset To Node).
+- Collapse Connections SKIP_CLASSES updated to include the new preset nodes.
+
+### Removed
+
+- AUNAutoPopulatePresets and all related frontend code (setup dialog, widgets modal).
 
 ### Notes
+
+- Workflows using AUNAutoPopulatePresets will show it as missing on load; rebuild with the new nodes.
 
 ## [2.23.0] - 2026-08-27
 

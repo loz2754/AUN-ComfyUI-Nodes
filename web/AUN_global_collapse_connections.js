@@ -26,7 +26,8 @@ const SKIP_CLASSES = new Set([
   "AUNCollapseConnectionsController",
   "AUNKeywordFaceIDSettings",
   "AUNKeywordPresetSelector",
-  "AUNAutoPopulatePresets",
+  "AUNPresetManager",
+  "AUNApplyPresetToNode",
 ]);
 
 let globalDefault = false;
