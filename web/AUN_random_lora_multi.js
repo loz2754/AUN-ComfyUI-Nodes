@@ -19,9 +19,72 @@ const COMPACT_ROW_HEIGHT = 26;
 const COMPACT_ROW_GAP = 4;
 const COMPACT_SIDE_PADDING = 10;
 
-function getWidget(node, name) {
-  return node?.widgets?.find((w) => w?.name === name) ?? null;
+function triggerWorkflowCapture() {
+  try {
+    // Find Vue app element (may be on document body or a specific container)
+    const candidates = [document.body, document.getElementById("app"), document.getElementById("vue-app"), document.querySelector("[data-v-app]"), app?.canvas?.el].filter(Boolean);
+    for (const el of candidates) {
+      let target = el;
+      for (let i = 0; i < 30 && target; i++) {
+        const va = target.__vue_app__;
+        if (va) {
+          const pinia = va.config?.globalProperties?.$pinia;
+          if (pinia?._s) {
+            for (const [, store] of pinia._s) {
+              const ct = store.activeWorkflow?.changeTracker;
+              if (ct && typeof ct.captureCanvasState === "function") {
+                ct.captureCanvasState();
+                return;
+              }
+            }
+          }
+          break;
+        }
+        target = target.parentElement;
+      }
+    }
+  } catch {}
+  try {
+    const pinia = window.__pinia;
+    if (pinia?._s) {
+      for (const [, store] of pinia._s) {
+        const ct = store.activeWorkflow?.changeTracker;
+        if (ct && typeof ct.captureCanvasState === "function") {
+          ct.captureCanvasState();
+          return;
+        }
+      }
+    }
+  } catch {}
 }
+
+function getWidget(node, name) {
+  if (!node || !name) return null;
+  const fromView = node.widgets?.find((w) => w?.name === name);
+  if (fromView) return fromView;
+  const all = node.__AUN_allWidgets;
+  if (Array.isArray(all)) {
+    const fromRegistry = all.find((w) => w?.name === name);
+    if (fromRegistry) return fromRegistry;
+  }
+  return null;
+}
+
+import {
+  captureAunWidgetValues,
+  restoreAunWidgetValues,
+} from "./aun_persistence_shared.js";
+
+const ensureWidgetSerialization = (node) => {
+  if (!node || node.__AUN_widgetSerializationSetup) return;
+  if (typeof node.serialize !== "function") return;
+  node.__AUN_widgetSerializationSetup = true;
+  const originalSerialize = node.serialize;
+  node.serialize = function serializeWithAllWidgets(...args) {
+    captureAunWidgetValues(this);
+    return originalSerialize.apply(this, args);
+  };
+};
 
 function parsePositiveInt(value) {
   const n = parseInt(value, 10);
@@ -1718,6 +1781,18 @@ function applyCompact(node) {
   const promptIdx = resolvePromptIndex(node);
   const numPrompts = getNumPrompts(node);
 
+  // Sync registry values into view widgets (fixes hidden-widget value loss)
+  const all = node.__AUN_allWidgets;
+  if (Array.isArray(all) && Array.isArray(node.widgets)) {
+    for (const rw of all) {
+      if (!rw || rw.__AUN_removed) continue;
+      const vw = node.widgets.find((w) => w?.name === rw.name);
+      if (vw && vw !== rw) {
+        vw.value = rw.value;
+      }
+    }
+  }
+
   // In compact mode: ONLY show prompt_index and apply_lora
   // base_prompt is hidden (overlay replaces all LoRA widgets)
   const alwaysVisible = new Set(
@@ -1799,6 +1874,13 @@ function applyCompact(node) {
   updateAutoHeight(node);
   scheduleAutoHeightUpdate(node);
   node.setDirtyCanvas?.(true, true);
+
+  // Persist all widget values (incl. hidden) into node properties so the
+  // frontend's live graph serialization (draft autosave / Ctrl+S) keeps them.
+  captureAunWidgetValues(node);
+
+  // Trigger changeTracker capture so workflow save includes our values
+  setTimeout(() => triggerWorkflowCapture(), 50);
 
   // Start RAF loop for continuous overlay repositioning during pan/zoom
   if (compact) {
@@ -2012,6 +2094,20 @@ function setupNode(node) {
   if (node.__AUN_loraMultiCompactInit) return;
   node.__AUN_loraMultiCompactInit = true;
 
+  node.__AUN_allWidgets = Array.isArray(node.widgets) ? [...node.widgets] : [];
+  ensureWidgetSerialization(node);
+  restoreAunWidgetValues(node);
+
+  // Keep __AUN_allWidgets fresh if the frontend recreates widgets
+  const origAddWidgetMulti = node.addWidget;
+  node.addWidget = function addWidgetTracked(...args) {
+    const w = origAddWidgetMulti?.apply(this, args);
+    if (w && Array.isArray(this.__AUN_allWidgets) && !this.__AUN_allWidgets.includes(w)) {
+      this.__AUN_allWidgets.push(w);
+    }
+    return w;
+  };
+
   node.properties = node.properties || {};
   if (typeof node.properties[PROP_KEY] !== "boolean") {
     setCompact(node, true);
@@ -2071,6 +2167,7 @@ function initExistingNodes() {
   for (const node of nodes) {
     if (isTargetNode(node) && !node.__AUN_loraMultiCompactInit) {
       setupNode(node);
+      restoreAunWidgetValues(node);
       scheduleAutoHeightUpdate(node, 2, 0);
       initialized = true;
     }
@@ -2580,6 +2677,7 @@ app.registerExtension({
   loadedGraphNode(node) {
     if (!isTargetNode(node)) return;
     setupNode(node);
+    restoreAunWidgetValues(node);
     applyCompact(node);
     scheduleAutoHeightUpdate(node, 2, 50);
   },

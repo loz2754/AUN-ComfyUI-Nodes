@@ -16,7 +16,15 @@ function isDynamicSlotsNode(node) {
 const DEFAULT_SLOT = { lora: "None", sm: 1, sc: 1, trigger: "", enabled: true };
 
 function getWidget(node, name) {
-  return node?.widgets?.find((w) => w?.name === name) ?? null;
+  if (!node || !name) return null;
+  const fromView = node.widgets?.find((w) => w?.name === name);
+  if (fromView) return fromView;
+  const all = node.__AUN_allWidgets;
+  if (Array.isArray(all)) {
+    const fromRegistry = all.find((w) => w?.name === name);
+    if (fromRegistry) return fromRegistry;
+  }
+  return null;
 }
 
 function showClipStrength(node) {

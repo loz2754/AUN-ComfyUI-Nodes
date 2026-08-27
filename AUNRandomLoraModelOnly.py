@@ -36,6 +36,8 @@ class AUNRandomLoraModelOnly:
                     "tooltip": "Select mode: fixed, incrementing, random, or explicit range list.",
                 },
             ),
+        }
+        optional = {
             "select": (
                 "INT",
                 {
@@ -98,8 +100,6 @@ class AUNRandomLoraModelOnly:
                     "tooltip": "LoRA strength applied to the clip when CLIP is connected.",
                 },
             ),
-        }
-        optional = {
             "clip": ("CLIP",),
             "base_prompt": (
                 "STRING",
@@ -120,6 +120,7 @@ class AUNRandomLoraModelOnly:
                 },
             ),
         }
+        # LoRA combos in required for dropdown support
         for i in range(1, cls.MAX_LORAS + 1):
             required[f"lora_{i}"] = (
                 choices,
@@ -128,7 +129,7 @@ class AUNRandomLoraModelOnly:
                     "tooltip": f"LoRA slot {i}.",
                 },
             )
-            required[f"trigger_{i}"] = (
+            optional[f"trigger_{i}"] = (
                 "STRING",
                 {
                     "default": "",
@@ -318,14 +319,14 @@ class AUNRandomLoraModelOnly:
     def load_random_lora(
         self,
         model,
-        mode,
-        select,
-        minimum,
-        maximum,
-        range,
-        apply_lora,
-        strength_model,
-        strength_clip,
+        mode="Random",
+        select=1,
+        minimum=1,
+        maximum=3,
+        range="1,2,3",
+        apply_lora=True,
+        strength_model=1.0,
+        strength_clip=1.0,
         unique_id=None,
         clip=None,
         selected_LoRAs="",

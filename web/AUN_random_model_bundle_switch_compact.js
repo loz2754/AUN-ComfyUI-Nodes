@@ -48,6 +48,7 @@ function ensureHiddenAwareWidget(widget) {
 
 function applyWidgetHiddenState(widget, hidden) {
   if (!widget) return;
+  ensureHiddenAwareWidget(widget);
   widget.hidden = hidden;
   widget.__AUN_visible = !hidden;
 }

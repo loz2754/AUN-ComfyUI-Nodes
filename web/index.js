@@ -4,7 +4,7 @@
  */
 
 export { NODE_MODE, PROP, MAX_SLOTS, MAX_INPUTS, MIN_INPUTS } from "./constants.js";
-export { getAllGraphs, findNodeById } from "./graph-traversal.js";
+export { getAllGraphs, findNodeById, findNodeByIdentifier } from "./graph-traversal.js";
 export { EventBus, initEventBus } from "./event-bus.js";
 export {
   getWidget,

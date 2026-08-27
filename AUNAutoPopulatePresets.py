@@ -1,5 +1,4 @@
 import json
-import re
 from typing import Any
 
 from server import PromptServer
@@ -48,16 +47,6 @@ class AUNAutoPopulatePresets:
         }
 
         optional = {
-            "filter_include": ("STRING", {
-                "default": "",
-                "multiline": True,
-                "tooltip": "Only keep widgets whose name matches one of these patterns (one per line, * = wildcard).",
-            }),
-            "filter_exclude": ("STRING", {
-                "default": "",
-                "multiline": True,
-                "tooltip": "Hide widgets whose name matches one of these patterns (one per line, * = wildcard).",
-            }),
             "visible_rows": ("INT", {
                 "default": 5,
                 "min": 1,
@@ -82,6 +71,10 @@ class AUNAutoPopulatePresets:
                 "forceInput": True,
                 "multiline": True,
                 "tooltip": "Text to scan for keywords. Keywords are matched as substrings.",
+            }),
+            "active_widgets": ("STRING", {
+                "default": "",
+                "tooltip": "Internal: JSON list of widget names exposed as outputs, in order. Managed by the Widgets dialog.",
             }),
         }
 
@@ -277,43 +270,13 @@ class AUNAutoPopulatePresets:
         return widgets
 
     # ------------------------------------------------------------------
-    # Filtering
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def _parse_patterns(text: Any) -> list[str]:
-        if not isinstance(text, str):
-            return []
-        return [line.strip() for line in text.split("\n") if line.strip()]
-
-    @staticmethod
-    def _name_matches(name: str, pattern: str) -> bool:
-        if not isinstance(pattern, str):
-            return False
-        rx = "^" + re.escape(pattern).replace(r"\*", ".*") + "$"
-        return re.match(rx, name, re.IGNORECASE) is not None
-
-    @classmethod
-    def _filter_widgets(cls, widgets: list[dict], include: str, exclude: str) -> list[dict]:
-        inc = cls._parse_patterns(include)
-        exc = cls._parse_patterns(exclude)
-        working = []
-        for w in widgets:
-            if inc and not any(cls._name_matches(w["name"], p) for p in inc):
-                continue
-            working.append(w)
-        if exc:
-            working = [w for w in working if not any(cls._name_matches(w["name"], p) for p in exc)]
-        return working
-
-    # ------------------------------------------------------------------
     # Execution
     # ------------------------------------------------------------------
 
-    def scan(self, node_identifier: str, filter_include: str = "",
-             filter_exclude: str = "", visible_rows: int = 5,
+    def scan(self, node_identifier: str, visible_rows: int = 5,
              case_sensitive: bool = False, match_keywords: str = "Yes",
              manual_preset: int = 1, reference_phrase: str = "",
+             active_widgets: str = "",
              prompt=None, extra_pnginfo=None, unique_id=None, **kwargs):
 
         visible_rows = max(1, min(int(visible_rows or 5), MAX_ROWS))
@@ -330,7 +293,6 @@ class AUNAutoPopulatePresets:
         target_title = None
         if node is not None:
             widgets = self._collect_widgets_with_meta(node)
-            widgets = self._filter_widgets(widgets, filter_include, filter_exclude)
             meta = node.get("_meta", {})
             target_title = meta.get("title") or node.get("title") or node.get("localized_name")
 
@@ -379,13 +341,52 @@ class AUNAutoPopulatePresets:
         if not matched_index:
             matched_index = manual_preset
 
+        if unique_id is not None:
+            try:
+                PromptServer.instance.send_sync(
+                    "AUN_auto_populate_presets_executed",
+                    {
+                        "node_id": str(unique_id),
+                        "matched_keyword": matched_keyword,
+                        "matched_index": int(matched_index),
+                    },
+                )
+            except Exception:
+                pass
+
         # Read the matched row's slot values, auto-cast to native types
-        result = []
-        for s in range(1, MAX_WIDGETS_PER_ROW + 1):
-            val = kwargs.get("slot%d_%d" % (matched_index, s), "")
-            if val is None:
-                val = ""
-            result.append(self._auto_cast(val))
+        # Parse active_widgets as [name, slot] pairs (explicit mapping from JS)
+        pairs = []
+        try:
+            parsed = json.loads(active_widgets or "")
+            if isinstance(parsed, list):
+                for item in parsed:
+                    if isinstance(item, (list, tuple)) and len(item) >= 2:
+                        name = str(item[0])
+                        slot = int(item[1])
+                        if 1 <= slot <= MAX_WIDGETS_PER_ROW:
+                            pairs.append((name, slot))
+        except Exception:
+            pass
+
+        if pairs:
+            result = []
+            for name, s in pairs:
+                val = kwargs.get("slot%d_%d" % (matched_index, s), "")
+                if val is None:
+                    val = ""
+                result.append(self._auto_cast(val))
+        else:
+            result = []
+            for s in range(1, MAX_WIDGETS_PER_ROW + 1):
+                val = kwargs.get("slot%d_%d" % (matched_index, s), "")
+                if val is None:
+                    val = ""
+                result.append(self._auto_cast(val))
+
+        # Pad to MAX_WIDGETS_PER_ROW (needed because RETURN_TYPES is fixed)
+        while len(result) < MAX_WIDGETS_PER_ROW:
+            result.append(None)
 
         return {"result": tuple(result)}
 

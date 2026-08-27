@@ -27,7 +27,8 @@ class AUNCollapseConnectionsController:
                     "default": 3, "min": 1, "max": 20, "step": 1,
                     "tooltip": "How many control slots to show (1-20)."
                 }),
-            }
+            },
+            "optional": {},
         }
 
         def slot_tooltip(text, slot_index):
@@ -40,15 +41,15 @@ class AUNCollapseConnectionsController:
         switch_tooltip = "Turn slot 1 on to hide the target nodes' input/output slots, or off to show them again."
 
         for i in range(1, 21):
-            inputs["required"][f"label_{i}"] = ("STRING", {
+            inputs["optional"][f"label_{i}"] = ("STRING", {
                 "default": "",
                 "tooltip": slot_tooltip(label_tooltip, i)
             })
-            inputs["required"][f"targets_{i}"] = ("STRING", {
+            inputs["optional"][f"targets_{i}"] = ("STRING", {
                 "default": "0",
                 "tooltip": slot_tooltip(targets_tooltip, i)
             })
-            inputs["required"][f"switch_{i}"] = ("BOOLEAN", {
+            inputs["optional"][f"switch_{i}"] = ("BOOLEAN", {
                 "default": False,
                 "label_on": "Collapsed ▶",
                 "label_off": "Expanded ▼",

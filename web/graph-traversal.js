@@ -66,3 +66,38 @@ export function findNodeById(rootOrNodeId, nodeId) {
   }
   return null;
 }
+
+/**
+ * Find a node by ID, title, or localized name across the node's graph tree.
+ * Prefer the source node's graph so nested instances do not resolve against
+ * a similarly numbered node in the main graph.
+ */
+export function findNodeByIdentifier(root, identifier, excludeNode) {
+  const value = String(identifier ?? "").trim();
+  if (!value) return null;
+
+  const graphs = getAllGraphs(root);
+  const matchesId = (node) => {
+    const id = String(node?.id ?? "");
+    return (
+      id === value ||
+      value.endsWith(`.${id}`) ||
+      value.endsWith(`:${id}`) ||
+      value.endsWith(`/${id}`)
+    );
+  };
+
+  for (const graph of graphs) {
+    for (const node of graph?._nodes || []) {
+      if (!node || node === excludeNode) continue;
+      if (matchesId(node)) return node;
+    }
+  }
+  for (const graph of graphs) {
+    for (const node of graph?._nodes || []) {
+      if (!node || node === excludeNode) continue;
+      if (node.title === value || node.localized_name === value) return node;
+    }
+  }
+  return null;
+}

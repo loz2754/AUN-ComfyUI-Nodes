@@ -239,8 +239,7 @@ function getContentYOffset(node, ignoreCollapse) {
 const overlayRegistry = new Map();
 
 function getOverlayState(node) {
-  const id = Number(node.id);
-  let state = overlayRegistry.get(id);
+  let state = overlayRegistry.get(node);
   if (!state) {
     const overlay = document.createElement("div");
     overlay.style.cssText = `
@@ -261,17 +260,16 @@ function getOverlayState(node) {
     document.body.appendChild(overlay);
 
     state = { overlay, container };
-    overlayRegistry.set(id, state);
+    overlayRegistry.set(node, state);
   }
   return state;
 }
 
 function removeOverlayState(node) {
-  const id = Number(node.id);
-  const state = overlayRegistry.get(id);
+  const state = overlayRegistry.get(node);
   if (state) {
     state.overlay.remove();
-    overlayRegistry.delete(id);
+    overlayRegistry.delete(node);
   }
 }
 
@@ -407,8 +405,7 @@ function isNodeOccluded(node, canvasRect, scale, offsetX, offsetY) {
 }
 
 function positionOverlay(node) {
-  const id = Number(node.id);
-  const state = overlayRegistry.get(id);
+  const state = overlayRegistry.get(node);
   if (!state) return;
 
   if (!node.graph) {
@@ -470,13 +467,9 @@ function positionOverlay(node) {
 // RAF overlay position loop
 function startOverlayLoop() {
   function tick() {
-    for (const [id, state] of overlayRegistry) {
-      const node = app.canvas?.graph?.getNodeById(id);
-      if (node) {
-        positionOverlay(node);
-      } else {
-        state.overlay.style.display = "none";
-      }
+    for (const [node, state] of overlayRegistry) {
+      if (node?.graph) positionOverlay(node);
+      else state.overlay.style.display = "none";
     }
     requestAnimationFrame(tick);
   }
@@ -584,7 +577,7 @@ function setupShowTypes(node) {
     const cur = !!this.properties[SHOW_TYPES_KEY];
     this.properties[SHOW_TYPES_KEY] = !cur;
     if (this._aunEntries) {
-      const state = overlayRegistry.get(Number(this.id));
+      const state = overlayRegistry.get(this);
       if (state) {
         buildOverlayCards(state.container, this._aunEntries, this.properties[SHOW_TYPES_KEY]);
       }
@@ -756,16 +749,6 @@ app.registerExtension({
 // ── Poll for connected node title / label changes ──────────────────
 
 let lastTitles = {};
-function rawSourceLabel(node, input) {
-  if (input?.link == null) return "";
-  const graph = node.graph || app.graph;
-  const links = graph?.links;
-  const link = links?.get ? links.get(input.link) : links?.[input.link];
-  if (!link) return "";
-  const src = graph?.getNodeById ? graph?.getNodeById(link.origin_id) : null;
-  const outSlot = src?.outputs?.[link.origin_slot];
-  return getSlotLabel(outSlot || {});
-}
 
 function labelsSig(node) {
   return (node.inputs || [])

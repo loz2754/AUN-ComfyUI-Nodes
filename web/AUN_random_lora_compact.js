@@ -43,9 +43,71 @@ const ALL_WIDGETS = [
   "trigger_10",
 ];
 
-function getWidget(node, name) {
-  return node?.widgets?.find((w) => w?.name === name) ?? null;
+function triggerWorkflowCapture() {
+  try {
+    const candidates = [document.body, document.getElementById("app"), document.getElementById("vue-app"), document.querySelector("[data-v-app]"), app?.canvas?.el].filter(Boolean);
+    for (const el of candidates) {
+      let target = el;
+      for (let i = 0; i < 30 && target; i++) {
+        const va = target.__vue_app__;
+        if (va) {
+          const pinia = va.config?.globalProperties?.$pinia;
+          if (pinia?._s) {
+            for (const [, store] of pinia._s) {
+              const ct = store.activeWorkflow?.changeTracker;
+              if (ct && typeof ct.captureCanvasState === "function") {
+                ct.captureCanvasState();
+                return;
+              }
+            }
+          }
+          break;
+        }
+        target = target.parentElement;
+      }
+    }
+  } catch {}
+  try {
+    const pinia = window.__pinia;
+    if (pinia?._s) {
+      for (const [, store] of pinia._s) {
+        const ct = store.activeWorkflow?.changeTracker;
+        if (ct && typeof ct.captureCanvasState === "function") {
+          ct.captureCanvasState();
+          return;
+        }
+      }
+    }
+  } catch {}
 }
+
+function getWidget(node, name) {
+  if (!node || !name) return null;
+  const fromView = node.widgets?.find((w) => w?.name === name);
+  if (fromView) return fromView;
+  const all = node.__AUN_allWidgets;
+  if (Array.isArray(all)) {
+    const fromRegistry = all.find((w) => w?.name === name);
+    if (fromRegistry) return fromRegistry;
+  }
+  return null;
+}
+
+import {
+  captureAunWidgetValues,
+  restoreAunWidgetValues,
+} from "./aun_persistence_shared.js";
+
+const ensureWidgetSerialization = (node) => {
+  if (!node || node.__AUN_widgetSerializationSetup) return;
+  if (typeof node.serialize !== "function") return;
+  node.__AUN_widgetSerializationSetup = true;
+  const originalSerialize = node.serialize;
+  node.serialize = function serializeWithAllWidgets(...args) {
+    captureAunWidgetValues(this);
+    return originalSerialize.apply(this, args);
+  };
+};
 
 function parsePositiveInt(value) {
   const n = parseInt(value, 10);
@@ -595,6 +657,7 @@ function ensureHiddenAwareWidget(widget) {
 
 function applyWidgetHiddenState(widget, hidden) {
   if (!widget) return;
+  ensureHiddenAwareWidget(widget);
   widget.hidden = hidden;
   widget.__AUN_visible = !hidden;
 }
@@ -743,6 +806,18 @@ function applyCompact(node) {
   const compact = isCompact(node);
   const mode = getWidget(node, "mode")?.value ?? "";
 
+  // Sync registry values into view widgets (fixes hidden-widget value loss)
+  const all = node.__AUN_allWidgets;
+  if (Array.isArray(all) && Array.isArray(node.widgets)) {
+    for (const rw of all) {
+      if (!rw || rw.__AUN_removed) continue;
+      const vw = node.widgets.find((w) => w?.name === rw.name);
+      if (vw && vw !== rw) {
+        vw.value = rw.value;
+      }
+    }
+  }
+
   const alwaysVisible = new Set(
     !compact
       ? ALL_WIDGETS
@@ -769,6 +844,13 @@ function applyCompact(node) {
   updateAutoHeight(node);
   scheduleAutoHeightUpdate(node);
   node.setDirtyCanvas?.(true, true);
+
+  // Persist all widget values (incl. hidden) into node properties so the
+  // frontend's live graph serialization (draft autosave / Ctrl+S) keeps them.
+  captureAunWidgetValues(node);
+
+  // Trigger changeTracker capture so workflow save includes our values
+  setTimeout(() => triggerWorkflowCapture(), 50);
 }
 
 function toggleCompactMode(node, { force = false } = {}) {
@@ -802,6 +884,20 @@ function toggleCompactMode(node, { force = false } = {}) {
 function setupNode(node) {
   if (node.__AUN_loraCompactInit) return;
   node.__AUN_loraCompactInit = true;
+
+  node.__AUN_allWidgets = Array.isArray(node.widgets) ? [...node.widgets] : [];
+  ensureWidgetSerialization(node);
+  restoreAunWidgetValues(node);
+
+  // Keep __AUN_allWidgets fresh if the frontend recreates widgets
+  const origAddWidgetCompact = node.addWidget;
+  node.addWidget = function addWidgetTracked(...args) {
+    const w = origAddWidgetCompact?.apply(this, args);
+    if (w && Array.isArray(this.__AUN_allWidgets) && !this.__AUN_allWidgets.includes(w)) {
+      this.__AUN_allWidgets.push(w);
+    }
+    return w;
+  };
 
   node.properties = node.properties || {};
   if (typeof node.properties[PROP_KEY] !== "boolean") {
@@ -1086,6 +1182,7 @@ app.registerExtension({
   loadedGraphNode(node) {
     if (node.comfyClass !== NODE_TYPE && node.type !== NODE_TYPE) return;
     setupNode(node);
+    restoreAunWidgetValues(node);
     applyCompact(node);
   },
 });

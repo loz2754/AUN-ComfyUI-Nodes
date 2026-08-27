@@ -31,15 +31,6 @@ class AUNRandomLoraModelOnlyMulti:
                     "tooltip": "Prompt index (1-20) determines which LoRAs to apply.",
                 },
             ),
-            "num_prompts": (
-                "INT",
-                {
-                    "default": 5,
-                    "min": 1,
-                    "max": cls.MAX_PROMPTS,
-                    "tooltip": "Number of prompts to configure (1-20).",
-                },
-            ),
             "apply_lora": (
                 "BOOLEAN",
                 {
@@ -49,6 +40,15 @@ class AUNRandomLoraModelOnlyMulti:
             ),
         }
         optional = {
+            "num_prompts": (
+                "INT",
+                {
+                    "default": 5,
+                    "min": 1,
+                    "max": cls.MAX_PROMPTS,
+                    "tooltip": "Number of prompts to configure (1-20).",
+                },
+            ),
             "clip": ("CLIP",),
             "base_prompt": (
                 "STRING",
@@ -81,7 +81,7 @@ class AUNRandomLoraModelOnlyMulti:
         
         # Add slots for each prompt (1-20)
         for p in range(1, cls.MAX_PROMPTS + 1):
-            # Add 3 LoRA slots per prompt
+            # Add 3 LoRA slots per prompt — combos in required for dropdown support
             for s in range(1, cls.LORAS_PER_PROMPT + 1):
                 required[f"p{p}_lora{s}"] = (
                     choices,
@@ -90,7 +90,7 @@ class AUNRandomLoraModelOnlyMulti:
                         "tooltip": f"Prompt {p}, LoRA slot {s}.",
                     },
                 )
-                required[f"p{p}_strength_model{s}"] = (
+                optional[f"p{p}_strength_model{s}"] = (
                     "FLOAT",
                     {
                         "default": 1.0,
@@ -100,7 +100,7 @@ class AUNRandomLoraModelOnlyMulti:
                         "tooltip": f"Prompt {p}, LoRA {s} model strength.",
                     },
                 )
-                required[f"p{p}_strength_clip{s}"] = (
+                optional[f"p{p}_strength_clip{s}"] = (
                     "FLOAT",
                     {
                         "default": 1.0,
@@ -110,7 +110,7 @@ class AUNRandomLoraModelOnlyMulti:
                         "tooltip": f"Prompt {p}, LoRA {s} clip strength.",
                     },
                 )
-                required[f"p{p}_trigger{s}"] = (
+                optional[f"p{p}_trigger{s}"] = (
                     "STRING",
                     {
                         "default": "",
@@ -122,7 +122,7 @@ class AUNRandomLoraModelOnlyMulti:
         # Append enable/disable toggles at the end to avoid shifting existing widgets' positions
         for p in range(1, cls.MAX_PROMPTS + 1):
             for s in range(1, cls.LORAS_PER_PROMPT + 1):
-                required[f"p{p}_enabled{s}"] = (
+                optional[f"p{p}_enabled{s}"] = (
                     "BOOLEAN",
                     {
                         "default": True,
@@ -224,6 +224,7 @@ class AUNRandomLoraModelOnlyMulti:
         apply_lora,
         unique_id=None,
         clip=None,
+        num_prompts=5,
         selected_LoRAs="",
         label="",
         **kwargs,

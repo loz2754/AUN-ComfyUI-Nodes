@@ -1,6 +1,23 @@
 import { showTooltip, hideTooltip, formatLoraTooltip } from "./tooltip.js";
 
 let __AUN_dropdown_styles_loaded = false;
+let __AUN_loraListCache = null;
+
+function getLoraListSync() {
+  return __AUN_loraListCache;
+}
+
+(function initLoraListFetch() {
+  fetch("/aun/loras")
+    .then((resp) => (resp.ok ? resp.json() : null))
+    .then((data) => {
+      const files = Array.isArray(data?.files) ? data.files : [];
+      if (files.length > 0) {
+        __AUN_loraListCache = ["None", ...files];
+      }
+    })
+    .catch(() => {});
+})();
 
 function ensureDropdownStyles() {
   if (__AUN_dropdown_styles_loaded) return;
@@ -109,7 +126,15 @@ function ensureDropdownStyles() {
 }
 
 function getWidget(node, name) {
-  return node?.widgets?.find((w) => w?.name === name) ?? null;
+  if (!node || !name) return null;
+  const fromView = node.widgets?.find((w) => w?.name === name);
+  if (fromView) return fromView;
+  const all = node.__AUN_allWidgets;
+  if (Array.isArray(all)) {
+    const fromRegistry = all.find((w) => w?.name === name);
+    if (fromRegistry) return fromRegistry;
+  }
+  return null;
 }
 
 function setWidgetValue(widget, value) {
@@ -186,11 +211,29 @@ export function makeLoraLabelClickable(node, slotName, loraLabel, loraLabelText,
   const show = () => {
     if (active) return;
     const widget = getWidget(node, slotName);
-    const values = widget?.options?.values;
-    if (!Array.isArray(values) || values.length === 0) return;
+    let values = widget?.options?.values;
+    if (!Array.isArray(values) || values.length === 0) {
+      const cached = getLoraListSync();
+      if (Array.isArray(cached) && cached.length > 0) {
+        if (widget) {
+          widget.options = widget.options || {};
+          widget.options.values = cached;
+        }
+        values = cached;
+      }
+    }
+    if (!Array.isArray(values) || values.length === 0) {
+      console.warn("[AUN Dropdown] No values available:", {
+        slotName,
+        widgetExists: !!widget,
+        widgetOptions: widget?.options,
+        cachedAvailable: !!getLoraListSync(),
+      });
+      return;
+    }
     active = true;
     loraLabel.draggable = false;
-    const currentValue = String(widget.value ?? "None");
+    const currentValue = widget ? String(widget.value ?? "None") : "None";
 
     // Build tree from flat path values
     const buildTree = (items) => {

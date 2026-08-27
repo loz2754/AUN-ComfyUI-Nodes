@@ -44,6 +44,15 @@ def _read_json_file(path: str) -> str | None:
         return None
 
 
+@PromptServer.instance.routes.get("/aun/loras")
+async def aun_loras_list(request: web.Request) -> web.Response:
+    try:
+        files = folder_paths.get_filename_list("loras") or []
+    except Exception:
+        files = []
+    return web.json_response({"files": files})
+
+
 @PromptServer.instance.routes.post("/aun/lora-multi-setup/save")
 async def aun_lora_multi_setup_save(request: web.Request) -> web.Response:
     try:
