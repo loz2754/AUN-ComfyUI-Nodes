@@ -5,11 +5,21 @@
 
 ### Added
 
+- AUNAutoPopulatePresets: new node for auto-populating preset configurations.
+- Widget value persistence for universal/group multi-nodes (via `aun_persistence_shared.js`).
+
 ### Changed
+
+- AUNMultiGroupUniversal/AUNMultiUniversal: moved most inputs from required to optional for better workflow flexibility.
+- Bookmark Jump: improved button deduplication and graph ID tracking for visibility.
 
 ### Fixed
 
+- All Graph button deduplication when both aun-comfyui-nodes and aun-node-control are active.
+
 ### Notes
+
+- Added `opencode.json` for agent configuration.
 
 ## [2.22.0] - 2026-08-21
 
