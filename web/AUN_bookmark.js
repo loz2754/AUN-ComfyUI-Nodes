@@ -1,6 +1,7 @@
 import { app } from "../../scripts/app.js";
+import { registerLegacyExtension } from "./aun-compat.js";
 
-app.registerExtension({
+registerLegacyExtension({
   name: "AUN.Bookmark",
   async beforeRegisterNodeDef(nodeType, nodeData, app) {
     if (nodeData.name === "AUNBookmark") {

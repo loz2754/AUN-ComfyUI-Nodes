@@ -1,4 +1,5 @@
 import { app } from "../../scripts/app.js";
+import { registerLegacyExtension } from "./aun-compat.js";
 
 function updateInputLabels(node) {
     // This function is specific to AUNGetNodeTitles, so no class check needed inside.
@@ -24,7 +25,7 @@ function updateInputLabels(node) {
     node.setDirtyCanvas(true, true);
 }
 
-app.registerExtension({
+registerLegacyExtension({
     name: "AUN.GetNodeTitles.Labels",
     nodeCreated(node) {
         if (node.comfyClass === "AUNGetNodeTitles") {

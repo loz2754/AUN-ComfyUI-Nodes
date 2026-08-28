@@ -1,4 +1,5 @@
 import { app } from "../../scripts/app.js";
+import { registerLegacyExtension } from "./aun-compat.js";
 
 const TARGET_CLASSES = new Set([
   "AUNInputsBasic",
@@ -161,7 +162,7 @@ function setupNode(node) {
   }
 }
 
-app.registerExtension({
+registerLegacyExtension({
   name: "AUN.InputsBasic.CollapseConnections",
   nodeCreated: (node) => setupNode(node),
   loadedGraphNode: (node) => setupNode(node),

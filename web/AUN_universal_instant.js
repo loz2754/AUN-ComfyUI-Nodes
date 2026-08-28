@@ -1,4 +1,5 @@
 import { app } from "../../scripts/app.js";
+import { registerLegacyExtension } from "./aun-compat.js";
 import { api } from "../../scripts/api.js";
 import {
   captureAunWidgetValues,
@@ -2421,7 +2422,7 @@ const extendNodePrototype = (nodeType, nodeData) => {
   };
 };
 
-app.registerExtension({
+registerLegacyExtension({
   name: "AUN.Universal.Instant",
   async beforeRegisterNodeDef(nodeType, nodeData) {
     if (!nodeData) return;

@@ -1,4 +1,5 @@
 import { app } from "../../scripts/app.js";
+import { registerLegacyExtension } from "./aun-compat.js";
 import { api } from "../../scripts/api.js";
 
 const NODE_CLASS = "AUNAddToPromptMulti";
@@ -436,7 +437,7 @@ function patchNode(node) {
   updateNodeVisibility(node);
 }
 
-app.registerExtension({
+registerLegacyExtension({
   name: "AUN.AddToPromptMulti.Canvas",
   nodeCreated(node) {
     if (node.comfyClass !== NODE_CLASS && node.type !== NODE_CLASS) return;

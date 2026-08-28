@@ -1,3 +1,5 @@
+import { registerLegacyExtension } from "./aun-compat.js";
+import { aunAddSetting, aunGetSettingValue } from "./aun-settings.js";
 let __AUN_tooltip_styles_loaded = false;
 let __AUN_tooltip_element = null;
 let __AUN_tooltip_timer = null;
@@ -184,7 +186,7 @@ export function setupComboWidgetTooltips() {
 
     const comboWidgets = new Map();
 
-    app.registerExtension({
+    registerLegacyExtension({
       name: "AUN.ComboTooltip",
       nodeCreated(node) {
         if (!node.widgets) return;
@@ -194,7 +196,7 @@ export function setupComboWidgetTooltips() {
     });
 
     // Add toggle setting in ComfyUI Settings
-    const setting = app.ui.settings.addSetting({
+    const setting = aunAddSetting({
       id: "AUN.ComboTooltip.Enabled",
       name: "Show combo widget value tooltips",
       tooltip: "Shows the full selected value when hovering over dropdown widgets on nodes",
@@ -205,7 +207,7 @@ export function setupComboWidgetTooltips() {
         if (!value) hideTooltip();
       },
     });
-    isEnabled = setting.value;
+    isEnabled = !!aunGetSettingValue("AUN.ComboTooltip.Enabled", true);
 
     // Also sync for any existing nodes
     for (const node of app.graph._nodes) {

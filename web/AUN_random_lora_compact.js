@@ -1,5 +1,6 @@
 import { api } from "../../scripts/api.js";
 import { app } from "../../scripts/app.js";
+import { registerLegacyExtension } from "./aun-compat.js";
 import { openLoraInfoDialog } from "./aun_lora_info_shared.js";
 
 const NODE_TYPE = "AUNRandomLoraModelOnly";
@@ -1131,7 +1132,7 @@ function setupNode(node) {
   applyCompact(node);
 }
 
-app.registerExtension({
+registerLegacyExtension({
   name: "AUN.RandomLoraCompact",
 
   async setup() {

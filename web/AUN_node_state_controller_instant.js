@@ -1,4 +1,5 @@
 import { app } from "../../scripts/app.js";
+import { registerLegacyExtension } from "./aun-compat.js";
 import { api } from "../../scripts/api.js";
 
 // Helper for flexible title matching with exclusion support
@@ -70,7 +71,7 @@ function applyMuteToIds(ids, mute) {
   }
 }
 
-app.registerExtension({
+registerLegacyExtension({
   name: "AUN.NodeStateController.Instant",
   async beforeRegisterNodeDef(nodeType, nodeData, appInstance) {
     if (!nodeData || nodeData.name !== "AUNNodeStateController") return;

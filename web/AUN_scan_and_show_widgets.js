@@ -1,4 +1,5 @@
 import { app } from "../../scripts/app.js";
+import { registerLegacyExtension } from "./aun-compat.js";
 import { getWidget, chainWidgetCallback } from "./index.js";
 
 const NODE_TYPE = "AUNScanAndShowWidgets";
@@ -973,7 +974,7 @@ function startPollLoop() {
 
 // ── Extension Registration ──────────────────────────────────────────
 
-app.registerExtension({
+registerLegacyExtension({
   name: "AUNNodes.ScanAndShowWidgets",
 
   async beforeRegisterNodeDef(nodeType, nodeData) {

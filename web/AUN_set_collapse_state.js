@@ -1,4 +1,5 @@
 import { app } from "../../scripts/app.js";
+import { registerLegacyExtension } from "./aun-compat.js";
 import { findNodeById, forceGraphRedraw } from "./index.js";
 
 function applyCollapseRecursive(node, collapse) {
@@ -15,7 +16,7 @@ function applyCollapseRecursive(node, collapse) {
   }
 }
 
-app.registerExtension({
+registerLegacyExtension({
   name: "AUN.SetCollapseState.Event",
   async setup(app) {
     app.api.addEventListener("AUN_set_collapse_state", (event) => {

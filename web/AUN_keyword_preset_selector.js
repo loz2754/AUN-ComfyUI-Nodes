@@ -1,4 +1,5 @@
 import { app } from "../../scripts/app.js";
+import { registerLegacyExtension } from "./aun-compat.js";
 import { api } from "../../scripts/api.js";
 import { applyWidgetHiddenState, ensureHiddenAware, getWidget, injectStyles, forceRedraw, isNodeCollapsed } from "./index.js";
 
@@ -426,7 +427,7 @@ function updateVisibility(node) {
   syncAndPositionFooter(node);
 }
 
-app.registerExtension({
+registerLegacyExtension({
   name: "AUN.KeywordPresetSelector",
   async beforeRegisterNodeDef(nodeType, nodeData) {
     if (nodeData.name !== NODE_CLASS) return;

@@ -1,4 +1,5 @@
 import { app } from "../../scripts/app.js";
+import { registerLegacyExtension } from "./aun-compat.js";
 import { api } from "../../scripts/api.js";
 import { getWidget, ensureHiddenAware, applyWidgetHiddenState } from "./widgets.js";
 import { injectStyles } from "./utils.js";
@@ -1280,7 +1281,7 @@ function setupNode(node) {
   // the post-configure pass is the one that actually hides the widgets).
   applyCollapseWidgets(node);
 }
-app.registerExtension({
+registerLegacyExtension({
   name: "AUN.ImageSliderComparer",
 
   async beforeRegisterNodeDef(nodeType, nodeData) {

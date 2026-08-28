@@ -1,4 +1,5 @@
 import { app } from "../../scripts/app.js";
+import { registerLegacyExtension } from "./aun-compat.js";
 
 const NODE_CLASS = "AUNRandomModelBundleSwitch";
 const MAX_SLOTS = 10;
@@ -51,7 +52,7 @@ function updateAllBundleSwitchNodes() {
   }
 }
 
-app.registerExtension({
+registerLegacyExtension({
   name: "AUN.RandomModelBundleSwitch.Labels",
 
   nodeCreated(node) {

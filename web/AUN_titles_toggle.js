@@ -1,4 +1,5 @@
 import { app } from "../../scripts/app.js";
+import { registerLegacyExtension } from "./aun-compat.js";
 import { api } from "../../scripts/api.js";
 
 // Helper for flexible title matching with exclusion support
@@ -156,7 +157,7 @@ api.addEventListener("AUN_set_mute_by_titles", (event) => {
     } catch (e) {}
 });
 
-app.registerExtension({
+registerLegacyExtension({
     name: "AUN.TitlesToggle.Instant",
     async beforeRegisterNodeDef(nodeType, nodeData, app) {
     if (nodeData.name === "AUNSetBypassByTitle" || nodeData.name === "AUNSetMuteByTitle" || nodeData.name === "AUNMultiBypassTitles3" || nodeData.name === "AUNMultiBypassTitles6" || nodeData.name === "AUNMultiBypassTitles2") {

@@ -1,4 +1,5 @@
 import { app } from "../../scripts/app.js";
+import { registerLegacyExtension } from "./aun-compat.js";
 import { openLoraInfoDialog } from "./aun_lora_info_shared.js";
 import { makeLoraLabelClickable } from "./aun_lora_dropdown_shared.js";
 
@@ -1415,7 +1416,7 @@ function setupNode(node) {
   applyCompact(node);
 }
 
-app.registerExtension({
+registerLegacyExtension({
   name: "AUN.LoraStackWithTriggers",
   nodeCreated(node) {
     setupNode(node);
@@ -1429,4 +1430,4 @@ app.registerExtension({
     applyCompact(node);
     scheduleCompactLoadStabilization(node, 4, 50);
   },
-});
+}, true);

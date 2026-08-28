@@ -1,10 +1,11 @@
 import { app } from "../../scripts/app.js";
+import { registerLegacyExtension } from "./aun-compat.js";
 import { api } from "../../scripts/api.js";
 import { ComfyWidgets } from "../../../scripts/widgets.js";
 
 // This extension adds a node that displays text with a title
 
-app.registerExtension({
+registerLegacyExtension({
   name: "AUNNodes.ShowTextWithTitle",
 
   async setup() {

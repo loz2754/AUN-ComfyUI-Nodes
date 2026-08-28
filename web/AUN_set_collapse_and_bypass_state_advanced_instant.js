@@ -1,4 +1,5 @@
 import { app } from "../../scripts/app.js";
+import { registerLegacyExtension } from "./aun-compat.js";
 import { api } from "../../scripts/api.js";
 
 function parseIds(raw) {
@@ -103,7 +104,7 @@ function applyMuteToIds(ids, mute) {
   }
 }
 
-app.registerExtension({
+registerLegacyExtension({
   name: "AUN.SetCollapseAndBypass.Advanced.Instant",
   async beforeRegisterNodeDef(nodeType, nodeData, app) {
     const matches =

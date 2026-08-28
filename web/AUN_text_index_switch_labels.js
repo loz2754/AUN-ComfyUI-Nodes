@@ -1,4 +1,5 @@
 import { app } from "../../scripts/app.js";
+import { registerLegacyExtension } from "./aun-compat.js";
 
 const MAX_INPUTS = 20;
 const MIN_INPUTS = 2;
@@ -460,7 +461,7 @@ function updateInputLabels(node) {
   app.canvas.draw(true, true);
 }
 
-app.registerExtension({
+registerLegacyExtension({
   name: "AUN.TextIndexSwitch.Labels",
   nodeCreated(node) {
     if (TEXT_SWITCH_CLASSES.has(node.comfyClass)) {

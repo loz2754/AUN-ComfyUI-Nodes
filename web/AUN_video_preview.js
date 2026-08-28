@@ -2,6 +2,7 @@
 // This mirrors the ComfyUI-JNodes behavior but is scoped to AUN nodes only.
 
 import { app } from "../../scripts/app.js";
+import { registerLegacyExtension } from "./aun-compat.js";
 import { api } from "../../scripts/api.js";
 
 const PREVIEW_REGISTRY = new WeakMap();
@@ -342,4 +343,4 @@ const AUNMediaPreview = {
   },
 };
 
-app.registerExtension(AUNMediaPreview);
+registerLegacyExtension(AUNMediaPreview);

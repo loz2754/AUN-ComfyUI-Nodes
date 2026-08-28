@@ -1,4 +1,5 @@
 import { app } from "../../scripts/app.js";
+import { registerLegacyExtension } from "./aun-compat.js";
 
 const MAX_INPUTS = 10;
 const MIN_INPUTS = 1;
@@ -300,7 +301,7 @@ function syncIndexWidget(node, maxVisible) {
     }
 }
 
-app.registerExtension({
+registerLegacyExtension({
     name: "AUN.GetConnectedNodeTitles.Labels",
     nodeCreated(node) {
         setupNode(node);

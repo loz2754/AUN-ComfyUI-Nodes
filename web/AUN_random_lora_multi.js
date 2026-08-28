@@ -1,5 +1,6 @@
 import { api } from "../../scripts/api.js";
 import { app } from "../../scripts/app.js";
+import { registerLegacyExtension } from "./aun-compat.js";
 import { openLoraInfoDialog } from "./aun_lora_info_shared.js";
 import { makeLoraLabelClickable } from "./aun_lora_dropdown_shared.js";
 import { openPromptSetupDialog } from "./AUN_random_lora_multi_setup_dialog.js";
@@ -2185,7 +2186,7 @@ function startLoraMultiScanner() {
   }, 2000);
 }
 
-app.registerExtension({
+registerLegacyExtension({
   name: "AUN.RandomLoraMultiCompact",
 
   async setup() {

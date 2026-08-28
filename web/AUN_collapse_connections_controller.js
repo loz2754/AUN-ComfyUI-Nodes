@@ -1,4 +1,6 @@
 import { app } from "../../scripts/app.js";
+import { registerLegacyExtension } from "./aun-compat.js";
+import { aunAddSetting, aunGetSettingValue } from "./aun-settings.js";
 import {
   forceGraphRedraw,
   getAllGraphs,
@@ -454,10 +456,10 @@ function onRunBarButtonClick() {
   updateRunBarButton();
 }
 
-app.registerExtension({
+registerLegacyExtension({
   name: "AUN.CollapseConnectionsController",
   async setup() {
-    const setting = app.ui.settings.addSetting({
+    const setting = aunAddSetting({
       id: RUN_BAR_SETTING_ID,
       name: "Collapse Connections Controller: show 'All Graph' run-bar button",
       tooltip:
@@ -474,7 +476,7 @@ app.registerExtension({
         }
       },
     });
-    showRunBarBtn = !!setting.value;
+    showRunBarBtn = !!aunGetSettingValue(RUN_BAR_SETTING_ID, true);
     updateRunBarButton();
   },
   async beforeRegisterNodeDef(nodeType, nodeData) {

@@ -1,6 +1,7 @@
 // Hide image preview on AUNImageSingleBatch3 when hide_preview widget is true.
 // Displays the loaded filename in a text widget just above the image preview.
 import { app } from "../../scripts/app.js";
+import { registerLegacyExtension } from "./aun-compat.js";
 
 const TARGET_NODE_TYPE = "AUNImageSingleBatch3";
 
@@ -120,7 +121,7 @@ function onNodeExecuted(event) {
   }
 }
 
-app.registerExtension({
+registerLegacyExtension({
   name: "AUN.ImageSingleBatch3HidePreview",
   async beforeRegisterNodeDef(nodeType, nodeData, app) {
     if (nodeData?.name !== TARGET_NODE_TYPE) return;

@@ -1,4 +1,5 @@
 import { app } from "../../scripts/app.js";
+import { registerLegacyExtension } from "./aun-compat.js";
 
 const TARGET_CLASSES = new Set([
   "AUNKSamplerPlusV2",
@@ -151,7 +152,7 @@ function setupNode(node) {
   }
 }
 
-app.registerExtension({
+registerLegacyExtension({
   name: "AUN.KSampler.CollapseConnections",
   nodeCreated: (node) => setupNode(node),
   loadedGraphNode: (node) => setupNode(node),

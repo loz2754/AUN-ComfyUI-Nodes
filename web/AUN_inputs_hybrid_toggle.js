@@ -1,4 +1,5 @@
 import { app } from "../../scripts/app.js";
+import { registerLegacyExtension } from "./aun-compat.js";
 
 const SOURCE_CHECKPOINT = "Checkpoint";
 const SOURCE_DIFFUSION = "Diffusion model";
@@ -166,7 +167,7 @@ function setupNode(node) {
     applyMode(node, initialMode);
 }
 
-app.registerExtension({
+registerLegacyExtension({
     name: "AUN.InputsHybrid.Visibility",
     nodeCreated(node) {
         debugLog("nodeCreated", node?.title, node?.comfyClass);

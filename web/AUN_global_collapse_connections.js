@@ -1,4 +1,6 @@
 import { app } from "../../scripts/app.js";
+import { registerLegacyExtension } from "./aun-compat.js";
+import { aunAddSetting, aunGetSettingValue } from "./aun-settings.js";
 import { forceGraphRedraw } from "./index.js";
 
 const PK = "collapse_connections";
@@ -302,12 +304,12 @@ export function canRemoteCollapse(node) {
   return typeof node.__aun_remoteCollapse === "function";
 }
 
-app.registerExtension({
+registerLegacyExtension({
   name: "AUN.GlobalCollapseConnections",
   nodeCreated: (node) => hookNode(node),
   loadedGraphNode: (node) => hookNode(node),
   async setup() {
-    const skipSetting = app.ui.settings.addSetting({
+    const skipSetting = aunAddSetting({
       id: SKIP_SETTING_ID,
       name: "Collapse connections: extra node classes to skip",
       tooltip:
@@ -329,10 +331,10 @@ app.registerExtension({
       },
     });
     userSkipClasses = new Set(
-      (skipSetting.value || "").split(",").map((s) => s.trim()).filter(Boolean)
+      (aunGetSettingValue(SKIP_SETTING_ID, "") || "").split(",").map((s) => s.trim()).filter(Boolean)
     );
 
-    app.ui.settings.addSetting({
+    aunAddSetting({
       id: SETTING_ID,
       name: "⚠ EXPERIMENTAL — Global collapse connections (compact socket lines)",
       tooltip:

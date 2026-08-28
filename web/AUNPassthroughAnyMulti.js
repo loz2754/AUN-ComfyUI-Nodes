@@ -1,4 +1,5 @@
 import { app } from "../../scripts/app.js";
+import { registerLegacyExtension } from "./aun-compat.js";
 
 const NODE_TYPE = "AUNPassthroughAnyMulti";
 const MAX_INPUTS = 20;
@@ -635,7 +636,7 @@ function setupMaxValueLen(node) {
 
 // ── Extension Registration ──────────────────────────────────────────
 
-app.registerExtension({
+registerLegacyExtension({
   name: "AUNNodes.PassthroughAnyMulti",
 
   async beforeRegisterNodeDef(nodeType, nodeData, app) {

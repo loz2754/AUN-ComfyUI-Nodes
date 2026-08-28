@@ -1,4 +1,5 @@
 import { app } from "../../scripts/app.js";
+import { registerLegacyExtension } from "./aun-compat.js";
 
 const MAX_INPUTS = 20;
 const MIN_INPUTS = 2;
@@ -340,7 +341,7 @@ function setupNode(node) {
   syncIndexWidget(node, widgetValue);
 }
 
-app.registerExtension({
+registerLegacyExtension({
   name: "AUN.MultiNegPrompt.Visibility",
   nodeCreated(node) {
     setupNode(node);

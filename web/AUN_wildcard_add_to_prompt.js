@@ -1,4 +1,5 @@
 import { app } from "../../scripts/app.js";
+import { registerLegacyExtension } from "./aun-compat.js";
 
 const PLACEHOLDER_VALUES = new Set([
   "Select wildcard...",
@@ -342,7 +343,7 @@ function setupCompact(node) {
 
 // ── Extension registration ──
 
-app.registerExtension({
+registerLegacyExtension({
   name: "AUN.WildcardAddToPrompt",
   async beforeRegisterNodeDef(nodeType, nodeData) {
     if (!nodeData || nodeData.name !== "AUNWildcardAddToPrompt") return;

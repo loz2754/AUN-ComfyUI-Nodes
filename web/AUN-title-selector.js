@@ -1,8 +1,9 @@
 import { app } from "../../scripts/app.js";
+import { registerLegacyExtension } from "./aun-compat.js";
 import { api } from "../../scripts/api.js";
 
 // Register the extension
-app.registerExtension({
+registerLegacyExtension({
     name: "AUN.NodeTitleSelector",
     
     async beforeRegisterNodeDef(nodeType, nodeData) {

@@ -1,4 +1,5 @@
 import { app } from "../../scripts/app.js";
+import { registerLegacyExtension } from "./aun-compat.js";
 import { NODE_MODE } from "./index.js";
 import { getWidget } from "./widgets.js";
 import { applyWidgetHiddenState } from "./widgets.js";
@@ -110,7 +111,7 @@ const wrapWidget = (node, widgetName, callback) => {
     };
 };
 
-app.registerExtension({
+registerLegacyExtension({
     name: "AUN.MultiIndex.Instant",
     async beforeRegisterNodeDef(nodeType, nodeData) {
         if (!nodeData) return;

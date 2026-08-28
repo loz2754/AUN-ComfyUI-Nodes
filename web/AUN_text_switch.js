@@ -1,6 +1,7 @@
 import { app } from "../../scripts/app.js";
+import { registerLegacyExtension } from "./aun-compat.js";
 
-app.registerExtension({
+registerLegacyExtension({
   name: "AUN.TextSwitch.DynamicLabels",
   async beforeRegisterNodeDef(nodeType, nodeData, app) {
     if (nodeData.name !== "TextSwitch2InputWithTextOutput") return;
@@ -191,8 +192,8 @@ app.registerExtension({
       if (!labelA || !labelB || !choose) return;
 
       const updateLabels = () => {
-        const valA = (labelA.value || "Text A").trim();
-        const valB = (labelB.value || "Text B").trim();
+        const valA = String(labelA.value ?? "Text A").trim();
+        const valB = String(labelB.value ?? "Text B").trim();
 
         const oldVal = choose.value;
 
@@ -242,30 +243,51 @@ app.registerExtension({
       // Ensure labels are updated on configure (when workflow is loaded)
       const origOnConfigure = this.onConfigure;
       this.onConfigure = function (info) {
-        // Pre-emptively restore label_a and label_b values so the combo options are valid
-        // BEFORE LiteGraph's configure() restores the 'choose' widget value.
-        if (info && info.widgets_values) {
-          const aIdx = this.widgets.findIndex((w) => w.name === "label_a");
-          const bIdx = this.widgets.findIndex((w) => w.name === "label_b");
-          if (aIdx !== -1 && aIdx < info.widgets_values.length) {
-            this.widgets[aIdx].value = info.widgets_values[aIdx];
-          }
-          if (bIdx !== -1 && bIdx < info.widgets_values.length) {
-            this.widgets[bIdx].value = info.widgets_values[bIdx];
-          }
-          updateLabels();
+        // Guarded: a mismatch with an unexpected frontend render mode must
+        // never abort workflow loading.
+        try {
+          // Pre-emptively restore label_a and label_b values so the combo options are valid
+          // BEFORE LiteGraph's configure() restores the 'choose' widget value.
+          if (info && info.widgets_values) {
+            const aIdx = this.widgets.findIndex((w) => w.name === "label_a");
+            const bIdx = this.widgets.findIndex((w) => w.name === "label_b");
+            if (aIdx !== -1 && aIdx < info.widgets_values.length) {
+              this.widgets[aIdx].value = info.widgets_values[aIdx];
+            }
+            if (bIdx !== -1 && bIdx < info.widgets_values.length) {
+              this.widgets[bIdx].value = info.widgets_values[bIdx];
+            }
+            updateLabels();
 
-          // Workaround for some ComfyUI versions discarding combo values:
-          const chooseIdx = this.widgets.findIndex((w) => w.name === "choose");
-          if (chooseIdx !== -1 && chooseIdx < info.widgets_values.length) {
-            const savedChoose = info.widgets_values[chooseIdx];
-            setTimeout(() => {
-              if (this.widgets[chooseIdx].value !== savedChoose) {
-                this.widgets[chooseIdx].value = savedChoose;
-                this.setDirtyCanvas(true, true);
-              }
-            }, 10);
+            // Workaround for some ComfyUI versions discarding combo values:
+            const chooseIdx = this.widgets.findIndex((w) => w.name === "choose");
+            if (chooseIdx !== -1 && chooseIdx < info.widgets_values.length) {
+              const savedChoose = info.widgets_values[chooseIdx];
+              setTimeout(() => {
+                if (this.widgets[chooseIdx].value !== savedChoose) {
+                  this.widgets[chooseIdx].value = savedChoose;
+                  this.setDirtyCanvas(true, true);
+                }
+              }, 10);
+            }
           }
+
+          // Restore values stashed by the Vue layer. A compact-mode save
+          // only serializes the presented widgets, so the positional
+          // widgets_values re-application (reload, or a render-mode switch)
+          // lands on the wrong widgets — the by-name stash fixes them.
+          const stash = this.properties?._AUN_ts2_compactValues;
+          if (stash && typeof stash === "object") {
+            for (const [name, value] of Object.entries(stash)) {
+              const w = this.widgets.find((x) => x.name === name);
+              if (w && value !== undefined && w.value !== value) {
+                w.value = value;
+              }
+            }
+            updateLabels();
+          }
+        } catch (err) {
+          console.warn("[AUN] TS2 compat onConfigure guarded:", err);
         }
 
         if (origOnConfigure) origOnConfigure.apply(this, arguments);
@@ -344,4 +366,4 @@ app.registerExtension({
       }
     };
   },
-});
+}, true);

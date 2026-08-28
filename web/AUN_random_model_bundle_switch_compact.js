@@ -1,4 +1,5 @@
 import { app } from "../../scripts/app.js";
+import { registerLegacyExtension } from "./aun-compat.js";
 import { api } from "../../scripts/api.js";
 
 const NODE_TYPE = "AUNRandomModelBundleSwitch";
@@ -515,7 +516,7 @@ function setupNode(node) {
   applyVisibility(node);
 }
 
-app.registerExtension({
+registerLegacyExtension({
   name: "AUN.RandomModelBundleSwitch.Compact",
 
   async setup() {

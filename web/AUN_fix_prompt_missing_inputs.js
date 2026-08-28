@@ -1,4 +1,5 @@
 import { app } from "../../scripts/app.js";
+import { registerLegacyExtension } from "./aun-compat.js";
 
 /**
  * ComfyUI 1.53.2: `node.widgets` is a reactive getter over a "presented"
@@ -24,6 +25,7 @@ const AUN_NODE_TYPES = new Set([
   "AUNMultiGroupUniversal",
   "ANCMultiUniversal",
   "ANCMultiGroupUniversal",
+  "TextSwitch2InputWithTextOutput",
 ]);
 
 function shouldSkipWidget(w) {
@@ -48,7 +50,18 @@ function buildAllWidgetsMap(node) {
 function getWidgetValue(w, node) {
   try {
     if (typeof w.serializeValue === "function") {
-      return w.serializeValue(node, 0);
+      const s = w.serializeValue(node, 0);
+      // On the Vue frontend, store-backed widgets removed from the
+      // presented view serialize to an empty object — fall back to the
+      // raw widget value in that case.
+      const isEmptyObject =
+        s !== null &&
+        typeof s === "object" &&
+        !Array.isArray(s) &&
+        Object.keys(s).length === 0;
+      if (s !== undefined && s !== null && !isEmptyObject) {
+        return s;
+      }
     }
   } catch (_) {}
   return w.value;
@@ -119,7 +132,7 @@ if (app.graphToPrompt) {
 }
 
 // 3. Also patch from registerExtension (guaranteed to run after app is ready)
-app.registerExtension({
+registerLegacyExtension({
   name: "AUN.fixPromptMissingInputs",
   beforeRegisterNodeDef() {
     patchGraphToPrompt();

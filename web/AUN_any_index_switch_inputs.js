@@ -1,4 +1,5 @@
 import { app } from "../../scripts/app.js";
+import { registerLegacyExtension } from "./aun-compat.js";
 
 const MAX_INPUTS = 20;
 const MIN_INPUTS = 2;
@@ -252,7 +253,7 @@ function syncIndexWidget(node, maxVisible) {
     }
 }
 
-app.registerExtension({
+registerLegacyExtension({
     name: "AUN.AnyIndexSwitch.InputLimiter",
     nodeCreated(node) {
         setupNode(node);

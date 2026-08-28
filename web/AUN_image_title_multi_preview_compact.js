@@ -1,4 +1,5 @@
 import { app } from "../../scripts/app.js";
+import { registerLegacyExtension } from "./aun-compat.js";
 import { getWidget, ensureHiddenAware, applyWidgetHiddenState } from "./widgets.js";
 import { isCompact, setCompact, forceRedraw } from "./utils.js";
 
@@ -59,7 +60,7 @@ function setupNode(node) {
   applyCompact(node);
 }
 
-app.registerExtension({
+registerLegacyExtension({
   name: "AUN.ImageTitleMultiPreviewCompact",
 
   async beforeRegisterNodeDef(nodeType, nodeData) {

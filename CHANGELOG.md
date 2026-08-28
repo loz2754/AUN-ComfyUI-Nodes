@@ -5,7 +5,14 @@
 
 ### Added
 
+- Nodes 2.0 (Vue frontend) support via dual-layer `web/vue/` ports: Text Switch 2 (`TextSwitch2InputWithTextOutput`), LoRA Stack with Triggers (`AUNLoraStackWithTriggers`), and LoRA Stack with Triggers Model Clip (`AUNLoraStackWithTriggersModelClip`).
+- New frontend shims: `web/aun-compat.js` (frontend detection, `registerLegacyExtension` with `skipOnVue` gating) and `web/aun-settings.js` (`aunAddSetting`/`aunGetSettingValue`).
+- LoRA stack compact overlays on Nodes 2.0: native-collapse hiding, cleanup on node delete, aggressive bidirectional occlusion (rows + trigger footer), and lag-free drag tracking anchored to the node DOM with transform-based movement.
+
 ### Changed
+
+- All legacy frontend extensions migrated from `app.registerExtension` to `registerLegacyExtension`; settings reads/writes go through `aun-settings.js`.
+- LoRA stack legacy extensions skip on Nodes 2.0 in favor of the Vue ports.
 
 ### Fixed
 

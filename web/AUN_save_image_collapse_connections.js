@@ -1,4 +1,5 @@
 import { app } from "../../scripts/app.js";
+import { registerLegacyExtension } from "./aun-compat.js";
 import { applyWidgetHiddenState } from "./widgets.js";
 
 const TARGET_CLASSES = new Set(["AUNSaveImage", "AUNSaveImageV2"]);
@@ -172,7 +173,7 @@ function setupNode(node) {
   }
 }
 
-app.registerExtension({
+registerLegacyExtension({
   name: "AUN.SaveImage.PreviewMode",
   nodeCreated: (node) => setupNode(node),
   loadedGraphNode: (node) => setupNode(node),

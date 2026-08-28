@@ -7,6 +7,7 @@
 // ────────────────────────────────────────────────────────────────────
 
 import { app } from "../../scripts/app.js";
+import { registerLegacyExtension } from "./aun-compat.js";
 import { api } from "../../scripts/api.js";
 import { findNodeByIdentifier, forceRedraw, isNodeCollapsed, getWidget, applyWidgetHiddenState, isCompact, setCompact } from "./index.js";
 
@@ -360,7 +361,7 @@ function toggleCompactMode(node) {
 // Extension: reserve footer space + draw it
 // ------------------------------------------------------------------
 
-app.registerExtension({
+registerLegacyExtension({
   name: "AUN.ApplyPresetToNode",
 
   async beforeRegisterNodeDef(nodeType, nodeData) {

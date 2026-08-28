@@ -1,4 +1,5 @@
 import { app } from "../../scripts/app.js";
+import { registerLegacyExtension } from "./aun-compat.js";
 import { api } from "../../scripts/api.js";
 
 const TARGET_CLASSES = new Set([
@@ -261,7 +262,7 @@ api.addEventListener("status", async ({ detail }) => {
     }
 });
 
-app.registerExtension({
+registerLegacyExtension({
     name: "AUN.InputsResolutionOverlay",
     nodeCreated(node) { setupNode(node); },
     loadedGraphNode(node) { setupNode(node); },

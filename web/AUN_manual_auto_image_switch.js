@@ -1,4 +1,5 @@
 import { app } from "../../scripts/app.js";
+import { registerLegacyExtension } from "./aun-compat.js";
 import { getWidget as sharedGetWidget } from "./index.js";
 
 const ADVANCED_WIDGETS = new Set([
@@ -261,7 +262,7 @@ const setupCollapseOverrides = (node) => {
   };
 };
 
-app.registerExtension({
+registerLegacyExtension({
   name: "AUN.ManualAutoImageSwitch.Compact",
   async beforeRegisterNodeDef(nodeType, nodeData) {
     if (nodeData?.name !== "AUNManualAutoImageSwitch") return;

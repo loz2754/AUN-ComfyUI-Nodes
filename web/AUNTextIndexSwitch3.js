@@ -1,4 +1,5 @@
 import { app } from "../../scripts/app.js";
+import { registerLegacyExtension } from "./aun-compat.js";
 import { api } from "../../scripts/api.js";
 
 const NODE_TYPES = ["AUNTextIndexSwitch3", "AUNTextIndexSwitch4", "AUNTextIndexSwitch5", "AUNTextIndexSwitch5Diffusers", "AUNInputsBasicSwitch"];
@@ -3033,7 +3034,7 @@ function drawInputsSectionDivider(node, ctx) {
 
 // --- EXTENSION REGISTRATION ---
 try {
-  app.registerExtension({
+  registerLegacyExtension({
     name: "AUN.TextIndexSwitch3",
 
     async beforeRegisterNodeDef(nodeType, nodeData) {

@@ -1,4 +1,6 @@
 ﻿import { app } from "../../scripts/app.js";
+import { registerLegacyExtension } from "./aun-compat.js";
+import { aunAddSetting, aunGetSettingValue } from "./aun-settings.js";
 
 const STORAGE_KEY = "AUN.BookmarkJump.Buttons";
 
@@ -552,10 +554,10 @@ function init() {
   startRafLoop();
 }
 
-app.registerExtension({
+registerLegacyExtension({
   name: "AUN.BookmarkJump",
   setup() {
-    const setting = app.ui.settings.addSetting({
+    const setting = aunAddSetting({
       id: "AUN.BookmarkJump.ShowMenuButton",
       name: "Bookmark Jump: show '+' button in menu bar",
       tooltip: "Shows a '+' button in the top action bar to add bookmark jump buttons.",
@@ -570,7 +572,7 @@ app.registerExtension({
         }
       },
     });
-    showMenuBtn = setting.value !== false;
+    showMenuBtn = aunGetSettingValue("AUN.BookmarkJump.ShowMenuButton", true) !== false;
     init();
   },
 });

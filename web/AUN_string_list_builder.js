@@ -1,4 +1,5 @@
 import { app } from "../../scripts/app.js";
+import { registerLegacyExtension } from "./aun-compat.js";
 import { getWidget, applyWidgetHiddenState } from "./widgets.js";
 
 const NODE_CLASS = "AUNStringListBuilder";
@@ -64,7 +65,7 @@ function patchNode(node) {
   updateNodeVisibility(node);
 }
 
-app.registerExtension({
+registerLegacyExtension({
   name: "AUN.StringListBuilder.Inputs",
   async nodeCreated(node) {
     if (node.comfyClass !== NODE_CLASS && node.type !== NODE_CLASS) return;

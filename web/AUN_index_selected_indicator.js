@@ -1,4 +1,5 @@
 import { app } from "../../scripts/app.js";
+import { registerLegacyExtension } from "./aun-compat.js";
 import { api } from "../../scripts/api.js";
 import { getWidgetByNames, parsePositiveInt as sharedParsePositiveInt } from "./index.js";
 
@@ -198,7 +199,7 @@ const setupNode = (node) => {
   setTimeout(() => graph?.setDirtyCanvas(true, true), 120);
 };
 
-app.registerExtension({
+registerLegacyExtension({
   name: "AUN.IndexSelectedIndicator",
   async setup() {
     api.addEventListener("AUN_random_text_index_selected", ({ detail }) => {

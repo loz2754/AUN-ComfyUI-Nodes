@@ -6,6 +6,7 @@
 // ────────────────────────────────────────────────────────────────────
 
 import { app } from "../../scripts/app.js";
+import { registerLegacyExtension } from "./aun-compat.js";
 import { api } from "../../scripts/api.js";
 import { getWidget, applyWidgetHiddenState, isCompact, setCompact, isNodeCollapsed, forceRedraw, findNodeByIdentifier } from "./index.js";
 import { openPresetSetupDialog, refreshPresetSetupDialog } from "./AUN_preset_manager_setup_dialog.js";
@@ -398,7 +399,7 @@ function installSetupTitleButton(node) {
 // Extension registration
 // ------------------------------------------------------------------
 
-app.registerExtension({
+registerLegacyExtension({
   name: "AUN.PresetManager",
 
   async beforeRegisterNodeDef(nodeType, nodeData) {

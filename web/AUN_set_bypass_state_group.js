@@ -1,4 +1,5 @@
 import { app } from "../../scripts/app.js";
+import { registerLegacyExtension } from "./aun-compat.js";
 import { api } from "../../scripts/api.js";
 import {
   NODE_MODE,
@@ -17,7 +18,7 @@ const NODE_TYPE = "AUNSetBypassStateGroup";
 // Register with shared group watcher so a single interval serves both bypass & mute nodes
 registerGroupNodeType(NODE_TYPE);
 
-app.registerExtension({
+registerLegacyExtension({
   name: "AUN.SetBypassStateGroup.Event",
   async setup(app) {
     startGroupWatcher();
