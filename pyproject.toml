@@ -1,7 +1,7 @@
 [project]
 name = "aun-comfyui-nodes"
 description = "A comprehensive collection of custom nodes for compact, well-organised workflows. Includes bypass/mute/collapse controls, auto file names, image saver, index-driven prompting that pairs LoRAs to specific prompts and triggers, image slider compares images with up to 5 pairs of images. Multi 'show-any' node that accepts any inputs and shows all within the node. Many  more..."
-version = "2.24.0"
+version = "2.25.0"
 license = {file = "LICENSE"} 
 # classifiers = [
 #     # For OS-independent nodes (works on all operating systems)
