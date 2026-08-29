@@ -1782,7 +1782,11 @@ function applyCompact(node) {
   const promptIdx = resolvePromptIndex(node);
   const numPrompts = getNumPrompts(node);
 
-  // Sync registry values into view widgets (fixes hidden-widget value loss)
+  // Sync registry values into view widgets (fixes hidden-widget value loss).
+  // This is the restore path for the setup-modal settings: the registry is
+  // file-restored before applyCompact in every load path, and the capture
+  // side is guarded by __AUN_loadStabilizing — the sync itself must keep
+  // running so store-recreated view widgets receive the saved values.
   const all = node.__AUN_allWidgets;
   if (Array.isArray(all) && Array.isArray(node.widgets)) {
     for (const rw of all) {
@@ -2095,6 +2099,20 @@ function setupNode(node) {
   if (node.__AUN_loraMultiCompactInit) return;
   node.__AUN_loraMultiCompactInit = true;
 
+  // nodeCreated also fires during workflow load, BEFORE configure applies
+  // saved widgets_values — block captures until the load path has settled
+  // (loadedGraphNode re-arms and the stabilization timeout clears it).
+  node.__AUN_loadStabilizing = true;
+  setTimeout(() => {
+    if (!node || node.type === undefined) return;
+    node.__AUN_loadStabilizing = false;
+    // Post-hydration pass: syncs the file-restored registry values into
+    // store-recreated view widgets (what the setup modal reads).
+    try {
+      applyCompact(node);
+    } catch (_) {}
+  }, 2500);
+
   node.__AUN_allWidgets = Array.isArray(node.widgets) ? [...node.widgets] : [];
   ensureWidgetSerialization(node);
   restoreAunWidgetValues(node);
@@ -2167,9 +2185,19 @@ function initExistingNodes() {
   let initialized = false;
   for (const node of nodes) {
     if (isTargetNode(node) && !node.__AUN_loraMultiCompactInit) {
+      node.__AUN_loadStabilizing = true;
       setupNode(node);
       restoreAunWidgetValues(node);
       scheduleAutoHeightUpdate(node, 2, 0);
+      setTimeout(() => {
+        if (!node || node.type === undefined) return;
+        node.__AUN_loadStabilizing = false;
+        // Post-hydration pass: syncs the file-restored registry values into
+        // store-recreated view widgets (what the setup modal reads).
+        try {
+          applyCompact(node);
+        } catch (_) {}
+      }, 2000);
       initialized = true;
     }
   }
@@ -2184,6 +2212,182 @@ function startLoraMultiScanner() {
   __AUN_loraMultiScanTimer = setInterval(() => {
     initExistingNodes();
   }, 2000);
+}
+
+// Widget order of the CURRENT def (v2.24+) and of the LEGACY def (v2.22-)
+// for AUNLoRAsByPromptIndex / AUNRandomLoraModelOnlyMulti. Same length.
+const PROMPT_INDEX_NEW_ORDER = (() => {
+  const names = ["prompt_index", "apply_lora"];
+  for (let p = 1; p <= MAX_PROMPTS; p++) {
+    for (let s = 1; s <= LORAS_PER_PROMPT; s++) names.push(`p${p}_lora${s}`);
+  }
+  names.push("num_prompts", "base_prompt", "selected_LoRAs", "label");
+  for (let p = 1; p <= MAX_PROMPTS; p++) {
+    for (let s = 1; s <= LORAS_PER_PROMPT; s++) names.push(`p${p}_strength_model${s}`);
+  }
+  for (let p = 1; p <= MAX_PROMPTS; p++) {
+    for (let s = 1; s <= LORAS_PER_PROMPT; s++) names.push(`p${p}_strength_clip${s}`);
+  }
+  for (let p = 1; p <= MAX_PROMPTS; p++) {
+    for (let s = 1; s <= LORAS_PER_PROMPT; s++) names.push(`p${p}_trigger${s}`);
+  }
+  for (let p = 1; p <= MAX_PROMPTS; p++) {
+    for (let s = 1; s <= LORAS_PER_PROMPT; s++) names.push(`p${p}_enabled${s}`);
+  }
+  return names;
+})();
+
+const PROMPT_INDEX_OLD_ORDER = (() => {
+  const names = ["prompt_index", "num_prompts", "apply_lora"];
+  for (let p = 1; p <= MAX_PROMPTS; p++) {
+    for (let s = 1; s <= LORAS_PER_PROMPT; s++) {
+      names.push(
+        `p${p}_lora${s}`,
+        `p${p}_strength_model${s}`,
+        `p${p}_strength_clip${s}`,
+        `p${p}_trigger${s}`,
+      );
+    }
+  }
+  for (let p = 1; p <= MAX_PROMPTS; p++) {
+    for (let s = 1; s <= LORAS_PER_PROMPT; s++) names.push(`p${p}_enabled${s}`);
+  }
+  names.push("base_prompt", "selected_LoRAs", "label");
+  return names;
+})();
+
+function promptIndexValueFitsName(name, value) {
+  if (value === undefined || value === null) return true;
+  if (/^p\d+_lora\d+$/.test(name)) return typeof value === "string";
+  if (/^p\d+_strength_(model|clip)\d+$/.test(name)) {
+    return (
+      typeof value === "number" ||
+      (typeof value === "string" &&
+        value.trim() !== "" &&
+        Number.isFinite(Number(value)))
+    );
+  }
+  if (/^p\d+_trigger\d+$/.test(name)) return typeof value === "string";
+  if (/^p\d+_enabled\d+$/.test(name)) return typeof value === "boolean";
+  if (name === "num_prompts" || name === "prompt_index") {
+    return typeof value === "number";
+  }
+  if (name === "apply_lora") return typeof value === "boolean";
+  return typeof value === "string";
+}
+
+// The buggy builds loaded an old-order widgets_values positionally onto the
+// new-order widgets and captured the result by name. The corrupted map is
+// therefore a permutation of the original values: map[newNameAt(j)] holds
+// the old widget's value at old position j. Invert it and verify the result
+// type-fits the widget names before accepting.
+function recoverPermutedAunValues(map) {
+  if (!map || typeof map !== "object") return null;
+  if (PROMPT_INDEX_NEW_ORDER.length !== PROMPT_INDEX_OLD_ORDER.length) return null;
+  const recovered = {};
+  let total = 0;
+  let ok = 0;
+  for (let j = 0; j < PROMPT_INDEX_OLD_ORDER.length; j++) {
+    const oldName = PROMPT_INDEX_OLD_ORDER[j];
+    const value = map[PROMPT_INDEX_NEW_ORDER[j]];
+    if (value === undefined || value === null) continue;
+    total++;
+    recovered[oldName] = value;
+    if (promptIndexValueFitsName(oldName, value)) ok++;
+  }
+  if (total < 200 || ok / total < 0.9) return null;
+  return recovered;
+}
+
+// v2.22-era def order for AUNLoRAsByPromptIndex / AUNRandomLoraModelOnlyMulti:
+//   required: prompt_index, num_prompts, apply_lora,
+//             interleaved [p*_lora, p*_strength_model, p*_strength_clip, p*_trigger],
+//             then p*_enabled toggles
+//   optional: clip (no widget), base_prompt, selected_LoRAs, label
+// The current def reorders these (loras first, strengths/triggers/enabled
+// moved into optional, num_prompts after apply_lora) — a positional
+// widgets_values application of an old save lands on the wrong widgets.
+// Detect old saves and remap positions at configure time.
+function migrateLegacyPromptIndexValues(node, info) {
+  if (!info || !Array.isArray(info.widgets_values)) return;
+  const wv = info.widgets_values;
+  if (wv.length < 246) {
+    // Compact new-format save (presented view only carries 2 values). The
+    // real values live in properties._aun_values — if the buggy builds
+    // permuted them, invert the permutation so restoreAunWidgetValues
+    // (type-validated) applies the recovered originals.
+    const map = node?.properties?._aun_values;
+    if (map && typeof map === "object") {
+      // Permutation signature: a corrupted map holds a string at
+      // num_prompts (an old trigger slot) and a number at apply_lora (the
+      // old num_prompts). Healthy maps are number + boolean.
+      if (
+        typeof map.num_prompts !== "number" &&
+        typeof map.apply_lora !== "boolean"
+      ) {
+        const recovered = recoverPermutedAunValues(map);
+        if (recovered) {
+          node.properties._aun_values = recovered;
+        }
+      }
+    }
+    return;
+  }
+  // Old: wv[1] = num_prompts (number), wv[2] = apply_lora (boolean).
+  // New: wv[1] = apply_lora (boolean).
+  if (typeof wv[1] !== "number" || typeof wv[2] !== "boolean") return;
+  const oldSlot = (p, s, k) => wv[3 + ((p - 1) * LORAS_PER_PROMPT + (s - 1)) * 4 + k];
+
+  const byName = {};
+  const set = (name, value) => {
+    if (value !== undefined && value !== null) byName[name] = value;
+  };
+  set("prompt_index", wv[0]);
+  set("num_prompts", wv[1]);
+  set("apply_lora", wv[2]);
+  for (let p = 1; p <= MAX_PROMPTS; p++) {
+    for (let s = 1; s <= LORAS_PER_PROMPT; s++) {
+      set(`p${p}_lora${s}`, oldSlot(p, s, 0));
+      set(`p${p}_strength_model${s}`, oldSlot(p, s, 1));
+      set(`p${p}_strength_clip${s}`, oldSlot(p, s, 2));
+      set(`p${p}_trigger${s}`, oldSlot(p, s, 3));
+      set(`p${p}_enabled${s}`, wv[243 + (p - 1) * LORAS_PER_PROMPT + (s - 1)]);
+    }
+  }
+  set("base_prompt", wv[303]);
+  set("selected_LoRAs", wv[304]);
+  set("label", wv[305]);
+
+  // Rebuild widgets_values in the CURRENT def order so the frontend's
+  // positional application is correct from the start.
+  const migrated = [];
+  migrated.push(wv[0]); // prompt_index
+  migrated.push(wv[2]); // apply_lora
+  for (let p = 1; p <= MAX_PROMPTS; p++) {
+    for (let s = 1; s <= LORAS_PER_PROMPT; s++) migrated.push(oldSlot(p, s, 0));
+  }
+  migrated.push(wv[1]); // num_prompts
+  migrated.push(wv[303]); // base_prompt
+  migrated.push(wv[304]); // selected_LoRAs
+  migrated.push(wv[305]); // label
+  for (let p = 1; p <= MAX_PROMPTS; p++) {
+    for (let s = 1; s <= LORAS_PER_PROMPT; s++) migrated.push(oldSlot(p, s, 1));
+  }
+  for (let p = 1; p <= MAX_PROMPTS; p++) {
+    for (let s = 1; s <= LORAS_PER_PROMPT; s++) migrated.push(oldSlot(p, s, 2));
+  }
+  for (let p = 1; p <= MAX_PROMPTS; p++) {
+    for (let s = 1; s <= LORAS_PER_PROMPT; s++) migrated.push(oldSlot(p, s, 3));
+  }
+  for (let i = 243; i < 243 + MAX_PROMPTS * LORAS_PER_PROMPT; i++) {
+    migrated.push(wv[i]);
+  }
+  info.widgets_values = migrated;
+
+  // By-name map for restoreAunWidgetValues (type-validated) — overwrites
+  // any poisoned _aun_values baked in by the buggy builds.
+  node.properties = node.properties || {};
+  node.properties._aun_values = byName;
 }
 
 registerLegacyExtension({
@@ -2658,6 +2862,11 @@ registerLegacyExtension({
 
     const ccOrigConfigure = nodeType.prototype.onConfigure;
     nodeType.prototype.onConfigure = function onConfigure(...args) {
+      // Migrate v2.22-era widgets_values BEFORE the original configure
+      // applies them positionally (def order changed in later versions).
+      try {
+        migrateLegacyPromptIndexValues(this, args[0]);
+      } catch (_) {}
       ccOrigConfigure?.apply(this, args);
       if (isCCollapsed(this)) {
         for (const slot of [...(this.inputs || []), ...(this.outputs || [])]) {
@@ -2677,9 +2886,19 @@ registerLegacyExtension({
 
   loadedGraphNode(node) {
     if (!isTargetNode(node)) return;
+    node.__AUN_loadStabilizing = true;
     setupNode(node);
     restoreAunWidgetValues(node);
     applyCompact(node);
     scheduleAutoHeightUpdate(node, 2, 50);
+    setTimeout(() => {
+      if (!node || node.type === undefined) return;
+      node.__AUN_loadStabilizing = false;
+      // Post-hydration pass: syncs the file-restored registry values into
+      // store-recreated view widgets (what the setup modal reads).
+      try {
+        applyCompact(node);
+      } catch (_) {}
+    }, 2000);
   },
 });

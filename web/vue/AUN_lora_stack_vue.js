@@ -913,13 +913,18 @@ function scheduleCompactHeightRefresh(node, delay = 0) {
 }
 
 function scheduleCompactLoadStabilization(node) {
-  for (const delay of [100, 400, 900]) {
+  // The frontend may hydrate saved widget values after our load hooks
+  // (store-backed widgets on the Vue frontend) — the final pass re-applies
+  // the file-sourced values after hydration and re-allows captures.
+  const DELAYS = [100, 400, 900, 1800];
+  for (const delay of DELAYS) {
     setTimeout(() => {
       try {
         if (!isTargetNode(node)) return;
         restoreAunWidgetValues(node);
         applyCompact(node);
         scheduleCompactRowsUpdate();
+        if (delay === 1800) node.__AUN_loadStabilizing = false;
       } catch (_) {}
     }, delay);
   }
@@ -1028,13 +1033,57 @@ function ensureWidgetSerialization(node) {
     try {
       captureAunWidgetValues(this);
     } catch (_) {}
-    return orig.apply(this, args);
+    let result;
+    try {
+      result = orig.apply(this, args);
+    } catch (_) {
+      result = null;
+    }
+    // Emit the full widget set in definition order so a compact-mode save
+    // (removed widgets are absent from the presented view) still restores
+    // every value positionally on load.
+    if (result && typeof result === "object") {
+      try {
+        const wv = [];
+        for (const name of widgetOrderList()) {
+          const w = this.__AUN_allWidgets?.find((x) => x?.name === name);
+          if (!w) continue;
+          let val;
+          try {
+            val =
+              typeof w.serializeValue === "function"
+                ? w.serializeValue(this, wv.length)
+                : w.value;
+          } catch (_) {
+            val = w.value;
+          }
+          // Removed store-backed widgets serialize to {} on the Vue
+          // frontend — fall back to the raw widget value.
+          const isEmptyObject =
+            val !== null &&
+            typeof val === "object" &&
+            !Array.isArray(val) &&
+            Object.keys(val).length === 0;
+          if (isEmptyObject) val = w.value;
+          wv.push(val);
+        }
+        result.widgets_values = wv;
+      } catch (_) {}
+    }
+    return result;
   };
 }
 
 function setupNode(node) {
   if (!isTargetNode(node) || node.__AUN_loraSetup) return;
   node.__AUN_loraSetup = true;
+  // nodeCreated also fires during workflow load, BEFORE the frontend
+  // applies saved widgets_values — block captures until the load path has
+  // settled (loadedGraphNode/stabilization re-arm and clear this flag).
+  node.__AUN_loadStabilizing = true;
+  setTimeout(() => {
+    if (node && node.type !== undefined) node.__AUN_loadStabilizing = false;
+  }, 2500);
   node.properties = node.properties || {};
   if (typeof node.properties[PROP_KEY] !== "boolean") {
     node.properties[PROP_KEY] = true; // default: compact
@@ -1272,6 +1321,36 @@ registerVueExtension({
           : false;
       };
     }
+    // Re-apply file-sourced values by name after the frontend applies
+    // widgets_values positionally. A compact-mode save only serializes the
+    // presented widgets, so the positional application (workflow load, or a
+    // render-mode switch) lands on the wrong widgets — the by-name stash
+    // fixes them. Patched on the prototype so it covers the first
+    // configure of freshly loaded nodes.
+    if (!nodeType.prototype._AUN_lora_vueConfigurePatched) {
+      nodeType.prototype._AUN_lora_vueConfigurePatched = true;
+      const origConfigure = nodeType.prototype.onConfigure;
+      nodeType.prototype.onConfigure = function (info) {
+        let result;
+        try {
+          result = origConfigure?.apply(this, arguments);
+        } catch (_) {}
+        try {
+          if (!isCompact(this)) return result;
+          restoreAunWidgetValues(this);
+          const stash = this.properties?.[COMPACT_VALUES_PROP];
+          if (stash && typeof stash === "object") {
+            for (const [name, value] of Object.entries(stash)) {
+              const w = getWidget(this, name);
+              if (w && value !== undefined && w.value !== value) {
+                w.value = value;
+              }
+            }
+          }
+        } catch (_) {}
+        return result;
+      };
+    }
   },
 
   getNodeMenuItems(node) {
@@ -1304,6 +1383,7 @@ registerVueExtension({
 
   loadedGraphNode(node) {
     if (node.comfyClass !== NODE_TYPE) return;
+    node.__AUN_loadStabilizing = true;
     setupNode(node);
     try {
       restoreAunWidgetValues(node);

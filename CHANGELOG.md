@@ -9,6 +9,11 @@
 
 ### Fixed
 
+- Widget values no longer reset when opening saved workflows (Nodes 2.0 and legacy frontends): load-time captures can no longer poison saved values, and value restores are type-validated so saves corrupted by earlier builds self-heal from the workflow's `widgets_values`.
+- AUN Node Controller (`AUNMultiUniversal`) restores its saved values on load again.
+- LoRA stack Vue ports emit full def-order `widgets_values` on save and re-apply stashed values by name after load.
+- LoRAs by Prompt Index and Random Multi-LoRA load v2.22-era workflows correctly (def-order migration) and recover values from compact saves made by the broken builds (permutation recovery).
+
 ### Notes
 
 ## [2.25.0] - 2026-08-29

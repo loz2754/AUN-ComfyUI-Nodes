@@ -3,7 +3,6 @@ import { registerLegacyExtension } from "./aun-compat.js";
 import { api } from "../../scripts/api.js";
 import {
   captureAunWidgetValues,
-  restoreAunWidgetValues,
 } from "./aun_persistence_shared.js";
 
 const MAX_SLOTS = 20;
@@ -2065,7 +2064,6 @@ const decorateNode = (node, nodeData) => {
   if (!node.__AUN_isGroupNode && !node.__AUN_isUniversalNode) return;
   ensureWidgetTracking(node);
   ensureWidgetSerialization(node);
-  restoreAunWidgetValues(node);
 
   node.__AUN_updateAutoHeight = () => {
     // Always recompute height from the currently visible widgets so the node
@@ -2287,8 +2285,6 @@ const decorateNode = (node, nodeData) => {
       this.syncTogglesWithGraph?.();
     }
   };
-
-  captureAunWidgetValues(node);
 };
 
 const extendNodePrototype = (nodeType, nodeData) => {
@@ -2310,7 +2306,6 @@ const extendNodePrototype = (nodeType, nodeData) => {
   nodeType.prototype.onConfigure = function onConfigure(data) {
     originalOnConfigure?.apply(this, arguments);
     restoreConfiguredWidgetValues(this, data);
-    restoreAunWidgetValues(this);
     this.__AUN_sanitizeWidgets?.();
     this.__AUN_refreshWidgets?.();
     this.refreshGroupDropdowns?.(true);

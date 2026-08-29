@@ -807,7 +807,11 @@ function applyCompact(node) {
   const compact = isCompact(node);
   const mode = getWidget(node, "mode")?.value ?? "";
 
-  // Sync registry values into view widgets (fixes hidden-widget value loss)
+  // Sync registry values into view widgets (fixes hidden-widget value loss).
+  // This is the restore path for hidden settings: the registry is
+  // file-restored before applyCompact in every load path, and the capture
+  // side is guarded by __AUN_loadStabilizing — the sync itself must keep
+  // running so store-recreated view widgets receive the saved values.
   const all = node.__AUN_allWidgets;
   if (Array.isArray(all) && Array.isArray(node.widgets)) {
     for (const rw of all) {
@@ -885,6 +889,20 @@ function toggleCompactMode(node, { force = false } = {}) {
 function setupNode(node) {
   if (node.__AUN_loraCompactInit) return;
   node.__AUN_loraCompactInit = true;
+
+  // nodeCreated also fires during workflow load, BEFORE configure applies
+  // saved widgets_values — block captures until the load path has settled
+  // (loadedGraphNode re-arms and the stabilization timeout clears it).
+  node.__AUN_loadStabilizing = true;
+  setTimeout(() => {
+    if (!node || node.type === undefined) return;
+    node.__AUN_loadStabilizing = false;
+    // Post-hydration pass: syncs the file-restored registry values into
+    // store-recreated view widgets.
+    try {
+      applyCompact(node);
+    } catch (_) {}
+  }, 2500);
 
   node.__AUN_allWidgets = Array.isArray(node.widgets) ? [...node.widgets] : [];
   ensureWidgetSerialization(node);
@@ -1182,8 +1200,20 @@ registerLegacyExtension({
 
   loadedGraphNode(node) {
     if (node.comfyClass !== NODE_TYPE && node.type !== NODE_TYPE) return;
+    node.__AUN_loadStabilizing = true;
     setupNode(node);
     restoreAunWidgetValues(node);
     applyCompact(node);
+    // Re-allow captures once the frontend has finished applying saved
+    // widget values (hydration can trail loadedGraphNode on some frontends).
+    setTimeout(() => {
+      if (!node || node.type === undefined) return;
+      node.__AUN_loadStabilizing = false;
+      // Post-hydration pass: syncs the file-restored registry values into
+      // store-recreated view widgets.
+      try {
+        applyCompact(node);
+      } catch (_) {}
+    }, 2000);
   },
 });
