@@ -122,7 +122,46 @@ const ensureWidgetSerialization = (node) => {
   const originalSerialize = node.serialize;
   node.serialize = function serializeWithAllWidgets(...args) {
     captureAunWidgetValues(this);
-    return originalSerialize.apply(this, args);
+    let result;
+    try {
+      result = originalSerialize.apply(this, args);
+    } catch (_) {
+      result = null;
+    }
+    // Emit the FULL widget set in definition order: frontends that only
+    // serialize the presented widgets would otherwise drop hidden-widget
+    // values from widgets_values, losing them from the workflow file.
+    if (result && typeof result === "object") {
+      try {
+        const names = getLegacyWidgetNames(this);
+        const wv = [];
+        for (const name of names) {
+          const w =
+            this.__AUN_widgetLookup?.get(name) ||
+            this.__AUN_allWidgets?.find((x) => x?.name === name) ||
+            this.widgets?.find((x) => x?.name === name);
+          if (!w) continue;
+          let val;
+          try {
+            val =
+              typeof w.serializeValue === "function"
+                ? w.serializeValue(this, wv.length)
+                : w.value;
+          } catch (_) {
+            val = w.value;
+          }
+          const isEmptyObject =
+            val !== null &&
+            typeof val === "object" &&
+            !Array.isArray(val) &&
+            Object.keys(val).length === 0;
+          if (isEmptyObject) val = w.value;
+          wv.push(val);
+        }
+        result.widgets_values = wv;
+      } catch (_) {}
+    }
+    return result;
   };
 };
 
@@ -2309,7 +2348,26 @@ const extendNodePrototype = (nodeType, nodeData) => {
   nodeType.prototype.onConfigure = function onConfigure(data) {
     originalOnConfigure?.apply(this, arguments);
     restoreConfiguredWidgetValues(this, data);
-    restoreAunWidgetValues(this);
+    // By-name restore from the file's _aun_values map: frontends that
+    // serialize only the presented widgets (Nodes 2.0) drop hidden-widget
+    // values from widgets_values — the map (captured correctly at save
+    // time) fills them back. Type-validation in the shared restore skips
+    // impossible values. The load-time captures are blocked until the
+    // hydration window below completes.
+    this.__AUN_loadStabilizing = true;
+    try {
+      restoreAunWidgetValues(this);
+    } catch (_) {}
+    const DELAYS = [100, 400, 900, 1800];
+    for (const delay of DELAYS) {
+      setTimeout(() => {
+        try {
+          if (!this || this.type === undefined) return;
+          restoreAunWidgetValues(this);
+          if (delay === 1800) this.__AUN_loadStabilizing = false;
+        } catch (_) {}
+      }, delay);
+    }
     this.__AUN_sanitizeWidgets?.();
     this.__AUN_refreshWidgets?.();
     this.refreshGroupDropdowns?.(true);
