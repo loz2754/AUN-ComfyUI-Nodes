@@ -597,6 +597,9 @@ function getMinimumCompactHeight(node, width) {
 
 function updateAutoHeight(node) {
   if (!node) return;
+  // Never grow a natively collapsed node — the frontend owns its collapsed
+  // height; auto-height would leave a strip of empty space below the title.
+  if (isNodeCollapsed(node)) return;
   const currentWidth = node.size?.[0] ?? 200;
   const height = computeVisibleNodeHeight(node, currentWidth);
   if (!Number.isFinite(height)) return;
@@ -2423,7 +2426,7 @@ app.registerExtension({
     const protoOrigOnResize = nodeType.prototype.onResize;
     nodeType.prototype.onResize = function onResize(...args) {
       const result = protoOrigOnResize?.apply(this, args);
-      if (this.__AUN_internalResize || !isCompact(this)) {
+      if (this.__AUN_internalResize || !isCompact(this) || isNodeCollapsed(this)) {
         return result;
       }
       const currentWidth = Number(this.size?.[0]) || 200;
@@ -2454,6 +2457,7 @@ app.registerExtension({
       if (
         this.__AUN_internalResize ||
         !isCompact(this) ||
+        isNodeCollapsed(this) ||
         !Array.isArray(newSize)
       ) {
         return protoOrigSetSize?.call(this, newSize);
@@ -2477,7 +2481,7 @@ app.registerExtension({
     // onDrawForeground
     const protoOrigDrawFg = nodeType.prototype.onDrawForeground;
     nodeType.prototype.onDrawForeground = function onDrawForeground(ctx) {
-      if (!this.__AUN_internalResize && isCompact(this)) {
+      if (!this.__AUN_internalResize && isCompact(this) && !isNodeCollapsed(this)) {
         const currentWidth = Number(this.size?.[0]) || 200;
         const currentHeight = Number(this.size?.[1]);
         const targetHeight = getMinimumCompactHeight(this, currentWidth);
@@ -2494,7 +2498,7 @@ app.registerExtension({
       protoOrigDrawFg?.apply(this, arguments);
       positionCompactRows(this, ctx);
 
-      if (!isCompact(this)) return;
+      if (!isCompact(this) || isNodeCollapsed(this)) return;
 
       // Draw label overlay
       let labelText = "";
@@ -2606,7 +2610,7 @@ app.registerExtension({
         ctx.restore();
       }
 
-      if (!showFooter(this)) return;
+      if (!showFooter(this) || isNodeCollapsed(this)) return;
       const footerHeight = getCompactFooterHeight(this);
       const w = this.size[0];
       const h = this.size[1];
