@@ -1,5 +1,6 @@
 import { app } from "../../scripts/app.js";
 import { registerLegacyExtension } from "./aun-compat.js";
+import { vueRegisterNodeDblClick } from "./vue/aun-vue.js";
 
 const NODE_TYPE = "AUNShowAnyMulti";
 const MAX_INPUTS = 20;
@@ -101,6 +102,17 @@ function updateInputLabels(node) {
       }
     }
     input.label = input.name;
+  }
+  // Preserve the collapsed state on both frontends: connection changes call
+  // this to re-resolve captions, and on DOM-rendered nodes onDrawForeground
+  // never runs to re-blank them, so re-blank here when collapse is on.
+  if (!!node.properties?.[COLLAPSE_KEY]) {
+    for (const input of node.inputs) {
+      if (!input?.name?.startsWith(INPUT_PREFIX)) continue;
+      if (node.widgets?.length && input.widget) continue;
+      input.label = " ";
+    }
+    convergeNodeSocketsDOM(node);
   }
   if (app.canvas) {
     app.canvas.setDirty(true);
@@ -427,23 +439,166 @@ startOverlayLoop();
 
 // ── Collapse Connections ─────────────────────────────────────────────
 
+// Collapse hides socket labels imperatively so it works on BOTH frontends:
+// onDrawForeground (which blanks labels each draw) never runs on DOM-rendered
+// Nodes 2.0 nodes, so there we must mutate input.label and re-render the node.
+function redrawLinks(node) {
+  const g = node.graph ?? app.graph;
+  // Third arg = links-dirty: forces the link layer to recompute endpoints from
+  // the (converged) getInputPos/getOutputPos instead of just repainting.
+  g?.setDirtyCanvas?.(true, true, true);
+  app?.canvas?.setDirty?.(true, true);
+  const cv = app?.canvas;
+  if (cv) {
+    cv.is_rendering = false;
+    try { cv.draw?.(true, true); } catch (_) {}
+  }
+}
+
+function stopConverge(node) {
+  if (node.__aun_settleTimers) {
+    for (const t of node.__aun_settleTimers) clearTimeout(t);
+    node.__aun_settleTimers = null;
+  }
+}
+
+// Re-assert the collapse visual over a short BOUNDED window (never a continuous
+// loop — that crashes on zoom). The async Vue re-render after _force_refresh
+// recreates the socket rows, so we re-stack a few times until it settles. Each
+// pass re-checks the current collapse state, so rapid toggling is safe.
+function scheduleConverge(node, collapsed) {
+  stopConverge(node);
+  const timers = [];
+  const apply = () => {
+    if (!node.graph || node.properties?.[COLLAPSE_KEY] !== !!collapsed) return;
+    if (collapsed) {
+      if (convergeNodeSocketsDOM(node)) redrawLinks(node);
+    } else {
+      restoreNodeSocketsDOM(node);
+      redrawLinks(node);
+    }
+  };
+  for (const d of collapsed ? [0, 90, 200, 380, 620] : [0, 90, 200]) {
+    timers.push(setTimeout(apply, d));
+  }
+  node.__aun_settleTimers = timers;
+}
+
+function applyCollapseLabels(node) {
+  const g = node.graph ?? app.graph;
+  const collapsed = !!node.properties?.[COLLAPSE_KEY];
+  if (collapsed) {
+    for (const s of node.inputs || []) {
+      if (node.widgets?.length && s.widget) continue;
+      s.label = " ";
+    }
+  } else {
+    updateInputLabels(node);
+  }
+  // Redraw with the links-dirty flag so the link layer recomputes endpoints
+  // from the converged getInputPos/getOutputPos, then re-assert the stack over
+  // a short bounded window (the async re-render recreates the socket rows).
+  redrawLinks(node);
+  node.onPropertyChanged?.("_force_refresh", Date.now());
+  scheduleConverge(node, collapsed);
+}
+
+// DOM socket convergence: on collapsed nodes the frontend renders each input
+// socket as a `.lg-slot--input` row, so stack the extra rows onto the first one
+// to "converge into 1 at the top" like the legacy node. Reversible on expand.
+// Returns true when it moved/re-moved anything, so the caller can redraw links.
+function convergeNodeSocketsDOM(node) {
+  let changed = false;
+  try {
+    if (!document?.querySelector?.("[data-node-id]")) return false;
+    const el = document.querySelector(`[data-node-id="${node.id}"]`);
+    if (!el) return false;
+    const stack = (sel) => {
+      const rows = [...el.querySelectorAll(sel)];
+      if (rows.length < 2) return;
+      // Row 0 is never shifted, so it is the stable reference. Rect reads return
+      // POST-shift positions; to recover a row's original top we must subtract
+      // the offset WE applied (r.__aun_sam_dy). Otherwise we measure the already
+      // stacked row as "already at firstTop", recompute dy=0 next tick, and the
+      // dots oscillate. We shift via NEGATIVE marginTop (not transform) so the
+      // rows' layout position — which the socket dots render from — also moves.
+      const firstTop = rows[0].getBoundingClientRect().top;
+      for (let i = 1; i < rows.length; i++) {
+        const r = rows[i];
+        const applied = Number(r.__aun_sam_dy) || 0;
+        const origTop = r.getBoundingClientRect().top - applied;
+        const dy = Math.round(firstTop - origTop);
+        if (dy !== applied) {
+          if (r.__aun_sam_origMargin === undefined) r.__aun_sam_origMargin = r.style.marginTop;
+          r.__aun_sam_dy = dy;
+          r.style.marginTop = dy + "px";
+          changed = true;
+        }
+      }
+    };
+    stack(".lg-slot--input");
+    stack(".lg-slot--output");
+  } catch (_) {}
+  return changed;
+}
+
+function restoreNodeSocketsDOM(node) {
+  try {
+    if (!document?.querySelector?.("[data-node-id]")) return;
+    const el = document.querySelector(`[data-node-id="${node.id}"]`);
+    if (!el) return;
+    for (const r of el.querySelectorAll(".lg-slot--input, .lg-slot--output")) {
+      if (r.__aun_sam_origMargin !== undefined) {
+        r.style.marginTop = r.__aun_sam_origMargin;
+        delete r.__aun_sam_origMargin;
+      } else {
+        r.style.marginTop = "";
+      }
+      delete r.__aun_sam_dy;
+    }
+  } catch (_) {}
+}
+
+function setShowAnyCollapse(node, on) {
+  if (!node) return;
+  node.properties = node.properties || {};
+  const target = !!on;
+  if (!!node.properties[COLLAPSE_KEY] === target) return;
+  node.properties[COLLAPSE_KEY] = target;
+  applyCollapseLabels(node);
+}
+
+// Toggle used by the DOM double-click dispatcher (vueRegisterNodeDblClick).
+// On DOM-rendered Nodes 2.0, node.onDblClick never fires; the frontend
+// dispatches dblclicks to a document-level listener that resolves the node.
+function toggleShowAnyCollapse(node) {
+  if (!node || node.comfyClass !== NODE_TYPE) return;
+  setupCollapseConnections(node);
+  setShowAnyCollapse(node, !node.properties?.[COLLAPSE_KEY]);
+}
+
 function setupCollapseConnections(node) {
   if (node.__aun_collapse_hooked) return;
   node.__aun_collapse_hooked = true;
 
   node.properties = node.properties || {};
 
-  const origGetOutputPos = node.getOutputPos.bind(node);
-  node.getOutputPos = function (index) {
-    if (this.properties?.[COLLAPSE_KEY]) return origGetOutputPos(0);
-    return origGetOutputPos(index);
-  };
-
-  const origGetInputPos = node.getInputPos.bind(node);
-  node.getInputPos = function (index) {
-    if (this.properties?.[COLLAPSE_KEY]) return origGetInputPos(0);
-    return origGetInputPos(index);
-  };
+  // Converge connection-line anchors. The link layer reads getInputPos /
+  // getOutputPos (LiteGraph's canonical anchor source) and recomputes them
+  // when the graph is marked link-dirty (setDirtyCanvas(true,true,true)).
+  // Override on the INSTANCE so it is definitely consulted on DOM frontends.
+  {
+    const oi = node.getInputPos;
+    node.getInputPos = function (index) {
+      if (typeof oi !== "function") return undefined;
+      return this.properties?.[COLLAPSE_KEY] ? oi.call(this, 0) : oi.call(this, index);
+    };
+    const oo = node.getOutputPos;
+    node.getOutputPos = function (index) {
+      if (typeof oo !== "function") return undefined;
+      return this.properties?.[COLLAPSE_KEY] ? oo.call(this, 0) : oo.call(this, index);
+    };
+  }
 
   const origDrawFg = node.onDrawForeground;
   node.onDrawForeground = function (ctx) {
@@ -459,24 +614,13 @@ function setupCollapseConnections(node) {
 
   function toggleCollapse() {
     const on = !this.properties[COLLAPSE_KEY];
-    this.properties[COLLAPSE_KEY] = on;
-    if (!on) {
-      updateInputLabels(this);
-    }
-    this.graph?.setDirtyCanvas(true, true);
+    setShowAnyCollapse(this, on);
   }
 
   // Remote control from AUNCollapseConnectionsController – mirrors toggleCollapse
   // (no resize, so the user-set node height is preserved).
   node.__aun_remoteCollapse = (next) => {
-    const target = !!next;
-    if (!!node.properties?.[COLLAPSE_KEY] === target) return;
-    node.properties = node.properties || {};
-    node.properties[COLLAPSE_KEY] = target;
-    if (!target) {
-      updateInputLabels(node);
-    }
-    node.graph?.setDirtyCanvas(true, true);
+    setShowAnyCollapse(node, next);
   };
 
   const origDblClick = node.onDblClick;
@@ -506,6 +650,16 @@ function setupCollapseConnections(node) {
       callback: () => toggleCollapse.call(this),
     });
   };
+
+  // A node loaded already-collapsed must have its labels blanked after the
+  // frontend resolves them (labels land from widgets_values/sockets during
+  // configure). The settle pass re-applies the collapse state on both
+  // frontends; idempotent, so a later connection change or re-setup is safe.
+  setTimeout(() => {
+    if (node.properties?.[COLLAPSE_KEY]) {
+      applyCollapseLabels(node);
+    }
+  }, 250);
 }
 
 // ── Show / Hide Data Types ──────────────────────────────────────────
@@ -645,6 +799,7 @@ registerLegacyExtension({
 
     const origOnRemoved = nodeType.prototype.onRemoved;
     nodeType.prototype.onRemoved = function () {
+      stopConverge(this);
       removeOverlayState(this);
       return origOnRemoved?.apply(this, arguments);
     };
@@ -652,6 +807,7 @@ registerLegacyExtension({
 
   nodeCreated(node) {
     if (node.comfyClass === NODE_TYPE) {
+      vueRegisterNodeDblClick(toggleShowAnyCollapse);
       setupCollapseConnections(node);
       setupShowTypes(node);
       setupMaxValueLen(node);
@@ -706,6 +862,7 @@ function labelsSig(node) {
 }
 
 function pollForTitleChanges() {
+  let didChange = false;
   if (app?.graph?._nodes) {
     for (const node of app.graph._nodes) {
       const changedTitle = node.title !== lastTitles[node.id];
@@ -715,10 +872,14 @@ function pollForTitleChanges() {
         if (changedTitle || sig !== node.__aun_lastSig) {
           node.__aun_lastSig = sig;
           updateInputLabels(node);
+          didChange = true;
         }
       }
     }
-    if (app.canvas) {
+    // Only force a redraw when a label/title actually changed. Redrawing every
+    // frame re-renders the DOM node sockets on Nodes 2.0, which undoes the
+    // collapse convergence and makes the dots flicker.
+    if (didChange && app.canvas) {
       app.canvas.setDirty(true, true);
       app.canvas.draw(true, true);
     }
