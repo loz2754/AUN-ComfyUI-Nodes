@@ -224,16 +224,45 @@ function getCanvasRect() {
 // On DOM-rendered frontends (vueNodes) the node itself is a DOM element
 // that moves in lockstep with the drag — anchoring rows to it eliminates
 // the one-frame trail the legacy canvas transform produces.
-function getNodeDomRect(node) {
+function getNodeEl(node) {
   try {
-    if (!document?.querySelector?.("[data-node-id]")) return null;
-    const el = document.querySelector(`[data-node-id="${node.id}"]`);
-    if (!el) return null;
-    const r = el.getBoundingClientRect();
-    return r.width > 0 ? r : null;
+    if (!document?.querySelectorAll?.(`[data-node-id="${node.id}"]`)) return null;
+    const candidates = document.querySelectorAll(`[data-node-id="${node.id}"]`);
+    const vw = window?.innerWidth ?? Infinity;
+    const vh = window?.innerHeight ?? Infinity;
+    let bestOnScreen = null;
+    let bestOnScreenArea = 0;
+    let bestAny = null;
+    let bestAnyArea = 0;
+    for (const el of candidates) {
+      const r = el.getBoundingClientRect();
+      if (!(r.width > 0 && r.height > 0)) continue;
+      const area = r.width * r.height;
+      if (area > bestAnyArea) {
+        bestAnyArea = area;
+        bestAny = el;
+      }
+      const onScreen =
+        r.bottom > -40 &&
+        r.top < vh + 40 &&
+        r.right > -40 &&
+        r.left < vw + 40;
+      if (onScreen && area > bestOnScreenArea) {
+        bestOnScreenArea = area;
+        bestOnScreen = el;
+      }
+    }
+    return bestOnScreen || bestAny;
   } catch (_) {
     return null;
   }
+}
+
+function getNodeDomRect(node) {
+  const el = getNodeEl(node);
+  if (!el) return null;
+  const r = el.getBoundingClientRect();
+  return r.width > 0 ? r : null;
 }
 
 function graphToScreen(node, gx, gy, rect) {
@@ -251,7 +280,7 @@ function graphToScreen(node, gx, gy, rect) {
 }
 
 function isNodeOnScreen(node) {
-  const nodeEl = document?.querySelector?.(`[data-node-id="${node.id}"]`);
+  const nodeEl = getNodeEl(node);
   if (nodeEl) {
     const r = nodeEl.getBoundingClientRect();
     const padding = 20;
@@ -337,7 +366,7 @@ function getEstimatedCompactRowY(node) {
  * used; otherwise the stored measurement or an estimate.
  */
 function measureFirstRowBaseY(node) {
-  const nodeEl = document?.querySelector?.(`[data-node-id="${node.id}"]`);
+  const nodeEl = getNodeEl(node);
   if (nodeEl) {
     try {
       const nodeRect = nodeEl.getBoundingClientRect();
@@ -368,7 +397,8 @@ function ensureCompactRowStyles() {
   if (ensureCompactRowStyles.done || typeof document === "undefined") return;
   ensureCompactRowStyles.done = true;
   const css = `
-.aun-lora-compact-row{position:fixed;left:0;top:0;z-index:80;display:flex;align-items:center;gap:6px;height:${COMPACT_ROW_HEIGHT}px;padding:0 6px;box-sizing:border-box;background:rgba(22,26,33,.94);border:1px solid rgba(255,255,255,.14);border-radius:6px;font-size:11px;color:#d5d9e0;white-space:nowrap;will-change:transform;}
+.aun-lora-compact-row{position:fixed;left:0;top:0;z-index:80;display:flex;align-items:center;gap:6px;height:${COMPACT_ROW_HEIGHT}px;padding:0 6px;box-sizing:border-box;background:rgba(22,26,33,.94);border:1px solid rgba(255,255,255,.14);border-radius:6px;font-size:11px;color:#d5d9e0;white-space:nowrap;will-change:transform;pointer-events:none;}
+.aun-lora-compact-row .aun-lora-row-checkbox,.aun-lora-compact-row .aun-lora-row-grip,.aun-lora-compact-row .aun-lora-row-label,.aun-lora-compact-row .aun-lora-row-strength,.aun-lora-compact-row .aun-lora-row-strength button,.aun-lora-compact-row .aun-lora-row-strength input,.aun-lora-compact-row .aun-lora-row-info{pointer-events:auto;}
 .aun-lora-compact-row .aun-lora-row-checkbox{margin:0;width:13px;height:13px;flex:0 0 auto;}
 .aun-lora-compact-row .aun-lora-row-grip{color:#6b7480;cursor:grab;user-select:none;font-size:12px;flex:0 0 auto;}
 .aun-lora-compact-row .aun-lora-row-grip:active{cursor:grabbing;}
@@ -453,8 +483,6 @@ function swapWidgetSlots(node, a, b) {
 
 let strengthDrag = null;
 let reorderDrag = null;
-let fastDragNodeId = null;
-let lastFastPoint = null;
 
 function buildCompactRow(node, slotIndex) {
   const row = document.createElement("div");
@@ -638,13 +666,22 @@ function positionCompactRowsCore(node, fast) {
   // skip DOM measurement so the rows track the node in the same event turn.
   const baseY =
     fast && Number.isFinite(stored) ? stored : measureFirstRowBaseY(node);
-  if (
-    Number.isFinite(baseY) &&
-    (!Number.isFinite(stored) || Math.abs(stored - baseY) > 1)
-  ) {
-    node.__AUN_compactFirstRowY = baseY;
-    updateAutoHeight(node);
-    scheduleCompactHeightRefresh(node);
+  if (Number.isFinite(baseY)) {
+    if (!Number.isFinite(stored) || Math.abs(stored - baseY) > 1) {
+      node.__AUN_compactFirstRowY = baseY;
+      updateAutoHeight(node);
+      scheduleCompactHeightRefresh(node);
+    }
+    // Re-grow even when baseY did NOT drift. The frontend re-render after
+    // removeWidget recomputes node.size[1] to the shorter natural height
+    // (title + inputs + apply_stack) while baseY (node-top to
+    // apply_stack-bottom) stays constant, so the >1 guard above never fires
+    // and the body stays too short — letting rows spill below it.
+    const requiredHeight = computeCompactHeight(node, baseY, numSlots);
+    if ((node.size?.[1] ?? 0) < requiredHeight) {
+      setNodeSize(node, node.size?.[0] ?? 300, requiredHeight);
+      scheduleCompactHeightRefresh(node);
+    }
   }
   const currentWidth = node.size?.[0] ?? 300;
   const innerWidth = currentWidth - COMPACT_SIDE_PADDING * 2;
@@ -653,6 +690,8 @@ function positionCompactRowsCore(node, fast) {
   const scale = nodeRect
     ? nodeRect.width / Math.max(1, currentWidth)
     : app?.canvas?.ds?.scale || 1;
+  const baseGx = node.pos?.[0] ?? 0;
+  const baseGy = node.pos?.[1] ?? 0;
   for (const row of rows) {
     const slotIndex = Number(row.dataset.slotIndex);
     if (!Number.isFinite(slotIndex) || slotIndex > numSlots) {
@@ -670,9 +709,12 @@ function positionCompactRowsCore(node, fast) {
       row.style.width = Math.max(80, innerWidth * scale) + "px";
       continue;
     }
-    const gx = (node.pos?.[0] ?? 0) + COMPACT_SIDE_PADDING;
-    const gy = (node.pos?.[1] ?? 0) + slotOffset;
-    const sp = graphToScreen(node, gx, gy, rect);
+    const sp = graphToScreen(
+      node,
+      baseGx + COMPACT_SIDE_PADDING,
+      baseGy + slotOffset,
+      rect,
+    );
     if (!sp) {
       row.style.display = "none";
       continue;
@@ -687,9 +729,6 @@ function positionCompactRowsCore(node, fast) {
 
 function positionCompactRowsFromCanvas(node, fast) {
   if (!isTargetNode(node)) return;
-  // While this node is being dragged, the pointer-delta path owns its rows;
-  // RAF repositioning would fight the delta updates.
-  if (fastDragNodeId != null && fastDragNodeId === String(node.id)) return;
   const rows = ensureCompactRows(node);
   const compact = isCompact(node);
   const collapsed = isNodeCollapsed(node);
@@ -822,18 +861,28 @@ function restoreAllRemoved(node) {
   wireWidgetCallbacks(node);
 }
 
+function computeCompactHeight(node, baseY, numSlots) {
+  return (
+    baseY +
+    numSlots * COMPACT_ROW_HEIGHT +
+    Math.max(0, numSlots - 1) * COMPACT_ROW_GAP +
+    10
+  );
+}
+
 function updateAutoHeight(node) {
   if (!isTargetNode(node)) return;
   const currentWidth = node.size?.[0] ?? 240;
   if (isCompact(node)) {
-    const numSlots = getNumSlots(node);
-    const firstCompactRowY = getCompactLayoutMetrics(node).firstCompactRowY;
-    const compactHeight =
-      firstCompactRowY +
-      numSlots * COMPACT_ROW_HEIGHT +
-      Math.max(0, numSlots - 1) * COMPACT_ROW_GAP +
-      10;
-    setNodeSize(node, currentWidth, compactHeight);
+    setNodeSize(
+      node,
+      currentWidth,
+      computeCompactHeight(
+        node,
+        getCompactLayoutMetrics(node).firstCompactRowY,
+        getNumSlots(node),
+      ),
+    );
     return;
   }
   let h = null;
@@ -979,25 +1028,14 @@ function wireWidgetCallbacks(node) {
     lw._AUN_loraWired = true;
     const orig = lw.callback;
     lw.callback = function (v) {
-      const prevLora = normalizeLoraWidgetValue(lw._AUN_prevValue ?? null);
-      lw._AUN_prevValue = v;
       if (typeof orig === "function") {
         try {
           orig.apply(this, arguments);
         } catch (_) {}
       }
+      // Do NOT auto-fill the slot's trigger with the LoRA filename on
+      // selection — the trigger field is the user's own trigger words.
       try {
-        const newLora = normalizeLoraWidgetValue(v);
-        const triggerW = getWidget(node, `trigger_${i}`);
-        if (triggerW && !String(triggerW.value ?? "").trim()) {
-          triggerW.value = newLora ? loraBasename(newLora) : "";
-        }
-        if (prevLora && triggerW) {
-          const cur = String(triggerW.value ?? "").trim();
-          if (cur === loraBasename(prevLora)) {
-            triggerW.value = newLora ? loraBasename(newLora) : "";
-          }
-        }
         syncCompactRow(node, i);
         applyCompact(node);
         scheduleCompactRowsUpdate();
@@ -1151,74 +1189,11 @@ registerVueExtension({
     }
     if (typeof window !== "undefined") {
       window.addEventListener("resize", () => scheduleCompactRowsUpdate());
-      // Drag tracking: apply the pointer delta directly to already-positioned
-      // rows (zero layout reads) so they track the node 1:1 while dragging.
-      window.addEventListener(
-        "pointerdown",
-        (e) => {
-          try {
-            if (e.button !== 0) {
-              fastDragNodeId = null;
-              return;
-            }
-            const el = document
-              .elementFromPoint(e.clientX, e.clientY)
-              ?.closest?.("[data-node-id]");
-            fastDragNodeId = el
-              ? String(el.getAttribute("data-node-id"))
-              : null;
-            lastFastPoint = [e.clientX, e.clientY];
-            if (globalThis.__AUN_LORA_DEBUG) {
-              try {
-                console.info(
-                  "[AUN] lora grab: " + JSON.stringify({ id: fastDragNodeId }),
-                );
-              } catch (_) {}
-            }
-          } catch (_) {
-            fastDragNodeId = null;
-          }
-        },
-        { passive: true, capture: true },
-      );
-      window.addEventListener(
-        "pointerup",
-        () => {
-          fastDragNodeId = null;
-          lastFastPoint = null;
-        },
-        { passive: true, capture: true },
-      );
-      let lastFastPos = 0;
-      window.addEventListener(
-        "pointermove",
-        (e) => {
-          const now = performance.now();
-          if (now - lastFastPos < 8) return;
-          lastFastPos = now;
-          try {
-            const pt = [e.clientX, e.clientY];
-            const dx = lastFastPoint ? pt[0] - lastFastPoint[0] : 0;
-            const dy = lastFastPoint ? pt[1] - lastFastPoint[1] : 0;
-            lastFastPoint = pt;
-            if ((dx === 0 && dy === 0) || fastDragNodeId == null) return;
-            const n = app?.graph?.getNodeById?.(fastDragNodeId);
-            if (!isTargetNode(n) || !isCompact(n)) return;
-            for (const row of n._AUN_compactRows ?? []) {
-              if (
-                row.style.display === "none" ||
-                !Number.isFinite(row.__AUN_x)
-              ) {
-                continue;
-              }
-              row.__AUN_x += dx;
-              row.__AUN_y += dy;
-              row.style.transform = `translate3d(${row.__AUN_x}px, ${row.__AUN_y}px, 0)`;
-            }
-          } catch (_) {}
-        },
-        { passive: true, capture: true },
-      );
+      // Drag tracking is handled by the RAF loop, which repositions rows from
+      // the node's current DOM rect every frame. A pointer-delta fast path is
+      // intentionally NOT used: it shifted rows by raw pointer movement even
+      // when the node was stationary (grab on a widget/socket, or a missed
+      // pointerup left fastDragNodeId set), permanently detaching the overlays.
     }
     if (typeof window !== "undefined") {
       window.addEventListener("resize", () => scheduleCompactRowsUpdate());
