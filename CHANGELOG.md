@@ -11,6 +11,13 @@
 
 ### Notes
 
+## [2.26.0] - 2026-08-31
+
+### Changed
+
+- Rolled back the Nodes 2.0 / Vue frontend work (Vue ports, `aun-compat.js`/`aun-settings.js` shims) to a stable legacy baseline.
+- Re-applied two general fixes on top of `v2.24.0`: compact-overlay hiding for natively collapsed LoRAs-by-Prompt-Index nodes, and Show-Any-Multi settings restore from `_aun_values` with full `widgets_values` serialization.
+
 ## [2.24.0] - 2026-08-28
 
 ### Added
