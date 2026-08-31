@@ -19,7 +19,7 @@ class AUNAny:
       }
 
     RETURN_TYPES = (any_type, )
-    RETURN_NAMES = ("scheduler", )
+
     OUTPUT_NODE = True
     FUNCTION = "process"
     CATEGORY = "AUN Nodes/Utility"
