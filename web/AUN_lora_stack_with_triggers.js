@@ -1005,7 +1005,10 @@ function scheduleCompactLoadStabilization(node, attempts = 3, delay = 0) {
   }
   node.__AUN_compactLoadTimer = setTimeout(() => {
     node.__AUN_compactLoadTimer = null;
-    if (!node || node.type === undefined || !isCompact(node)) return;
+    if (!node || node.type === undefined || !isCompact(node)) {
+      node.__AUN_loadStabilizing = false;
+      return;
+    }
     node.__AUN_manualCompactHeight = null;
     node.__AUN_manualCompactSlots = null;
     updateAutoHeight(node);
@@ -1014,6 +1017,7 @@ function scheduleCompactLoadStabilization(node, attempts = 3, delay = 0) {
       scheduleCompactLoadStabilization(node, attempts - 1, 50);
     } else {
       node.__AUN_restoreLayoutPending = false;
+      node.__AUN_loadStabilizing = false;
       forceRedraw(node);
     }
   }, delay);
@@ -1124,9 +1128,11 @@ function applyCompact(node) {
   reorderWidgets(node);
   const compact = isCompact(node);
 
-  // Sync registry values into view widgets (fixes hidden-widget value loss)
+  // Sync registry values into view widgets (fixes hidden-widget value loss).
+  // Skipped during load: widgets may still hold defaults and stale registry
+  // entries would overwrite the frontend-applied saved values.
   const all = node.__AUN_allWidgets;
-  if (Array.isArray(all) && Array.isArray(node.widgets)) {
+  if (!node.__AUN_restoreLayoutPending && Array.isArray(all) && Array.isArray(node.widgets)) {
     for (const rw of all) {
       if (!rw || rw.__AUN_removed) continue;
       const vw = node.widgets.find((w) => w?.name === rw.name);
@@ -1283,6 +1289,13 @@ function resetCompactRuntimeState(node) {
 function setupNode(node) {
   if (!isTargetNode(node) || node.__AUN_stackInit) return;
   node.__AUN_stackInit = true;
+  // nodeCreated also fires during workflow load, BEFORE configure applies
+  // saved widgets_values — block captures until the load path has settled
+  // (loadedGraphNode/stabilization re-arm and clear this flag).
+  node.__AUN_loadStabilizing = true;
+  setTimeout(() => {
+    if (node && node.type !== undefined) node.__AUN_loadStabilizing = false;
+  }, 2500);
   node.__AUN_allWidgets = Array.isArray(node.widgets) ? [...node.widgets] : [];
   ensureWidgetSerialization(node);
   restoreAunWidgetValues(node);
@@ -1422,6 +1435,7 @@ app.registerExtension({
   },
   loadedGraphNode(node) {
     if (!isTargetNode(node)) return;
+    node.__AUN_loadStabilizing = true;
     setupNode(node);
     restoreAunWidgetValues(node);
     resetCompactRuntimeState(node);
@@ -1429,4 +1443,4 @@ app.registerExtension({
     applyCompact(node);
     scheduleCompactLoadStabilization(node, 4, 50);
   },
-});
+}, true);

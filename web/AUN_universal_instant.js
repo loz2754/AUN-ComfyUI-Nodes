@@ -2103,7 +2103,6 @@ const decorateNode = (node, nodeData) => {
   if (!node.__AUN_isGroupNode && !node.__AUN_isUniversalNode) return;
   ensureWidgetTracking(node);
   ensureWidgetSerialization(node);
-  restoreAunWidgetValues(node);
 
   node.__AUN_updateAutoHeight = () => {
     // Always recompute height from the currently visible widgets so the node
@@ -2325,8 +2324,6 @@ const decorateNode = (node, nodeData) => {
       this.syncTogglesWithGraph?.();
     }
   };
-
-  captureAunWidgetValues(node);
 };
 
 const extendNodePrototype = (nodeType, nodeData) => {
