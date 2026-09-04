@@ -7,6 +7,7 @@ from .AUNAddToPromptMulti import AUNAddToPromptMulti
 from .AUNAny import AUNAny
 from .AUNAnyIndexSwitch import AUNAnyIndexSwitch
 from .AUNApplyPresetToNode import AUNApplyPresetToNode
+from .AUNAudioInputOptions import AudioInputOptions
 from .AUNBookmark import AUNBookmark
 from .AUNBoolean import AUNBoolean
 from .AUNCFG import AUNCFG
@@ -76,7 +77,6 @@ from .AUNScanAndShowWidgets import AUNScanAndShowWidgets
 from .AUNSaveImage import AUNSaveImage
 from .AUNSaveImageV2 import AUNSaveImageV2
 from .AUNSaveVideo import AUNSaveVideo
-from .AUNSaveVideo import AudioInputOptions
 from .AUNSaveVideoV2 import AUNSaveVideoV2
 from .AUNSetBypassByTitle import AUNSetBypassByTitle
 from .AUNSetBypassStateGroup import AUNSetBypassStateGroup
