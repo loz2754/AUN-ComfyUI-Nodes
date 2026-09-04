@@ -14,6 +14,7 @@ ComfyUI custom node pack (Python + JS). Nodes are discovered at ComfyUI startup;
 3. Run audits (read-only, exits non-zero on failure):
    - `python tools/generate_readme_nodes.py` — checks every registered node is documented in README
    - `python tools/audit_node_docs.py --fail-on-missing` — checks `DESCRIPTION` and per-input tooltips
+   - `python tools/audit_js_utils.py --fail-on-missing` — flags local redefinitions of shared `web/` utils (import from `web/index.js` or mark intentional with a `NOTE: local <name> kept intentionally` comment)
 4. If `generate_readme_nodes.py` reports missing nodes, add them to README between `<!-- BEGIN: AUN_NODES_AUTO -->` and `<!-- END: AUN_NODES_AUTO -->`.
 
 ## Node class conventions
