@@ -5,6 +5,16 @@
 
 ### Added
 
+### Changed
+
+### Fixed
+
+### Notes
+
+## [2.28.0] - 2026-09-04
+
+### Added
+
 - New `docs/ARCHITECTURE.md`: helper→consumer matrix (Python + JS), family clusters, and "start here" pointers for new nodes.
 - New `tools/audit_js_utils.py --fail-on-missing` guardrail: flags local redefinitions of shared `web/` utilities.
 
@@ -15,7 +25,6 @@
 ### Fixed
 
 - `AUN_titles_toggle.js`: removed 4 inline `getAllGraphs` copies and a duplicate `matchesTarget`, both now shared.
-
 ## [2.27.0] - 2026-09-04
 
 ### Added
