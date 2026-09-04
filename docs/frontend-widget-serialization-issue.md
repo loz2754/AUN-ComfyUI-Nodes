@@ -1,6 +1,8 @@
-# Frontend ≥ v1.53.4 sends STRING widget values as `{}` — investigation summary
+# Frontend ≥ v1.53.4 sent STRING widget values as `{}` — investigation summary
 
-Date: 2026-09-04. Decision: **leave code untouched** until ComfyUI upstream moves.
+Date: 2026-09-04. Update 2026-09-05: **root cause was our code after all —
+fixed in `web/AUN_fix_prompt_missing_inputs.js`** (see below). No upstream
+change needed.
 
 ## Symptom
 
@@ -10,28 +12,39 @@ v1.51.9 produces the correct labels. Bypass/mute/collapse control and `Switch`
 outputs are unaffected (they are applied by the frontend instant-execution JS
 path, independent of the backend run).
 
-## Confirmed cause (not our code)
+## Confirmed cause (our shim, not core)
 
 Prompt JSON comparison, same workflow:
 
 - v1.51.9 `inputs`: `label_1: "FaceID"`, `label_2: "RescaleCFG"`, … (correct)
 - v1.54.3 `inputs`: `label_1: {}`, `label_2: {}`, … (all 20 labels destroyed)
 
-The frontend destroys the data at prompt-build time, so no backend coercion can
-recover the original text. Matches upstream
+Upstream's harness (ComfyUI_frontend #17007) exonerated core `graphToPrompt`
+for plain hidden STRING widgets, and pointed at our hidden-widget
+compatibility shim. Console proof: `[AUN] Injected 79 hidden input(s) for
+AUNMultiUniversal #1` — our shim re-injects hidden widgets after core
+`graphToPrompt`, and on v1.54.3 `w.serializeValue()` / `w.value` for detached
+widgets come back as Proxy/`{}` objects. The old guard (`!== undefined &&
+!== null`) let them straight into the prompt.
+
+Fix: `getWidgetValue()` now accepts only primitives (with one-level `{value}`
+unwrap), falls back to the still-correct `properties._aun_values` snapshot,
+and otherwise skips injection (a missing input fails loudly at validation; a
+`{}` input corrupts silently). `captureAunWidgetValues()` additionally refuses
+to overwrite the snapshot with a freshly-collapsed `{}`.
+
+Related upstream context:
 [ComfyUI_frontend #16461](https://github.com/Comfy-Org/ComfyUI_frontend/issues/16461)
-(`1.53.4+ breaks serialization of complex node widget_values with incorrect Proxy`).
-Reported by us as
-[ComfyUI_frontend #17007](https://github.com/Comfy-Org/ComfyUI_frontend/issues/17007)
-(plain-`STRING` `inputs` corruption: `label_N` sent as `{}` on v1.54.3, correct
-on v1.51.9).
+(`1.53.4+` `Proxy`/`widgets_values` serialization) and our report
+[ComfyUI_frontend #17007](https://github.com/Comfy-Org/ComfyUI_frontend/issues/17007).
 
-## Why deferral is safe
+## Status: fixed on our side
 
-Normal users are pinned to ≤ v1.51.9 by their backend version; only advanced
-users on `@latest` are exposed.
+`getWidgetValue()` + capture guard landed (see Fix above). The remaining
+backend exposure below is now second-line defense only — kept documented in
+case a future frontend regression sends `{}` again despite the shim.
 
-## Known repo-wide exposure (audit, no changes made)
+## Known repo-wide exposure (backend, still valid)
 
 - Crash class — bare `kwargs.get(...).strip()` on a dict raises `AttributeError`
   and the blanket `except` nukes all outputs:
@@ -43,17 +56,12 @@ users on `@latest` are exposed.
   `AUNRandomModelBundleSwitch.py:386-390`, plus LoRA/trigger inputs across
   several nodes.
 
-## Plan when revisiting
+## Verification
 
-1. Add one safe widget-string helper (unwrap `{value: …}`, drop `{}` artifacts
-   to `""`) and apply it starting with the 3 crash sites, then the
-   silent-corruption sites.
-2. Only if upstream won't fix: `serializeValue` overrides for `label_N` /
-   `targets_N` / `group_name_N` in `web/AUN_universal_instant.js` + capture/
-   restore guards in `web/aun_persistence_shared.js`.
-3. Verify: prompt-JSON check on v1.51.9 vs @latest, backend `{}`/dict-shaped
-   input test, `tools/generate_readme_nodes.py`,
-   `tools/audit_node_docs.py --fail-on-missing`.
+- Queue on frontend @latest → `/prompt` payload shows `"FaceID"` strings;
+  downstream `Labels` correct.
+- Sanity re-check on v1.51.9 (unchanged path).
+- `node --check` on both touched JS files; all three repo audits green.
 
 ## Related work (same session)
 

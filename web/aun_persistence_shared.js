@@ -27,9 +27,31 @@ export function captureAunWidgetValues(node) {
   if (!Array.isArray(all)) return;
   node.properties = node.properties || {};
   const map = {};
+  const previous = node.properties[AUN_PROPS_KEY];
   for (const w of all) {
     if (!shouldCapture(w)) continue;
-    map[w.name] = cloneValue(w.value);
+    const cloned = cloneValue(w.value);
+    if (
+      cloned !== null &&
+      typeof cloned === "object" &&
+      !Array.isArray(cloned) &&
+      Object.keys(cloned).length === 0 &&
+      w.type !== "combo" &&
+      w.type !== "converted-widget"
+    ) {
+      // Frontend ≥ v1.53.4 can hand back Proxy/{} for detached widget values.
+      // Capturing that would poison the snapshot the prompt shim falls back
+      // to — keep the previous good value instead.
+      if (
+        previous &&
+        typeof previous === "object" &&
+        w.name in previous
+      ) {
+        map[w.name] = previous[w.name];
+        continue;
+      }
+    }
+    map[w.name] = cloned;
   }
   node.properties[AUN_PROPS_KEY] = map;
 }

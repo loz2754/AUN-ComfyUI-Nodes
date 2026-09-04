@@ -9,6 +9,8 @@
 
 ### Fixed
 
+- Frontend ≥ v1.53.4 sent hidden STRING widget values (e.g. `AUNMultiUniversal` slot labels) as `{}` in the prompt: our `graphToPrompt` shim now only injects primitives, falls back to the `properties._aun_values` snapshot, and never injects `{}` objects. Reported upstream as ComfyUI_frontend #17007; root cause was in our shim.
+
 ### Notes
 
 ## [2.28.0] - 2026-09-04

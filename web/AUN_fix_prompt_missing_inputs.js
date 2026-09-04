@@ -45,13 +45,42 @@ function buildAllWidgetsMap(node) {
   return map;
 }
 
+function isPromptSafePrimitive(value) {
+  const t = typeof value;
+  return t === "string" || t === "number" || t === "boolean";
+}
+
+function unwrapValueShape(value) {
+  // Newer frontends may hand back reactive wrappers / { value } shapes for
+  // detached (hidden) widgets. Unwrap one level when the inside is usable.
+  if (value !== null && typeof value === "object" && !Array.isArray(value)) {
+    const inner = value.value;
+    if (isPromptSafePrimitive(inner)) return inner;
+  }
+  return value;
+}
+
 function getWidgetValue(w, node) {
+  // Frontend ≥ v1.53.4: w.serializeValue() / w.value for hidden (detached)
+  // widgets can come back as Proxy/{} objects. Injecting those corrupts the
+  // prompt (e.g. label_1: {}), so only primitives are accepted. A skipped
+  // input fails loudly at validation; a {} input corrupts silently.
   try {
     if (typeof w.serializeValue === "function") {
-      return w.serializeValue(node, 0);
+      const viaSerialize = unwrapValueShape(w.serializeValue(node, 0));
+      if (isPromptSafePrimitive(viaSerialize)) return viaSerialize;
     }
   } catch (_) {}
-  return w.value;
+  const direct = unwrapValueShape(w.value);
+  if (isPromptSafePrimitive(direct)) return direct;
+  if (Array.isArray(direct)) return direct;
+  // Last resort: our own serialize-time snapshot (properties._aun_values),
+  // which still holds the true strings when the live read degrades.
+  try {
+    const snapshotted = node?.properties?.["_aun_values"]?.[w.name];
+    if (isPromptSafePrimitive(snapshotted)) return snapshotted;
+  } catch (_) {}
+  return undefined;
 }
 
 function patchGraphToPrompt() {
