@@ -5,11 +5,16 @@
 
 ### Added
 
-### Changed
+- AUNMultiUniversal: append a trailing backtick to a slot label (e.g. `FaceID``) to hide it from the `Labels` output while the slot still controls its nodes and `Switch N` output normally.
 
 ### Fixed
 
+- AUNShowAnyMulti / AUNPassthroughAnyMulti: reset node width (min 300) and height from computed size on first load instead of only ever growing the height.
+- AUNMultiUniversal / AUNMultiGroupUniversal: switch "on" label falls back to "Active 🟢" instead of a bare emoji.
+
 ### Notes
+
+- Documented the ComfyUI frontend v1.53.4+ `STRING` widget serialization issue (prompt `inputs` sent as `{}`; works on v1.51.9) in `docs/frontend-widget-serialization-issue.md`. Reported upstream as ComfyUI_frontend #17007. No code changes made for it pending an upstream fix.
 
 ## [2.26.0] - 2026-08-31
 

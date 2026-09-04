@@ -1291,7 +1291,7 @@ const buildAllGroupsUI = (node, showGroupsUI, mode, showAllCompact) => {
     setAllGroupsStateValue(node, serializeAllGroupsState(active, titles));
   };
   const offLabel = OFF_LABELS[mode] || OFF_LABELS.Bypass;
-  const onLabel = ON_LABELS[mode] || "🟢";
+  const onLabel = ON_LABELS[mode] || "Active 🟢";
 
   pruneDynamicWidgets(node);
 

@@ -38,7 +38,7 @@ class AUNMultiUniversal:
         def slot_tooltip(text, slot_index):
             return text if slot_index == 1 else ""
 
-        label_tooltip = "Descriptive label for slot 1 (other slots follow the same layout)."
+        label_tooltip = "Descriptive label for slot 1 (other slots follow the same layout). Append '`' to hide it from the Labels output (slot still controls its nodes)."
         targets_tooltip = (
             "Target node IDs or Titles for slot 1 (comma, semicolon, or newline separated). "
             "Use '!' or '-' prefix for exclusion (e.g. 'image, !load')."
@@ -97,6 +97,8 @@ class AUNMultiUniversal:
     DESCRIPTION = (
         "AUN Node Controller: Consolidates Bypass, Mute, and Collapse logic into one dynamic node. "
         "Set the mode and number of slots, then manage multiple node groups instantly. "
+        "Active slot labels are joined into the Labels output; append '`' to a label (e.g. 'FaceID`') "
+        "to keep controlling its nodes while hiding it from Labels. "
         "TIP: Double-click the node or right-click and select 'Compact mode' to hide configuration widgets."
     )
 
@@ -181,7 +183,7 @@ class AUNMultiUniversal:
                     switch_states.append(switch)
 
                     if switch:
-                        if label:
+                        if label and not label.endswith("`"):
                             active_labels.append(label)
 
                     if targets_str and targets_str != "0":

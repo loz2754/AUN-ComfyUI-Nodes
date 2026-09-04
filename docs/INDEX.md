@@ -90,3 +90,4 @@ Generated list of documentation files under `docs/`.
 ## Guides
 
 - [SaveVideoPathNode_README](./SaveVideoPathNode_README.md)
+- [Frontend widget serialization issue](./frontend-widget-serialization-issue.md)

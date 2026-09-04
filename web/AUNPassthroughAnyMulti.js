@@ -205,7 +205,13 @@ function resizeNode(node) {
   if (typeof node?.computeSize === "function") {
     const newSize = node.computeSize();
     if (node.size && newSize && newSize.length >= 2) {
-      node.size[1] = Math.max(node.size[1] || 0, newSize[1]);
+      if (node._aunFirstLoad) {
+        node.size[0] = Math.max(newSize[0] ?? 0, 300);
+        node.size[1] = newSize[1];
+        delete node._aunFirstLoad;
+      } else {
+        node.size[1] = Math.max(node.size[1] || 0, newSize[1]);
+      }
     }
   }
   const graph = node.graph ?? app.graph;
@@ -729,6 +735,7 @@ app.registerExtension({
             const graph = node.graph ?? app.graph;
             if (graph) graph.setDirtyCanvas(true, true);
           } else {
+            node._aunFirstLoad = true;
             resizeNode(node);
           }
         }

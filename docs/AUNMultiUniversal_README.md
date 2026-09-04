@@ -28,7 +28,7 @@ Purpose: A multi-slot “dashboard” that can Bypass, Mute, and/or Collapse set
 
 Each slot has:
 
-- `label_N` (STRING): Label for the slot.
+- `label_N` (STRING): Label for the slot. Append '`' (e.g. `FaceID``) to hide it from the `Labels` output — the slot still controls its nodes and `Switch N` output normally.
 - `targets_N` (STRING): Node IDs or Titles to control (comma / semicolon / newline separated). Tooltip also mentions `!` or `-` prefixes for exclusion; the frontend handles the targeting rules.
 - `switch_N` (BOOLEAN): Slot state (active vs controlled by `mode`).
 - `target_type_N` (ID / Title): Interpret `targets_N` as node IDs or node titles.
@@ -39,7 +39,7 @@ Each slot has:
 
 ## Outputs
 
-- `Labels` (STRING): Space-separated labels of active slots.
+- `Labels` (STRING): Space-separated labels of active slots. Labels ending in '`' are excluded (e.g. `FaceID`` controls its nodes but adds nothing to this string).
 - `Switch 1` … `Switch 20` (BOOLEAN): Slot states.
 
 ## Notes
