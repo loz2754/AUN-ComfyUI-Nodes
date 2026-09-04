@@ -1,5 +1,6 @@
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
+import { getWidget, isCompact, setCompact } from "./index.js";
 
 const NODE_TYPES = ["AUNTextIndexSwitch3", "AUNTextIndexSwitch4", "AUNTextIndexSwitch5", "AUNTextIndexSwitch5Diffusers", "AUNInputsBasicSwitch"];
 // Classes that have a built-in "mode" widget (Select/Increment/Random/Range)
@@ -71,24 +72,10 @@ function hasModeWidget(node) {
   return !!node && MODE_WIDGET_CLASSES.has(node.comfyClass);
 }
 
-function getWidget(node, name) {
-  return node?.widgets?.find((w) => w?.name === name) ?? null;
-}
-
 function normalizeIdentifier(value) {
   return String(value || "")
     .toLowerCase()
     .replace(/\s+/g, "");
-}
-
-function isCompact(node) {
-  return !!node?.properties?.[PROP_KEY];
-}
-
-function setCompact(node, compact) {
-  if (!node) return;
-  node.properties = node.properties || {};
-  node.properties[PROP_KEY] = !!compact;
 }
 
 // In compact mode the param output sockets converge to a single dot, so blank
