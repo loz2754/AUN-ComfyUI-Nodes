@@ -1,6 +1,12 @@
 import { api } from "../../scripts/api.js";
 import { app } from "../../scripts/app.js";
 import { openLoraInfoDialog } from "./aun_lora_info_shared.js";
+import {
+  parsePositiveInt,
+  isCompact,
+  setCompact,
+  isNodeCollapsed,
+} from "./index.js";
 
 const NODE_TYPE = "AUNRandomLoraModelOnly";
 const PROP_KEY = "_AUN_compactMode";
@@ -81,6 +87,8 @@ function triggerWorkflowCapture() {
   } catch {}
 }
 
+// NOTE: local getWidget kept intentionally — unlike the shared widgets.js
+// version it also falls back to node.__AUN_allWidgets (hidden widgets).
 function getWidget(node, name) {
   if (!node || !name) return null;
   const fromView = node.widgets?.find((w) => w?.name === name);
@@ -108,25 +116,6 @@ const ensureWidgetSerialization = (node) => {
     return originalSerialize.apply(this, args);
   };
 };
-
-function parsePositiveInt(value) {
-  const n = parseInt(value, 10);
-  return Number.isInteger(n) && n > 0 ? n : null;
-}
-
-function isCompact(node) {
-  return !!node?.properties?.[PROP_KEY];
-}
-
-function isNodeCollapsed(node) {
-  return !!node?.flags?.collapsed;
-}
-
-function setCompact(node, compact) {
-  if (!node) return;
-  node.properties = node.properties || {};
-  node.properties[PROP_KEY] = !!compact;
-}
 
 function isInfoEnabled(node) {
   return !!node?.properties?.[INFO_PROP_KEY];
@@ -201,6 +190,8 @@ function findGraphNodeByEventId(rawNodeId) {
   return nodes.find((n) => String(n?.id) === target) ?? null;
 }
 
+// NOTE: local forceRedraw kept intentionally — it dirties node + canvas via
+// the global app handle, while shared utils.js forceRedraw needs appRef.
 function forceRedraw(node) {
   node?.setDirtyCanvas?.(true, true);
   app?.canvas?.graph?.setDirtyCanvas?.(true, true);

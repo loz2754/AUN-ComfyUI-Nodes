@@ -1,4 +1,5 @@
 import { app } from "../../scripts/app.js";
+import { getWidget, isCompact, setCompact } from "./index.js";
 
 const PLACEHOLDER_VALUES = new Set([
   "Select wildcard...",
@@ -26,21 +27,7 @@ function appendWildcardToken(existingText, token) {
   return `${current}, ${token}`;
 }
 
-// ── Compact mode helpers ──
-
-function isCompact(node) {
-  return !!node?.properties?.[PROP_KEY];
-}
-
-function setCompact(node, value) {
-  if (!node) return;
-  node.properties = node.properties || {};
-  node.properties[PROP_KEY] = !!value;
-}
-
-function getWidget(node, name) {
-  return node.widgets?.find((w) => w.name === name);
-}
+// ── Compact mode helpers (isCompact/setCompact from ./index.js) ──
 
 function ensureHiddenAware(widget) {
   if (!widget || widget.__AUN_hiddenAware) return;

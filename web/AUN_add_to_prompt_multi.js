@@ -1,5 +1,6 @@
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
+import { getWidget } from "./widgets.js";
 
 const NODE_CLASS = "AUNAddToPromptMulti";
 const MAX_ADDONS = 10;
@@ -14,10 +15,6 @@ const FOOTER_H = 22;
 
 const MODE_CYCLE = { off: "on", on: "random", random: "off" };
 const ORDER_TOGGLE = { prompt_first: "addon_first", addon_first: "prompt_first" };
-
-function getWidget(node, name) {
-  return node?.widgets?.find((w) => w.name === name) ?? null;
-}
 
 function clampAddons(v) {
   const n = parseInt(v, 10);
