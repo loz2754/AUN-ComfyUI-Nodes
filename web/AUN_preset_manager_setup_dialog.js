@@ -5,17 +5,13 @@
 // ────────────────────────────────────────────────────────────────────
 
 import { app } from "../../scripts/app.js";
-import { findNodeByIdentifier } from "./index.js";
+import { findNodeByIdentifier, getWidget } from "./index.js";
 
 const MAX_ROWS = 20;
 const STYLE_KEY = "__AUN_pm_setupStyle";
 const MODAL_KEY = "__AUN_pm_setupRefs";
 
 // ── Helpers ────────────────────────────────────────────────────────
-
-function getWidget(node, name) {
-  return node?.widgets?.find((w) => w?.name === name) ?? null;
-}
 
 function getVisibleRows(node) {
   const w = getWidget(node, "visible_rows");

@@ -1,6 +1,6 @@
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
-import { applyWidgetHiddenState, ensureHiddenAware, getWidget, injectStyles, forceRedraw, isNodeCollapsed } from "./index.js";
+import { applyWidgetHiddenState, ensureHiddenAware, getWidget, injectStyles, forceRedraw, isNodeCollapsed, isCompact, setCompact } from "./index.js";
 
 const NODE_CLASS = "AUNKeywordPresetSelector";
 const MAX_SLOTS = 20;
@@ -15,16 +15,6 @@ function getVisibleCount(node) {
   const w = getWidget(node, "visible_inputs");
   const val = w?.value;
   return Number.isFinite(val) ? Math.max(2, Math.min(MAX_SLOTS, Math.floor(val))) : 5;
-}
-
-function isCompact(node) {
-  return !!node?.properties?.[PROP_KEY];
-}
-
-function setCompact(node, compact) {
-  if (!node) return;
-  node.properties = node.properties || {};
-  node.properties[PROP_KEY] = !!compact;
 }
 
 function toggleCompactMode(node) {

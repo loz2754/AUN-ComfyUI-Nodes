@@ -1,5 +1,6 @@
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
+import { getWidget } from "./index.js";
 
 const NODE_TYPE = "AUNRandomModelBundleSwitch";
 const PROP_KEY = "_AUN_compactMode";
@@ -7,10 +8,6 @@ const LEVEL_KEY = "_AUN_compactLevel";
 const MAX_SLOTS = 10;
 const SLOT_PREFIXES = ["model", "text", "label"];
 const COMPACT_LABEL_HEIGHT = 28;
-
-function getWidget(node, name) {
-  return node?.widgets?.find((w) => w?.name === name) ?? null;
-}
 
 function ensureHiddenAwareWidget(widget) {
   if (!widget || widget.__AUN_hiddenAware) return;

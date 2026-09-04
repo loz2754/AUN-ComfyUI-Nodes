@@ -1,5 +1,6 @@
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
+import { findNodeById } from "./index.js";
 
 function parseIds(raw) {
   if (!raw) return [];
@@ -9,46 +10,6 @@ function parseIds(raw) {
     .split(",")
     .map((s) => parseInt(s.trim(), 10))
     .filter((n) => !isNaN(n));
-}
-
-function findNodeById(id) {
-  const getAllGraphs = (root) => {
-    let graphs = [root];
-    const getChildGraphs = (graph) => {
-      if (!graph) return;
-      if (graph._subgraphs) {
-        const subs =
-          graph._subgraphs instanceof Map
-            ? graph._subgraphs.values()
-            : Object.values(graph._subgraphs);
-        for (const sub of subs) {
-          if (sub && !graphs.includes(sub)) {
-            graphs.push(sub);
-            getChildGraphs(sub);
-          }
-        }
-      }
-      if (graph._nodes) {
-        for (const node of graph._nodes) {
-          const inner =
-            node.getInnerGraph?.() || node.subgraph || node.inner_graph;
-          if (inner && !graphs.includes(inner)) {
-            graphs.push(inner);
-            getChildGraphs(inner);
-          }
-        }
-      }
-    };
-    getChildGraphs(root);
-    return graphs;
-  };
-
-  const graphs = getAllGraphs(app.graph);
-  for (const graph of graphs) {
-    const node = graph.getNodeById(id);
-    if (node) return node;
-  }
-  return null;
 }
 
 const applyRecursiveState = (node, isActive, modeType, collapse) => {
