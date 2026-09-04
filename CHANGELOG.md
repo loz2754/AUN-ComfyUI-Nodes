@@ -5,7 +5,14 @@
 
 ### Added
 
+- New modules from the Phase 2 split: `AUNSaveImage_helpers.py` (private helpers for `AUNSaveImage`), `AUNAudioInputOptions.py`, `AUNJoinVideos.py` (internal to `AUNSaveVideo`, unregistered as before).
+
 ### Changed
+
+- `AUNSaveImage.py` slimmed to the node class (helpers extracted byte-exact); sampler/scheduler short names now use shared `model_utils` helpers (identical behavior).
+- `AUNSaveVideo.py` slimmed to the node class (helper nodes moved out; dead file-local mappings removed).
+- `misc.py` is helpers-only: dead unregistered `JNodes_*` classes removed.
+- `docs/ARCHITECTURE.md` refreshed for the new layout.
 
 ### Fixed
 
