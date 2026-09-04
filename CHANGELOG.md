@@ -5,11 +5,16 @@
 
 ### Added
 
+- New `docs/ARCHITECTURE.md`: helper→consumer matrix (Python + JS), family clusters, and "start here" pointers for new nodes.
+- New `tools/audit_js_utils.py --fail-on-missing` guardrail: flags local redefinitions of shared `web/` utilities.
+
 ### Changed
+
+- JS dedup: 14 frontend files now import `getWidget`, `isCompact`/`setCompact`, `matchesTarget`, `getAllGraphs`, `findNodeById`, `parsePositiveInt`, and `isNodeCollapsed` from `web/index.js` instead of carrying local copies. Deliberately different locals are marked with `NOTE: local <name> kept intentionally` comments.
 
 ### Fixed
 
-### Notes
+- `AUN_titles_toggle.js`: removed 4 inline `getAllGraphs` copies and a duplicate `matchesTarget`, both now shared.
 
 ## [2.27.0] - 2026-09-04
 
