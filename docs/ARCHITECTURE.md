@@ -14,13 +14,15 @@ it, and where to start when building something new.
 | `misc.py` (helpers only) | path helpers, `tensor2pil`, `get_sha256`, `AnyType` | `AUNSaveImage`, `AUNSaveVideo`, `AUNPathFilenameVideoResolved` |
 | `aun_path_filename_shared.py` | `%token%` templates, `build_path`, `crop_name`, sidecar text | `AUNPathFilenameV2`, `AUNPathFilenameVideo(V2)`, `AUNSaveImageV2`, `AUNSaveVideoV2`, `AUNFilenameResolverPreviewV2` |
 | `aun_lora_extraction_shared.py` | `extract_basic_loras_from_inputs` | `AUNSaveImage`, `AUNSaveVideo`, `AUNExtractPowerLoras` |
+| `AUNSaveImage_helpers.py` | private helpers for `AUNSaveImage` only (lora/text/date/path) | `AUNSaveImage` |
+| `AUNJoinVideos.py` | `JoinVideosInDirectory` (internal to `AUNSaveVideo`, unregistered) | `AUNSaveVideo` |
 | `logger.py` | AUN logger, `log_exception` | `misc.py`, `AUNSaveVideo`, `AUNExtractPowerLoras` |
 | `aun_rife_arch.py` | RIFE `IFNet` model | `AUNRIFE.py` (only) |
 | `aun_lora_info_server.py`, `aun_lora_multi_setup_server.py` | PromptServer routes for LoRA dialogs | Imported once in `__init__.py`, consumed by LoRA frontend files |
 
 Name traps: `KSamplerInputs.py` and `MainFolderManualName.py` look like
-helpers but are standalone **nodes**. `misc.py` also contains node classes
-(`StringLiteral`, `ModelInOut`, …) — a known junk-drawer to split one day.
+helpers but are standalone **nodes**. (`misc.py` used to house dead
+`JNodes_*` node classes too — removed in Phase 2; it is helpers-only now.)
 
 ## JS shared modules → importers
 
@@ -47,7 +49,7 @@ local copy still carries the old bug.
 
 - **Inputs** (`AUNInputs*.py` + `AUNResolutionHelper`) — resolution/aspect widgets.
 - **Path/filename** (`AUNPathFilename*.py`, `Save*V2`, `FilenameResolver` + `aun_path_filename_shared`, `model_utils`).
-- **Save image/video** (`AUNSaveImage.py`, `AUNSaveVideo.py` — the two mega-files, ~1.7k lines each) + LoRA extraction + sidecars.
+- **Save image/video** (`AUNSaveImage.py` + private `AUNSaveImage_helpers.py`; `AUNSaveVideo.py` + `AUNAudioInputOptions.py` + internal `AUNJoinVideos.py`) + LoRA extraction + sidecars.
 - **Universal control** (`AUNMultiUniversal`, `AUNMultiGroupUniversal` + `web/AUN_universal_instant.js`).
 - **Switches** (`AUNTextIndexSwitch*`, `AUNRandom*Switch*`, `AUNManualAuto*`).
 - **LoRA stacks** (`AUNLoraStackWithTriggers*`, `AUNRandomLora*`, `AUNLoRAsByPromptIndex`) + LoRA shared JS + server routes.
