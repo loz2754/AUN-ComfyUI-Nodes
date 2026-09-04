@@ -91,3 +91,4 @@ Generated list of documentation files under `docs/`.
 
 - [SaveVideoPathNode_README](./SaveVideoPathNode_README.md)
 - [Frontend widget serialization issue](./frontend-widget-serialization-issue.md)
+- [Pack architecture: what links to what](./ARCHITECTURE.md)

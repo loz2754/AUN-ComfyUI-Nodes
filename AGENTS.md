@@ -82,3 +82,7 @@ ComfyUI custom node pack (Python + JS). Nodes are discovered at ComfyUI startup;
 **Shared patterns:**
 - Compact mode: `_AUN_compactMode` property, `isCompact()`/`setCompact()` in `utils.js`
 - Filename templates: `%token%` style from `aun_path_filename_shared.py`
+
+## Architecture map
+
+- `docs/ARCHITECTURE.md` — helper→consumer matrix (Python + JS), family clusters, "start here" pointers for new nodes. Never duplicate a utility that already exists there; import it.
