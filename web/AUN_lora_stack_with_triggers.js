@@ -1,6 +1,7 @@
 import { app } from "../../scripts/app.js";
 import { openLoraInfoDialog } from "./aun_lora_info_shared.js";
 import { makeLoraLabelClickable } from "./aun_lora_dropdown_shared.js";
+import { isCompact, setCompact, isNodeCollapsed } from "./index.js";
 
 const NODE_TYPE = "AUNLoraStackWithTriggers";
 const PROP_KEY = "_AUN_compactMode";
@@ -55,6 +56,8 @@ function triggerWorkflowCapture() {
   } catch {}
 }
 
+// NOTE: local getWidget kept intentionally — unlike the shared widgets.js
+// version it also falls back to node.__AUN_allWidgets (hidden widgets).
 function getWidget(node, name) {
   if (!node || !name) return null;
   const fromView = node.widgets?.find((w) => w?.name === name);
@@ -87,24 +90,12 @@ function isTargetNode(node) {
   return !!node && (node.comfyClass === NODE_TYPE || node.type === NODE_TYPE);
 }
 
-function isCompact(node) {
-  return !!node?.properties?.[PROP_KEY];
-}
-
-function isNodeCollapsed(node) {
-  return !!node?.flags?.collapsed;
-}
-
-function setCompact(node, compact) {
-  if (!node) return;
-  node.properties = node.properties || {};
-  node.properties[PROP_KEY] = !!compact;
-}
-
 function isRestoringLayout(node) {
   return !!node?.__AUN_restoreLayoutPending;
 }
 
+// NOTE: local forceRedraw kept intentionally — it skips canvas work while a
+// layout restore is pending, which the shared utils.js version does not.
 function forceRedraw(node) {
   node?.setDirtyCanvas?.(true, true);
   if (isRestoringLayout(node)) return;
