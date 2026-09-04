@@ -18,6 +18,8 @@ const HIGHLIGHTER_CLASSES = new Set([
   "AUNRandomTextIndexSwitchV2",
 ]);
 
+// NOTE: local getWidget kept intentionally — multi-name alias over shared
+// getWidgetByNames with a different (node, names) signature.
 const getWidget = (node, names) => getWidgetByNames(node, names);
 const parsePositiveInt = sharedParsePositiveInt;
 

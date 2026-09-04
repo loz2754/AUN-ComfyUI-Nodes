@@ -1,38 +1,6 @@
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
-
-// Helper for flexible title matching with exclusion support
-function matchesTarget(text, searchTerms) {
-    if (!searchTerms || searchTerms.length === 0) return false;
-    
-    const includes = [];
-    const excludes = [];
-    
-    for (const term of searchTerms) {
-        if (term.startsWith('!') || term.startsWith('-')) {
-            const t = term.substring(1).trim();
-            if (t) excludes.push(t);
-        } else {
-            includes.push(term);
-        }
-    }
-    
-    const lowerText = text.toLowerCase();
-    
-    // If we have excludes, and any exclude matches, it's a hard no.
-    if (excludes.some(exc => lowerText.includes(exc))) {
-        return false;
-    }
-    
-    // If we have includes, at least one must match.
-    if (includes.length > 0) {
-        return includes.some(inc => lowerText.includes(inc));
-    }
-    
-    // If we ONLY have excludes and none matched (checked above), 
-    // then it's a match (e.g. "!load" matches everything except "load").
-    return excludes.length > 0;
-}
+import { getAllGraphs, matchesTarget } from "./index.js";
 
 // Bypass by titles
 api.addEventListener("AUN_set_bypass_by_titles", (event) => {
@@ -42,33 +10,6 @@ api.addEventListener("AUN_set_bypass_by_titles", (event) => {
         const isActive = !!detail.is_active;
         if (!titles.length) return;
         const titleSet = new Set(titles.map(t => `${t}`.trim().toLowerCase()).filter(Boolean));
-
-        const getAllGraphs = (root) => {
-            let graphs = [root];
-            const getChildGraphs = (graph) => {
-                if (!graph) return;
-                if (graph._subgraphs) {
-                    const subs = graph._subgraphs instanceof Map ? graph._subgraphs.values() : Object.values(graph._subgraphs);
-                    for (const sub of subs) {
-                        if (sub && !graphs.includes(sub)) {
-                            graphs.push(sub);
-                            getChildGraphs(sub);
-                        }
-                    }
-                }
-                if (graph._nodes) {
-                    for (const node of graph._nodes) {
-                        const inner = node.getInnerGraph?.() || node.subgraph || node.inner_graph;
-                        if (inner && !graphs.includes(inner)) {
-                            graphs.push(inner);
-                            getChildGraphs(inner);
-                        }
-                    }
-                }
-            };
-            getChildGraphs(root);
-            return graphs;
-        };
 
         const graphs = getAllGraphs(app.graph);
         const searchTitles = Array.from(titleSet);
@@ -103,33 +44,6 @@ api.addEventListener("AUN_set_mute_by_titles", (event) => {
         const isActive = !!detail.is_active;
         if (!titles.length) return;
         const titleSet = new Set(titles.map(t => `${t}`.trim().toLowerCase()).filter(Boolean));
-
-        const getAllGraphs = (root) => {
-            let graphs = [root];
-            const getChildGraphs = (graph) => {
-                if (!graph) return;
-                if (graph._subgraphs) {
-                    const subs = graph._subgraphs instanceof Map ? graph._subgraphs.values() : Object.values(graph._subgraphs);
-                    for (const sub of subs) {
-                        if (sub && !graphs.includes(sub)) {
-                            graphs.push(sub);
-                            getChildGraphs(sub);
-                        }
-                    }
-                }
-                if (graph._nodes) {
-                    for (const node of graph._nodes) {
-                        const inner = node.getInnerGraph?.() || node.subgraph || node.inner_graph;
-                        if (inner && !graphs.includes(inner)) {
-                            graphs.push(inner);
-                            getChildGraphs(inner);
-                        }
-                    }
-                }
-            };
-            getChildGraphs(root);
-            return graphs;
-        };
 
         const graphs = getAllGraphs(app.graph);
         const searchTitles = Array.from(titleSet);
@@ -264,35 +178,6 @@ app.registerExtension({
                         const title = (rawTitle || "").trim().toLowerCase();
                         if (!title) return false;
 
-                        const getAllGraphs = (root) => {
-                            let graphs = [root];
-                            const getChildGraphs = (graph) => {
-                                if (!graph) return;
-                                if (graph._subgraphs) {
-                                    const subs = graph._subgraphs instanceof Map ? graph._subgraphs.values() : Object.values(graph._subgraphs);
-                                    for (const sub of subs) {
-                                        if (sub && !graphs.includes(sub)) {
-                                            graphs.push(sub);
-                                            getChildGraphs(sub);
-                                        }
-                                    }
-                                }
-                                if (graph._nodes) {
-                                    for (const node of graph._nodes) {
-                                        const inner = node.getInnerGraph?.() || node.subgraph || node.inner_graph;
-                                        if (inner && !graphs.includes(inner)) {
-                                            graphs.push(inner);
-                                            getChildGraphs(inner);
-                                        }
-                                    }
-                                }
-                            };
-                            getChildGraphs(root);
-                            return graphs;
-                        };
-
-                        const useMute = resolveUseMute();
-                        let touched = false;
                         const graphs = getAllGraphs(graph);
                         const searchTitles = [title];
                         for (const g of graphs) {
@@ -432,33 +317,6 @@ app.registerExtension({
                         orig?.call(switchWidget, value);
                         const items = (titlesWidget.value || '').split(/[,\n;]+/).map(s => s.trim().toLowerCase()).filter(Boolean);
                         const isActive = !!value;
-
-                        const getAllGraphs = (root) => {
-                            let graphs = [root];
-                            const getChildGraphs = (graph) => {
-                                if (!graph) return;
-                                if (graph._subgraphs) {
-                                    const subs = graph._subgraphs instanceof Map ? graph._subgraphs.values() : Object.values(graph._subgraphs);
-                                    for (const sub of subs) {
-                                        if (sub && !graphs.includes(sub)) {
-                                            graphs.push(sub);
-                                            getChildGraphs(sub);
-                                        }
-                                    }
-                                }
-                                if (graph._nodes) {
-                                    for (const node of graph._nodes) {
-                                        const inner = node.getInnerGraph?.() || node.subgraph || node.inner_graph;
-                                        if (inner && !graphs.includes(inner)) {
-                                            graphs.push(inner);
-                                            getChildGraphs(inner);
-                                        }
-                                    }
-                                }
-                            };
-                            getChildGraphs(root);
-                            return graphs;
-                        };
 
                         const graphs = getAllGraphs(app.graph);
                         for (const graph of graphs) {

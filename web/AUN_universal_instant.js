@@ -7,6 +7,10 @@ import {
 
 const MAX_SLOTS = 20;
 const LIST_SPLITTER = /[,\n;]+/;
+// NOTE: local getWidget / getAllGraphs / findNodeById kept intentionally —
+// these are the reference implementations (widget-lookup Map, wrapper-tolerant
+// graph walk, unique_id fallback) that the shared graph-traversal.js versions
+// simplify. Do not "dedup" them into imports without porting the extras.
 const STATE_WIDGET_NAME = "all_groups_state";
 const REFRESH_INTERVAL = 500;
 const NODE_MODE_VALUES = {

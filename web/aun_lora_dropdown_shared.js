@@ -125,6 +125,8 @@ function ensureDropdownStyles() {
   document.head.appendChild(style);
 }
 
+// NOTE: local getWidget kept intentionally — unlike the shared widgets.js
+// version it also falls back to node.__AUN_allWidgets (hidden widgets).
 function getWidget(node, name) {
   if (!node || !name) return null;
   const fromView = node.widgets?.find((w) => w?.name === name);

@@ -21,6 +21,8 @@ function clampAddons(v) {
   return isNaN(n) ? 1 : Math.max(1, Math.min(MAX_ADDONS, n));
 }
 
+// NOTE: local isCompact/setCompact kept intentionally — strict `=== true`
+// semantics (shared utils.js uses truthy check).
 function isCompact(node) {
   return node?.properties?.[PROP_COMPACT] === true;
 }

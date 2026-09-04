@@ -1,6 +1,7 @@
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
 import { getWidget } from "./index.js";
+import { parsePositiveInt } from "./index.js";
 
 const NODE_TYPE = "AUNRandomModelBundleSwitch";
 const PROP_KEY = "_AUN_compactMode";
@@ -76,11 +77,6 @@ function setCompactLevel(node, level) {
   node.properties = node.properties || {};
   node.properties[LEVEL_KEY] = next;
   node.properties[PROP_KEY] = next > 0;
-}
-
-function parsePositiveInt(value) {
-  const num = parseInt(value, 10);
-  return Number.isInteger(num) && num > 0 ? num : null;
 }
 
 function extractExecutedIndex(message) {

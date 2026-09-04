@@ -129,6 +129,8 @@ app.registerExtension({
           };
         }
       });
+      // NOTE: local getWidget kept intentionally — single-arg closure over
+      // this.__AUN_widgetLookup, unlike the shared (node, name) version.
       const getWidget = (name) => this.__AUN_widgetLookup.get(name);
       // --- End widget tracking ---
 
