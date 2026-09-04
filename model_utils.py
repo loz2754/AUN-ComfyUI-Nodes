@@ -53,6 +53,7 @@ MODEL_SHORT_NAMES = {
     "epicphotogasm_ultimateFidelity": "EpicPhotogasmUltFid",
     "epicphotogasm_z-inpainting": "EpicPhotogasmZInpaint",
     "epicrealism_naturalSinRC1VAE": "EpicRealismNatSinRC1",
+    "epicrealismXL_vxviLastfameRealism": "EpicRealismVxviLastfame",
     "eventHorizonNexusNSFW_illustrious1DMD2": "EvntHrznNexusIllus1DMD2",
     "fucktasticRealCheckpointPony_10": "FcktasticRealPny1",
     "fucktasticRealCheckpointPony_52": "FcktasticRealPny52",
