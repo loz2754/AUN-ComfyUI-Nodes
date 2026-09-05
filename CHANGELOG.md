@@ -5,6 +5,16 @@
 
 ### Added
 
+### Changed
+
+### Fixed
+
+### Notes
+
+## [2.30.0] - 2026-09-05
+
+### Added
+
 - `AUNImageSingleBatch3` search mode: name + trailing-number range queries (e.g. `John [7-14]`, `John [1-5, 7-14]`, `[7-14]`). Name matches case-insensitive substring; bracket matches trailing number only, so `John 101.png` is correctly excluded from `[7-14]`.
 - `AUNImageSingleBatch3` search mode: `;`-separated OR clauses (e.g. `Jane; John [7-14]`). Order preserved, no duplicates.
 
@@ -15,7 +25,6 @@
 ### Fixed
 
 ### Notes
-
 ## [2.29.1] - 2026-09-05
 
 ### Added
