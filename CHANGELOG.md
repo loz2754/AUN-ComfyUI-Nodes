@@ -5,7 +5,12 @@
 
 ### Added
 
+- `AUNImageSingleBatch3` search mode: name + trailing-number range queries (e.g. `John [7-14]`, `John [1-5, 7-14]`, `[7-14]`). Name matches case-insensitive substring; bracket matches trailing number only, so `John 101.png` is correctly excluded from `[7-14]`.
+- `AUNImageSingleBatch3` search mode: `;`-separated OR clauses (e.g. `Jane; John [7-14]`). Order preserved, no duplicates.
+
 ### Changed
+
+- `AUNImageSingleBatch3` batch folder listing now uses human/natural sort (`John 2.png` < `John 10.png` < `John 101.png`) in all batch modes instead of lexicographic order.
 
 ### Fixed
 
