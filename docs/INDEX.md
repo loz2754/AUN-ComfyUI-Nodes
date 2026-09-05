@@ -93,3 +93,4 @@ Generated list of documentation files under `docs/`.
 - [Frontend widget serialization issue](./frontend-widget-serialization-issue.md)
 - [Pack architecture: what links to what](./ARCHITECTURE.md)
 - [New node checklist](./NEW_NODE_CHECKLIST.md)
+- [Registry moderation incident 2026-09-05 (Manager stuck at v2.22.0)](./registry-moderation-2026-09-05.md)
