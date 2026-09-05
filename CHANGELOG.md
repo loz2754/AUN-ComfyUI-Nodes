@@ -5,6 +5,16 @@
 
 ### Added
 
+### Changed
+
+### Fixed
+
+### Notes
+
+## [2.29.1] - 2026-09-05
+
+### Added
+
 - Short name for the `epicrealismXL_vxviLastfameRealism` checkpoint in `MODEL_SHORT_NAMES`.
 
 ### Changed
@@ -14,7 +24,6 @@
 - `AUNExtractPowerLoras.py`: split multi-statement single lines (`is_bypassed = True; break`, single-line `if`) into separate statements for registry scanner compliance (E701/E702).
 
 ### Notes
-
 ## [2.29.0] - 2026-09-04
 
 ### Added
