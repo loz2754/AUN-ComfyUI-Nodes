@@ -113,8 +113,10 @@ class AUNExtractPowerLoras:
                     else:
                         for wnid, mode in node_modes.items():
                             if mode == 2 and snid.endswith("." + wnid):
-                                is_bypassed = True; break
-                    if is_bypassed: continue
+                                is_bypassed = True
+                                break
+                    if is_bypassed:
+                        continue
 
                     ctype = node.get('class_type') if isinstance(node, dict) else None
                     if ctype and ctype in target_names:
