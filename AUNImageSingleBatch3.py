@@ -87,35 +87,101 @@ def load_predefined_paths():
             print(f"[AUNNodes] ERROR: Could not create {os.path.basename(local_file)}: {e}")
     return default_paths
 
+def _natural_sort_key(s: str):
+    """Human/consecutive order: 'John 2' < 'John 10' < 'John 101'."""
+    return [int(t) if t.isdigit() else t.lower() for t in re.split(r'(\d+)', s)]
+
+def _parse_numeric_ranges(ranges_str):
+    """Parse '7-14' or '1-5, 7-14, 20' into [(lo, hi), ...]. Returns None if invalid."""
+    ranges = []
+    for part in ranges_str.split(','):
+        part = part.strip()
+        if not part:
+            continue
+        if '-' in part:
+            bits = part.split('-')
+            if len(bits) != 2:
+                return None
+            try:
+                a, b = int(bits[0].strip()), int(bits[1].strip())
+            except ValueError:
+                return None
+            ranges.append((min(a, b), max(a, b)))
+        else:
+            try:
+                n = int(part)
+            except ValueError:
+                return None
+            ranges.append((n, n))
+    return ranges or None
+
+def _parse_name_range_query(pattern):
+    """Parse 'Name [min-max]' / 'Name [1-5, 7-14]' / '[7-14]'. Returns (name_part, ranges) or None."""
+    m = re.match(r'^(?P<name>.*?)\s*\[\s*(?P<ranges>[\d\s,\-]+)\s*\]\s*$', pattern)
+    if not m:
+        return None
+    ranges = _parse_numeric_ranges(m.group('ranges'))
+    if ranges is None:
+        return None
+    return m.group('name').strip(), ranges
+
+def _split_or_clauses(pattern):
+    """Split on ';' for OR queries (e.g. 'Jane; John [7-14]'). Drops empty clauses."""
+    return [c.strip() for c in pattern.split(';') if c.strip()]
+
+def _matches_single_pattern(filename, pattern):
+    """Check one clause against a filename (without extension). Reuses all match semantics."""
+    # Name + trailing-number range query first (before fnmatch, since [] triggers fnmatch).
+    # e.g. 'John [7-14]', 'John [1-5, 7-14]', '[7-14]'. Matches substring AND trailing number.
+    name_range = _parse_name_range_query(pattern)
+    if name_range is not None:
+        name_part, ranges = name_range
+        if name_part and name_part.lower() not in filename.lower():
+            return False
+        tm = re.search(r'(\d+)\s*$', filename)
+        if not tm:
+            return False
+        try:
+            num = int(tm.group(1))
+        except ValueError:
+            return False
+        return any(lo <= num <= hi for lo, hi in ranges)
+
+    # Try wildcard matching first (*, ?, [])
+    if any(char in pattern for char in '*?[]'):
+        return fnmatch.fnmatch(filename.lower(), pattern.lower())
+    # Try regex matching if it contains regex special characters
+    if any(char in pattern for char in '.^$+{}|()\\'):
+        try:
+            return re.search(pattern, filename, re.IGNORECASE) is not None
+        except re.error:
+            # If regex is invalid, fall back to simple substring search
+            return pattern.lower() in filename.lower()
+    # Simple substring search
+    return pattern.lower() in filename.lower()
+
 def filter_files_by_search(files, search_pattern, search_enabled):
-    """Filter files based on search pattern using wildcards and regex"""
+    """Filter files based on search pattern using name-range queries, wildcards and regex.
+
+    Separate clauses with ';' for OR (e.g. 'Jane; John [7-14]'). Order preserved, no duplicates.
+    """
     if not search_enabled or not search_pattern.strip():
         return files
-    
-    filtered_files = []
+
     pattern = search_pattern.strip()
-    
+    clauses = _split_or_clauses(pattern)
+    if not clauses:
+        return files
+    if len(clauses) == 1:
+        single = clauses[0]
+        return [f for f in files if _matches_single_pattern(os.path.splitext(f)[0], single)]
+
+    filtered_files = []
     for file in files:
         filename = os.path.splitext(file)[0]  # Remove extension for search
-        
-        # Try wildcard matching first (*, ?, [])
-        if any(char in pattern for char in '*?[]'):
-            if fnmatch.fnmatch(filename.lower(), pattern.lower()):
-                filtered_files.append(file)
-        # Try regex matching if it contains regex special characters
-        elif any(char in pattern for char in '.^$+{}|()\\'):
-            try:
-                if re.search(pattern, filename, re.IGNORECASE):
-                    filtered_files.append(file)
-            except re.error:
-                # If regex is invalid, fall back to simple substring search
-                if pattern.lower() in filename.lower():
-                    filtered_files.append(file)
-        # Simple substring search
-        else:
-            if pattern.lower() in filename.lower():
-                filtered_files.append(file)
-    
+        if any(_matches_single_pattern(filename, c) for c in clauses):
+            filtered_files.append(file)
+
     return filtered_files
 
 def parse_indices(indices_str, num_files):
@@ -170,7 +236,7 @@ class AUNImageSingleBatch3(PreviewImage):
                 }),
                 "range_or_pattern": ("STRING", {
                     "default": "1",
-                    "tooltip": "Multi-purpose field:\n• For fixed/range modes: Comma-separated 1-based indices or ranges (e.g., 2,3,4-7,10)\n• For search mode: Search pattern supporting wildcards (*,?,[]), regex, or simple text (e.g., 'portrait*', 'img_[0-9]+', '.*face.*')"
+                    "tooltip": "Multi-purpose field:\n• For fixed/range modes: Comma-separated 1-based indices or ranges (e.g., 2,3,4-7,10)\n• For search mode: Search pattern supporting wildcards (*,?,[]), regex, simple text, or name + trailing-number range (e.g., 'portrait*', '.*face.*', 'John [7-14]', 'John [1-5, 7-14]'). Name matches case-insensitive substring; bracket matches trailing number only. Separate clauses with ';' for OR (e.g., 'Jane; John [7-14]'). Files list in human order (2 < 10 < 101)."
                 }),
                 "image_upload": (
                     sorted(files),
@@ -282,8 +348,8 @@ class AUNImageSingleBatch3(PreviewImage):
                 state["last_search_pattern"] = search_pattern
                 state["last_batch_mode"] = batch_mode
                 
-                # Get all image files first
-                all_files = sorted([f for f in os.listdir(effective_path) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.webp'))])
+                # Get all image files first (human/natural order: 2 < 10 < 101)
+                all_files = sorted([f for f in os.listdir(effective_path) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.webp'))], key=_natural_sort_key)
                 
                 # Apply search filter if in search mode
                 search_enabled = batch_mode == "search"
@@ -438,12 +504,15 @@ class AUNImageSingleBatch3(PreviewImage):
             if not os.path.isdir(manual_path):
                 return f"Manual path is not a valid directory: {manual_path}"
         
-        # Validate regex pattern if it looks like regex and we're in search mode
-        if batch_mode == "search" and range_or_pattern and any(char in range_or_pattern for char in '.^$+{}|()\\'):
-            try:
-                re.compile(range_or_pattern)
-            except re.error as e:
-                return f"Invalid regex pattern '{range_or_pattern}': {e}"
+        # Name + trailing-number range queries (e.g. 'John [7-14]') are always valid; skip regex check.
+        # Validate regex pattern per ';'-separated OR clause if it looks like regex and we're in search mode
+        if batch_mode == "search" and range_or_pattern:
+            for clause in _split_or_clauses(range_or_pattern.strip()):
+                if _parse_name_range_query(clause) is None and any(char in clause for char in '.^$+{}|()\\'):
+                    try:
+                        re.compile(clause)
+                    except re.error as e:
+                        return f"Invalid regex pattern '{clause}': {e}"
         
         return True    
 
