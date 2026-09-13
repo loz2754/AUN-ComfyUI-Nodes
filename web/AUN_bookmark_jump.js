@@ -1,4 +1,9 @@
 ﻿import { app } from "../../scripts/app.js";
+import {
+  findNodesMatching,
+  getRootGraph,
+  getVisibleGraph,
+} from "./index.js";
 
 const STORAGE_KEY = "AUN.BookmarkJump.Buttons";
 
@@ -143,14 +148,29 @@ function simulateKeypress(key) {
   }));
 }
 
+function findBookmarkCandidatesByKey(key) {
+  const norm = (key ?? "").toLowerCase().trim();
+  if (!norm) return [];
+  const root = getRootGraph() ?? getVisibleGraph();
+  if (!root) return [];
+  return findNodesMatching(
+    root,
+    (n) => {
+      if (n.comfyClass !== "AUNBookmark") return false;
+      const w = n.widgets?.find?.((w) => w.name === "shortcut_key");
+      return ((w?.value ?? "").toLowerCase().trim() === norm);
+    },
+  );
+}
+
 function findBookmarkNodeByKey(key) {
-  const graph = app.canvas?.graph ?? app.graph;
-  if (!graph || !graph._nodes) return null;
-  return graph._nodes.find((n) => {
-    if (n.comfyClass !== "AUNBookmark") return false;
-    const w = n.widgets.find((w) => w.name === "shortcut_key");
-    return (w?.value || "").toLowerCase().trim() === key.toLowerCase().trim();
-  }) || null;
+  const candidates = findBookmarkCandidatesByKey(key);
+  if (!candidates.length) return null;
+  if (candidates.length === 1) return candidates[0].node;
+  // Duplicate keys across graph levels: prefer the visible graph so the
+  // button label tracks the bookmark the shortcut would actually jump to.
+  const visible = getVisibleGraph();
+  return (candidates.find((c) => c.graph === visible) || candidates[0]).node;
 }
 
 function findBookmarkTitleByKey(key) {
@@ -406,6 +426,10 @@ function startRafLoop() {
       const data = buttonsData.find((b) => b.id === id);
       if (!data || !state.el) continue;
       if (state.dragging) continue;
+      // Recursive lookup: bookmarks inside subgraphs keep their buttons
+      // visible from any graph level. Clicking dispatches the shortcut,
+      // and the bookmark navigates into its subgraph before panning.
+      // Hide only when the key exists nowhere (stale/removed bookmark).
       if (findBookmarkNodeByKey(data.key)) {
         updateButtonLabel(state.el, data);
         positionButton(state.el, data);

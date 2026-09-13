@@ -9,6 +9,8 @@
 
 ### Fixed
 
+- AUN Bookmark: jumping to a bookmark placed inside a subgraph now auto-enters the subgraph chain before panning/zooming (nested levels supported). Bookmark jump buttons stay visible from any graph level, and duplicate shortcut keys resolve by preferring the bookmark in the currently visible graph.
+
 ### Notes
 
 ## [2.30.0] - 2026-09-05
