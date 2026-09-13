@@ -1,4 +1,4 @@
-# Registry moderation incident (2026-09-05) — Manager stuck at v2.22.0
+# Registry moderation incident (2026-09-05, updated 2026-09-13) — Manager stuck at v2.22.0
 
 Saved troubleshooting session. GitHub/tags/Actions are healthy; the ComfyUI Registry
 auto-moderated every version after v2.22.0, so ComfyUI Manager (which only lists
@@ -14,7 +14,19 @@ auto-moderated every version after v2.22.0, so ComfyUI Manager (which only lists
     `2.25.0` (`9c994617-…`), `2.25.1` (`f845fa3e-…`), `2.26.0` (`40667029-…`)
   - `NodeVersionStatusFlagged`: `2.27.0` (`4fc9eb7f-…`), `2.28.0` (`d7951057-…`),
     `2.29.0` (`19d4f7b1-…`)
-  - `NodeVersionStatusPending`: `2.29.1` (`2a5fd034-…`) at time of writing
+  - `NodeVersionStatusBanned`: `2.29.1` (`2a5fd034-…`, created `2026-09-05`)
+
+## Update 2026-09-13
+
+- `v2.29.1` moved `Pending` → `NodeVersionStatusBanned`. This rules out the
+  E701/E702 semicolon theory: v2.29.1 changed nothing scannable except that fix
+  plus a model short-name string, yet was still banned.
+- `v2.30.0` (Sep 5, `dc129cf2-…`) → `NodeVersionStatusBanned`.
+- `v2.30.1` (Sep 13, `e821011c-…`) → `NodeVersionStatusFlagged`.
+- Pack `latest_version` still `2.22.0` (`Active`); Manager unchanged.
+- Takeaway: the Banned/Flagged split looks like scanner-side variance, not signal
+  from code diffs. No further new releases until the reviewer responds — each
+  banned upload only extends the visible banned list.
 - All `Publish to Comfy registry` workflow runs (incl. v2.23–v2.29.1) report
   `success` / `Upload successful`. Upload succeeding does NOT mean the version goes
   `Active` — the async security scan moves it to Flagged/Banned with no notification,
@@ -54,21 +66,29 @@ something introduced in v2.23.0:
 
 ## Manual review request (to post on `Comfy-Org/registry-backend`)
 
-Title: *Manual review request: `aun-comfyui-nodes` versions 2.23.0–2.29.1
+Title: *Manual review request: `aun-comfyui-nodes` versions 2.23.0–2.30.1
 Flagged/Banned, Manager stuck at 2.22.0*
 
 Body: publisher `loz2754`, node `aun-comfyui-nodes`
 (`https://github.com/loz2754/AUN-ComfyUI-Nodes`,
 `https://registry.comfy.org/nodes/aun-comfyui-nodes`). Every version since 2.23.0
-auto-moderated (IDs listed above); Manager pinned at 2.22.0. Believed false
-positives — subprocess is ffmpeg-only (list args, no shell, same as Active
-versions); fetch is same-origin; no external network; PromptServer messages are
-local; E702 fixed in 2.29.1. Request: review 2.29.1 → `Active` (older Banned
-versions may stay as-is). Offer to change any specific pattern named.
+auto-moderated; Manager pinned at 2.22.0. Banned: 2.23.0 (`1bbcb160-…`), 2.24.0
+(`9b8cd69f-…`), 2.25.0 (`9c994617-…`), 2.25.1 (`f845fa3e-…`), 2.26.0
+(`40667029-…`), 2.29.1 (`2a5fd034-…`), 2.30.0 (`dc129cf2-…`). Flagged: 2.27.0
+(`4fc9eb7f-…`), 2.28.0 (`d7951057-…`), 2.29.0 (`19d4f7b1-…`), 2.30.1
+(`e821011c-…`). Believed false positives — subprocess is ffmpeg-only (list args,
+no shell, same as Active versions); fetch is same-origin; no external network;
+PromptServer messages are local. Notably, v2.29.1 changed nothing scannable
+except an E701/E702 cleanup yet was still banned, and near-identical 2.30.0 /
+2.30.1 came back Banned / Flagged respectively, suggesting scanner variance.
+Request: review latest (2.30.1) → `Active` (older Banned versions may stay
+as-is). Offer to change any specific pattern named.
 
 ## Follow-ups
 
-- [ ] Post the review issue; watch `…/versions/2.29.1` for `Pending` → `Active`.
+- [ ] Post the review issue (draft above covers through 2.30.1); watch
+      `…/versions/2.30.1` for `Flagged` → `Active`.
+- [ ] Hold off new releases until the reviewer responds.
 - [ ] If reviewer names a pattern, fix tree-wide and cut a new patch release.
 - [ ] Once a clean version is `Active`, optionally deprecate Banned versions in the
       registry UI to avoid user confusion.
