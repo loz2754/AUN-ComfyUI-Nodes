@@ -9,6 +9,8 @@
 
 ### Fixed
 
+- `web/widgets.js` `ensureHiddenAware()`: no longer collapses connection-suppressed widgets to zero height. Frontend >=1.55 keeps a connected widget-backed input as a label-only row (`occupiesCanvasRow()`), so only extension-hidden rows return height 0. Fixes AUN Save Image / V2 input slots shrinking and converging when links are connected to widget inputs on ComfyUI frontend 1.55.9 (legacy canvas, normal mode).
+
 ### Notes
 
 ## [2.30.1] - 2026-09-13

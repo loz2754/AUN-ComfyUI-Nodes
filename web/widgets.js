@@ -28,8 +28,10 @@ export function getWidgetByNames(node, names) {
 }
 
 /**
- * Make a widget "hidden-aware": when hidden, it contributes zero height
- * to the node's computed size. Wraps the original computeSize once.
+ * Make a widget "hidden-aware": when extension-hidden, it contributes zero
+ * height to the node's computed size. Connection-suppressed widgets (link
+ * connected, frontend >=1.55) keep their label-only row, so they return
+ * normal height. Wraps the original computeSize once.
  * @param {object} widget - The widget to wrap.
  */
 export function ensureHiddenAware(widget) {
@@ -43,8 +45,18 @@ export function ensureHiddenAware(widget) {
     widget.type === "customtext" || widget.options?.multiline === true;
 
   widget.computeSize = function (...args) {
-    if (this.hidden) {
-      return [args[0] ?? globalThis.LiteGraph?.NODE_WIDTH ?? 200, 0];
+    const width = args[0] ?? globalThis.LiteGraph?.NODE_WIDTH ?? 200;
+    const suppression = this.visibility?.suppression;
+    const byExtension = suppression?.byExtension === true;
+    const byConnection =
+      suppression?.byConnection === true || this.connectionSuppressed === true;
+    // Frontend >=1.55 keeps a connection-suppressed row (label-only) in layout
+    // via occupiesCanvasRow(); only extension-hidden rows collapse to zero.
+    if (byExtension) {
+      return [width, 0];
+    }
+    if (!byConnection && this.hidden) {
+      return [width, 0];
     }
     let [w, h] = origComputeSize
       ? origComputeSize.apply(this, args)
