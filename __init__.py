@@ -39,6 +39,7 @@ from .AUNInputsDiffusersRefineBasic import AUNInputsDiffusersRefineBasic
 from .AUNInputsHybrid import AUNInputsHybrid
 from .AUNInputsRefine import AUNInputsRefine
 from .AUNInputsRefineBasic import AUNInputsRefineBasic
+from .AUNInputsWan22Basic import AUNInputsWan22Basic
 from .AUNKSamplerPlusV2 import AUNKSamplerPlusV2
 from .AUNKSamplerPlusv3 import AUNKSamplerPlusv3
 from .AUNKSamplerPlusv4 import AUNKSamplerPlusv4
@@ -98,6 +99,7 @@ from .AUNTextIndexSwitch5 import AUNTextIndexSwitch5
 from .AUNTextIndexSwitch5Diffusers import AUNTextIndexSwitch5Diffusers
 from .AUNImageTitleMultiPreview import AUNImageTitleMultiPreview
 from .AUNTitleImagePreview import AUNTitleImagePreview
+from .AUNWan22MoE import AUNWan22MoE
 from .AUNWildcardAddToPrompt import AUNWildcardAddToPrompt
 from .KSamplerInputs import KSamplerInputs
 from .MainFolderManualName import MainFolderManualName
@@ -144,6 +146,7 @@ NODE_CLASS_MAPPINGS = {
     "AUNInputsHybrid": AUNInputsHybrid,
     "AUNInputsRefine": AUNInputsRefine,
     "AUNInputsRefineBasic": AUNInputsRefineBasic,
+    "AUNInputsWan22Basic": AUNInputsWan22Basic,
     "AUNKSamplerPlusV2": AUNKSamplerPlusV2,
     "AUNKSamplerPlusv3": AUNKSamplerPlusv3,
     "AUNKSamplerPlusv4": AUNKSamplerPlusv4,
@@ -203,6 +206,7 @@ NODE_CLASS_MAPPINGS = {
     "AUNTextIndexSwitch5Diffusers": AUNTextIndexSwitch5Diffusers,
     "AUNImageTitleMultiPreview": AUNImageTitleMultiPreview,
     "AUNTitleImagePreview": AUNTitleImagePreview,
+    "AUNWan22MoE": AUNWan22MoE,
     "AUNWildcardAddToPrompt": AUNWildcardAddToPrompt,
     "KSamplerInputs": KSamplerInputs,
     "MainFolderManualName": MainFolderManualName,
@@ -246,6 +250,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "AUNInputsHybrid": "Inputs Hybrid",
     "AUNInputsRefine": "Inputs Refine",
     "AUNInputsRefineBasic": "Inputs Refine Basic",
+    "AUNInputsWan22Basic": "AUN Inputs Wan2.2 Basic",
     "AUNKSamplerPlusV2": "AUN KSampler PlusV2 (Deprecated)",
     "AUNKSamplerPlusv3": "AUN KSampler PlusV3",
     "AUNKSamplerPlusv4": "AUN KSampler 2-Model",
@@ -305,6 +310,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "AUNTextIndexSwitch5Diffusers": "Text Index Switch 5 Diffusers",
     "AUNImageTitleMultiPreview": "AUN Image Title Multi Preview",
     "AUNTitleImagePreview": "Image Preview With Title",
+    "AUNWan22MoE": "Wan2.2 MoE KSampler",
     "AUNWildcardAddToPrompt": "AUN Wildcard Add-To-Prompt",
     "KSamplerInputs": "KSampler Inputs",
     "MainFolderManualName": "Manual Name",

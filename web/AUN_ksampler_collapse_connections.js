@@ -1,9 +1,11 @@
 import { app } from "../../scripts/app.js";
+import { syncCollapseVueLabels } from "./index.js";
 
 const TARGET_CLASSES = new Set([
   "AUNKSamplerPlusV2",
   "AUNKSamplerPlusv3",
   "AUNKSamplerPlusv4",
+  "AUNWan22MoE",
 ]);
 
 function setupNode(node) {
@@ -48,7 +50,7 @@ function setupNode(node) {
           delete slot.label;
           delete slot.__aun_collapse_origLabel;
         }
-        if (slot.label === " ") {
+        if (slot.label === "" || slot.label === " ") {
           delete slot.label;
         }
         continue;
@@ -56,7 +58,9 @@ function setupNode(node) {
       if (!('__aun_collapse_origLabel' in slot)) {
         slot.__aun_collapse_origLabel = slot.label;
       }
-      slot.label = " ";
+      // NOTE: falsy "" (not " ") so `label || name` readers (e.g. Use
+      // Everywhere broadcast matching) fall back to the real slot name.
+      slot.label = "";
     }
   };
 
@@ -86,13 +90,14 @@ function setupNode(node) {
           delete slot.label;
           delete slot.__aun_collapse_origLabel;
         }
-        if (slot.label === " ") {
+        if (slot.label === "" || slot.label === " ") {
           delete slot.label;
         }
       }
     }
     this.setSize([this.size[0], this.computeSize()[1]]);
     this.graph?.setDirtyCanvas(true, true);
+    syncCollapseVueLabels();
   };
 
   const origMenu = node.getExtraMenuOptions;
@@ -110,13 +115,14 @@ function setupNode(node) {
               delete slot.label;
               delete slot.__aun_collapse_origLabel;
             }
-            if (slot.label === " ") {
+            if (slot.label === "" || slot.label === " ") {
               delete slot.label;
             }
           }
         }
         this.setSize([this.size[0], this.computeSize()[1]]);
         this.graph?.setDirtyCanvas(true, true);
+        syncCollapseVueLabels();
       },
     });
   };
@@ -137,13 +143,14 @@ function setupNode(node) {
           delete slot.label;
           delete slot.__aun_collapse_origLabel;
         }
-        if (slot.label === " ") {
+        if (slot.label === "" || slot.label === " ") {
           delete slot.label;
         }
       }
     }
     node.setSize([node.size[0], node.computeSize()[1]]);
     node.graph?.setDirtyCanvas(true, true);
+    syncCollapseVueLabels();
   };
 
   if (node.properties[PK]) {

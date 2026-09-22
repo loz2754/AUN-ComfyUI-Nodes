@@ -1,5 +1,5 @@
 import { app } from "../../scripts/app.js";
-import { forceGraphRedraw } from "./index.js";
+import { forceGraphRedraw, syncCollapseVueLabels } from "./index.js";
 
 const PK = "collapse_connections";
 const SETTING_ID = "AUN.CollapseConnections.Enabled";
@@ -9,8 +9,8 @@ const USER_HEIGHT_KEY = "__aun_gc_userHeight";
 const SKIP_CLASSES = new Set([
   "AUNInputs", "AUNInputsBasic", "AUNInputsRefine", "AUNInputsRefineBasic",
   "AUNInputsDiffusers", "AUNInputsDiffusersBasic", "AUNInputsDiffusersRefineBasic",
-  "AUNInputsHybrid",
-  "AUNKSamplerPlusV2", "AUNKSamplerPlusv3", "AUNKSamplerPlusv4",
+  "AUNInputsHybrid", "AUNInputsWan22Basic",
+  "AUNKSamplerPlusV2", "AUNKSamplerPlusv3", "AUNKSamplerPlusv4", "AUNWan22MoE",
   "AUNSaveImage", "AUNSaveImageV2",
   "AUNShowAnyMulti", "AUNPassthroughAnyMulti",
   "AUNScanAndShowWidgets",
@@ -102,7 +102,7 @@ function applyCollapseState(node) {
           slot.label = slot.__aun_collapse_origLabel;
           delete slot.__aun_collapse_origLabel;
         }
-        if (slot.label === " ") {
+        if (slot.label === "" || slot.label === " ") {
           delete slot.label;
         }
         continue;
@@ -110,7 +110,9 @@ function applyCollapseState(node) {
       if (!('__aun_gc_origLabel' in slot)) {
         slot.__aun_gc_origLabel = slot.label;
       }
-      slot.label = " ";
+      // NOTE: falsy "" (not " ") so `label || name` readers (e.g. Use
+      // Everywhere broadcast matching) fall back to the real slot name.
+      slot.label = "";
     }
   };
 }
@@ -141,7 +143,7 @@ function applyNodeCollapse(node, goingToCollapse) {
         slot.label = slot.__aun_collapse_origLabel;
         delete slot.__aun_collapse_origLabel;
       }
-      if (slot.label === " ") {
+      if (slot.label === "" || slot.label === " ") {
         delete slot.label;
       }
     }
@@ -155,6 +157,7 @@ function applyNodeCollapse(node, goingToCollapse) {
 function toggleNodeCollapse(node) {
   if (!node) return;
   applyNodeCollapse(node, !isConnectionCollapsed(node));
+  syncCollapseVueLabels();
 }
 
 // Programmatically collapse/expand a single node's connections. Used by the
@@ -174,16 +177,19 @@ export function setNodeCollapseConnections(node, collapse) {
     // or user-set node sizing gets clobbered (e.g. AUNSaveImageV2, AUNShowAnyMulti).
     if (typeof node.__aun_remoteCollapse === "function") {
       node.__aun_remoteCollapse(next);
+      syncCollapseVueLabels();
       return;
     }
     node.properties = node.properties || {};
     node.properties[PK] = next;
     node.graph?.setDirtyCanvas(true, true);
+    syncCollapseVueLabels();
     return;
   }
 
   if (!node.__aun_global_collapse_hooked) hookNode(node);
   applyNodeCollapse(node, next);
+  syncCollapseVueLabels();
 }
 
 // Resolve a controller node's targets against the live graph is handled by the
@@ -273,7 +279,7 @@ function cleanupAllNodes(graph) {
         slot.label = slot.__aun_collapse_origLabel;
         delete slot.__aun_collapse_origLabel;
       }
-      if (slot.label === " ") {
+      if (slot.label === "" || slot.label === " ") {
         delete slot.label;
       }
     }
@@ -285,6 +291,7 @@ function cleanupAllNodes(graph) {
     if (node.__aun_gc_origDrawFg != null) node.onDrawForeground = node.__aun_gc_origDrawFg;
   }
   forceGraphRedraw(app);
+  syncCollapseVueLabels();
 }
 
 // Read-only accessor for other extensions (e.g. the controller node overlay).
@@ -302,11 +309,139 @@ export function canRemoteCollapse(node) {
   return typeof node.__aun_remoteCollapse === "function";
 }
 
+// ── Draw-time label swap ─────────────────────────────────────────────────
+// Collapse stores "" (falsy) so `label || name` readers (e.g. Use Everywhere
+// broadcast matching) fall back to the real slot name. The canvas renderer,
+// however, renders the slot name for falsy labels — piling every name onto
+// the single converged anchor. Swap "" -> " " for the duration of the draw
+// call only, so the display stays blank while stored data stays UE-friendly.
+// Queue-time UE analysis never runs mid-draw (single-threaded JS), so it
+// always observes "". Only exact-"" slots on collapsed nodes are touched;
+// compact-mode " " labels and untouched slots are never affected.
+const DRAW_SWAP_FLAG = "__aun_gc_drawSwapped";
+
+function swapLabelsForDraw(node) {
+  if (!node?.properties?.[PK]) return;
+  if (isSubgraphNode(node)) return;
+  for (const slot of [...(node.inputs || []), ...(node.outputs || [])]) {
+    if (!slot || slot.label !== "") continue;
+    if (isWidgetLinked(node, slot)) continue;
+    slot.label = " ";
+    slot[DRAW_SWAP_FLAG] = true;
+    try {
+      globalThis.__aunGcSwapCount = (globalThis.__aunGcSwapCount || 0) + 1;
+    } catch (err) {}
+  }
+}
+
+function restoreLabelsAfterDraw(node) {
+  if (!node) return;
+  for (const slot of [...(node.inputs || []), ...(node.outputs || [])]) {
+    if (!slot || !slot[DRAW_SWAP_FLAG]) continue;
+    delete slot[DRAW_SWAP_FLAG];
+    if (slot.label === " ") slot.label = "";
+  }
+}
+
+function wrapDrawNodeOnce() {
+  if (typeof LGraphCanvas === "undefined") return;
+  if (LGraphCanvas.prototype.__aun_gc_drawWrapped) return;
+  const origDrawNode = LGraphCanvas.prototype.drawNode;
+  if (typeof origDrawNode !== "function") return;
+  LGraphCanvas.prototype.drawNode = function (node, ctx) {
+    swapLabelsForDraw(node);
+    try {
+      return origDrawNode.apply(this, arguments);
+    } finally {
+      restoreLabelsAfterDraw(node);
+    }
+  };
+  LGraphCanvas.prototype.__aun_gc_drawWrapped = true;
+}
+
+// ── Draw-time label swap, level 2: drawSlots ────────────────────────────
+// The drawNode-level swap above is NOT sufficient on its own: the core
+// drawNode body calls node.onDrawForeground() BEFORE node.drawSlots(), and
+// AUN's per-frame foreground blanking resets labels to "" there — erasing
+// the swap one step ahead of the text pass. Wrapping drawSlots (which runs
+// after the foreground hook and owns the only slot-text pass) closes the
+// gap. Render-only: queue-time readers such as Use Everywhere never call
+// drawSlots, so they always observe "".
+function wrapDrawSlotsOnce() {
+  try {
+    const nodes = app?.graph?._nodes || [];
+    const sample = nodes.find((n) => n && typeof n.drawSlots === "function");
+    if (!sample) return false;
+    // Find the prototype that owns drawSlots so subclasses are covered too.
+    let proto = Object.getPrototypeOf(sample);
+    while (
+      proto &&
+      !Object.prototype.hasOwnProperty.call(proto, "drawSlots")
+    ) {
+      proto = Object.getPrototypeOf(proto);
+    }
+    if (!proto) proto = Object.getPrototypeOf(sample);
+    if (!proto || proto.__aun_gc_slotsWrapped) return true;
+    const origDrawSlots = proto.drawSlots;
+    if (typeof origDrawSlots !== "function") return false;
+    proto.drawSlots = function (ctx, opts) {
+      swapLabelsForDraw(this);
+      try {
+        return origDrawSlots.apply(this, arguments);
+      } finally {
+        restoreLabelsAfterDraw(this);
+      }
+    };
+    proto.__aun_gc_slotsWrapped = true;
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
+
 app.registerExtension({
   name: "AUN.GlobalCollapseConnections",
   nodeCreated: (node) => hookNode(node),
   loadedGraphNode: (node) => hookNode(node),
+  afterConfigureGraph() {
+    // Catch persisted collapsed states (and undo/paste) on every graph load.
+    syncCollapseVueLabels();
+  },
   async setup() {
+    wrapDrawNodeOnce();
+    wrapDrawSlotsOnce();
+    try {
+      const slotsWrapped = (() => {
+        try {
+          const nodes = app?.graph?._nodes || [];
+          for (const n of nodes) {
+            let p = n && Object.getPrototypeOf(n);
+            while (p) {
+              if (p.__aun_gc_slotsWrapped) return true;
+              p = Object.getPrototypeOf(p);
+            }
+          }
+        } catch (err) {}
+        return false;
+      })();
+      console.info(
+        "[AUN] GlobalCollapseConnections loaded; canvas draw-swap " +
+          (typeof LGraphCanvas !== "undefined" &&
+          LGraphCanvas.prototype.__aun_gc_drawWrapped
+            ? "active"
+            : "unavailable") +
+          "; slots-swap " +
+          (slotsWrapped ? "active" : "pending")
+      );
+    } catch (err) {}
+    // Safety net for state changes that bypass the toggle paths above
+    // (undo/redo, paste, controller edge cases). Sync is a no-op unless
+    // the collapsed set actually changed. Also retries the drawSlots wrap
+    // in case no nodes existed when setup ran.
+    setInterval(() => {
+      syncCollapseVueLabels();
+      wrapDrawSlotsOnce();
+    }, 1000);
     const skipSetting = app.ui.settings.addSetting({
       id: SKIP_SETTING_ID,
       name: "Collapse connections: extra node classes to skip",

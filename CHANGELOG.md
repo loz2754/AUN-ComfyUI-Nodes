@@ -5,11 +5,21 @@
 
 ### Added
 
+- New nodes `AUNInputsWan22Basic` ("AUN Inputs Wan2.2 Basic") and `AUNWan22MoE` ("Wan2.2 MoE KSampler"), registered in `__init__.py`.
+- Collapse Connections: shared `syncCollapseVueLabels()` helper (`web/utils.js`, exported via `web/index.js`) hiding collapsed slot labels in VueNodes mode via a `data-node-id`-scoped stylesheet, keeping slot data intact for Use Everywhere matching.
+- New guide `docs/COLLAPSE_CONNECTIONS_USE_EVERYWHERE.md` (indexed in `docs/INDEX.md`, linked from README and the controller node doc) documenting Collapse × Use Everywhere quirks.
+
 ### Changed
 
 ### Fixed
 
+- Collapse Connections broke Use Everywhere broadcasts: collapsed slots stored a truthy `" "` label, which UE's `label || name` matching read instead of the real slot name (fatal for nodes with duplicated output types such as Wan22Basic's `MODEL` ×2). Collapse now stores falsy `""` so UE falls back to slot names; restore paths accept both `" "` (legacy sessions) and `""`.
+- Fixed piled-up slot labels on collapsed nodes in canvas mode: the draw-time blanking is now applied around `drawSlots` (which runs after `onDrawForeground`, where the per-frame blanking had been erasing the earlier swap before the text pass).
+- `model_utils.py`: added `EpicRealismXL4PhtReal` short name.
+
 ### Notes
+
+- `AUNInputsWan22Basic` sampler/scheduler outputs deliberately stay `AnyType("*")` (real links into KSampler converted inputs and text nodes take priority over UE broadcastability); use normal links or UE Combo Clone for those two values.
 
 ## [2.30.2] - 2026-09-16
 

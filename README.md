@@ -279,6 +279,7 @@ Works best when coupled with AUN Save Image.
 - KSampler Inputs (`KSamplerInputs`) provides a convenient way to set the KSampler inputs (sampler, scheduler, CFG, and steps) in one place. This is useful for organizing your workflow and making it easier to manage these common parameters.
 - KSampler Plus (`AUNKSamplerPlusv3`) a progressive two-pass sampler with latent-upscale, pixel-space upscale and optional final refinement. Also outputs a string of the selected upscale methods for use in filenames.
 - KSampler 2-Model ('AUNKSamplerPlusv4') as KSampler Plus, but accepts a second model for the latent upscale process.
+- Wan2.2 MoE (`AUNWan22MoE`) high/low-noise expert sampler switched at a timestep boundary (0.875 t2v / 0.9 i2v) with shared sigma shift, plus an optional simple latent-upscale tail resampled by the low-noise expert. Outputs latent and decoded image.
 - AUN KSampler PlusV2 *Deprecated in favour of KSampler Plus* (`AUNKSamplerPlusV2`) an earlier progressive two-pass sampler with upscale options and optional final refinement.
 
 ##### Workflow image showing the KSampler Plus (v3) with an AUN Image Slider Comparer previewing Base vs Latent upscaled - (drop image into Comfyui to load the workflow)
@@ -310,6 +311,7 @@ Works best when coupled with AUN Save Image.
 - Inputs Refine (`AUNInputsRefine`) extends `Inputs` with an optional separate refine checkpoint and SpeedLoRA controls that can either split strength between models or apply full strength to both.
 - Inputs Refine Basic (`AUNInputsRefineBasic`) keeps the lighter `Inputs Basic` contract but also outputs an optional separate refine model checkpoint.
 - Inputs Hybrid (`AUNInputsHybrid`) loads a standard checkpoint (UNet+CLIP+VAE), or a diffusion UNet model with separate CLIP and VAE files, but essentially the same as AUN Inputs.
+- Inputs Wan2.2 Basic (`AUNInputsWan22Basic`) loads Wan2.2 high-noise and low-noise diffusion experts with CLIP, VAE, optional CLIP Vision (i2v), independent LoRA per expert, and MoE sampler settings (cfg high/low, boundary, sigma shift, steps, seed) plus fps, frame rate and frame count outputs. Wires straight into Wan2.2 MoE KSampler.
 
 Migration note: existing workflows that use `AUNInputsRefine` or `AUNInputsRefineBasic` may need their SpeedLoRA-related widgets checked or reconnected after loading because the input set changed.
 
@@ -379,13 +381,15 @@ Deprecation note: the full input-style nodes (`AUNInputs`, `AUNInputsDiffusers`,
 
 #### Collapse Connections
 
-AUN Inputs nodes (`AUNInputs`, `AUNInputsBasic`, `AUNInputsRefine`, `AUNInputsRefineBasic`, `AUNInputsDiffusers`, `AUNInputsDiffusersBasic`, `AUNInputsDiffusersRefineBasic`, `AUNInputsHybrid`), AUN KSampler nodes (`AUNKSamplerPlusV2`, `AUNKSamplerPlusv3`, `AUNKSamplerPlusv4`) and Show Any Multi (`AUNShowAnyMulti`) feature a **collapse connections** mode that hides all slot labels and converges all connection lines to a single point, making complex workflows visually cleaner.
+AUN Inputs nodes (`AUNInputs`, `AUNInputsBasic`, `AUNInputsRefine`, `AUNInputsRefineBasic`, `AUNInputsDiffusers`, `AUNInputsDiffusersBasic`, `AUNInputsDiffusersRefineBasic`, `AUNInputsHybrid`, `AUNInputsWan22Basic`), AUN KSampler nodes (`AUNKSamplerPlusV2`, `AUNKSamplerPlusv3`, `AUNKSamplerPlusv4`, `AUNWan22MoE`) and Show Any Multi (`AUNShowAnyMulti`) feature a **collapse connections** mode that hides all slot labels and converges all connection lines to a single point, making complex workflows visually cleaner.
 
 `AUNInputsBasicSwitch` also features collapse connections: its 13 param/loader outputs converge to a single point while the `text`, `label` and `index` switch outputs stay visible and keep their connections, so the node remains usable for its model/clip/vae/sampler plumbing and its prompt switching at the same time. Toggle it from the right-click menu ("Collapse Connections" / "Show Connections") or via a Collapse Connections controller node — double-click toggles its compact mode instead.
 
 **Toggle**: Right-click → "Collapse Connections" / "Show Connections", or double-click anywhere on the node body (excluding the title bar and widgets). The node height reduces to match the collapsed slot area while preserving user-set width.
 
 **Note**: This is distinct from ComfyUI's built-in title-bar collapse — the sockets remain functional, and connections are preserved; only the visual representation is compacted.
+
+**Use Everywhere**: collapse is compatible with [cg-use-everywhere](https://github.com/chrisgoringe/cg-use-everywhere) broadcasting — collapsed nodes keep broadcasting with no need to expand before queueing. See [Collapse Connections × Use Everywhere — quirks & notes](./docs/COLLAPSE_CONNECTIONS_USE_EVERYWHERE.md) for edge cases (duplicated output types, `*` outputs, Combo Clone).
 
 ##### Before / After — Collapse Connections in action
 

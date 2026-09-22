@@ -26,6 +26,7 @@ export {
   matchesTarget,
   parseNodeIds,
   injectStyles,
+  syncCollapseVueLabels,
 } from "./utils.js";
 export {
   computeGroupSignature,

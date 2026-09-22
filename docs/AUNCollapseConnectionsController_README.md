@@ -44,3 +44,12 @@ The controller has its own compact mode (mirroring the AUN Node Controller):
 
 - Enable ComfyUI "Show Node IDs" when targeting by Node ID.
 - To quickly hide connection lines for the whole graph, use the 'All Graph' run-bar button instead of setting up slots node by node.
+
+## Use Everywhere compatibility
+
+Collapsing (via slots, All Graph, double-click, or menu) does not break
+[cg-use-everywhere](https://github.com/chrisgoringe/cg-use-everywhere)
+broadcasts: collapsed nodes keep broadcasting, so there is no need to
+expand anything before queueing. Quirks and edge cases (duplicated output
+types, `*` outputs such as sampler/scheduler, Combo Clone) are documented
+in [Collapse Connections × Use Everywhere — quirks & notes](./COLLAPSE_CONNECTIONS_USE_EVERYWHERE.md).

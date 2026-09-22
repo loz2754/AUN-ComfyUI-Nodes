@@ -1,6 +1,6 @@
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
-import { getWidget, isCompact, setCompact } from "./index.js";
+import { getWidget, isCompact, setCompact, syncCollapseVueLabels } from "./index.js";
 
 const NODE_TYPES = ["AUNTextIndexSwitch3", "AUNTextIndexSwitch4", "AUNTextIndexSwitch5", "AUNTextIndexSwitch5Diffusers", "AUNInputsBasicSwitch"];
 // Classes that have a built-in "mode" widget (Select/Increment/Random/Range)
@@ -120,13 +120,15 @@ function applyCollapseSlotLabels(node) {
       if (!("__aun_collapse_origLabel" in slot)) {
         slot.__aun_collapse_origLabel = slot.label;
       }
-      slot.label = " ";
+      // NOTE: falsy "" (not " ") so `label || name` readers (e.g. Use
+      // Everywhere broadcast matching) fall back to the real slot name.
+      slot.label = "";
     } else {
       if ("__aun_collapse_origLabel" in slot) {
         slot.label = slot.__aun_collapse_origLabel;
         delete slot.__aun_collapse_origLabel;
       }
-      if (slot.label === " ") {
+      if (slot.label === "" || slot.label === " ") {
         delete slot.label;
       }
     }
@@ -2642,6 +2644,7 @@ function applyCollapseConnectionsState(node) {
   updateNodeVisualState(node);
   updateDividerOverlayPosition(node);
   scheduleOverlayUpdate();
+  syncCollapseVueLabels();
 }
 
 function toggleCollapseConnections(node) {

@@ -4,6 +4,7 @@ import {
   captureAunWidgetValues,
   restoreAunWidgetValues,
 } from "./aun_persistence_shared.js";
+import { syncCollapseVueLabels } from "./index.js";
 
 const MAX_SLOTS = 20;
 const LIST_SPLITTER = /[,\n;]+/;
@@ -2270,13 +2271,14 @@ const decorateNode = (node, nodeData) => {
           slot.label = slot.___ccOrigLabel;
           delete slot.___ccOrigLabel;
         }
-        if (slot.label === " ") {
+        if (slot.label === "" || slot.label === " ") {
           delete slot.label;
         }
       }
     }
     node.setSize([node.size[0], node.computeSize()[1]]);
     node.graph?.setDirtyCanvas(true, true);
+    syncCollapseVueLabels();
   };
 
   const trackedWidgets = [
@@ -2398,13 +2400,14 @@ const extendNodePrototype = (nodeType, nodeData) => {
               slot.label = slot.___ccOrigLabel;
               delete slot.___ccOrigLabel;
             }
-            if (slot.label === " ") {
+            if (slot.label === "" || slot.label === " ") {
               delete slot.label;
             }
           }
         }
         this.setSize([this.size[0], this.computeSize()[1]]);
         this.graph?.setDirtyCanvas(true, true);
+        syncCollapseVueLabels();
       },
     });
   };
@@ -2450,7 +2453,9 @@ const extendNodePrototype = (nodeType, nodeData) => {
       if (isWidgetLinked(this, slot)) continue;
       if (c) {
         if (!("___ccOrigLabel" in slot)) slot.___ccOrigLabel = slot.label;
-        slot.label = " ";
+        // NOTE: falsy "" (not " ") so `label || name` readers (e.g. Use
+        // Everywhere broadcast matching) fall back to the real slot name.
+        slot.label = "";
       } else if ("___ccOrigLabel" in slot) {
         slot.label = slot.___ccOrigLabel;
         delete slot.___ccOrigLabel;
@@ -2465,7 +2470,9 @@ const extendNodePrototype = (nodeType, nodeData) => {
       for (const slot of [...(this.inputs || []), ...(this.outputs || [])]) {
         if (isWidgetLinked(this, slot)) continue;
         if (!("___ccOrigLabel" in slot)) slot.___ccOrigLabel = slot.label;
-        slot.label = " ";
+        // NOTE: falsy "" (not " ") so `label || name` readers (e.g. Use
+        // Everywhere broadcast matching) fall back to the real slot name.
+        slot.label = "";
       }
     }
   };

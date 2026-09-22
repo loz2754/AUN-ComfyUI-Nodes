@@ -2,6 +2,8 @@
  * General-purpose utility functions shared across AUN web extensions.
  */
 
+import { app } from "../../scripts/app.js";
+
 // ── Numeric helpers ───────────────────────────────────────────
 
 /**
@@ -140,4 +142,75 @@ export function injectStyles(windowKey, cssText) {
   style.textContent = cssText;
   document.head.appendChild(style);
   window[windowKey] = style;
+}
+
+// ── Collapse-connections: VueNodes label hiding ──────────────────────────
+// In VueNodes mode the canvas draw pipeline (including the per-frame
+// onDrawForeground slot-label blanking) never runs, so collapsed slot
+// labels would render as DOM text. The Vue slot components read
+// `slot.label || localized_name || name` directly — the same chain Use
+// Everywhere broadcast matching uses — so slot data must keep resolving to
+// the real name. Labels are therefore hidden with a stylesheet scoped by
+// Vue's `data-node-id` attribute instead of by mutating slot data.
+const VUE_LABEL_CSS_ID = "aun-collapse-connections-vue-labels";
+const COLLAPSE_PK = "collapse_connections";
+let _vueLabelCssText = null;
+
+function _collectCollapseGraphs() {
+  const graphs = [];
+  const seen = new Set();
+  const push = (g) => {
+    if (!g || seen.has(g)) return;
+    seen.add(g);
+    graphs.push(g);
+  };
+  try {
+    push(app?.graph);
+    push(app?.canvas?.graph);
+    push(app?.canvas?.subgraph);
+  } catch (err) {}
+  return graphs;
+}
+
+function _collectCollapsedNodeIds() {
+  const ids = new Set();
+  const visit = (graph) => {
+    if (!graph || !Array.isArray(graph._nodes)) return;
+    for (const node of graph._nodes) {
+      if (!node) continue;
+      if (node.properties?.[COLLAPSE_PK]) ids.add(String(node.id));
+      if (node.subgraph) visit(node.subgraph);
+    }
+  };
+  for (const graph of _collectCollapseGraphs()) visit(graph);
+  return ids;
+}
+
+/**
+ * Sync the VueNodes label-hiding stylesheet with live collapse state.
+ * Safe to call often; only touches the DOM when membership changes.
+ */
+export function syncCollapseVueLabels() {
+  try {
+    const doc = globalThis.document;
+    if (!doc) return;
+    const ids = _collectCollapsedNodeIds();
+    const cssEscape =
+      globalThis.CSS?.escape || ((s) => String(s).replace(/["\\]/g, "\\$&"));
+    let css = "";
+    for (const id of ids) {
+      css +=
+        `[data-node-id="${cssEscape(id)}"] .text-node-component-slot-text` +
+        `{display:none !important;}\n`;
+    }
+    if (css === _vueLabelCssText) return;
+    _vueLabelCssText = css;
+    let style = doc.getElementById(VUE_LABEL_CSS_ID);
+    if (!style) {
+      style = doc.createElement("style");
+      style.id = VUE_LABEL_CSS_ID;
+      doc.head.appendChild(style);
+    }
+    style.textContent = css;
+  } catch (err) {}
 }

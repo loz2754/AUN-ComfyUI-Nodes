@@ -1,4 +1,5 @@
 import { app } from "../../scripts/app.js";
+import { syncCollapseVueLabels } from "./index.js";
 
 const NODE_TYPE = "AUNPassthroughAnyMulti";
 const MAX_INPUTS = 20;
@@ -510,7 +511,9 @@ function setupCollapseConnections(node) {
     for (const slot of [...(this.inputs || []), ...(this.outputs || [])]) {
       if (this.widgets?.length && slot.widget) continue;
       if (c) {
-        slot.label = " ";
+        // NOTE: falsy "" (not " ") so `label || name` readers (e.g. Use
+        // Everywhere broadcast matching) fall back to the real slot name.
+        slot.label = "";
       }
     }
   };
@@ -523,6 +526,7 @@ function setupCollapseConnections(node) {
       updateOutputLabels(this);
     }
     this.graph?.setDirtyCanvas(true, true);
+    syncCollapseVueLabels();
   }
 
   // Remote control from AUNCollapseConnectionsController – mirrors toggleCollapse
@@ -537,6 +541,7 @@ function setupCollapseConnections(node) {
       updateOutputLabels(node);
     }
     node.graph?.setDirtyCanvas(true, true);
+    syncCollapseVueLabels();
   };
 
   const origDblClick = node.onDblClick;

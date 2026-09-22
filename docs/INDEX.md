@@ -89,6 +89,7 @@ Generated list of documentation files under `docs/`.
 
 ## Guides
 
+- [Collapse Connections × Use Everywhere — quirks & notes](./COLLAPSE_CONNECTIONS_USE_EVERYWHERE.md)
 - [SaveVideoPathNode_README](./SaveVideoPathNode_README.md)
 - [Frontend widget serialization issue](./frontend-widget-serialization-issue.md)
 - [Pack architecture: what links to what](./ARCHITECTURE.md)
