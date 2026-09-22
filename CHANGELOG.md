@@ -5,6 +5,16 @@
 
 ### Added
 
+### Changed
+
+### Fixed
+
+### Notes
+
+## [2.31.0] - 2026-09-22
+
+### Added
+
 - New nodes `AUNInputsWan22Basic` ("AUN Inputs Wan2.2 Basic") and `AUNWan22MoE` ("Wan2.2 MoE KSampler"), registered in `__init__.py`.
 - Collapse Connections: shared `syncCollapseVueLabels()` helper (`web/utils.js`, exported via `web/index.js`) hiding collapsed slot labels in VueNodes mode via a `data-node-id`-scoped stylesheet, keeping slot data intact for Use Everywhere matching.
 - New guide `docs/COLLAPSE_CONNECTIONS_USE_EVERYWHERE.md` (indexed in `docs/INDEX.md`, linked from README and the controller node doc) documenting Collapse × Use Everywhere quirks.
@@ -20,7 +30,6 @@
 ### Notes
 
 - `AUNInputsWan22Basic` sampler/scheduler outputs deliberately stay `AnyType("*")` (real links into KSampler converted inputs and text nodes take priority over UE broadcastability); use normal links or UE Combo Clone for those two values.
-
 ## [2.30.2] - 2026-09-16
 
 ### Added
