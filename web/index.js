@@ -27,6 +27,7 @@ export {
   parseNodeIds,
   injectStyles,
   syncCollapseVueLabels,
+  withUESuppressed,
 } from "./utils.js";
 export {
   computeGroupSignature,

@@ -1,6 +1,7 @@
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
 import { getWidget } from "./widgets.js";
+import { withUESuppressed } from "./index.js";
 
 const NODE_CLASS = "AUNAddToPromptMulti";
 const MAX_ADDONS = 10;
@@ -395,7 +396,8 @@ function patchNode(node) {
     origDblClick?.apply(this, arguments);
     if (app?.canvas?.active_widget) return;
     if (isCompact(this) && pos && pos.length >= 2 && isOverHitArea(this, pos)) return;
-    toggleCompact(this);
+    // AUN double-click takes precedence over UE's restrictions dialog.
+    withUESuppressed(this, () => toggleCompact(this));
   };
 
   const origExtraMenu = node.getExtraMenuOptions;

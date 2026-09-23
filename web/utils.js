@@ -172,6 +172,34 @@ function _collectCollapseGraphs() {
   return graphs;
 }
 
+// ── Use Everywhere double-click precedence ───────────────────────────────
+// UE opens its restrictions dialog on any double-clicked node with
+// `properties.ue_convert` set, via a canvas-level `node-double-click`
+// listener that runs synchronously AFTER `node.onDblClick` in the same
+// task. AUN double-click actions (collapse / compact toggles) take
+// precedence: hide the flag around the action and restore it right after
+// UE's check has run. Broadcast data (`ue_properties`) is never touched,
+// and menu / controller / All Graph paths are unaffected (UE only hooks
+// double-click). No-ops (plain call-through) when the flag is absent.
+export function withUESuppressed(node, fn) {
+  const props = node?.properties;
+  if (!props || !props.ue_convert) {
+    fn();
+    return;
+  }
+  const saved = props.ue_convert;
+  try {
+    delete props.ue_convert;
+    fn();
+  } finally {
+    setTimeout(() => {
+      try {
+        (node.properties ||= {}).ue_convert = saved;
+      } catch (err) {}
+    }, 0);
+  }
+}
+
 function _collectCollapsedNodeIds() {
   const ids = new Set();
   const visit = (graph) => {

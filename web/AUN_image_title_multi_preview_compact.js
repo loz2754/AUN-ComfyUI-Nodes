@@ -1,6 +1,7 @@
 import { app } from "../../scripts/app.js";
 import { getWidget, ensureHiddenAware, applyWidgetHiddenState } from "./widgets.js";
 import { isCompact, setCompact, forceRedraw } from "./utils.js";
+import { withUESuppressed } from "./index.js";
 
 const NODE_TYPE = "AUNImageTitleMultiPreview";
 const OPTIONAL_WIDGETS = [
@@ -38,9 +39,12 @@ function setupNode(node) {
   const origDblClick = node.onDblClick;
   node.onDblClick = function (event, pos) {
     origDblClick?.apply(this, arguments);
-    const next = !isCompact(this);
-    setCompact(this, next);
-    applyCompact(this);
+    // AUN double-click takes precedence over UE's restrictions dialog.
+    withUESuppressed(this, () => {
+      const next = !isCompact(this);
+      setCompact(this, next);
+      applyCompact(this);
+    });
   };
 
   const origMenu = node.getExtraMenuOptions;

@@ -2,6 +2,7 @@ import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
 import { getWidget, ensureHiddenAware, applyWidgetHiddenState } from "./widgets.js";
 import { injectStyles } from "./utils.js";
+import { withUESuppressed } from "./index.js";
 
 const NODE_TYPE = "AUNImageSliderComparer";
 const MAX_PAIRS = 4;
@@ -1126,7 +1127,8 @@ function applyCollapseHooks(node) {
         el.id?.includes("widget"))
     )
       return;
-    toggleCollapse(this);
+    // AUN double-click takes precedence over UE's restrictions dialog.
+    withUESuppressed(this, () => toggleCollapse(this));
   };
 
   const origMenu = node.getExtraMenuOptions;

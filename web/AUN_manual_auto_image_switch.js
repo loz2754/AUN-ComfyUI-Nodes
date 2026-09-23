@@ -1,5 +1,5 @@
 import { app } from "../../scripts/app.js";
-import { getWidget as sharedGetWidget } from "./index.js";
+import { getWidget as sharedGetWidget, withUESuppressed } from "./index.js";
 
 const ADVANCED_WIDGETS = new Set([
   "show_overlay",
@@ -323,9 +323,12 @@ app.registerExtension({
       if (app?.canvas?.interacting_widget || app?.canvas?.active_widget) return;
       const el = document.activeElement;
       if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.classList?.contains("litegraph") || el.id?.includes("widget"))) return;
-      this.properties = this.properties || {};
-      this.properties[PK] = !this.properties[PK];
-      applyCollapse(this);
+      // AUN double-click takes precedence over UE's restrictions dialog.
+      withUESuppressed(this, () => {
+        this.properties = this.properties || {};
+        this.properties[PK] = !this.properties[PK];
+        applyCollapse(this);
+      });
     };
 
     const originalMenu = nodeType.prototype.getExtraMenuOptions;

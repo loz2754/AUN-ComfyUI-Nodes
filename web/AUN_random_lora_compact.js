@@ -6,6 +6,7 @@ import {
   isCompact,
   setCompact,
   isNodeCollapsed,
+  withUESuppressed,
 } from "./index.js";
 
 const NODE_TYPE = "AUNRandomLoraModelOnly";
@@ -925,7 +926,8 @@ function setupNode(node) {
     if (Array.isArray(pos) && typeof pos[1] === "number" && pos[1] < 0) {
       return;
     }
-    toggleCompactMode(this);
+    // AUN double-click takes precedence over UE's restrictions dialog.
+    withUESuppressed(this, () => toggleCompactMode(this));
   };
 
   const originalMenu = node.getExtraMenuOptions;

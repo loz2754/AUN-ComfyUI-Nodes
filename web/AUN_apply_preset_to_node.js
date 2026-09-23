@@ -8,7 +8,7 @@
 
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
-import { findNodeByIdentifier, forceRedraw, isNodeCollapsed, getWidget, applyWidgetHiddenState, isCompact, setCompact } from "./index.js";
+import { findNodeByIdentifier, forceRedraw, isNodeCollapsed, getWidget, applyWidgetHiddenState, isCompact, setCompact, withUESuppressed } from "./index.js";
 
 const NODE_CLASS = "AUNApplyPresetToNode";
 const TITLE_H = 28;
@@ -409,7 +409,8 @@ app.registerExtension({
       this.onDblClick = function (event, pos) {
         originalDblClick?.apply(this, arguments);
         if (Array.isArray(pos) && typeof pos[1] === "number" && pos[1] < 0) return;
-        toggleCompactMode(this);
+        // AUN double-click takes precedence over UE's restrictions dialog.
+        withUESuppressed(this, () => toggleCompactMode(this));
       };
 
       // Converge all sockets to one position while compact.

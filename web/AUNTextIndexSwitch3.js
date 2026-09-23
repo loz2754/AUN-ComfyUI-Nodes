@@ -1,6 +1,6 @@
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
-import { getWidget, isCompact, setCompact, syncCollapseVueLabels } from "./index.js";
+import { getWidget, isCompact, setCompact, syncCollapseVueLabels, withUESuppressed } from "./index.js";
 
 const NODE_TYPES = ["AUNTextIndexSwitch3", "AUNTextIndexSwitch4", "AUNTextIndexSwitch5", "AUNTextIndexSwitch5Diffusers", "AUNInputsBasicSwitch"];
 // Classes that have a built-in "mode" widget (Select/Increment/Random/Range)
@@ -2237,7 +2237,8 @@ function patchTargetNode(node) {
     // Double-click toggles compact mode for every AUN node type (including
     // AUNInputsBasicSwitch); collapse connections for AUNInputsBasicSwitch is
     // toggled from the right-click menu and the collapse controller only.
-    toggleCompactMode(this);
+    // AUN double-click takes precedence over UE's restrictions dialog.
+    withUESuppressed(this, () => toggleCompactMode(this));
   };
 
   // Hook onConfigure to restore slot_count AFTER ComfyUI restores widget values

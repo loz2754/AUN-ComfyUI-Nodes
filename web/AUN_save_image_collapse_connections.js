@@ -1,6 +1,6 @@
 import { app } from "../../scripts/app.js";
 import { applyWidgetHiddenState } from "./widgets.js";
-import { syncCollapseVueLabels } from "./index.js";
+import { syncCollapseVueLabels, withUESuppressed } from "./index.js";
 
 const TARGET_CLASSES = new Set(["AUNSaveImage", "AUNSaveImageV2"]);
 
@@ -132,7 +132,8 @@ function setupNode(node) {
       )
         return;
 
-      toggle(this);
+      // AUN double-click takes precedence over UE's restrictions dialog.
+      withUESuppressed(this, () => toggle(this));
     };
 
     const origMenu = node.getExtraMenuOptions;

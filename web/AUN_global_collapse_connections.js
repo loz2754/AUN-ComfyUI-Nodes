@@ -1,5 +1,5 @@
 import { app } from "../../scripts/app.js";
-import { forceGraphRedraw, syncCollapseVueLabels } from "./index.js";
+import { forceGraphRedraw, syncCollapseVueLabels, withUESuppressed } from "./index.js";
 
 const PK = "collapse_connections";
 const SETTING_ID = "AUN.CollapseConnections.Enabled";
@@ -227,7 +227,17 @@ function hookNode(node) {
     )
       return;
 
-    toggleNodeCollapse(this);
+    // On UE's own nodes the UE dialog wins (nothing AUN-side to suppress).
+    const cc = this.comfyClass || "";
+    if (
+      cc.startsWith("Anything Everywhere") ||
+      cc === "Seed Everywhere" ||
+      cc === "Prompts Everywhere"
+    )
+      return;
+
+    // AUN double-click takes precedence over UE's restrictions dialog.
+    withUESuppressed(this, () => toggleNodeCollapse(this));
   };
 
   const origMenu = node.getExtraMenuOptions;

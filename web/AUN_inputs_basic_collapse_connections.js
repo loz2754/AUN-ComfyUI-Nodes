@@ -1,5 +1,5 @@
 import { app } from "../../scripts/app.js";
-import { syncCollapseVueLabels } from "./index.js";
+import { syncCollapseVueLabels, withUESuppressed } from "./index.js";
 
 const TARGET_CLASSES = new Set([
   "AUNInputsBasic",
@@ -90,23 +90,26 @@ function setupNode(node) {
     )
       return;
 
-    this.properties[PK] = !this.properties[PK];
-    if (!this.properties[PK]) {
-      const slots = [...(this.inputs || []), ...(this.outputs || [])];
-      for (const slot of slots) {
-        if (this.widgets?.length && slot.widget) continue;
-        if ('__aun_collapse_origLabel' in slot) {
-          slot.label = slot.__aun_collapse_origLabel;
-          delete slot.__aun_collapse_origLabel;
-        }
-        if (slot.label === "" || slot.label === " ") {
-          delete slot.label;
+    // AUN double-click takes precedence over UE's restrictions dialog.
+    withUESuppressed(this, () => {
+      this.properties[PK] = !this.properties[PK];
+      if (!this.properties[PK]) {
+        const slots = [...(this.inputs || []), ...(this.outputs || [])];
+        for (const slot of slots) {
+          if (this.widgets?.length && slot.widget) continue;
+          if ('__aun_collapse_origLabel' in slot) {
+            slot.label = slot.__aun_collapse_origLabel;
+            delete slot.__aun_collapse_origLabel;
+          }
+          if (slot.label === "" || slot.label === " ") {
+            delete slot.label;
+          }
         }
       }
-    }
-    this.setSize([this.size[0], this.computeSize()[1]]);
-    this.graph?.setDirtyCanvas(true, true);
-    syncCollapseVueLabels();
+      this.setSize([this.size[0], this.computeSize()[1]]);
+      this.graph?.setDirtyCanvas(true, true);
+      syncCollapseVueLabels();
+    });
   };
 
   const origMenu = node.getExtraMenuOptions;

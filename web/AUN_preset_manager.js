@@ -7,7 +7,7 @@
 
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
-import { getWidget, applyWidgetHiddenState, isCompact, setCompact, isNodeCollapsed, forceRedraw, findNodeByIdentifier } from "./index.js";
+import { getWidget, applyWidgetHiddenState, isCompact, setCompact, isNodeCollapsed, forceRedraw, findNodeByIdentifier, withUESuppressed } from "./index.js";
 import { openPresetSetupDialog, refreshPresetSetupDialog } from "./AUN_preset_manager_setup_dialog.js";
 
 const NODE_CLASS = "AUNPresetManager";
@@ -458,7 +458,8 @@ app.registerExtension({
       this.onDblClick = function (event, pos) {
         originalDblClick?.apply(this, arguments);
         if (Array.isArray(pos) && typeof pos[1] === "number" && pos[1] < 0) return;
-        toggleCompactMode(this);
+        // AUN double-click takes precedence over UE's restrictions dialog.
+        withUESuppressed(this, () => toggleCompactMode(this));
       };
 
       // Converge all sockets to one position while compact — same visual

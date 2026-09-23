@@ -56,6 +56,21 @@ on a collapsed node the colored dots may sit where the outputs used to be
 rather than on the single converged dot. Display-only; routing and values
 are unaffected.
 
+## Double-click: AUN takes precedence
+
+Both packs claim double-click on a node body: AUN toggles collapse /
+compact, UE opens its restrictions dialog on any node with UE broadcasting
+enabled. On AUN-handled nodes the AUN action wins — UE's dialog is
+suppressed for that gesture (its broadcast flag is hidden for the single
+task and restored immediately after; restrictions data is never touched).
+On UE's own nodes the reverse applies: AUN does not toggle, the UE dialog
+opens normally. Collapse remains available everywhere via right-click menu,
+controller, and All Graph.
+
+Note: with no escape hatch, UE's restrictions dialog cannot be reached by
+double-click on an AUN-handled broadcasting node. Set restrictions before
+enabling broadcast, or edit them from UE's own nodes.
+
 ## Compact mode is not covered
 
 The `""` treatment applies to Collapse Connections only. Compact-mode

@@ -6,6 +6,7 @@ import {
   applyWidgetHiddenState,
   chainWidgetCallback,
   findNodeById,
+  withUESuppressed,
 } from "./index.js";
 import {
   setNodeCollapseConnections,
@@ -268,7 +269,8 @@ const decorateNode = (node) => {
       // Ignore title-bar double-clicks so ComfyUI can keep using them for rename.
       return;
     }
-    this.__AUN_toggleCompactMode?.();
+    // AUN double-click takes precedence over UE's restrictions dialog.
+    withUESuppressed(this, () => this.__AUN_toggleCompactMode?.());
   };
 
   const originalMenu = node.getExtraMenuOptions;

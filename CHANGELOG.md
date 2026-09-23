@@ -5,7 +5,11 @@
 
 ### Added
 
+- Shared `withUESuppressed()` helper (`web/utils.js`, exported via `web/index.js`) giving AUN double-click actions precedence over Use Everywhere's restrictions dialog.
+
 ### Changed
+
+- Double-click on AUN-handled nodes now suppresses UE's restrictions dialog for that gesture (its broadcast flag is hidden for the single task and restored immediately after); on UE's own nodes the UE dialog wins. Documented in the Collapse × UE quirks guide.
 
 ### Fixed
 

@@ -1,4 +1,5 @@
 import { app } from "../../scripts/app.js";
+import { withUESuppressed } from "./index.js";
 
 app.registerExtension({
   name: "AUN.TextSwitch.DynamicLabels",
@@ -285,10 +286,13 @@ app.registerExtension({
         nodeType.prototype.onDblClick = function (e, pos, graphcanvas) {
           // Allow double-click anywhere below the title bar (y >= 20)
           if (pos && pos[1] >= 0) {
-            this.properties._AUN_compactMode =
-              !this.properties._AUN_compactMode;
-            this.__AUN_refreshWidgets();
-            this.setDirtyCanvas(true, true);
+            // AUN double-click takes precedence over UE's restrictions dialog.
+            withUESuppressed(this, () => {
+              this.properties._AUN_compactMode =
+                !this.properties._AUN_compactMode;
+              this.__AUN_refreshWidgets();
+              this.setDirtyCanvas(true, true);
+            });
             return true;
           }
           return false;

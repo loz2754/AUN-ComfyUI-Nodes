@@ -1,5 +1,5 @@
 import { app } from "../../scripts/app.js";
-import { syncCollapseVueLabels } from "./index.js";
+import { syncCollapseVueLabels, withUESuppressed } from "./index.js";
 
 const NODE_TYPE = "AUNShowAnyMulti";
 const MAX_INPUTS = 20;
@@ -504,7 +504,8 @@ function setupCollapseConnections(node) {
         el.classList?.contains("litegraph") ||
         el.id?.includes("widget"))
     ) return;
-    toggleCollapse.call(this);
+    // AUN double-click takes precedence over UE's restrictions dialog.
+    withUESuppressed(this, () => toggleCollapse.call(this));
   };
 
   const origMenu = node.getExtraMenuOptions;

@@ -1,7 +1,7 @@
 import { app } from "../../scripts/app.js";
 import { openLoraInfoDialog } from "./aun_lora_info_shared.js";
 import { makeLoraLabelClickable } from "./aun_lora_dropdown_shared.js";
-import { isCompact, setCompact, isNodeCollapsed } from "./index.js";
+import { isCompact, setCompact, isNodeCollapsed, withUESuppressed } from "./index.js";
 
 const NODE_TYPE = "AUNLoraStackWithTriggers";
 const PROP_KEY = "_AUN_compactMode";
@@ -1312,7 +1312,8 @@ function setupNode(node) {
   node.onDblClick = function onDblClick(event, pos) {
     originalDblClick?.apply(this, arguments);
     if (Array.isArray(pos) && typeof pos[1] === "number" && pos[1] < 0) return;
-    toggleCompactMode(this);
+    // AUN double-click takes precedence over UE's restrictions dialog.
+    withUESuppressed(this, () => toggleCompactMode(this));
   };
   const originalOnResize = node.onResize;
   node.onResize = function onResize(...args) {

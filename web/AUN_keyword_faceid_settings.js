@@ -1,6 +1,6 @@
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
-import { applyWidgetHiddenState, ensureHiddenAware, getWidget, injectStyles, forceRedraw, isNodeCollapsed, isCompact, setCompact } from "./index.js";
+import { applyWidgetHiddenState, ensureHiddenAware, getWidget, injectStyles, forceRedraw, isNodeCollapsed, isCompact, setCompact, withUESuppressed } from "./index.js";
 
 const NODE_CLASS = "AUNKeywordFaceIDSettings";
 const MAX_SLOTS = 6;
@@ -617,7 +617,8 @@ app.registerExtension({
       this.onDblClick = function (event, pos) {
         originalDblClick?.apply(this, arguments);
         if (Array.isArray(pos) && typeof pos[1] === "number" && pos[1] < 0) return;
-        toggleCompactMode(this);
+        // AUN double-click takes precedence over UE's restrictions dialog.
+        withUESuppressed(this, () => toggleCompactMode(this));
       };
 
       const originalOnRemoved = this.onRemoved;

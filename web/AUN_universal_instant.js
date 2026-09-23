@@ -4,7 +4,7 @@ import {
   captureAunWidgetValues,
   restoreAunWidgetValues,
 } from "./aun_persistence_shared.js";
-import { syncCollapseVueLabels } from "./index.js";
+import { syncCollapseVueLabels, withUESuppressed } from "./index.js";
 
 const MAX_SLOTS = 20;
 const LIST_SPLITTER = /[,\n;]+/;
@@ -2254,7 +2254,8 @@ const decorateNode = (node, nodeData) => {
       // Ignore title-bar double-clicks so ComfyUI can keep using them for rename.
       return;
     }
-    this.__AUN_toggleCompactMode?.();
+    // AUN double-click takes precedence over UE's restrictions dialog.
+    withUESuppressed(this, () => this.__AUN_toggleCompactMode?.());
   };
 
   // Remote control from AUNCollapseConnectionsController

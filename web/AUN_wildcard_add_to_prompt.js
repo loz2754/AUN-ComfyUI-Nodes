@@ -1,5 +1,5 @@
 import { app } from "../../scripts/app.js";
-import { getWidget, isCompact, setCompact } from "./index.js";
+import { getWidget, isCompact, setCompact, withUESuppressed } from "./index.js";
 
 const PLACEHOLDER_VALUES = new Set([
   "Select wildcard...",
@@ -237,7 +237,8 @@ function setupCompact(node) {
     const pos = args[0];
     if (Array.isArray(pos) && typeof pos[1] === "number" && pos[1] < 0)
       return;
-    toggleCompact(this);
+    // AUN double-click takes precedence over UE's restrictions dialog.
+    withUESuppressed(this, () => toggleCompact(this));
   };
 
   // Compact mode still needs room for: title bar (~24) + slots (~20) +
