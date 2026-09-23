@@ -410,6 +410,29 @@ function appendTriggerWord(node, word) {
   return `Inserted "${text}" into trigger words.`;
 }
 
+function removeTriggerWord(node, word) {
+  const widget = resolveSelectedTriggerWidget(node);
+  const text = String(word || "").trim();
+  if (!widget || !text) {
+    return "";
+  }
+  const current = String(widget.value ?? "").trim();
+  const parts = current
+    ? current
+        .split(",")
+        .map((part) => part.trim())
+        .filter(Boolean)
+    : [];
+  const next = parts.filter((part) => part.toLowerCase() !== text.toLowerCase());
+  if (next.length === parts.length) {
+    return "";
+  }
+  setWidgetValue(widget, next.join(", "));
+  applyCompact(node);
+  forceRedraw(node);
+  return `Removed "${text}" from trigger words.`;
+}
+
 function ensureInfoButtonStyles() {
   if (window.__AUNRandomLoraInfoButtonStyle) return;
   const style = document.createElement("style");
@@ -472,6 +495,7 @@ function ensureInfoButton(node) {
     if (!value || value === "None") return;
     await openLoraInfoDialog(value, {
       insertWord: (word) => appendTriggerWord(node, word),
+      removeWord: (word) => removeTriggerWord(node, word),
     });
   });
 

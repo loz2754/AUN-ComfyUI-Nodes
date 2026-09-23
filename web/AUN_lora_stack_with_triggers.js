@@ -357,6 +357,26 @@ function appendTriggerWord(node, slotIndex, word) {
   return `Inserted "${text}" into trigger words.`;
 }
 
+function removeTriggerWord(node, slotIndex, word) {
+  const widget = getWidget(node, `trigger_${slotIndex}`);
+  const text = String(word || "").trim();
+  if (!widget || !text) {
+    return "";
+  }
+  const current = String(widget.value ?? "").trim();
+  const parts = current
+    ? current.split(", ").map((part) => part.trim()).filter(Boolean)
+    : [];
+  const next = parts.filter((part) => part.toLowerCase() !== text.toLowerCase());
+  if (next.length === parts.length) {
+    return "";
+  }
+  setWidgetValue(widget, next.join(", "));
+  applyCompact(node);
+  forceRedraw(node);
+  return `Removed "${text}" from trigger words.`;
+}
+
 function formatCompactLoraLabel(value) {
   const base = loraBasename(value) ?? String(value ?? "").trim();
   if (!base) return "";
@@ -450,6 +470,7 @@ function buildCompactRow(node, slotIndex) {
     if (!loraValue || loraValue === "None") return;
     await openLoraInfoDialog(loraValue, {
       insertWord: (word) => appendTriggerWord(node, slotIndex, word),
+      removeWord: (word) => removeTriggerWord(node, slotIndex, word),
     });
   };
 
@@ -1114,8 +1135,31 @@ function updateAutoHeight(node) {
   setNodeSize(node, currentWidth, finalHeight);
 }
 
+// Heal a stranded filtered node.widgets array (observed in the wild: the
+// view holding a visible-subset while __AUN_allWidgets has the full set,
+// leaving later slots invisible with no F5-free recovery). Visibility stays
+// governed by hidden flags, so restoring missing entries is display-safe.
+// Warns when it heals so a recurrence can be traced to the filterer.
+function reconcileWidgets(node) {
+  const all = node?.__AUN_allWidgets;
+  if (!isTargetNode(node) || !Array.isArray(all) || !Array.isArray(node.widgets)) {
+    return;
+  }
+  const present = new Set(node.widgets);
+  const missing = all.filter((w) => w && !present.has(w));
+  if (!missing.length) return;
+  for (const w of missing) node.widgets.push(w);
+  try {
+    console.warn(
+      `[AUN] Restored ${missing.length} missing widget(s) on ${node.comfyClass || node.type}: ` +
+        missing.map((w) => w?.name).filter(Boolean).join(","),
+    );
+  } catch (err) {}
+}
+
 function applyCompact(node) {
   if (!isTargetNode(node)) return;
+  reconcileWidgets(node);
   reorderWidgets(node);
   const compact = isCompact(node);
 

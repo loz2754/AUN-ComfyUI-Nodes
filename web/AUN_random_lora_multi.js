@@ -1047,6 +1047,31 @@ function buildCompactRow(node, promptIdx, slotIdx) {
           forceRedraw(node);
         }
       },
+      removeWord: (word) => {
+        const triggerWidget = getWidget(
+          node,
+          `p${promptIdx}_trigger${slotIdx}`,
+        );
+        const text = String(word || "").trim();
+        if (!triggerWidget || !text) {
+          return "";
+        }
+        const current = String(triggerWidget.value || "").trim();
+        const parts = current
+          ? current.split(",").map((w) => w.trim()).filter(Boolean)
+          : [];
+        const next = parts.filter(
+          (part) => part.toLowerCase() !== text.toLowerCase(),
+        );
+        if (next.length === parts.length) {
+          return "";
+        }
+        triggerWidget.value = next.join(", ");
+        triggerWidget.callback?.call(triggerWidget, triggerWidget.value);
+        applyCompact(node);
+        forceRedraw(node);
+        return `Removed "${text}" from trigger words.`;
+      },
     });
   };
 

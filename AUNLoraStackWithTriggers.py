@@ -54,15 +54,22 @@ class AUNLoraStackWithTriggers:
             ),
         }
 
+        # Slot inputs are optional (not required) so hidden/inactive slots
+        # omitted from the queue payload never fail prompt validation.
+        # execute() reads every slot via kwargs.get() with defaults. Slots
+        # stay first in optional to preserve exact widget order (and thus
+        # saved-workflow widgets_values alignment).
+        optional = {}
+
         for i in range(1, cls.MAX_SLOTS + 1):
-            required[f"lora_{i}"] = (
+            optional[f"lora_{i}"] = (
                 choices,
                 {
                     "default": "None",
                     "tooltip": f"LoRA file for slot {i}.",
                 },
             )
-            required[f"strength_model_{i}"] = (
+            optional[f"strength_model_{i}"] = (
                 "FLOAT",
                 {
                     "default": 1.0,
@@ -72,14 +79,14 @@ class AUNLoraStackWithTriggers:
                     "tooltip": f"Model strength for slot {i}.",
                 },
             )
-            required[f"enabled_{i}"] = (
+            optional[f"enabled_{i}"] = (
                 "BOOLEAN",
                 {
                     "default": i == 1,
                     "tooltip": f"Enable LoRA slot {i}.",
                 },
             )
-            required[f"trigger_{i}"] = (
+            optional[f"trigger_{i}"] = (
                 "STRING",
                 {
                     "default": "",
@@ -88,7 +95,7 @@ class AUNLoraStackWithTriggers:
                 },
             )
 
-        optional = {
+        optional.update({
             "base_prompt": (
                 "STRING",
                 {
@@ -107,7 +114,7 @@ class AUNLoraStackWithTriggers:
                     "tooltip": "Pass-through and concatenate selected_LoRAs text.",
                 },
             ),
-        }
+        })
 
         return {"required": required, "optional": optional}
 

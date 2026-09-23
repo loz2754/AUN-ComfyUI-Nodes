@@ -79,11 +79,17 @@ class AUNRandomLoraModelOnlyMulti:
             ),
         }
         
+        # LoRA slots are optional (not required) so hidden/inactive slots
+        # omitted from the queue payload never fail prompt validation.
+        # Combos still render as dropdowns in optional. They stay first in
+        # optional to preserve exact widget order (and thus saved-workflow
+        # widgets_values alignment); execute() defaults missing slots.
+        lora_optional = {}
         # Add slots for each prompt (1-20)
         for p in range(1, cls.MAX_PROMPTS + 1):
-            # Add 3 LoRA slots per prompt — combos in required for dropdown support
+            # Add 3 LoRA slots per prompt
             for s in range(1, cls.LORAS_PER_PROMPT + 1):
-                required[f"p{p}_lora{s}"] = (
+                lora_optional[f"p{p}_lora{s}"] = (
                     choices,
                     {
                         "default": "None",
@@ -129,6 +135,8 @@ class AUNRandomLoraModelOnlyMulti:
                         "tooltip": f"Prompt {p}, LoRA slot {s} enable/disable.",
                     },
                 )
+
+        optional = {**lora_optional, **optional}
 
         hidden = {
             "unique_id": "UNIQUE_ID",

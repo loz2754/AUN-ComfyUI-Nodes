@@ -277,12 +277,39 @@ def _read_editable_fields(lora_path: str) -> dict[str, Any]:
     return _safe_read_json(_aun_info_sidecar_path(lora_path)) or {}
 
 
+def _normalize_user_words(value: Any) -> list[str]:
+    if isinstance(value, list):
+        items = value
+    elif isinstance(value, str):
+        items = value.split(",")
+    else:
+        return []
+    seen: set[str] = set()
+    result: list[str] = []
+    for item in items:
+        text = str(item or "").strip()
+        if not text:
+            continue
+        key = text.casefold()
+        if key in seen:
+            continue
+        seen.add(key)
+        result.append(text)
+    return result
+
+
 def _save_editable_fields(lora_path: str, fields: dict[str, Any]) -> dict[str, Any]:
     sidecar_path = _aun_info_sidecar_path(lora_path)
     merged = dict(_read_editable_fields(lora_path))
     for key in ("name", "strengthMin", "strengthMax", "additionalNotes", "notes"):
         if key in fields:
             merged[key] = fields[key]
+    if "userTrainedWords" in fields:
+        user_words = _normalize_user_words(fields["userTrainedWords"])
+        if user_words:
+            merged["userTrainedWords"] = user_words
+        else:
+            merged.pop("userTrainedWords", None)
     if merged:
         with open(sidecar_path, "w", encoding="utf-8") as handle:
             json.dump(merged, handle, indent=2, ensure_ascii=False)
@@ -543,7 +570,9 @@ def _build_payload(lora_name: str, lora_path: str) -> dict[str, Any]:
     )
     metadata_trained = _extract_trained_words_from_metadata(safetensors_metadata)
     civitai_trained = civitai_payload.get("trained_words") or []
-    trained_words = _merge_trained_words(civitai_trained, metadata_trained)
+    editable_fields = _read_editable_fields(lora_path)
+    user_trained = _normalize_words_with_source(editable_fields.get("userTrainedWords"), "user")
+    trained_words = _merge_trained_words(user_trained, civitai_trained, metadata_trained)
 
     fields: list[dict[str, Any]] = []
 
@@ -589,7 +618,7 @@ def _build_payload(lora_name: str, lora_path: str) -> dict[str, Any]:
 
     add_field("Notes", _format_value(notes, 5000))
 
-    editable_fields = _read_editable_fields(lora_path)
+    # editable_fields already read above for user trained words; reuse it.
     user_name = editable_fields.get("name")
     user_strength_min = editable_fields.get("strengthMin")
     user_strength_max = editable_fields.get("strengthMax")
@@ -683,11 +712,15 @@ async def aun_lora_info_save(request: web.Request) -> web.Response:
     try:
         edit_fields = body.get("fields") if isinstance(body.get("fields"), dict) else {}
         safe_fields = {}
-        for key in ("name", "strengthMin", "strengthMax", "additionalNotes", "notes"):
+        for key in ("name", "strengthMin", "strengthMax", "additionalNotes", "notes", "userTrainedWords"):
             if key in edit_fields:
                 raw = edit_fields[key]
                 target = "additionalNotes" if key == "notes" else key
-                safe_fields[target] = str(raw).strip() if raw is not None else ""
+                if target == "userTrainedWords":
+                    # List value; normalized in _save_editable_fields.
+                    safe_fields[target] = raw if raw is not None else []
+                else:
+                    safe_fields[target] = str(raw).strip() if raw is not None else ""
 
         _save_editable_fields(lora_path, safe_fields)
         _LORA_INFO_CACHE.pop(lora_path, None)

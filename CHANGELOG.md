@@ -6,12 +6,19 @@
 ### Added
 
 - Shared `withUESuppressed()` helper (`web/utils.js`, exported via `web/index.js`) giving AUN double-click actions precedence over Use Everywhere's restrictions dialog.
+- LoRA dropdown overlays: live search box (substring over full path + display name, Enter selects first match).
+- LoRA info modal: manual trigger-word entry with comma-paste support; words persist per-LoRA (`userTrainedWords` in `{lora}.aun-info.json`) and render as `U` tokens.
+- LoRA info modal: delete option on user-added trigger words, optionally stripping them from the node trigger field (`removeWord` context on all four modal consumers).
 
 ### Changed
 
 - Double-click on AUN-handled nodes now suppresses UE's restrictions dialog for that gesture (its broadcast flag is hidden for the single task and restored immediately after); on UE's own nodes the UE dialog wins. Documented in the Collapse × UE quirks guide.
+- Manual modal word entry persists only (never auto-inserts into the trigger field); insertion stays explicit via token selection.
+- Stack/Random-Multi per-slot inputs moved from required to optional (widget order preserved), so hidden/inactive slots omitted from the queue payload never fail prompt validation.
 
 ### Fixed
+
+- Widget reconciliation in both LoRA stack `applyCompact` paths heals stranded filtered `node.widgets` arrays (with a console tripwire naming healed widgets).
 
 ### Notes
 

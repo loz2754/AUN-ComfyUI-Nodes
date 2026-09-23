@@ -121,6 +121,29 @@ function ensureDropdownStyles() {
       font-size: 9px;
       color: rgba(255,255,255,0.4);
     }
+    .AUN-lora-dropdown-search-wrap {
+      padding: 6px 8px 4px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .AUN-lora-dropdown-search {
+      width: 100%;
+      box-sizing: border-box;
+      background: #1e1e1e;
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 5px;
+      color: #d8d8d8;
+      font: 11px sans-serif;
+      padding: 4px 8px;
+      outline: none;
+    }
+    .AUN-lora-dropdown-search:focus {
+      border-color: rgba(100,170,255,0.5);
+    }
+    .AUN-lora-dropdown-empty {
+      padding: 8px 12px;
+      color: rgba(255,255,255,0.4);
+      font-style: italic;
+    }
   `;
   document.head.appendChild(style);
 }
@@ -297,6 +320,7 @@ export function makeLoraLabelClickable(node, slotName, loraLabel, loraLabelText,
 
         const header = document.createElement("div");
         header.className = "AUN-lora-dropdown-folder-header" + (expanded ? " expanded" : " collapsed");
+        header.dataset.folderName = node.name;
         header.style.paddingLeft = `${12 + depth * 12}px`;
 
         const icon = document.createElement("span");
@@ -374,8 +398,115 @@ export function makeLoraLabelClickable(node, slotName, loraLabel, loraLabelText,
       renderTree(list, folder, 0);
     }
 
+    // Search box: substring filter over full path and display name.
+    const searchWrap = document.createElement("div");
+    searchWrap.className = "AUN-lora-dropdown-search-wrap";
+    const searchInput = document.createElement("input");
+    searchInput.className = "AUN-lora-dropdown-search";
+    searchInput.type = "text";
+    searchInput.placeholder = "Search loras…";
+    searchInput.autocomplete = "off";
+    searchInput.spellcheck = false;
+    searchWrap.appendChild(searchInput);
+
+    const emptyEl = document.createElement("div");
+    emptyEl.className = "AUN-lora-dropdown-empty";
+    emptyEl.textContent = "No matches";
+    emptyEl.style.display = "none";
+    list.appendChild(emptyEl);
+
+    const isShown = (el) => {
+      let p = el;
+      while (p && p !== list) {
+        if (p.style?.display === "none") return false;
+        p = p.parentElement;
+      }
+      return true;
+    };
+
+    const applyFilter = () => {
+      const q = searchInput.value.trim().toLowerCase();
+      let visibleCount = 0;
+      for (const el of list.querySelectorAll(".AUN-lora-dropdown-item")) {
+        const v = (el.dataset.value || "").toLowerCase();
+        const t = (el.textContent || "").toLowerCase();
+        let show = !q || v.includes(q) || t.includes(q);
+        if (!show && q) {
+          // A matching folder name reveals its whole subtree.
+          let p = el.parentElement;
+          while (p && p !== list) {
+            if (p.classList?.contains("AUN-lora-dropdown-folder-items")) {
+              const h = p.previousElementSibling;
+              const fname = (h?.dataset?.folderName || "").toLowerCase();
+              if (fname && fname.includes(q)) {
+                show = true;
+                break;
+              }
+            }
+            p = p.parentElement;
+          }
+        }
+        el.style.display = show ? "" : "none";
+        if (show) visibleCount++;
+      }
+      // Bottom-up so nested folders resolve before their parents.
+      const bodies = [...list.querySelectorAll(".AUN-lora-dropdown-folder-items")].reverse();
+      for (const body of bodies) {
+        const anyVisible = [...body.children].some(
+          (c) =>
+            c.style?.display !== "none" &&
+            (c.classList.contains("AUN-lora-dropdown-item") ||
+              c.classList.contains("AUN-lora-dropdown-folder-items") ||
+              c.classList.contains("AUN-lora-dropdown-folder-header"))
+        );
+        body.style.display = anyVisible ? "" : "none";
+        const header = body.previousElementSibling;
+        if (header?.classList?.contains("AUN-lora-dropdown-folder-header")) {
+          header.style.display = anyVisible ? "" : "none";
+        }
+      }
+      const sectionHeader = list.querySelector(".AUN-lora-dropdown-section-header");
+      if (sectionHeader) {
+        const anyRoot = [...list.children].some(
+          (c) =>
+            c.classList?.contains("AUN-lora-dropdown-item") &&
+            c.dataset.value !== "None" &&
+            c.style.display !== "none" &&
+            c.parentElement === list
+        );
+        sectionHeader.style.display = anyRoot ? "" : "none";
+      }
+      emptyEl.style.display = visibleCount === 0 ? "" : "none";
+    };
+
+    const selectFirstMatch = () => {
+      for (const el of list.querySelectorAll(".AUN-lora-dropdown-item")) {
+        if (el.style.display === "none" || !isShown(el)) continue;
+        cleanupListeners();
+        close(el.dataset.value);
+        return;
+      }
+    };
+
+    searchInput.addEventListener("input", applyFilter);
+    searchInput.addEventListener("click", (event) => event.stopPropagation());
+    searchInput.addEventListener("keydown", (event) => {
+      // Keep keystrokes out of canvas hotkeys; handle our own keys here
+      // (the document-level Escape handler won't see them past this).
+      event.stopPropagation();
+      if (event.key === "Enter") {
+        event.preventDefault();
+        selectFirstMatch();
+      } else if (event.key === "Escape") {
+        cleanupListeners();
+        close();
+      }
+    });
+
     popup.appendChild(list);
+    popup.insertBefore(searchWrap, list);
     document.body.appendChild(popup);
+    searchInput.focus();
 
     // Position
     const triggerRect = trigger.getBoundingClientRect();

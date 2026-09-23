@@ -155,6 +155,30 @@ function ensureStyles() {
       color: #b0d4f0;
       border: 1px solid rgba(111, 168, 220, 0.4);
     }
+    .AUN-lora-info-source-badge--user {
+      background: rgba(196, 162, 250, 0.3);
+      color: #ddc8ff;
+      border: 1px solid rgba(196, 162, 250, 0.4);
+    }
+    .AUN-lora-info-token-del {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+      margin-left: 6px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.08);
+      color: #c7d0db;
+      cursor: pointer;
+      font-size: 11px;
+      line-height: 1;
+      user-select: none;
+    }
+    .AUN-lora-info-token-del:hover {
+      background: rgba(255, 120, 120, 0.3);
+      color: #fff;
+    }
     .AUN-lora-info-grid {
       display: grid;
       grid-template-columns: minmax(0, 1.08fr) minmax(250px, 0.92fr);
@@ -201,6 +225,25 @@ function ensureStyles() {
     .AUN-lora-info-token-button:focus-visible {
       outline: 1px solid rgba(196, 245, 210, 0.9);
       outline-offset: 1px;
+    }
+    .AUN-lora-info-add-row {
+      display: flex;
+      gap: 8px;
+      padding: 12px;
+    }
+    .AUN-lora-info-add-input {
+      flex: 1;
+      min-width: 0;
+      padding: 6px 10px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      background: rgba(0, 0, 0, 0.3);
+      color: #eef2f7;
+      font: 12px/1.4 system-ui, sans-serif;
+    }
+    .AUN-lora-info-add-input:focus {
+      outline: none;
+      border-color: rgba(125, 181, 255, 0.6);
     }
     .AUN-lora-info-section {
       border: 1px solid rgba(255, 255, 255, 0.08);
@@ -888,7 +931,13 @@ function renderTrainedWords(refs, words) {
     Array.from(refs.selectedWords).filter((w) => wordTexts.includes(w)),
   );
   refs.selectedWords = nextSelection;
-  refs.trainedSection.style.display = items.length ? "block" : "none";
+  // Manual entry: whenever this view can write back to a trigger field
+  // (and a payload finished loading), offer an inline add-row so further
+  // words can always be added — not just when the lookup found nothing.
+  // Adding here persists to the LoRA info only; use token selection +
+  // "Insert selected words" to write words into the trigger field.
+  const showAddRow = canInsert && !!refs.currentPayload;
+  refs.trainedSection.style.display = items.length || showAddRow ? "block" : "none";
   for (let i = 0; i < items.length; i++) {
     const item = items[i];
     const wordText = typeof item === "string" ? item : String(item.word || "");
@@ -923,17 +972,149 @@ function renderTrainedWords(refs, words) {
 
     const sourceBadge = document.createElement("span");
     sourceBadge.className = `AUN-lora-info-source-badge AUN-lora-info-source-badge--${source}`;
-    sourceBadge.textContent = source === "civitai" ? "C" : "M";
-    sourceBadge.title = source === "civitai" ? "From CivitAI" : "From safetensors metadata";
+    sourceBadge.textContent = source === "civitai" ? "C" : source === "user" ? "U" : "M";
+    sourceBadge.title =
+      source === "civitai"
+        ? "From CivitAI"
+        : source === "user"
+          ? "Added by you"
+          : "From safetensors metadata";
     token.appendChild(sourceBadge);
 
     const textSpan = document.createElement("span");
     textSpan.textContent = wordText;
     token.appendChild(textSpan);
 
+    if (source === "user") {
+      const del = document.createElement("span");
+      del.className = "AUN-lora-info-token-del";
+      del.textContent = "×";
+      del.title = `Remove ${wordText}`;
+      del.setAttribute("role", "button");
+      del.addEventListener("click", (event) => {
+        event.stopPropagation();
+        deleteUserWord(refs, wordText);
+      });
+      token.appendChild(del);
+    }
+
     refs.trainedWords.appendChild(token);
   }
+  if (showAddRow) {
+    const addRow = document.createElement("div");
+    addRow.className = "AUN-lora-info-add-row";
+    const addInput = document.createElement("input");
+    addInput.className = "AUN-lora-info-add-input";
+    addInput.type = "text";
+    addInput.placeholder = "Type a trigger word…";
+    addInput.autocomplete = "off";
+    addInput.spellcheck = false;
+    const addButton = document.createElement("button");
+    addButton.type = "button";
+    addButton.className = "AUN-lora-info-action";
+    addButton.textContent = "Add";
+    const submitManual = async () => {
+      const words = String(addInput.value || "")
+        .split(",")
+        .map((w) => w.trim())
+        .filter(Boolean);
+      if (!words.length) {
+        setStatus(refs, "Type one or more trigger words to add.");
+        return;
+      }
+      // Persist only — never writes into the trigger field. Insertion stays
+      // explicit via token selection + "Insert selected words".
+      const existing = new Set(currentUserWords(refs).map((w) => w.trim().toLowerCase()));
+      const fresh = words.filter((w) => !existing.has(w.trim().toLowerCase()));
+      if (!fresh.length) {
+        setStatus(refs, "Those words are already in the list.");
+        return;
+      }
+      const saved = await saveUserWords(refs, [...currentUserWords(refs), ...fresh]);
+      setStatus(
+        refs,
+        saved
+          ? `Added ${fresh.length} word${fresh.length === 1 ? "" : "s"}. Select and insert to use.`
+          : "Saving to LoRA info failed."
+      );
+      // The word list re-renders on save, so focus the fresh input.
+      refs.trainedWords.querySelector(".AUN-lora-info-add-input")?.focus();
+    };
+    addButton.addEventListener("click", submitManual);
+    addInput.addEventListener("click", (e) => e.stopPropagation());
+    addInput.addEventListener("keydown", (e) => {
+      e.stopPropagation();
+      if (e.key === "Enter") {
+        e.preventDefault();
+        submitManual();
+      } else if (e.key === "Escape") {
+        addInput.blur();
+      }
+    });
+    addRow.append(addInput, addButton);
+    refs.trainedWords.appendChild(addRow);
+  }
   renderActions(refs, refs.currentPayload);
+}
+
+function currentUserWords(refs) {
+  const items = Array.isArray(refs.currentPayload?.trained_words)
+    ? refs.currentPayload.trained_words
+    : [];
+  const out = [];
+  for (const item of items) {
+    const source = typeof item === "string" ? "metadata" : String(item.source || "metadata");
+    if (source !== "user") continue;
+    const text = typeof item === "string" ? item : String(item.word || "");
+    if (text) out.push(text);
+  }
+  return out;
+}
+
+async function saveUserWords(refs, wordList) {
+  const loraName = String(
+    refs.currentPayload?.file || refs.currentPayload?.requested_name || "",
+  ).trim();
+  if (!loraName) {
+    setStatus(refs, "No LoRA file name available.");
+    return null;
+  }
+  try {
+    const response = await api.fetchApi("/aun/lora-info/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lora: loraName, fields: { userTrainedWords: wordList } }),
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      setStatus(refs, String(err.error || "Failed to save."));
+      return null;
+    }
+    const payload = await response.json();
+    renderPayload(refs, payload);
+    return payload;
+  } catch (error) {
+    setStatus(refs, `Save failed: ${error?.message || "Unknown error"}`);
+    return null;
+  }
+}
+
+async function deleteUserWord(refs, word) {
+  const key = String(word || "").trim().toLowerCase();
+  if (!key) return;
+  const remaining = currentUserWords(refs).filter((w) => w.trim().toLowerCase() !== key);
+  const saved = await saveUserWords(refs, remaining);
+  if (!saved) return;
+  const messages = [`Removed "${word}".`];
+  if (typeof refs.currentContext?.removeWord === "function") {
+    try {
+      const result = await refs.currentContext.removeWord(word);
+      if (result) messages.push(String(result));
+    } catch (error) {
+      messages.push(`Trigger field unchanged: ${error?.message || "Unknown error"}`);
+    }
+  }
+  setStatus(refs, messages.join(" "));
 }
 
 async function insertSelectedWords(refs, words) {
