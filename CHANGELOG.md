@@ -9,6 +9,12 @@
 - LoRA dropdown overlays: live search box (substring over full path + display name, Enter selects first match).
 - LoRA info modal: manual trigger-word entry with comma-paste support; words persist per-LoRA (`userTrainedWords` in `{lora}.aun-info.json`) and render as `U` tokens.
 - LoRA info modal: delete option on user-added trigger words, optionally stripping them from the node trigger field (`removeWord` context on all four modal consumers).
+- New node `AUNInputsMiniMaxH3Basic` ("AUN Inputs MiniMaxH3 Basic"): UNET with weight dtype, minimax CLIP, separate video/audio VAEs, optional turbo LoRA, sampler settings, resolution helpers, and seconds-to-frame-length conversion wiring straight into MiniMaxH3 ref-to-video + KSampler.
+- New node `AUNCleanVRAM` ("AUN Clean VRAM"): pass-through that unloads cached models and empties the CUDA cache mid-workflow.
+- RIFE integration: new `enable` input on `AUNRIFE` (off = untouched passthrough, no model load, same-run gating with no bypass delay); `rife` toggle + `rife_multiplier` + `rife multiplier`/`rife` outputs on `AUNInputsMiniMaxH3Basic` and `AUNInputsWan22Basic` (`fps`/`frame_rate` switch to the post-interpolation rate, `frames` stays the base sampling count).
+- Example workflows: MiniMaxH3 ref-to-video, Wan2.2 T2V and I2V with RIFE (`docs/example_workflows/`, indexed in its README).
+- VHS Video Combine preview-mode toggle (`web/AUN_vhs_video_combine_preview.js`), exempted from global collapse; `AUNInputsMiniMaxH3Basic` added to collapse-connections targets/skip lists and the resolution overlay (slot indices resolved by output name).
+- Image Slider Comparer supports up to five pairs; StringListBuilder stretch sizing with per-widget gap.
 
 ### Changed
 
