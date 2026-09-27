@@ -13,6 +13,9 @@ const SKIP_CLASSES = new Set([
   "AUNKSamplerPlusV2", "AUNKSamplerPlusv3", "AUNKSamplerPlusv4", "AUNWan22MoE",
   "AUNSaveImage", "AUNSaveImageV2",
   "AUNShowAnyMulti", "AUNPassthroughAnyMulti",
+  // Own stretch sizing (num_inputs visibility + manual resize sharing) fights
+  // the global resizer; single output slot means collapse is a visual no-op.
+  "AUNStringListBuilder",
   "AUNScanAndShowWidgets",
   "AUNImageSliderComparer", "AUNAddToPromptMulti",
   "AUNManualAutoImageSwitch",
@@ -28,6 +31,9 @@ const SKIP_CLASSES = new Set([
   "AUNKeywordPresetSelector",
   "AUNPresetManager",
   "AUNApplyPresetToNode",
+  // Own preview-mode toggle (AUN_vhs_video_combine_preview.js) — keep the
+  // global collapse system from fighting it.
+  "VHS_VideoCombine",
 ]);
 
 let globalDefault = false;

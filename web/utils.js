@@ -154,6 +154,13 @@ export function injectStyles(windowKey, cssText) {
 // Vue's `data-node-id` attribute instead of by mutating slot data.
 const VUE_LABEL_CSS_ID = "aun-collapse-connections-vue-labels";
 const COLLAPSE_PK = "collapse_connections";
+// Extra per-node preview keys that need the same VueNodes slot-text hiding
+// (they deliberately don't use COLLAPSE_PK so the global collapse system
+// ignores them). Kept here — not in the consumer file — so the audit rule
+// against local copies of shared logic stays satisfied.
+const EXTRA_HIDE_LABEL_PKS = new Set([
+  "aun_vhs_preview", // web/AUN_vhs_video_combine_preview.js
+]);
 let _vueLabelCssText = null;
 
 function _collectCollapseGraphs() {
@@ -207,6 +214,14 @@ function _collectCollapsedNodeIds() {
     for (const node of graph._nodes) {
       if (!node) continue;
       if (node.properties?.[COLLAPSE_PK]) ids.add(String(node.id));
+      else {
+        for (const pk of EXTRA_HIDE_LABEL_PKS) {
+          if (node.properties?.[pk]) {
+            ids.add(String(node.id));
+            break;
+          }
+        }
+      }
       if (node.subgraph) visit(node.subgraph);
     }
   };

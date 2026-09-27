@@ -5,7 +5,7 @@ import { injectStyles } from "./utils.js";
 import { withUESuppressed } from "./index.js";
 
 const NODE_TYPE = "AUNImageSliderComparer";
-const MAX_PAIRS = 4;
+const MAX_PAIRS = 5;
 const COLLAPSE_KEY = "collapse_connections";
 
 const STATE = new WeakMap();
