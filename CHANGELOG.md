@@ -5,6 +5,16 @@
 
 ### Added
 
+### Changed
+
+### Fixed
+
+### Notes
+
+## [2.32.0] - 2026-09-27
+
+### Added
+
 - Shared `withUESuppressed()` helper (`web/utils.js`, exported via `web/index.js`) giving AUN double-click actions precedence over Use Everywhere's restrictions dialog.
 - LoRA dropdown overlays: live search box (substring over full path + display name, Enter selects first match).
 - LoRA info modal: manual trigger-word entry with comma-paste support; words persist per-LoRA (`userTrainedWords` in `{lora}.aun-info.json`) and render as `U` tokens.
@@ -27,7 +37,6 @@
 - Widget reconciliation in both LoRA stack `applyCompact` paths heals stranded filtered `node.widgets` arrays (with a console tripwire naming healed widgets).
 
 ### Notes
-
 ## [2.31.0] - 2026-09-22
 
 ### Added
