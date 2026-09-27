@@ -47,6 +47,10 @@ class AUNRIFE:
                     "default": False,
                     "tooltip": "Use ensemble for better quality (slower, runs model twice and averages results)"
                 }),
+                "enable": ("BOOLEAN", {
+                    "default": True,
+                    "tooltip": "When off, the input passes through unchanged and no model is loaded. Wire the MiniMaxH3 Inputs 'rife' output here so interpolation follows the loader toggle in the same run (no bypass timing delay)."
+                }),
             },
         }
 
@@ -57,7 +61,8 @@ class AUNRIFE:
         "Generates intermediate frames between input frames using RIFE (Real-Time Intermediate Flow Estimation) v4.7. "
         "Takes a batched IMAGE tensor and a multiplier (2-10) to produce smoother slow-motion or higher frame-rate sequences. "
         "Model weights (rife47 / rife49) are downloaded from HuggingFace to ComfyUI/models/rife on first use. "
-        "Optional `ensemble` mode runs the model twice and averages results for better quality (slower)."
+        "Optional `ensemble` mode runs the model twice and averages results for better quality (slower). "
+        "Set `enable` to False (or wire a toggle such as the MiniMaxH3 Inputs `rife` output) to pass the input through untouched without loading any model."
     )
 
     def __init__(self):
@@ -162,8 +167,11 @@ class AUNRIFE:
 
         return output
 
-    def interpolate_frames(self, images, ckpt_name, multiplier, ensemble):
+    def interpolate_frames(self, images, ckpt_name, multiplier, ensemble, enable=True):
         """Interpolate frames using RIFE"""
+
+        if not enable:
+            return (images,)
 
         batch_size = images.shape[0]
 

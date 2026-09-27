@@ -10,6 +10,7 @@ from .AUNApplyPresetToNode import AUNApplyPresetToNode
 from .AUNAudioInputOptions import AudioInputOptions
 from .AUNBookmark import AUNBookmark
 from .AUNBoolean import AUNBoolean
+from .AUNCleanVRAM import AUNCleanVRAM
 from .AUNCFG import AUNCFG
 from .AUNCkptClipSkip import AUNCheckpointLoaderWithClipSkip
 from .AUNCollapseConnectionsController import AUNCollapseConnectionsController
@@ -37,6 +38,7 @@ from .AUNInputsDiffusers import AUNInputsDiffusers
 from .AUNInputsDiffusersBasic import AUNInputsDiffusersBasic
 from .AUNInputsDiffusersRefineBasic import AUNInputsDiffusersRefineBasic
 from .AUNInputsHybrid import AUNInputsHybrid
+from .AUNInputsMiniMaxH3Basic import AUNInputsMiniMaxH3Basic
 from .AUNInputsRefine import AUNInputsRefine
 from .AUNInputsRefineBasic import AUNInputsRefineBasic
 from .AUNInputsWan22Basic import AUNInputsWan22Basic
@@ -117,6 +119,7 @@ NODE_CLASS_MAPPINGS = {
     "AUNApplyPresetToNode": AUNApplyPresetToNode,
     "AUNBookmark": AUNBookmark,
     "AUNBoolean": AUNBoolean,
+    "AUNCleanVRAM": AUNCleanVRAM,
     "AUNCFG": AUNCFG,
     "AUNCheckpointLoaderWithClipSkip": AUNCheckpointLoaderWithClipSkip,
     "AUNCollapseConnectionsController": AUNCollapseConnectionsController,
@@ -144,6 +147,7 @@ NODE_CLASS_MAPPINGS = {
     "AUNInputsDiffusersBasic": AUNInputsDiffusersBasic,
     "AUNInputsDiffusersRefineBasic": AUNInputsDiffusersRefineBasic,
     "AUNInputsHybrid": AUNInputsHybrid,
+    "AUNInputsMiniMaxH3Basic": AUNInputsMiniMaxH3Basic,
     "AUNInputsRefine": AUNInputsRefine,
     "AUNInputsRefineBasic": AUNInputsRefineBasic,
     "AUNInputsWan22Basic": AUNInputsWan22Basic,
@@ -222,6 +226,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "AUNApplyPresetToNode": "Apply Preset To Node",
     "AUNBookmark": "AUN Bookmark",
     "AUNBoolean": "Random Boolean",
+    "AUNCleanVRAM": "AUN Clean VRAM",
     "AUNCFG": "CFG Selector",
     "AUNCheckpointLoaderWithClipSkip": "Ckpt Load With Clip Skip",
     "AUNCollapseConnectionsController": "Collapse Connections",
@@ -248,6 +253,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "AUNInputsDiffusersBasic": "Inputs Diffusers Basic",
     "AUNInputsDiffusersRefineBasic": "Inputs Diffusers Refine Basic",
     "AUNInputsHybrid": "Inputs Hybrid",
+    "AUNInputsMiniMaxH3Basic": "AUN Inputs MiniMaxH3 Basic",
     "AUNInputsRefine": "Inputs Refine",
     "AUNInputsRefineBasic": "Inputs Refine Basic",
     "AUNInputsWan22Basic": "AUN Inputs Wan2.2 Basic",

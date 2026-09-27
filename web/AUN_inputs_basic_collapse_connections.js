@@ -11,6 +11,7 @@ const TARGET_CLASSES = new Set([
   "AUNInputsDiffusersRefineBasic",
   "AUNInputsHybrid",
   "AUNInputsWan22Basic",
+  "AUNInputsMiniMaxH3Basic",
 ]);
 
 function setupNode(node) {

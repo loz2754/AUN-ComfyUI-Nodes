@@ -9,7 +9,7 @@ const USER_HEIGHT_KEY = "__aun_gc_userHeight";
 const SKIP_CLASSES = new Set([
   "AUNInputs", "AUNInputsBasic", "AUNInputsRefine", "AUNInputsRefineBasic",
   "AUNInputsDiffusers", "AUNInputsDiffusersBasic", "AUNInputsDiffusersRefineBasic",
-  "AUNInputsHybrid", "AUNInputsWan22Basic",
+  "AUNInputsHybrid", "AUNInputsWan22Basic", "AUNInputsMiniMaxH3Basic",
   "AUNKSamplerPlusV2", "AUNKSamplerPlusv3", "AUNKSamplerPlusv4", "AUNWan22MoE",
   "AUNSaveImage", "AUNSaveImageV2",
   "AUNShowAnyMulti", "AUNPassthroughAnyMulti",

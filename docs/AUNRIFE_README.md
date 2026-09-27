@@ -9,6 +9,7 @@ Generates intermediate frames between input frames using RIFE (Real-Time Interme
 - `ckpt_name` (combo): Which RIFE checkpoint to use (`rife47` / `rife49`). Both use the v4.7 architecture. Weights are downloaded to `ComfyUI/models/rife` on first use.
 - `multiplier` (INT, 2–10): Number of frames to generate between each pair of input frames. `2` produces 2x the frames, `10` produces 10x.
 - `ensemble` (BOOLEAN): When enabled, the model runs twice per intermediate frame and averages the results for better quality (slower).
+- `enable` (BOOLEAN, default on): When off, the input passes through unchanged and no model is loaded. Convert to an input and wire a toggle (e.g. the MiniMaxH3 Inputs `rife` output) to gate interpolation in the same run, avoiding bypass timing delays.
 
 ## Outputs
 

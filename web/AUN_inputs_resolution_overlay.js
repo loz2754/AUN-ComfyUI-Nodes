@@ -11,6 +11,7 @@ const TARGET_CLASSES = new Set([
     "AUNInputsDiffusersBasic",
     "AUNInputsDiffusersRefineBasic",
     "AUNInputsHybrid",
+    "AUNInputsMiniMaxH3Basic",
 ]);
 
 const ASPECT_RATIOS = {
@@ -69,9 +70,17 @@ function getResolvedValue(node) {
 
     const myOutputs = app?.nodeOutputs?.[String(node.id)];
     if (myOutputs) {
-        let w = myOutputs[9], h = myOutputs[10];
-        if (w == null) w = myOutputs["9"] ?? myOutputs[String(9)];
-        if (h == null) h = myOutputs["10"] ?? myOutputs[String(10)];
+        // NOTE: width/height output slots differ per node class (e.g. 9/10 on
+        // AUNInputsBasic, 10/11 on AUNInputsMiniMaxH3Basic), so resolve by slot name.
+        let wIdx = 9, hIdx = 10;
+        if (Array.isArray(node?.outputs)) {
+            const wi = node.outputs.findIndex((o) => o?.name === "width");
+            const hi = node.outputs.findIndex((o) => o?.name === "height");
+            if (wi >= 0 && hi >= 0) { wIdx = wi; hIdx = hi; }
+        }
+        let w = myOutputs[wIdx], h = myOutputs[hIdx];
+        if (w == null) w = myOutputs[String(wIdx)];
+        if (h == null) h = myOutputs[String(hIdx)];
         if (w == null) w = myOutputs.width ?? myOutputs["width"];
         if (h == null) h = myOutputs.height ?? myOutputs["height"];
         if (w != null && h != null) {

@@ -19,7 +19,7 @@ sampler = AnyType("*")
 
 
 class AUNInputsWan22Basic:
-    DESCRIPTION = "Wan2.2 video loader node that loads high-noise and low-noise diffusion experts with explicit CLIP and VAE files, optional CLIP Vision (for i2v), independent LoRA per expert, and MoE sampler settings that plug straight into Wan2.2 MoE KSampler.\n\nThe optional *_input sockets override the matching widget values when connected.\n\nRight-click → \"Collapse Connections\" or double-click to hide output labels and converge connection lines."
+    DESCRIPTION = "Wan2.2 video loader node that loads high-noise and low-noise diffusion experts with explicit CLIP and VAE files, optional CLIP Vision (for i2v), independent LoRA per expert, and MoE sampler settings that plug straight into Wan2.2 MoE KSampler.\n\nOptional RIFE support: when 'rife' is on, the 'fps' and 'frame_rate' outputs switch to the post-interpolation rate (fps * multiplier) for direct wiring into VHS Video Combine, while 'frames' always stays the base sampling count for the empty latent. The 'rife multiplier' output mirrors the active multiplier — convert the AUNRIFE 'multiplier' widget to an input and connect it so the value lives in one place. The 'rife' output mirrors the toggle itself — wire it to the AUNRIFE 'enable' input so interpolation follows the loader toggle in the same run.\n\nThe optional *_input sockets override the matching widget values when connected.\n\nRight-click → \"Collapse Connections\" or double-click to hide output labels and converge connection lines."
 
     _NO_DIFFUSION = "<no diffusion models found>"
     _NO_CLIP = "<no clip files found>"
@@ -126,6 +126,7 @@ class AUNInputsWan22Basic:
                 "seed_input": ("INT", {"forceInput": True, "tooltip": "Seed override. When connected, replaces the 'seed' widget value."}),
                 "fps_input": ("FLOAT", {"forceInput": True, "tooltip": "FPS override. When connected, replaces the 'fps' widget value."}),
                 "length_input": ("INT", {"forceInput": True, "tooltip": "Frame-length override. When connected, replaces the 'length' widget value."}),
+                "rife_multiplier_input": ("INT", {"forceInput": True, "tooltip": "RIFE multiplier override. When connected, replaces the 'rife_multiplier' widget value. Only applies when 'rife' is on."}),
             },
             "required": {
                 "high_noise_name": (
@@ -211,6 +212,14 @@ class AUNInputsWan22Basic:
                     "INT",
                     {"default": 81, "min": 1, "max": 10000, "tooltip": "Video length in frames. Odd counts (81/121) suit Wan2.2 temporal alignment."},
                 ),
+                "rife": (
+                    "BOOLEAN",
+                    {"default": False, "label_on": "On", "label_off": "Off", "tooltip": "Switch the 'fps' and 'frame_rate' outputs to the post-interpolation rate (fps * multiplier) for VHS Video Combine. 'frames' always stays the base sampling count."},
+                ),
+                "rife_multiplier": (
+                    "INT",
+                    {"default": 2, "min": 2, "max": 10, "step": 1, "tooltip": "RIFE interpolation multiplier. Must match the 'multiplier' on the downstream AUNRIFE node."},
+                ),
             },
         }
 
@@ -233,6 +242,8 @@ class AUNInputsWan22Basic:
         "FLOAT",
         "INT",
         "INT",
+        "INT",
+        "BOOLEAN",
     )
 
     RETURN_NAMES = (
@@ -254,6 +265,8 @@ class AUNInputsWan22Basic:
         "fps",
         "frame_rate",
         "frames",
+        "rife multiplier",
+        "rife",
     )
 
     FUNCTION = "inputs"
@@ -311,6 +324,8 @@ class AUNInputsWan22Basic:
         seed,
         fps,
         length,
+        rife,
+        rife_multiplier,
         high_noise_input="",
         low_noise_input="",
         clip_input="",
@@ -328,6 +343,7 @@ class AUNInputsWan22Basic:
         seed_input=None,
         fps_input=None,
         length_input=None,
+        rife_multiplier_input=None,
     ):
         high_noise_input = self._clean_override(high_noise_input)
         low_noise_input = self._clean_override(low_noise_input)
@@ -369,6 +385,8 @@ class AUNInputsWan22Basic:
             fps = fps_input
         if length_input is not None:
             length = length_input
+        if rife_multiplier_input is not None:
+            rife_multiplier = rife_multiplier_input
 
         self._ensure_valid_choice(high_noise_name, self._NO_DIFFUSION, "A high-noise diffusion-model file")
         self._ensure_valid_choice(low_noise_name, self._NO_DIFFUSION, "A low-noise diffusion-model file")
@@ -423,6 +441,14 @@ class AUNInputsWan22Basic:
         frame_rate = int(round(fps))
         length = int(length)
 
+        try:
+            rife_m = max(2, int(rife_multiplier))
+        except Exception:
+            rife_m = 2
+        if rife:
+            fps = fps * rife_m
+            frame_rate = int(round(fps))
+
         return (
             model_high,
             model_low,
@@ -442,6 +468,8 @@ class AUNInputsWan22Basic:
             fps,
             frame_rate,
             length,
+            int(rife_m),
+            bool(rife),
         )
 
     @classmethod
