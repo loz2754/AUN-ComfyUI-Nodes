@@ -5,7 +5,12 @@
 
 ### Added
 
+- `AUNInputsWan22Basic`: resolution widgets (width/height/aspect/megapixels/multiple) driving a built-in empty video latent output plus `width`/`height`/`batch size` outputs — no `EmptyHunyuanLatentVideo` node needed. Resolution overlay extended to the node.
+- Example workflows reorganized into `docs/example_workflows/Image/` and `Video/`; two new MiniMaxH3 T2V graphs (basic + FastVideo); READMEs updated with a Video showcase block.
+
 ### Changed
+
+- Wan2.2 example workflows rewired to the built-in latent and node resolution outputs; orphaned loader removed from the MiniMaxH3 T2V graph.
 
 ### Fixed
 
