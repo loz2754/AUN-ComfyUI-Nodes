@@ -12,6 +12,7 @@ const TARGET_CLASSES = new Set([
     "AUNInputsDiffusersRefineBasic",
     "AUNInputsHybrid",
     "AUNInputsMiniMaxH3Basic",
+    "AUNInputsWan22Basic",
 ]);
 
 const ASPECT_RATIOS = {

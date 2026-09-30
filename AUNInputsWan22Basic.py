@@ -8,6 +8,8 @@ import folder_paths as comfy_paths
 import nodes
 import torch
 
+from .AUNResolutionHelper import ASPECT_RATIO_NAMES, ASPECT_MODE_OPTIONS, MEGAPIXELS_WIDGET, MULTIPLE_WIDGET, resolve_dimensions, apply_aspect_mode
+
 
 class AnyType(str):
     def __ne__(self, __value: object) -> bool:
@@ -19,7 +21,7 @@ sampler = AnyType("*")
 
 
 class AUNInputsWan22Basic:
-    DESCRIPTION = "Wan2.2 video loader node that loads high-noise and low-noise diffusion experts with explicit CLIP and VAE files, optional CLIP Vision (for i2v), independent LoRA per expert, and MoE sampler settings that plug straight into Wan2.2 MoE KSampler.\n\nOptional RIFE support: when 'rife' is on, the 'fps' and 'frame_rate' outputs switch to the post-interpolation rate (fps * multiplier) for direct wiring into VHS Video Combine, while 'frames' always stays the base sampling count for the empty latent. The 'rife multiplier' output mirrors the active multiplier — convert the AUNRIFE 'multiplier' widget to an input and connect it so the value lives in one place. The 'rife' output mirrors the toggle itself — wire it to the AUNRIFE 'enable' input so interpolation follows the loader toggle in the same run.\n\nThe optional *_input sockets override the matching widget values when connected.\n\nRight-click → \"Collapse Connections\" or double-click to hide output labels and converge connection lines."
+    DESCRIPTION = "Wan2.2 video loader node that loads high-noise and low-noise diffusion experts with explicit CLIP and VAE files, optional CLIP Vision (for i2v), independent LoRA per expert, and MoE sampler settings that plug straight into Wan2.2 MoE KSampler.\n\nResolution helpers (width/height/aspect/megapixels/multiple) drive the built-in empty video latent output, so no EmptyHunyuanLatentVideo node is needed.\n\nOptional RIFE support: when 'rife' is on, the 'fps' and 'frame_rate' outputs switch to the post-interpolation rate (fps * multiplier) for direct wiring into VHS Video Combine, while 'frames' always stays the base sampling count for the empty latent. The 'rife multiplier' output mirrors the active multiplier — convert the AUNRIFE 'multiplier' widget to an input and connect it so the value lives in one place. The 'rife' output mirrors the toggle itself — wire it to the AUNRIFE 'enable' input so interpolation follows the loader toggle in the same run.\n\nThe optional *_input sockets override the matching widget values when connected.\n\nRight-click → \"Collapse Connections\" or double-click to hide output labels and converge connection lines."
 
     _NO_DIFFUSION = "<no diffusion models found>"
     _NO_CLIP = "<no clip files found>"
@@ -220,6 +222,28 @@ class AUNInputsWan22Basic:
                     "INT",
                     {"default": 2, "min": 2, "max": 10, "step": 1, "tooltip": "RIFE interpolation multiplier. Must match the 'multiplier' on the downstream AUNRIFE node."},
                 ),
+                "width": (
+                    "INT",
+                    {"default": 832, "min": 64, "max": 8192, "tooltip": "Video width. Used when 'aspect_ratio' is 'custom'."},
+                ),
+                "height": (
+                    "INT",
+                    {"default": 480, "min": 64, "max": 8192, "tooltip": "Video height. Used when 'aspect_ratio' is 'custom'."},
+                ),
+                "aspect_ratio": (
+                    ASPECT_RATIO_NAMES,
+                    {"tooltip": "Select a predefined aspect ratio or preset to automatically set width and height."},
+                ),
+                "aspect_mode": (
+                    ASPECT_MODE_OPTIONS,
+                    {"default": "Original", "tooltip": "Random swaps dimensions 50% of the time, Swap forces a swap, Original keeps the original order."},
+                ),
+                "batch_size": (
+                    "INT",
+                    {"default": 1, "min": 1, "max": 64, "tooltip": "Latent batch size (number of clips)."},
+                ),
+                "megapixels": MEGAPIXELS_WIDGET,
+                "multiple": MULTIPLE_WIDGET,
             },
         }
 
@@ -244,6 +268,10 @@ class AUNInputsWan22Basic:
         "INT",
         "INT",
         "BOOLEAN",
+        "LATENT",
+        "INT",
+        "INT",
+        "INT",
     )
 
     RETURN_NAMES = (
@@ -267,6 +295,10 @@ class AUNInputsWan22Basic:
         "frames",
         "rife multiplier",
         "rife",
+        "latent",
+        "width",
+        "height",
+        "batch size",
     )
 
     FUNCTION = "inputs"
@@ -275,6 +307,21 @@ class AUNInputsWan22Basic:
     def _ensure_valid_choice(self, choice, placeholder, label):
         if choice == placeholder:
             raise RuntimeError(f"{label} is required for AUNInputsWan22Basic.")
+
+    @staticmethod
+    def _build_video_latent(model, batch_size, length, width, height):
+        latent_frames = max(1, (int(length) - 1) // 4 + 1)
+        latent = torch.zeros([int(batch_size), 16, latent_frames, height // 8, width // 8])
+        try:
+            matched = comfy.sample.fix_empty_latent_channels(model, latent)
+            if hasattr(matched, "shape") and matched.shape[1] != latent.shape[1]:
+                try:
+                    setattr(model, "_aun_latent_channels", matched.shape[1])
+                except Exception:
+                    pass
+            return matched
+        except Exception:
+            return latent
 
     def _load_lora_weights(self, lora_name, label):
         if lora_name in (None, "", "None"):
@@ -326,6 +373,13 @@ class AUNInputsWan22Basic:
         length,
         rife,
         rife_multiplier,
+        width,
+        height,
+        aspect_ratio,
+        aspect_mode,
+        batch_size,
+        megapixels=1.0,
+        multiple=8,
         high_noise_input="",
         low_noise_input="",
         clip_input="",
@@ -437,6 +491,11 @@ class AUNInputsWan22Basic:
         model_high = self._mark_model(model_high)
         model_low = self._mark_model(model_low)
 
+        width, height = resolve_dimensions(width, height, aspect_ratio, megapixels, multiple)
+        width, height = apply_aspect_mode(width, height, aspect_mode)
+
+        latent = {"samples": self._build_video_latent(model_high, batch_size, length, width, height)}
+
         fps = float(fps)
         frame_rate = int(round(fps))
         length = int(length)
@@ -470,6 +529,10 @@ class AUNInputsWan22Basic:
             length,
             int(rife_m),
             bool(rife),
+            latent,
+            int(width),
+            int(height),
+            int(batch_size),
         )
 
     @classmethod

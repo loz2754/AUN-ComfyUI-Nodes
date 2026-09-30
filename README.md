@@ -40,7 +40,7 @@ Also see: [💡 Example Workflows](#cat-examples) · [🚀 Getting Started](#cat
 
 Use `AUN PromptCycler` with `AUN Random Multi-LoRA Model Loader` to cycle through prompts while dynamically applying different LoRA combinations per prompt.
 
-[![PromptCycler with Random Multi-LoRA workflow example](docs/example_workflows/AUNExampleWF-PromptCycler-LorasByIndex.png)](docs/example_workflows/AUNExampleWF-PromptCycler-LorasByIndex.png)
+[![PromptCycler with Random Multi-LoRA workflow example](docs/example_workflows/Image/AUNExampleWF-PromptCycler-LorasByIndex.png)](docs/example_workflows/Image/AUNExampleWF-PromptCycler-LorasByIndex.png)
 
 1. Add `AUN PromptCycler` and set its mode (Sequential, Random, Search, etc.).
 2. Connect its `prompt` output to your CLIP Text Encode node.
@@ -54,7 +54,7 @@ Your setup: `AUN PromptCycler` -> `AUN Random Multi-LoRA Model Loader` -> `Model
 
 Use `AUN Show Any Multi` to display any kind of data (Model, CLIP, VAE, strings, integers, images, and more) in one place, and `AUN Passthrough Any Multi` to also pass text representations of that data through to its outputs.
 
-[![Show Any / Passthrough Any Multi workflow example](docs/example_workflows/AUNExampleWF-ShowAnyMulti.png)](docs/example_workflows/AUNExampleWF-ShowAnyMulti.png)
+[![Show Any / Passthrough Any Multi workflow example](docs/example_workflows/Image/AUNExampleWF-ShowAnyMulti.png)](docs/example_workflows/Image/AUNExampleWF-ShowAnyMulti.png)
 
 1. Add `AUN Show Any Multi` (`AUNShowAnyMulti`) and connect the data you want to inspect to its inputs (up to 20 autogrow inputs).
 2. To forward the data (or its text representations) on, add `AUN Passthrough Any Multi` (`AUNPassthroughAnyMulti`) and connect the same inputs; its `STRING` outputs carry each value as text.
@@ -66,7 +66,7 @@ Your setup: `Model`/`CLIP`/`VAE`/`String`/`Image` -> `AUN Show Any Multi` / `AUN
 
 Use `AUN Inputs` to replace the checkpoint loader and the KSampler's settings with a single node — model, CLIP, VAE, latent, sampler, scheduler, CFG, steps, seed and more from one place.
 
-[![AUN Inputs bundle workflow example](docs/example_workflows/AUNExampleWF-Inputs.png)](docs/example_workflows/AUNExampleWF-Inputs.png)
+[![AUN Inputs bundle workflow example](docs/example_workflows/Image/AUNExampleWF-Inputs.png)](docs/example_workflows/Image/AUNExampleWF-Inputs.png)
 
 1. Add `AUN Inputs` (`AUNInputs`) and pick your checkpoint.
 2. Connect `MODEL`/`CLIP`/`VAE` outputs to a standard `KSampler` pipeline.
@@ -81,7 +81,7 @@ Your setup: `AUN Inputs` -> `KSampler` -> `VAE Decode` -> `AUN Save Image V2` ->
 
 Use `AUN Inputs Basic` to drive a standard KSampler pipeline, while `AUN Path Filename V2` auto-generates parameter-rich filenames (model, sampler, seed, steps, CFG...) that go straight into `AUN Save Image V2`.
 
-[![File saving pipeline workflow example](docs/example_workflows/AUNExampleWF-SavePipeline.png)](docs/example_workflows/AUNExampleWF-SavePipeline.png)
+[![File saving pipeline workflow example](docs/example_workflows/Image/AUNExampleWF-SavePipeline.png)](docs/example_workflows/Image/AUNExampleWF-SavePipeline.png)
 
 1. Add `AUN Inputs Basic` (`AUNInputsBasic`) and pick your checkpoint — it provides model, CLIP, VAE, sampler settings, and an empty latent in one node.
 2. Add positive and negative `CLIP Text Encode` nodes and connect them to the `CLIP` output.
@@ -97,7 +97,7 @@ Your setup: `AUN Inputs Basic` -> `KSampler` -> `VAE Decode` -> `AUN Save Image 
 
 Use `AUN Text Index Switch 4`, `AUN Multi Negative Prompt` and `AUN Add-To-Prompt (Multi)` to pick positive/negative prompts dynamically and layer quality addons onto them, then watch the result live in `AUN Show Any Multi`.
 
-[![Prompts showcase workflow example](docs/example_workflows/AUNExampleWF-Prompts.png)](docs/example_workflows/AUNExampleWF-Prompts.png)
+[![Prompts showcase workflow example](docs/example_workflows/Image/AUNExampleWF-Prompts.png)](docs/example_workflows/Image/AUNExampleWF-Prompts.png)
 
 1. Add `AUN Text Index Switch 4` (`AUNTextIndexSwitch4`), fill in a few prompts, and set its mode to Increment (or Select/Random/Range).
 2. Connect the switch's `text` output to `AUN Add-To-Prompt (Multi)` (`AUNAddToPromptMulti`) and turn its addons on/off/random to add quality text before or after the prompt.
@@ -111,7 +111,7 @@ Your setup: `AUN Text Index Switch 4` -> `AUN Add-To-Prompt (Multi)` -> `CLIP Te
 
 Use `AUN Image Slider Comparer` (`AUNImageSliderComparer`) to compare two versions of an image — before/after, original vs upscaled, two generations — with a slider. Two modes are available: Drag (click and drag to scrub) and Slide (slider follows the mouse without clicking). Switch between them via the right-click menu.
 
-[![Image Slider Comparer workflow example](docs/example_workflows/AUNExampleWF-ImageSliderComparer.png)](docs/example_workflows/AUNExampleWF-ImageSliderComparer.png)
+[![Image Slider Comparer workflow example](docs/example_workflows/Image/AUNExampleWF-ImageSliderComparer.png)](docs/example_workflows/Image/AUNExampleWF-ImageSliderComparer.png)
 
 1. Add two `Load Image` nodes and pick the images to compare.
 2. Connect the first image to `pair1_left` and the second to `pair1_right` on `AUN Image Slider Comparer`.
@@ -125,7 +125,7 @@ Your setup: `Load Image` -> `AUN Image Slider Comparer` (`pairN_left` / `pairN_r
 
 Use `AUN KSampler PlusV3` (`AUNKSamplerPlusv3`) for a two-pass sample with latent upscaling and an optional image upscale/refine pass, and compare the base vs upscaled result with `AUN Image Slider Comparer`.
 
-[![KSampler Plus workflow example with image slider comparer](docs/example_workflows/AUNExampleWF-KSamplerPlus.png)](docs/example_workflows/AUNExampleWF-KSamplerPlus.png)
+[![KSampler Plus workflow example with image slider comparer](docs/example_workflows/Image/AUNExampleWF-KSamplerPlus.png)](docs/example_workflows/Image/AUNExampleWF-KSamplerPlus.png)
 
 1. Add `AUN KSampler PlusV3` (`AUNKSamplerPlusv3`) and connect `model`, `CLIP`, `VAE`, positive/negative `CLIP Text Encode` outputs and a latent image (from `Empty Latent Image`).
 2. Add a core `Seed` node and connect its `seed` output to the sampler's `seed` input for a fixed, reproducible seed.
@@ -255,7 +255,7 @@ Works best when coupled with AUN Save Image.
 
 ##### Workflow image showing the Image Slider Comparer - (drop image into Comfyui to load the workflow)
 
-[![Image Slider Comparer workflow example](docs/example_workflows/AUNExampleWF-ImageSliderComparer.png)](docs/example_workflows/AUNExampleWF-ImageSliderComparer.png)
+[![Image Slider Comparer workflow example](docs/example_workflows/Image/AUNExampleWF-ImageSliderComparer.png)](docs/example_workflows/Image/AUNExampleWF-ImageSliderComparer.png)
 
 </details>
 
@@ -268,6 +268,14 @@ Works best when coupled with AUN Save Image.
 - Save Video V2 *Deprecated in favour of VHS Video Combine* (`AUNSaveVideoV2`) is the recommended video saver that combines image frames into animated images or video and accepts one combined `path_filename` input.
 - RIFE Frame Interpolation (`AUNRIFE`) generates intermediate frames between input frames using RIFE (Real-Time Intermediate Flow Estimation) v4.7. Takes a batched IMAGE tensor and a multiplier (2–10) to produce smoother slow-motion or higher frame-rate sequences. Model weights (rife47 / rife49) are downloaded from HuggingFace to `ComfyUI/models/rife` on first use. Optional `ensemble` mode runs the model twice and averages results for better quality (slower). Setting `enable` to off passes the input through untouched without loading a model.
 - Audio Input Options *Deprecated* (`AudioInputOptions`) a deprecated helper that packages an audio path with clip start/duration settings for use by video nodes.
+
+##### Example video workflows (JSON — drop into ComfyUI to load; preview PNGs to follow)
+
+- [MiniMaxH3 reference-to-video](docs/example_workflows/Video/AUNExampleWF-MiniMaxH3Basic.json): `AUN Inputs MiniMaxH3 Basic` (UNET + minimax CLIP + video/audio VAEs + turbo LoRA) feeding `MiniMaxH3ReferenceToVideo`, `KSampler`, video/audio `VAEDecode`, and `VHS Video Combine`.
+- [MiniMaxH3 text-to-video](docs/example_workflows/Video/AUNExampleWF-MiniMaxH3BasicT2V.json): T2V variant with `MiniMaxH3ImageToVideo`, `AUN Clean VRAM`, and `AUN RIFE` driven by the Inputs node.
+- [MiniMaxH3 T2V FastVideo](docs/example_workflows/Video/AUNExampleWF-MinimaxH3-T2V-FastVideo.json): speed-focused T2V with attention-backend nodes, sigma shift, and resolved path filename.
+- [Wan2.2 text-to-video with RIFE](docs/example_workflows/Video/AUNExampleWF-Wan22Basic-RIFE-T2V.json): dual experts into `AUN Wan2.2 MoE`, MoE-direct decode into `AUN RIFE`, then VHS at the post-interpolation frame rate.
+- [Wan2.2 image-to-video with RIFE](docs/example_workflows/Video/AUNExampleWF-Wan22Basic-RIFE-I2V.json): start image + CLIP Vision via `Wan Image To Video` (0.9 boundary), then the same MoE → RIFE → VHS tail.
 
 </details>
 
@@ -284,7 +292,7 @@ Works best when coupled with AUN Save Image.
 
 ##### Workflow image showing the KSampler Plus (v3) with an AUN Image Slider Comparer previewing Base vs Latent upscaled - (drop image into Comfyui to load the workflow)
 
-[![KSampler Plus workflow example with image slider comparer](docs/example_workflows/AUNExampleWF-KSamplerPlus.png)](docs/example_workflows/AUNExampleWF-KSamplerPlus.png)
+[![KSampler Plus workflow example with image slider comparer](docs/example_workflows/Image/AUNExampleWF-KSamplerPlus.png)](docs/example_workflows/Image/AUNExampleWF-KSamplerPlus.png)
 
 </details>
 
@@ -311,7 +319,7 @@ Works best when coupled with AUN Save Image.
 - Inputs Refine (`AUNInputsRefine`) extends `Inputs` with an optional separate refine checkpoint and SpeedLoRA controls that can either split strength between models or apply full strength to both.
 - Inputs Refine Basic (`AUNInputsRefineBasic`) keeps the lighter `Inputs Basic` contract but also outputs an optional separate refine model checkpoint.
 - Inputs Hybrid (`AUNInputsHybrid`) loads a standard checkpoint (UNet+CLIP+VAE), or a diffusion UNet model with separate CLIP and VAE files, but essentially the same as AUN Inputs.
-- Inputs Wan2.2 Basic (`AUNInputsWan22Basic`) loads Wan2.2 high-noise and low-noise diffusion experts with CLIP, VAE, optional CLIP Vision (i2v), independent LoRA per expert, and MoE sampler settings (cfg high/low, boundary, sigma shift, steps, seed) plus fps, frame rate and frame count outputs. Optional RIFE toggle switches the `fps` / `frame_rate` outputs to the post-interpolation rate and emits `rife multiplier` / `rife` outputs that drive AUNRIFE directly. Wires straight into Wan2.2 MoE KSampler.
+- Inputs Wan2.2 Basic (`AUNInputsWan22Basic`) loads Wan2.2 high-noise and low-noise diffusion experts with CLIP, VAE, optional CLIP Vision (i2v), independent LoRA per expert, and MoE sampler settings (cfg high/low, boundary, sigma shift, steps, seed) plus fps, frame rate and frame count outputs. Optional RIFE toggle switches the `fps` / `frame_rate` outputs to the post-interpolation rate and emits `rife multiplier` / `rife` outputs that drive AUNRIFE directly. Resolution helpers (width/height/aspect/megapixels/multiple) drive a built-in empty video latent output, so no EmptyHunyuanLatentVideo node is needed. Wires straight into Wan2.2 MoE KSampler.
 - Inputs MiniMaxH3 Basic (`AUNInputsMiniMaxH3Basic`) loads the MiniMax-H3 UNET with weight dtype, minimax CLIP, separate video and audio VAEs, and an optional turbo LoRA, plus sampler settings (sampler, scheduler, cfg, steps, seed), resolution helpers, and seconds-to-frame-length conversion (length % 17 == 5). Optional RIFE toggle switches the `fps` / `frame_rate` outputs to the post-interpolation rate and emits `rife multiplier` / `rife` outputs that drive AUNRIFE directly, so no math nodes are needed for VHS Video Combine. Wires straight into MiniMaxH3ReferenceToVideo and KSampler.
 
 Migration note: existing workflows that use `AUNInputsRefine` or `AUNInputsRefineBasic` may need their SpeedLoRA-related widgets checked or reconnected after loading because the input set changed.
@@ -397,10 +405,10 @@ AUN Inputs nodes (`AUNInputs`, `AUNInputsBasic`, `AUNInputsRefine`, `AUNInputsRe
 
 | Workflow | Expanded | Collapsed |
 |----------|----------|-----------|
-| AUN Inputs Bundle | [![AUN Inputs expanded](docs/example_workflows/AUNExampleWF-Inputs.png)](docs/example_workflows/AUNExampleWF-Inputs.png) | [![AUN Inputs collapsed](docs/example_workflows/AUNExampleWF-Inputs-Collapsed.png)](docs/example_workflows/AUNExampleWF-Inputs-Collapsed.png) |
-| File Saving Pipeline | [![SavePipeline expanded](docs/example_workflows/AUNExampleWF-SavePipeline.png)](docs/example_workflows/AUNExampleWF-SavePipeline.png) | [![SavePipeline collapsed](docs/example_workflows/AUNExampleWF-SavePipeline-Collapsed.png)](docs/example_workflows/AUNExampleWF-SavePipeline-Collapsed.png) |
-| Prompts Showcase | [![Prompts expanded](docs/example_workflows/AUNExampleWF-Prompts-NotCollapsed.png)](docs/example_workflows/AUNExampleWF-Prompts-NotCollapsed.png) | [![Prompts collapsed](docs/example_workflows/AUNExampleWF-Prompts.png)](docs/example_workflows/AUNExampleWF-Prompts.png) |
-| Image Slider Comparer | [![ImageSliderComparer expanded](docs/example_workflows/AUNExampleWF-ImageSliderComparer.png)](docs/example_workflows/AUNExampleWF-ImageSliderComparer.png) | [![ImageSliderComparer collapsed](docs/example_workflows/AUNExampleWF-ImageSliderComparer-Collapsed.png)](docs/example_workflows/AUNExampleWF-ImageSliderComparer-Collapsed.png) |
+| AUN Inputs Bundle | [![AUN Inputs expanded](docs/example_workflows/Image/AUNExampleWF-Inputs.png)](docs/example_workflows/Image/AUNExampleWF-Inputs.png) | [![AUN Inputs collapsed](docs/example_workflows/Image/AUNExampleWF-Inputs-Collapsed.png)](docs/example_workflows/Image/AUNExampleWF-Inputs-Collapsed.png) |
+| File Saving Pipeline | [![SavePipeline expanded](docs/example_workflows/Image/AUNExampleWF-SavePipeline.png)](docs/example_workflows/Image/AUNExampleWF-SavePipeline.png) | [![SavePipeline collapsed](docs/example_workflows/Image/AUNExampleWF-SavePipeline-Collapsed.png)](docs/example_workflows/Image/AUNExampleWF-SavePipeline-Collapsed.png) |
+| Prompts Showcase | [![Prompts expanded](docs/example_workflows/Image/AUNExampleWF-Prompts-NotCollapsed.png)](docs/example_workflows/Image/AUNExampleWF-Prompts-NotCollapsed.png) | [![Prompts collapsed](docs/example_workflows/Image/AUNExampleWF-Prompts.png)](docs/example_workflows/Image/AUNExampleWF-Prompts.png) |
+| Image Slider Comparer | [![ImageSliderComparer expanded](docs/example_workflows/Image/AUNExampleWF-ImageSliderComparer.png)](docs/example_workflows/Image/AUNExampleWF-ImageSliderComparer.png) | [![ImageSliderComparer collapsed](docs/example_workflows/Image/AUNExampleWF-ImageSliderComparer-Collapsed.png)](docs/example_workflows/Image/AUNExampleWF-ImageSliderComparer-Collapsed.png) |
 
 #### Global Collapse Connections (Non-AUN Nodes) — EXPERIMENTAL
 
