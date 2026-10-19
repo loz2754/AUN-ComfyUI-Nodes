@@ -126,6 +126,15 @@ function buildPreviewText(node) {
   const preview = node.__AUN_localPreview || getLastMatch(node);
   if (preview && preview.index > 0) {
     const parts = [];
+    const rowName = (function () {
+      try {
+        const pd = JSON.parse(String(getWidget(node, "preset_data")?.value ?? "{}"));
+        const rows = Array.isArray(pd?.rows) ? pd.rows : (Array.isArray(pd) ? pd : []);
+        const r = rows[preview.index - 1];
+        return r && r.name ? String(r.name).trim() : "";
+      } catch { return ""; }
+    })();
+    if (rowName) parts.push(rowName);
     parts.push(preview.keyword ? `#${preview.index} ${preview.keyword}` : `preset ${preview.index}`);
     let values = preview.values;
     if (values && typeof values === "string") {
