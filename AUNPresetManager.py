@@ -134,9 +134,9 @@ class AUNPresetManager:
                 "default": "",
                 "tooltip": "Numeric ID or Title of the target node. Used by the Setup dialog to discover the target's widgets.",
             }),
-            "manual_preset": (["%d" % i for i in range(1, cls.MAX_ROWS + 1)], {
+            "manual_preset": ("STRING", {
                 "default": "1",
-                "tooltip": "Which preset row (1-%d) to use as the active bundle. Clamped to visible_rows. With match_keywords=No, this is always used. With match_keywords=Yes, keywords can override it when they match." % cls.MAX_ROWS,
+                "tooltip": "Preset name or row number (1-%d) to use as the active bundle. Clamped to visible_rows. With match_keywords=No, this is always used. With match_keywords=Yes, keywords can override it when they match." % cls.MAX_ROWS,
             }),
             "match_keywords": (["Yes", "No"], {
                 "default": "Yes",
