@@ -132,9 +132,13 @@ function buildPreviewText(node) {
       try { values = JSON.parse(values); } catch { values = null; }
     }
     if (values && typeof values === "object") {
+      let included = null;
+      try {
+        const pd = JSON.parse(String(getWidget(node, "preset_data")?.value ?? "{}"));
+        if (Array.isArray(pd?.widgets)) included = new Set(pd.widgets);
+      } catch {}
       for (const [k, v] of Object.entries(values)) {
-        const w = (node.widgets || []).find((x) => x.name === k);
-        if (w && w.hidden) continue;
+        if (included && !included.has(k)) continue;
         if (v != null && v !== "") parts.push(`${k}=${v}`);
       }
     }
