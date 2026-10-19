@@ -8,6 +8,7 @@ import folder_paths as comfy_paths
 import torch
 
 from .AUNResolutionHelper import PRESETS, ASPECT_RATIOS, ASPECT_RATIO_NAMES, ASPECT_MODE_OPTIONS, MEGAPIXELS_WIDGET, MULTIPLE_WIDGET, resolve_dimensions, apply_aspect_mode
+from .aun_bundle_shared import BUNDLE
 
 class AnyType(str):
    
@@ -48,6 +49,8 @@ class AUNInputsBasic:
                 "cfg_input": ("FLOAT", {"forceInput": True, "tooltip": "CFG scale override. When connected, replaces the 'cfg' widget value."}),
                 "steps_input": ("INT", {"forceInput": True, "tooltip": "Steps override. When connected, replaces the 'steps' widget value."}),
                 "seed_input": ("INT", {"forceInput": True, "tooltip": "Seed override. When connected, replaces the 'seed' widget value."}),
+                "bundle_input": (BUNDLE, {"tooltip": "Optional OBVPM bundle override. Matching fields (sampler, scheduler, cfg, steps, seed, ckpt name) replace the widget values when present."}),
+                "set": ("STRING", {"default": "", "tooltip": "Constant name. When non-empty, this node sets an OBVPM bundle constant readable by an OBVPM Unbundle (get) or KJ Get."}),
             },
             'required': {
                 "ckpt_name": (comfy_paths.get_filename_list("checkpoints"), {"tooltip": "The checkpoint model file to load."}),
@@ -93,6 +96,7 @@ class AUNInputsBasic:
 #        "STRING", 
         "INT", 
 #        "BOOLEAN",
+        BUNDLE,
     )
     RETURN_NAMES = (
         "MODEL", 
@@ -113,6 +117,7 @@ class AUNInputsBasic:
 #        "date format", 
         "batch size", 
 #        "name mode"
+        "bundle",
     )
     OUTPUT_NODE = True
     FUNCTION = 'inputs'
@@ -151,11 +156,24 @@ class AUNInputsBasic:
 
     def inputs(self, ckpt_name, speed_lora, speed_lora_model, speed_lora_strength, clip_skip, 
                sampler, scheduler, cfg, steps, width, height, aspect_ratio, aspect_mode, batch_size, seed,
-               megapixels=1.0, multiple=8, model_input="", sampler_input="", scheduler_input="", cfg_input=None, steps_input=None, seed_input=None
-               ):
+           megapixels=1.0, multiple=8, model_input="", sampler_input="", scheduler_input="", cfg_input=None, steps_input=None, seed_input=None, bundle_input=None, set=""
+           ):
         model_input = self._clean_override(model_input)
         sampler_input = self._clean_override(sampler_input)
         scheduler_input = self._clean_override(scheduler_input)
+        if isinstance(bundle_input, dict):
+            if bundle_input.get("sampler") is not None:
+                sampler_input = self._clean_override(bundle_input.get("sampler")) or sampler_input
+            if bundle_input.get("scheduler") is not None:
+                scheduler_input = self._clean_override(bundle_input.get("scheduler")) or scheduler_input
+            if bundle_input.get("cfg") is not None:
+                cfg_input = bundle_input.get("cfg")
+            if bundle_input.get("steps") is not None:
+                steps_input = bundle_input.get("steps")
+            if bundle_input.get("seed") is not None:
+                seed_input = bundle_input.get("seed")
+            if bundle_input.get("ckpt_name") is not None:
+                model_input = self._clean_override(bundle_input.get("ckpt_name")) or model_input
         ckpt_name = self._resolve_ckpt_name(model_input, ckpt_name)
         if sampler_input:
             sampler = sampler_input
@@ -201,13 +219,30 @@ class AUNInputsBasic:
         #         # Take up to 'words' words, but not more than available
         #         filename_to_process = ' '.join(name_words[:min(words, len(name_words))]) 
                   
-        return (model, clip, vae, os.path.splitext(os.path.basename(ckpt_name))[0], sampler, scheduler, cfg, steps, {"samples": latent}, width, height, seed,                
+        _ckpt_short = os.path.splitext(os.path.basename(ckpt_name))[0]
+        bundle = {
+            "model": model,
+            "clip": clip,
+            "vae": vae,
+            "ckpt_name": _ckpt_short,
+            "sampler": sampler,
+            "scheduler": scheduler,
+            "cfg": cfg,
+            "steps": steps,
+            "latent": {"samples": latent},
+            "width": width,
+            "height": height,
+            "seed": seed,
+            "batch_size": int(batch_size),
+        }
+        return (model, clip, vae, _ckpt_short, sampler, scheduler, cfg, steps, {"samples": latent}, width, height, seed,                
         #MainFolder, 
         #filename_to_process, 
         #prefix, 
         #date_format, 
         int(batch_size), 
         #name_mode,
+        bundle,
         )
        
     def get_time(self, date_format):

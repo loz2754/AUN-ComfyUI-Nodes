@@ -268,6 +268,7 @@ Works best when coupled with AUN Save Image.
 - Save Video V2 *Deprecated in favour of VHS Video Combine* (`AUNSaveVideoV2`) is the recommended video saver that combines image frames into animated images or video and accepts one combined `path_filename` input.
 - RIFE Frame Interpolation (`AUNRIFE`) generates intermediate frames between input frames using RIFE (Real-Time Intermediate Flow Estimation) v4.7. Takes a batched IMAGE tensor and a multiplier (2–10) to produce smoother slow-motion or higher frame-rate sequences. Model weights (rife47 / rife49) are downloaded from HuggingFace to `ComfyUI/models/rife` on first use. Optional `ensemble` mode runs the model twice and averages results for better quality (slower). Setting `enable` to off passes the input through untouched without loading a model.
 - Audio Input Options *Deprecated* (`AudioInputOptions`) a deprecated helper that packages an audio path with clip start/duration settings for use by video nodes.
+- VHS `-audio` suffix stripping: when a VHS `Video Combine` output contains muxed audio, AUN renames the resulting `name-audio.ext` file to `name.ext` (overwriting the kept intermediate) and updates the preview and Filenames output. Implemented as a wrapper on the registered node — no VHS files are modified. Set the environment variable `AUN_VHS_STRIP_AUDIO_SUFFIX=0` to disable.
 
 ##### Example video workflows (JSON — drop into ComfyUI to load; preview PNGs to follow)
 

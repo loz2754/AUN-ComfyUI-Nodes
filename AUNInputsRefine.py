@@ -7,6 +7,7 @@ import comfy.samplers
 from datetime import datetime
 
 from .AUNResolutionHelper import ASPECT_RATIO_NAMES, ASPECT_MODE_OPTIONS, MEGAPIXELS_WIDGET, MULTIPLE_WIDGET, resolve_dimensions, apply_aspect_mode
+from .aun_bundle_shared import BUNDLE
 
 class AnyType(str):
    
@@ -41,6 +42,8 @@ class AUNInputsRefine:
         return {
             "optional": {
                 "auto_name": ("STRING", {"multiline": False, "default": "Name", "forceInput": True, "tooltip": "Automatic name input, typically from a prompt node, used when 'name_mode' is set to Auto."}),
+                "bundle_input": (BUNDLE, {"tooltip": "Optional OBVPM bundle override."}),
+                "set": ("STRING", {"default": "", "tooltip": "Constant name. When non-empty, sets an OBVPM bundle constant."}),
             },
             'required': {
                 "ckpt_name": (comfy_paths.get_filename_list("checkpoints"), {"tooltip": "The checkpoint model file to load."}),
@@ -77,17 +80,30 @@ class AUNInputsRefine:
         "MODEL", "CLIP", "VAE", "MODEL", "STRING", "STRING", 
         sampler, scheduler, "FLOAT", "INT", "LATENT", "INT", "INT", "INT",
         'STRING', 'STRING', "STRING", "STRING", "INT", "BOOLEAN", "FLOAT",
+        BUNDLE,
     )
     RETURN_NAMES = (
         "MODEL", "CLIP", "VAE", "MODEL REFINE", "ckpt name", "ckpt name refine",
         "sampler", "scheduler", "cfg", "steps", "latent", "width", "height", "seed",
-        'MainFolder', 'Filename', "prefix", "date format", "batch size", "name mode", "speed lora ratio"
+        'MainFolder', 'Filename', "prefix", "date format", "batch size", "name mode", "speed lora ratio",
+        "bundle"
     )
     FUNCTION = 'inputs'
     CATEGORY = 'AUN Nodes/Loaders+Inputs'
 
     @staticmethod
     def _load_checkpoint_bundle(ckpt_name):
+        if isinstance(bundle_input, dict):
+            if bundle_input.get("sampler") is not None:
+                sampler = bundle_input.get("sampler")
+            if bundle_input.get("scheduler") is not None:
+                scheduler = bundle_input.get("scheduler")
+            if bundle_input.get("cfg") is not None:
+                cfg = bundle_input.get("cfg")
+            if bundle_input.get("steps") is not None:
+                steps = bundle_input.get("steps")
+            if bundle_input.get("seed") is not None:
+                seed = bundle_input.get("seed")
         ckpt_path = comfy_paths.get_full_path("checkpoints", ckpt_name)
         out = comfy.sd.load_checkpoint_guess_config(
             ckpt_path,
@@ -122,7 +138,7 @@ class AUNInputsRefine:
         refine_strength = speed_lora_strength * (1.0 - speed_lora_ratio)
         return main_strength, refine_strength
 
-    def inputs(self, ckpt_name, refine_ckpt, speed_lora, speed_lora_model, speed_lora_strength, speed_lora_full_both, speed_lora_ratio, clip_skip, MainFolder, ManualName, name_mode, prefix, sampler, scheduler, cfg, steps, width, height, aspect_ratio, aspect_mode, batch_size, seed, date_format, crop, words, auto_name="Name", megapixels=1.0, multiple=8):
+    def inputs(self, ckpt_name, refine_ckpt, speed_lora, speed_lora_model, speed_lora_strength, speed_lora_full_both, speed_lora_ratio, clip_skip, MainFolder, ManualName, name_mode, prefix, sampler, scheduler, cfg, steps, width, height, aspect_ratio, aspect_mode, batch_size, seed, date_format, crop, words, auto_name="Name", megapixels=1.0, multiple=8, bundle_input=None, set=""):
         model, clip, vae = self._load_checkpoint_bundle(ckpt_name)
         model = self._tag_model_source(model, ckpt_name)
         refine_model = None
@@ -169,7 +185,12 @@ class AUNInputsRefine:
                 # Take up to 'words' words, but not more than available
                 filename_to_process = ' '.join(name_words[:min(words, len(name_words))]) 
                   
-        return (model, clip, vae, refine_model, os.path.splitext(os.path.basename(ckpt_name))[0], refine_name, sampler, scheduler, cfg, steps, {"samples": latent}, width, height, seed, MainFolder, filename_to_process, prefix, date_format, int(batch_size), name_mode, speed_lora_ratio,)
+        _ckpt_short = os.path.splitext(os.path.basename(ckpt_name))[0]
+        bundle = {"model": model, "clip": clip, "vae": vae, "refine_model": refine_model, "ckpt_name": _ckpt_short, "ckpt_name_refine": refine_name, "sampler": sampler, "scheduler": scheduler, "cfg": cfg, "steps": steps, "latent": {"samples": latent}, "width": width, "height": height, "seed": seed, "MainFolder": MainFolder, "Filename": filename_to_process, "prefix": prefix, "date_format": date_format, "batch_size": int(batch_size), "name_mode": name_mode, "speed_lora_ratio": speed_lora_ratio}
+        return (model, clip, vae, refine_model, 
+_ckpt_short, refine_name, sampler, scheduler, cfg, steps, {"samples": latent}, 
+width, height, seed, MainFolder, filename_to_process, prefix, date_format, int(batch_size), name_mode, 
+speed_lora_ratio, bundle,)
        
     def get_time(self, date_format):
         now = datetime.now()

@@ -1,5 +1,6 @@
 import os
 from .AUNResolutionHelper import ASPECT_RATIO_NAMES, ASPECT_MODE_OPTIONS, MEGAPIXELS_WIDGET, MULTIPLE_WIDGET, resolve_dimensions, apply_aspect_mode
+from .aun_bundle_shared import BUNDLE
 
 import comfy.sample
 import comfy.samplers
@@ -210,6 +211,10 @@ class AUNInputsDiffusersRefineBasic:
                 "megapixels": MEGAPIXELS_WIDGET,
                 "multiple": MULTIPLE_WIDGET,
             },
+            "optional": {
+                "bundle_input": (BUNDLE, {"tooltip": "Optional OBVPM bundle override."}),
+                "set": ("STRING", {"default": "", "tooltip": "Constant name. When non-empty, sets an OBVPM bundle constant."}),
+            },
         }
 
     RETURN_TYPES = (
@@ -229,6 +234,7 @@ class AUNInputsDiffusersRefineBasic:
         "INT",
         "INT",
         "FLOAT",
+        BUNDLE,
     )
 
     RETURN_NAMES = (
@@ -248,6 +254,7 @@ class AUNInputsDiffusersRefineBasic:
         "seed",
         "batch size",
         "speed lora ratio",
+        "bundle",
     )
 
     FUNCTION = "inputs"
@@ -348,7 +355,20 @@ class AUNInputsDiffusersRefineBasic:
         seed,
         megapixels=1.0,
         multiple=8,
+        bundle_input=None,
+        set="",
     ):
+        if isinstance(bundle_input, dict):
+            if bundle_input.get("sampler") is not None:
+                sampler = bundle_input.get("sampler")
+            if bundle_input.get("scheduler") is not None:
+                scheduler = bundle_input.get("scheduler")
+            if bundle_input.get("cfg") is not None:
+                cfg = bundle_input.get("cfg")
+            if bundle_input.get("steps") is not None:
+                steps = bundle_input.get("steps")
+            if bundle_input.get("seed") is not None:
+                seed = bundle_input.get("seed")
         model = self._mark_latent_processing(self._load_diffusion_model(diffusion_name))
         clip, vae = self._load_shared_clip_and_vae(clip_name, clip_type, vae_name)
 
@@ -386,12 +406,14 @@ class AUNInputsDiffusersRefineBasic:
 
         latent = {"samples": self._build_latent(model, batch_size, width, height)}
 
+        _name = os.path.splitext(os.path.basename(diffusion_name))[0]
+        bundle = {"model": model, "clip": clip, "vae": vae, "refine_model": refine_model, "model_name": _name, "model_name_refine": refine_name, "sampler": sampler, "scheduler": scheduler, "cfg": cfg, "steps": steps, "latent": latent, "width": width, "height": height, "seed": seed, "batch_size": int(batch_size), "speed_lora_ratio": speed_lora_ratio}
         return (
             model,
             clip,
             vae,
             refine_model,
-            os.path.splitext(os.path.basename(diffusion_name))[0],
+            _name,
             refine_name,
             sampler,
             scheduler,
@@ -403,6 +425,7 @@ class AUNInputsDiffusersRefineBasic:
             seed,
             int(batch_size),
             speed_lora_ratio,
+            bundle,
         )
 
 

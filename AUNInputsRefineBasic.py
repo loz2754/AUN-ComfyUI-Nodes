@@ -7,6 +7,7 @@ import folder_paths as comfy_paths
 import torch
 
 from .AUNResolutionHelper import ASPECT_RATIO_NAMES, ASPECT_MODE_OPTIONS, MEGAPIXELS_WIDGET, MULTIPLE_WIDGET, resolve_dimensions, apply_aspect_mode
+from .aun_bundle_shared import BUNDLE
 
 
 class AnyType(str):
@@ -50,6 +51,10 @@ class AUNInputsRefineBasic:
                 "megapixels": MEGAPIXELS_WIDGET,
                 "multiple": MULTIPLE_WIDGET,
             },
+            "optional": {
+                "bundle_input": (BUNDLE, {"tooltip": "Optional OBVPM bundle override."}),
+                "set": ("STRING", {"default": "", "tooltip": "Constant name. When non-empty, sets an OBVPM bundle constant."}),
+            },
         }
 
     RETURN_TYPES = (
@@ -69,6 +74,7 @@ class AUNInputsRefineBasic:
         "INT",
         "INT",
         "FLOAT",
+        BUNDLE,
     )
     RETURN_NAMES = (
         "MODEL",
@@ -87,6 +93,7 @@ class AUNInputsRefineBasic:
         "seed",
         "batch size",
         "speed lora ratio",
+        "bundle",
     )
     FUNCTION = "inputs"
     CATEGORY = "AUN Nodes/Loaders+Inputs"
@@ -127,7 +134,18 @@ class AUNInputsRefineBasic:
         refine_strength = speed_lora_strength * (1.0 - speed_lora_ratio)
         return main_strength, refine_strength
 
-    def inputs(self, ckpt_name, refine_ckpt, speed_lora, speed_lora_model, speed_lora_strength, speed_lora_full_both, speed_lora_ratio, clip_skip, sampler, scheduler, cfg, steps, width, height, aspect_ratio, aspect_mode, batch_size, seed, megapixels=1.0, multiple=8):
+    def inputs(self, ckpt_name, refine_ckpt, speed_lora, speed_lora_model, speed_lora_strength, speed_lora_full_both, speed_lora_ratio, clip_skip, sampler, scheduler, cfg, steps, width, height, aspect_ratio, aspect_mode, batch_size, seed, megapixels=1.0, multiple=8, bundle_input=None, set=""):
+        if isinstance(bundle_input, dict):
+            if bundle_input.get("sampler") is not None:
+                sampler = bundle_input.get("sampler")
+            if bundle_input.get("scheduler") is not None:
+                scheduler = bundle_input.get("scheduler")
+            if bundle_input.get("cfg") is not None:
+                cfg = bundle_input.get("cfg")
+            if bundle_input.get("steps") is not None:
+                steps = bundle_input.get("steps")
+            if bundle_input.get("seed") is not None:
+                seed = bundle_input.get("seed")
         model, clip, vae = self._load_checkpoint_bundle(ckpt_name)
         model = self._tag_model_source(model, ckpt_name)
 
@@ -162,12 +180,14 @@ class AUNInputsRefineBasic:
 
         latent = torch.zeros([batch_size, 4, height // 8, width // 8])
 
+        _ckpt_short = os.path.splitext(os.path.basename(ckpt_name))[0]
+        bundle = {"model": model, "clip": clip, "vae": vae, "refine_model": refine_model, "ckpt_name": _ckpt_short, "ckpt_name_refine": refine_name, "sampler": sampler, "scheduler": scheduler, "cfg": cfg, "steps": steps, "latent": {"samples": latent}, "width": width, "height": height, "seed": seed, "batch_size": int(batch_size), "speed_lora_ratio": speed_lora_ratio}
         return (
             model,
             clip,
             vae,
             refine_model,
-            os.path.splitext(os.path.basename(ckpt_name))[0],
+            _ckpt_short,
             refine_name,
             sampler,
             scheduler,
@@ -179,6 +199,7 @@ class AUNInputsRefineBasic:
             seed,
             int(batch_size),
             speed_lora_ratio,
+            bundle,
         )
 
 

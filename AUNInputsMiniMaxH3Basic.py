@@ -7,6 +7,7 @@ import folder_paths as comfy_paths
 import nodes
 
 from .AUNResolutionHelper import ASPECT_RATIO_NAMES, ASPECT_MODE_OPTIONS, MEGAPIXELS_WIDGET, resolve_dimensions, apply_aspect_mode
+from .aun_bundle_shared import BUNDLE
 
 
 class AnyType(str):
@@ -165,6 +166,8 @@ class AUNInputsMiniMaxH3Basic:
 
         return {
             "optional": {
+                "bundle_input": (BUNDLE, {"tooltip": "Optional OBVPM bundle override."}),
+                "set": ("STRING", {"default": "", "tooltip": "Constant name. When non-empty, sets an OBVPM bundle constant."}),
                 "unet_input": ("STRING", {"forceInput": True, "tooltip": "UNET (diffusion model) filename override. When connected, replaces 'unet_name'."}),
                 "clip_input": ("STRING", {"forceInput": True, "tooltip": "CLIP filename override. When connected, replaces 'clip_name'."}),
                 "video_vae_input": ("STRING", {"forceInput": True, "tooltip": "Video VAE filename override. When connected, replaces 'video_vae_name'."}),
@@ -287,6 +290,7 @@ class AUNInputsMiniMaxH3Basic:
         "FLOAT",
         "INT",
         "BOOLEAN",
+        BUNDLE,
     )
 
     RETURN_NAMES = (
@@ -308,6 +312,7 @@ class AUNInputsMiniMaxH3Basic:
         "seconds",
         "rife multiplier",
         "rife",
+        "bundle",
     )
 
     FUNCTION = "inputs"
@@ -366,7 +371,20 @@ class AUNInputsMiniMaxH3Basic:
         length_input=None,
         fps_input=None,
         rife_multiplier_input=None,
+        bundle_input=None,
+        set="",
     ):
+        if isinstance(bundle_input, dict):
+            if bundle_input.get("sampler") is not None:
+                sampler = bundle_input.get("sampler")
+            if bundle_input.get("scheduler") is not None:
+                scheduler = bundle_input.get("scheduler")
+            if bundle_input.get("cfg") is not None:
+                cfg = bundle_input.get("cfg")
+            if bundle_input.get("steps") is not None:
+                steps = bundle_input.get("steps")
+            if bundle_input.get("seed") is not None:
+                seed = bundle_input.get("seed")
         unet_candidates = self._combined_lists("diffusion_models", "unet")
         clip_candidates = self._combined_lists("text_encoders", "clip")
         vae_candidates = comfy_paths.get_filename_list("vae")
@@ -475,6 +493,7 @@ class AUNInputsMiniMaxH3Basic:
             seconds,
             int(rife_m),
             bool(rife),
+            {"model": model, "clip": clip, "vae_video": video_vae, "vae_audio": audio_vae, "unet_name": os.path.splitext(os.path.basename(unet_name))[0], "sampler": sampler, "scheduler": scheduler, "cfg": float(cfg), "steps": int(steps), "seed": int(seed), "width": int(width), "height": int(height), "frames": length, "fps": fps, "frame_rate": frame_rate, "seconds": seconds, "rife_multiplier": int(rife_m), "rife": bool(rife)},
         )
 
     @classmethod

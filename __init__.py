@@ -2,6 +2,7 @@
 import logging
 from . import aun_lora_info_server as _aun_lora_info_server
 from . import aun_lora_multi_setup_server as _aun_lora_multi_setup_server
+from . import aun_vhs_audio_suffix as _aun_vhs_audio_suffix
 from .AUNAddToPrompt import AUNAddToPrompt
 from .AUNAddToPromptMulti import AUNAddToPromptMulti
 from .AUNAny import AUNAny

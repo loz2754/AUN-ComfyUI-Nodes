@@ -9,6 +9,7 @@ import nodes
 import torch
 
 from .AUNResolutionHelper import ASPECT_RATIO_NAMES, ASPECT_MODE_OPTIONS, MEGAPIXELS_WIDGET, MULTIPLE_WIDGET, resolve_dimensions, apply_aspect_mode
+from .aun_bundle_shared import BUNDLE
 
 
 class AnyType(str):
@@ -111,6 +112,8 @@ class AUNInputsWan22Basic:
 
         return {
             "optional": {
+                "bundle_input": (BUNDLE, {"tooltip": "Optional OBVPM bundle override."}),
+                "set": ("STRING", {"default": "", "tooltip": "Constant name. When non-empty, sets an OBVPM bundle constant."}),
                 "high_noise_input": ("STRING", {"forceInput": True, "tooltip": "High-noise diffusion filename override. When connected, replaces 'high_noise_name'."}),
                 "low_noise_input": ("STRING", {"forceInput": True, "tooltip": "Low-noise diffusion filename override. When connected, replaces 'low_noise_name'."}),
                 "clip_input": ("STRING", {"forceInput": True, "tooltip": "CLIP filename override. When connected, replaces 'clip_name'."}),
@@ -272,6 +275,7 @@ class AUNInputsWan22Basic:
         "INT",
         "INT",
         "INT",
+        BUNDLE,
     )
 
     RETURN_NAMES = (
@@ -299,6 +303,7 @@ class AUNInputsWan22Basic:
         "width",
         "height",
         "batch size",
+        "bundle",
     )
 
     FUNCTION = "inputs"
@@ -398,7 +403,20 @@ class AUNInputsWan22Basic:
         fps_input=None,
         length_input=None,
         rife_multiplier_input=None,
+        bundle_input=None,
+        set="",
     ):
+        if isinstance(bundle_input, dict):
+            if bundle_input.get("sampler") is not None:
+                sampler = bundle_input.get("sampler")
+            if bundle_input.get("scheduler") is not None:
+                scheduler = bundle_input.get("scheduler")
+            if bundle_input.get("cfg_high") is not None:
+                cfg_high = bundle_input.get("cfg_high")
+            if bundle_input.get("steps") is not None:
+                steps = bundle_input.get("steps")
+            if bundle_input.get("seed") is not None:
+                seed = bundle_input.get("seed")
         high_noise_input = self._clean_override(high_noise_input)
         low_noise_input = self._clean_override(low_noise_input)
         clip_input = self._clean_override(clip_input)
@@ -533,6 +551,7 @@ class AUNInputsWan22Basic:
             int(width),
             int(height),
             int(batch_size),
+            {"model_high": model_high, "model_low": model_low, "clip": clip, "vae": vae, "clip_vision": clip_vision, "high_model_name": os.path.splitext(os.path.basename(high_noise_name))[0], "low_model_name": os.path.splitext(os.path.basename(low_noise_name))[0], "sampler": sampler, "scheduler": scheduler, "cfg_high": float(cfg_high), "cfg_low": float(cfg_low), "boundary": float(boundary), "sigma_shift": float(sigma_shift), "steps": int(steps), "seed": int(seed), "fps": fps, "frame_rate": frame_rate, "frames": length, "rife_multiplier": int(rife_m), "rife": bool(rife), "latent": latent, "width": int(width), "height": int(height), "batch_size": int(batch_size)},
         )
 
     @classmethod

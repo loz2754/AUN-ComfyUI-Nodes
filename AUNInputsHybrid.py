@@ -1,5 +1,6 @@
 import os
 from .AUNResolutionHelper import ASPECT_RATIO_NAMES, ASPECT_MODE_OPTIONS, MEGAPIXELS_WIDGET, MULTIPLE_WIDGET, resolve_dimensions, apply_aspect_mode
+from .aun_bundle_shared import BUNDLE
 import torch
 from datetime import datetime
 
@@ -97,6 +98,8 @@ class AUNInputsHybrid:
 
         return {
             "optional": {
+                "bundle_input": (BUNDLE, {"tooltip": "Optional OBVPM bundle override."}),
+                "set": ("STRING", {"default": "", "tooltip": "Constant name. When non-empty, sets an OBVPM bundle constant."}),
                 "auto_name": (
                     "STRING",
                     {
@@ -319,6 +322,7 @@ class AUNInputsHybrid:
         "STRING",
         "INT",
         "BOOLEAN",
+        BUNDLE,
     )
 
     RETURN_NAMES = (
@@ -340,6 +344,7 @@ class AUNInputsHybrid:
         "date format",
         "batch size",
         "name mode",
+        "bundle",
     )
 
     FUNCTION = "inputs"
@@ -447,7 +452,20 @@ class AUNInputsHybrid:
         auto_name="Name",
         megapixels=1.0,
         multiple=8,
+        bundle_input=None,
+        set="",
     ):
+        if isinstance(bundle_input, dict):
+            if bundle_input.get("sampler") is not None:
+                sampler = bundle_input.get("sampler")
+            if bundle_input.get("scheduler") is not None:
+                scheduler = bundle_input.get("scheduler")
+            if bundle_input.get("cfg") is not None:
+                cfg = bundle_input.get("cfg")
+            if bundle_input.get("steps") is not None:
+                steps = bundle_input.get("steps")
+            if bundle_input.get("seed") is not None:
+                seed = bundle_input.get("seed")
         if model_source == "Diffusion model":
             model, clip, vae = self._load_diffusion_bundle(diffusion_name, clip_name, clip_type, vae_name)
             ckpt_label = os.path.splitext(os.path.basename(diffusion_name))[0]
@@ -509,6 +527,7 @@ class AUNInputsHybrid:
             date_format,
             int(batch_size),
             name_mode,
+            {"model": model, "clip": clip, "vae": vae, "model_name": ckpt_label, "sampler": sampler, "scheduler": scheduler, "cfg": cfg, "steps": steps, "latent": latent, "width": width, "height": height, "seed": seed, "MainFolder": MainFolder, "Filename": filename_to_process, "prefix": prefix, "date_format": date_format, "batch_size": int(batch_size), "name_mode": name_mode},
         )
 
     def get_time(self, date_format):
