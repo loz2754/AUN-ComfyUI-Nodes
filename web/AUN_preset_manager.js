@@ -83,10 +83,13 @@ function computeLocalPreview(node) {
     ? data.rows.filter((r) => r && typeof r === "object").slice(0, getVisibleRows(node))
     : [];
 
-  const manualN = Math.max(
-    1,
-    Math.min(parseInt(String(getWidget(node, "manual_preset")?.value ?? 1), 10) || 1, getVisibleRows(node))
-  );
+  const mpRaw = String(getWidget(node, "manual_preset")?.value ?? "1");
+  let manualN = parseInt(mpRaw, 10);
+  if (Number.isNaN(manualN)) {
+    const idx = rows.findIndex((r) => String(r?.name ?? "").trim() === mpRaw.trim());
+    manualN = idx >= 0 ? idx + 1 : 1;
+  }
+  manualN = Math.max(1, Math.min(manualN || 1, getVisibleRows(node)));
 
   let index = 0;
   let keyword = "";
