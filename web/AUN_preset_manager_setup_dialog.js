@@ -19,20 +19,30 @@ function getVisibleRows(node) {
   return Number.isFinite(val) ? Math.max(1, Math.min(MAX_ROWS, Math.floor(val))) : 5;
 }
 
-function findTargetNode(node) {
+function findTargetNodes(node) {
   const ident = String(getWidget(node, "node_identifier")?.value ?? "").trim();
-  if (!ident) return null;
-  return findNodeByIdentifier(node.graph || app?.graph, ident, node);
+  if (!ident) return [];
+  return ident.split(",").map((x) => x.trim()).filter(Boolean)
+    .map((x) => findNodeByIdentifier(node.graph || app?.graph, x, node))
+    .filter(Boolean);
+}
+function findTargetNode(node) {
+  const nodes = findTargetNodes(node);
+  return nodes.length ? nodes[0] : null;
 }
 
 function getTargetWidgets(node) {
-  const target = findTargetNode(node);
-  if (!target) return [];
+  const targets = findTargetNodes(node);
+  if (!targets.length) return [];
+  const seen = new Set();
   const out = [];
-  for (const w of target.widgets || []) {
-    const name = w?.name;
-    if (!name || w.type === "button") continue;
-    out.push(w);
+  for (const target of targets) {
+    for (const w of target.widgets || []) {
+      const name = w?.name;
+      if (!name || w.type === "button" || seen.has(name)) continue;
+      seen.add(name);
+      out.push(w);
+    }
   }
   return out;
 }
@@ -423,16 +433,31 @@ function ensureModal() {
 // ── Capture ────────────────────────────────────────────────────────
 
 function captureIntoRow(node, row) {
-  const target = findTargetNode(node);
-  if (!target) return;
+  const targets = findTargetNodes(node);
+  if (!targets.length) return;
   const data = getPresetData(node);
   const rows = data.rows || (data.rows = []);
   while (rows.length < row) rows.push({ keyword: "", values: {} });
   const entry = rows[row - 1] || (rows[row - 1] = { keyword: "", values: {} });
-  entry.values = entry.values || {};
-  for (const name of refsIncluded(node, data)) {
-    const tw = target.widgets?.find((w) => w.name === name);
-    entry.values[name] = tw ? tw.value : (entry.values[name] ?? "");
+  const schema = refsIncluded(node, data);
+  if (targets.length === 1) {
+    entry.values = entry.values || {};
+    const target = targets[0];
+    for (const name of schema) {
+      const tw = target.widgets?.find((w) => w.name === name);
+      entry.values[name] = tw ? tw.value : (entry.values[name] ?? "");
+    }
+  } else {
+    entry.values = entry.values || {};
+    for (const target of targets) {
+      const tid = String(target.id ?? target.title ?? "");
+      const vals = (entry.values[tid] && typeof entry.values[tid] === "object") ? entry.values[tid] : {};
+      entry.values[tid] = vals;
+      for (const name of schema) {
+        const tw = target.widgets?.find((w) => w.name === name);
+        vals[name] = tw ? tw.value : (vals[name] ?? "");
+      }
+    }
   }
   setPresetData(node, data);
 }
