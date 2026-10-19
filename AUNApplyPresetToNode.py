@@ -359,9 +359,6 @@ class AUNApplyPresetToNode:
                 values = parsed
         except Exception:
             pass
-        values = _apply_aliases(values, aliases)
-        values = _filter_values(values, only_widgets)
-
         idents = [x.strip() for x in ident.split(",") if x.strip()] if ident else []
         if not idents:
             idents = [""]
@@ -375,10 +372,24 @@ class AUNApplyPresetToNode:
             if t is None or tid is None:
                 notes_all.append("target not found: %r" % single)
                 continue
-            if not values:
+            # Per-target values: if values has a nested dict keyed by target id/title, use it.
+            target_values = values
+            if isinstance(values, dict):
+                meta = t.get("_meta", {}) if isinstance(t, dict) else {}
+                title = meta.get("title") or (t.get("class_type") if isinstance(t, dict) else "")
+                for key in (tid, title, single):
+                    if key and isinstance(values.get(key), dict):
+                        target_values = values.get(key)
+                        break
+            if not target_values:
                 notes_all.append("no values to apply")
                 continue
-            a = _write_values_into_node(t, values, notes_all)
+            tv = _apply_aliases(target_values, aliases)
+            tv = _filter_values(tv, only_widgets)
+            if not tv:
+                notes_all.append("no values to apply")
+                continue
+            a = _write_values_into_node(t, tv, notes_all)
             applied_all[tid] = a
             target, target_id = t, tid
 
