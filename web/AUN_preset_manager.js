@@ -19,6 +19,18 @@ const FOOTER_H = 76;
 const FOOTER_PAD = 6;
 const FOOTER_BOTTOM = 6;
 
+function parsePresetData(node) {
+  try {
+    const raw = String(getWidget(node, "preset_data")?.value ?? "");
+    const parsed = JSON.parse(raw || "[]");
+    if (Array.isArray(parsed)) return { rows: parsed };
+    if (parsed && Array.isArray(parsed.rows)) return parsed;
+    return { rows: [] };
+  } catch {
+    return { rows: [] };
+  }
+}
+
 function getVisibleRows(node) {
   const w = getWidget(node, "visible_rows");
   const val = w?.value;
@@ -238,10 +250,15 @@ function updateVisibility(node) {
 
   const mpW = getWidget(node, "manual_preset");
   if (mpW) {
-    const opts = Array.from({ length: count }, (_, i) => String(i + 1));
+    const rows = parsePresetData(node)?.rows || [];
+    const opts = Array.from({ length: count }, (_, i) => {
+      const r = rows[i] || {};
+      const nm = String(r.name || "").trim();
+      return nm ? nm : String(i + 1);
+    });
     mpW.options = mpW.options || {};
     mpW.options.values = opts;
-    if (!opts.includes(String(mpW.value))) mpW.value = opts[opts.length - 1];
+    if (!opts.includes(String(mpW.value))) mpW.value = opts[0] || "1";
   }
 
   if (compact && !isNodeCollapsed(node)) {

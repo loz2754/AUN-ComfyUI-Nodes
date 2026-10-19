@@ -638,6 +638,11 @@ function buildRowCard(node, row, entry, refs) {
   const num = document.createElement("span");
   num.className = "AUN-pm-setup-row-num";
   num.textContent = `R${row}`;
+  const nameInput = document.createElement("input");
+  nameInput.type = "text"; nameInput.className = "AUN-pm-setup-row-name";
+  nameInput.placeholder = "preset name";
+  nameInput.value = entry.name ?? "";
+  nameInput.addEventListener("change", () => { entry.name = nameInput.value; save(); });
   const kwInput = document.createElement("input");
   kwInput.type = "text"; kwInput.className = "AUN-pm-setup-row-kw";
   kwInput.placeholder = "keyword (comma-separated synonyms)";
@@ -661,7 +666,7 @@ function buildRowCard(node, row, entry, refs) {
   copyBtn.type = "button"; copyBtn.className = "AUN-pm-setup-icon-btn";
   copyBtn.textContent = "\u29c9"; copyBtn.title = `Copy row ${row}`;
   copyBtn.addEventListener("click", () => {
-    refs.clipboard = { keyword: entry.keyword ?? "", values: { ...(entry.values || {}) } };
+    refs.clipboard = { name: entry.name ?? "", keyword: entry.keyword ?? "", values: { ...(entry.values || {}) } };
     setStatus(refs, `Copied row ${row}.`);
   });
 
@@ -671,6 +676,7 @@ function buildRowCard(node, row, entry, refs) {
   pasteBtn.textContent = "\u290d"; pasteBtn.title = `Paste into row ${row}`;
   pasteBtn.addEventListener("click", () => {
     if (!refs.clipboard) { setStatus(refs, "Nothing copied yet."); return; }
+    entry.name = refs.clipboard.name ?? "";
     entry.keyword = refs.clipboard.keyword ?? "";
     entry.values = { ...(refs.clipboard.values || {}) };
     save();
@@ -693,7 +699,7 @@ function buildRowCard(node, row, entry, refs) {
   });
 
   actions.append(capBtn, copyBtn, pasteBtn, delBtn);
-  head.append(num, kwInput, actions);
+  head.append(num, nameInput, kwInput, actions);
 
   // Fields
   const fields = document.createElement("div");

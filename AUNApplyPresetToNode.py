@@ -362,20 +362,35 @@ class AUNApplyPresetToNode:
         values = _apply_aliases(values, aliases)
         values = _filter_values(values, only_widgets)
 
-        notes = []
-        target, target_id = _find_target(prompt, ident) if ident else (None, None)
+        idents = [x.strip() for x in ident.split(",") if x.strip()] if ident else []
+        if not idents:
+            idents = [""]
 
-        applied = {}
-        if target is None or target_id is None:
-            notes.append("target not found: %r" % ident)
-        elif not values:
-            notes.append("no values to apply")
-        else:
-            applied = _write_values_into_node(target, values, notes)
+        applied_all = {}
+        notes_all = []
+        target_id = None
+        target = None
+        for single in idents:
+            t, tid = _find_target(prompt, single) if single else (None, None)
+            if t is None or tid is None:
+                notes_all.append("target not found: %r" % single)
+                continue
+            if not values:
+                notes_all.append("no values to apply")
+                continue
+            a = _write_values_into_node(t, values, notes_all)
+            applied_all[tid] = a
+            target, target_id = t, tid
+
+        applied_flat = {}
+        for a in applied_all.values():
+            if isinstance(a, dict):
+                applied_flat.update(a)
+        applied = applied_flat
 
         applied_json = json.dumps(applied, ensure_ascii=False, separators=(",", ":"))
 
-        if unique_id is not None:
+        if unique_id is not None and target is not None:
             try:
                 from server import PromptServer  # type: ignore[import-not-found]
 
@@ -388,13 +403,13 @@ class AUNApplyPresetToNode:
                         "target_id": str(target_id or ""),
                         "target_title": str(target_title or ""),
                         "values": applied,
-                        "notes": notes,
+                        "notes": notes_all,
                     },
                 )
             except Exception:
                 pass
 
-        return (applied_json, bool(applied), "; ".join(notes))
+        return (applied_json, bool(applied), "; ".join(notes_all))
 
 
 NODE_CLASS_MAPPINGS = {

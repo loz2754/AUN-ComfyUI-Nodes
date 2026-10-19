@@ -27,7 +27,28 @@ def resolve_preset_selection(inputs):
         return None
     visible_rows = max(1, min(int(inputs.get("visible_rows") or 5), AUNPresetManager.MAX_ROWS))
     manual_preset = inputs.get("manual_preset", "1")
-    manual_n = max(1, min(int(manual_preset or 1), visible_rows))
+
+    _rows_for_name = []
+    try:
+        _parsed = json.loads(inputs.get("preset_data") or "[]")
+        if isinstance(_parsed, list):
+            _rows_for_name = [r for r in _parsed if isinstance(r, dict)][:visible_rows]
+        elif isinstance(_parsed, dict):
+            _raw = _parsed.get("rows")
+            if isinstance(_raw, list):
+                _rows_for_name = [r for r in _raw if isinstance(r, dict)][:visible_rows]
+    except Exception:
+        _rows_for_name = []
+
+    manual_n = 1
+    try:
+        manual_n = int(manual_preset)
+    except (ValueError, TypeError):
+        for i, row in enumerate(_rows_for_name):
+            if isinstance(row, dict) and str(row.get("name", "")).strip() == str(manual_preset).strip():
+                manual_n = i + 1
+                break
+    manual_n = max(1, min(manual_n, visible_rows))
     match_keywords = inputs.get("match_keywords", "Yes")
     case_sensitive = bool(inputs.get("case_sensitive", False))
 
