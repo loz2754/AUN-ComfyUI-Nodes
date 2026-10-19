@@ -562,3 +562,13 @@ api.addEventListener("AUN_preset_manager_executed", ({ detail }) => {
   };
   forceRedraw(node);
 });
+
+app.registerExtension({
+  name: "AUN.PresetManager.ManualPresetCombo",
+  async beforeRegisterNodeDef(nodeType, nodeData) {
+    if (nodeData.name !== "AUNPresetManager") return;
+    if (nodeData.input && nodeData.input.required && nodeData.input.required.manual_preset) {
+      nodeData.input.required.manual_preset = [["1"], { default: "1" }];
+    }
+  }
+});
