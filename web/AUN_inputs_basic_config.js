@@ -25,6 +25,8 @@ function applyHidden(node) {
             w.computeSize = undefined;
         }
     }
+    const cs = node.computeSize();
+    node.size[1] = cs[1];
     node.setDirtyCanvas(true, true);
 }
 
