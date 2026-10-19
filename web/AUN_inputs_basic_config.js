@@ -1,16 +1,7 @@
 import { app } from "../../scripts/app.js";
 
 const WIDGETS_BY_NODE = {
-    AUNInputsBasic: ["ckpt_name","speed_lora","speed_lora_model","speed_lora_strength","clip_skip","sampler","scheduler","cfg","steps","width","height","aspect_ratio","aspect_mode","batch_size","seed","megapixels","multiple"],
-    AUNInputs: ["ckpt_name","speed_lora","speed_lora_model","speed_lora_strength","clip_skip","sampler","scheduler","cfg","steps","width","height","aspect_ratio","aspect_mode","batch_size","seed","megapixels","multiple","MainFolder","ManualName","name_mode","prefix","date_format","crop","words","auto_name"],
-    AUNInputsRefine: ["ckpt_name","refine_ckpt","speed_lora","speed_lora_model","speed_lora_strength","speed_lora_full_both","speed_lora_ratio","clip_skip","sampler","scheduler","cfg","steps","width","height","aspect_ratio","aspect_mode","batch_size","seed","megapixels","multiple","MainFolder","ManualName","name_mode","prefix","date_format","crop","words","auto_name"],
-    AUNInputsRefineBasic: ["ckpt_name","refine_ckpt","speed_lora","speed_lora_model","speed_lora_strength","speed_lora_full_both","speed_lora_ratio","clip_skip","sampler","scheduler","cfg","steps","width","height","aspect_ratio","aspect_mode","batch_size","seed","megapixels","multiple"],
-    AUNInputsDiffusers: ["diffusion_name","clip_name","clip_type","vae_name","speed_lora","speed_lora_model","speed_lora_strength","clip_skip","sampler","scheduler","cfg","steps","width","height","aspect_ratio","aspect_mode","batch_size","seed","megapixels","multiple","MainFolder","ManualName","name_mode","prefix","date_format","crop","words","auto_name"],
-    AUNInputsDiffusersBasic: ["diffusion_name","clip_name","clip_type","vae_name","speed_lora","speed_lora_model","speed_lora_strength","clip_skip","sampler","scheduler","cfg","steps","width","height","aspect_ratio","aspect_mode","batch_size","seed","megapixels","multiple"],
-    AUNInputsDiffusersRefineBasic: ["diffusion_name","refine_diffusion_name","clip_name","clip_type","vae_name","speed_lora","speed_lora_model","speed_lora_strength","speed_lora_full_both","speed_lora_ratio","clip_skip","sampler","scheduler","cfg","steps","width","height","aspect_ratio","aspect_mode","batch_size","seed","megapixels","multiple"],
-    AUNInputsHybrid: ["model_source","ckpt_name","diffusion_name","clip_name","clip_type","vae_name","speed_lora","speed_lora_model","speed_lora_strength","clip_skip","sampler","scheduler","cfg","steps","width","height","aspect_ratio","aspect_mode","batch_size","seed","megapixels","multiple","MainFolder","ManualName","name_mode","prefix","date_format","crop","words","auto_name"],
-    AUNInputsWan22Basic: ["high_noise_name","low_noise_name","clip_name","clip_type","vae_name","clip_vision_name","lora_high_name","lora_high_strength","lora_low_name","lora_low_strength","sampler","scheduler","cfg_high","cfg_low","boundary","sigma_shift","steps","seed","fps","width","height","aspect_ratio","aspect_mode","batch_size","megapixels","multiple","length","rife","rife_multiplier"],
-    AUNInputsMiniMaxH3Basic: ["unet_name","weight_dtype","clip_name","clip_type","video_vae_name","audio_vae_name","turbo","turbo_lora_name","turbo_lora_strength","sampler","scheduler","cfg","steps","seed","width","height","aspect_ratio","aspect_mode","megapixels","seconds","fps","rife","rife_multiplier"],
+    AUNInputsBasic: ["ckpt_name","speed_lora","speed_lora_model","speed_lora_strength","clip_skip","sampler","scheduler","cfg","steps","aspect_ratio","aspect_mode","megapixels","multiple","batch_size","seed","width","height"],
 };
 
 function getCfg(node) {
@@ -34,7 +25,6 @@ function applyHidden(node) {
             w.computeSize = undefined;
         }
     }
-    node.setSize(node.computeSize());
     node.setDirtyCanvas(true, true);
 }
 
@@ -68,13 +58,13 @@ function openConfig(node) {
         cb.onchange = () => {
             if (cb.checked) hidden.delete(name); else hidden.add(name);
         };
-        cbs.push(cb);
+        cbs.push({cb,name});
         row.appendChild(cb);
         row.appendChild(document.createTextNode(" " + name));
         panel.appendChild(row);
     }
-    allBtn.onclick = () => { cbs.forEach(cb => { cb.checked = true; }); hidden.clear(); };
-    noneBtn.onclick = () => { cbs.forEach(cb => { cb.checked = false; }); widgets.forEach(n => hidden.add(n)); };
+    allBtn.onclick = () => { cbs.forEach(o => { o.cb.checked = true; hidden.delete(o.name); }); };
+    noneBtn.onclick = () => { cbs.forEach(o => { o.cb.checked = false; hidden.add(o.name); }); };
     const btn = document.createElement("button");
     btn.textContent = "Apply";
     btn.style.cssText = "margin-top:10px;padding:4px 12px;";
@@ -89,9 +79,9 @@ function openConfig(node) {
 }
 
 app.registerExtension({
-    name: "AUNNodes.Inputs.Config",
+    name: "AUNNodes.InputsBasic.Config",
     async beforeRegisterNodeDef(nodeType, nodeData) {
-        if (!WIDGETS_BY_NODE[nodeData.name]) return;
+        if (nodeData.name !== "AUNInputsBasic") return;
         const orig = nodeType.prototype.onNodeCreated;
         nodeType.prototype.onNodeCreated = function () {
             if (orig) orig.apply(this, arguments);
