@@ -256,6 +256,7 @@ function updateVisibility(node) {
       const nm = String(r.name || "").trim();
       return nm ? nm : String(i + 1);
     });
+    mpW.type = "combo";
     mpW.options = mpW.options || {};
     mpW.options.values = opts;
     if (!opts.includes(String(mpW.value))) mpW.value = opts[0] || "1";
