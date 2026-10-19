@@ -133,6 +133,8 @@ function buildPreviewText(node) {
     }
     if (values && typeof values === "object") {
       for (const [k, v] of Object.entries(values)) {
+        const w = (node.widgets || []).find((x) => x.name === k);
+        if (w && w.hidden) continue;
         if (v != null && v !== "") parts.push(`${k}=${v}`);
       }
     }
