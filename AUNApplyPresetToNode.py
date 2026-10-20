@@ -232,6 +232,11 @@ _ON_PROMPT_HANDLER_ATTR = "__AUN_apply_preset_handler_registered"
 
 
 def _aun_apply_presets_on_prompt(json_data):
+    try:
+        import logging
+        logging.warning("[AUN] handler called")
+    except Exception:
+        pass
     prompt = json_data.get("prompt") if isinstance(json_data, dict) else None
     if not isinstance(prompt, dict):
         return json_data
@@ -274,10 +279,18 @@ def _aun_apply_presets_on_prompt(json_data):
             ident = str(inputs.get("node_identifier") or "").strip()
             if not ident:
                 continue
+            try:
+                print("[AUN] manager node", nid, "ident", ident, file=__import__("sys").stderr)
+            except Exception:
+                pass
             resolved = resolve_preset_selection(inputs)
             if not resolved:
                 continue
             values = resolved[0] if isinstance(resolved, (tuple, list)) else resolved
+            try:
+                print("[AUN] manager resolved", nid, values, file=__import__("sys").stderr)
+            except Exception:
+                pass
             if not isinstance(values, dict) or not values:
                 continue
             for single in [x.strip() for x in ident.split(",") if x.strip()] or [""]:
@@ -295,7 +308,29 @@ def _aun_apply_presets_on_prompt(json_data):
                 if not isinstance(tv, dict) or not tv:
                     continue
                 notes = []
-                _write_values_into_node(target, tv, notes)
+                applied = _write_values_into_node(target, tv, notes)
+                try:
+                    import logging
+                    logging.warning("[AUN] applied %s to %s: %s", tv, target_id, notes)
+                except Exception:
+                    pass
+                # Keep frontend widgets in sync.
+                try:
+                    from server import PromptServer
+                    meta = target.get("_meta", {}) if isinstance(target, dict) else {}
+                    target_title = meta.get("title") or (target.get("class_type") if isinstance(target, dict) else "")
+                    PromptServer.instance.send_sync(
+                        "AUN_apply_preset_applied",
+                        {
+                            "node_id": str(nid),
+                            "target_id": str(target_id or ""),
+                            "target_title": str(target_title or ""),
+                            "values": applied,
+                            "notes": notes,
+                        },
+                    )
+                except Exception:
+                    pass
 
     return json_data
 
@@ -306,18 +341,36 @@ def _register_prompt_handler():
 
         instance = getattr(PromptServer, "instance", None)
         if instance is None:
-            return
+            return False
         if getattr(instance, _ON_PROMPT_HANDLER_ATTR, False):
-            return
+            return True
         if not hasattr(instance, "on_prompt_handlers"):
-            return
+            return False
         instance.add_on_prompt_handler(_aun_apply_presets_on_prompt)
         setattr(instance, _ON_PROMPT_HANDLER_ATTR, True)
+        return True
     except Exception:
-        pass
+        return False
 
 
-_register_prompt_handler()
+if not _register_prompt_handler():
+    import threading
+
+    def _retry_register():
+        import time
+        import sys
+        for _ in range(50):
+            time.sleep(0.5)
+            try:
+                inst = getattr(__import__("server").PromptServer, "instance", None)
+                logging.warning("[AUN] retry instance: %s", inst)
+            except Exception as e:
+                logging.warning("[AUN] retry err: %s", e)
+            if _register_prompt_handler():
+                logging.warning("[AUN] registered")
+                break
+
+    threading.Thread(target=_retry_register, daemon=True).start()
 
 
 class AUNApplyPresetToNode:
