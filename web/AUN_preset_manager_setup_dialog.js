@@ -40,7 +40,7 @@ function getTargetWidgets(node) {
     for (const w of target.widgets || []) {
       const name = w?.name;
       if (!name || w.type === "button") continue;
-      const tagged = Object.assign({}, w, { _target: target, _targetTitle: title });
+      const tagged = { name: w.name, type: w.type, options: w.options, _target: target, _targetTitle: title };
       out.push(tagged);
     }
   }
