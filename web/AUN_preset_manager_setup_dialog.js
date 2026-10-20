@@ -148,8 +148,11 @@ function ensureStyles() {
     .AUN-pm-setup-chips-label { font-size: 11px; color: rgba(205,214,244,0.5); margin-right: 4px; }
     .AUN-pm-setup-chip {
       background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 10px; color: rgba(205,214,244,0.65); font-size: 10px;
-      padding: 1px 8px; cursor: pointer; white-space: nowrap;
+      border-radius: 10px; color: rgba(205,214,244,0.85); font-size: 12px;
+      padding: 3px 10px; cursor: pointer; white-space: nowrap;
+    }
+    .AUN-pm-setup-chips-group {
+      font-size: 11px; color: rgba(205,214,244,0.5); margin-right: 6px;
     }
     .AUN-pm-setup-chip:hover { background: rgba(255,255,255,0.12); }
     .AUN-pm-setup-chip.off { opacity: 0.35; text-decoration: line-through; }
