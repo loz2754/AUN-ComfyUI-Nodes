@@ -11,6 +11,12 @@
 
 ### Notes
 
+## [2.34.2] - 2026-10-21
+
+### Fixed
+
+- Self-contained fix for "Return type mismatch ... received_type(MODEL)" on synced installs: AUN now patches OBVPM's unpatched slot-0 assumption at runtime (graphToPrompt post-fix + KJ Get resolveVirtualOutput), so AUN Inputs nodes work even when the local OBVPM is upstream/unpatched.
+
 ## [2.34.1] - 2026-10-21
 
 ### Fixed
