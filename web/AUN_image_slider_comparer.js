@@ -428,19 +428,12 @@ function createSliderWidget(node, state) {
     __slider: 50,
     draw(ctx, nodeRef, widgetWidth, widgetY) {
       if (!this.inputEl) return;
-      // Hide the DOM overlay while the node is natively collapsed (collapse dot).
+      // Positioning is handled by the RAF overlay loop; draw must not touch the
+      // overlay, otherwise non-main/extra draw passes corrupt its placement.
       if (nodeRef?.flags?.collapsed) {
         this.inputEl.style.display = "none";
         return;
       }
-      this.inputEl.style.display = "";
-      // Fill the space below this widget to the bottom of the node, so the
-      // comparer tracks the user-set node height instead of forcing its own.
-      const avail = Math.max(
-        40,
-        (nodeRef.size?.[1] ?? 300) - widgetY - 8,
-      );
-      offsetDOMWidget(this, ctx, nodeRef, widgetWidth, widgetY, avail);
       // Callback-independent sync: if the Pair/Frame widget values changed,
       // re-render from cache on the next canvas draw, no matter how the
       // values were set (arrows, drag, typed input, or programmatic).
@@ -625,6 +618,7 @@ function createSliderWidget(node, state) {
   widget.__dimsLeft = dimsLeft;
   widget.__dimsRight = dimsRight;
 
+  container.style.display = "none";
   widget.inputEl = container;
   widget.parent = node;
   document.body.appendChild(container);
@@ -883,10 +877,12 @@ function toggleCollapse(node) {
 
   if (goingToCollapse) {
     // Save expanded height before collapsing so it survives F5.
-    node.properties[SAVED_HEIGHT_KEY] = node.size?.[1] ?? node.__aun_cmp_userHeight;
+    const eh = node.size?.[1] ?? node.__aun_cmp_userHeight ?? 0;
+    node.properties[SAVED_HEIGHT_KEY] = Math.min(MAX_CMP_HEIGHT, eh > 0 ? eh : MAX_CMP_HEIGHT);
   } else {
     // Save collapsed height before expanding so it survives F5.
-    node.properties[SAVED_HEIGHT_COLLAPSED_KEY] = node.size?.[1] ?? node.__aun_cmp_userHeight;
+    const ch = node.size?.[1] ?? node.__aun_cmp_userHeight ?? 0;
+    node.properties[SAVED_HEIGHT_COLLAPSED_KEY] = Math.min(MAX_CMP_HEIGHT, ch > 0 ? ch : MAX_CMP_HEIGHT);
   }
 
   node.properties[COLLAPSE_KEY] = goingToCollapse;
@@ -896,7 +892,7 @@ function toggleCollapse(node) {
   if (!goingToCollapse) {
     // Restore expanded height when un-collapsing.
     const expandedH = node.properties[SAVED_HEIGHT_KEY] || node.computeSize()?.[1];
-    if (expandedH > 0) {
+    if (typeof expandedH === "number" && expandedH > 0 && expandedH <= MAX_CMP_HEIGHT) {
       node.__aun_cmp_userHeight = expandedH;
       node.size[1] = expandedH;
     }
@@ -904,7 +900,7 @@ function toggleCollapse(node) {
   } else {
     // Restore collapsed height when collapsing.
     const collapsedH = node.properties[SAVED_HEIGHT_COLLAPSED_KEY];
-    if (typeof collapsedH === "number" && collapsedH > 0) {
+    if (typeof collapsedH === "number" && collapsedH > 0 && collapsedH <= MAX_CMP_HEIGHT) {
       node.__aun_cmp_userHeight = collapsedH;
       node.size[1] = collapsedH;
     }
@@ -943,19 +939,62 @@ function applySliderVisibility(node) {
   }
 }
 
-// Per-frame enforcement: the frontend may re-show DOM widgets on graph
-// reload / tab switch, and viewport jumps must drop off-screen overlays,
-// so keep the overlay in sync continuously (mirrors AUNShowAnyMulti).
-function startSliderVisibilityLoop() {
+// Per-frame positioning of the DOM overlay. In recent ComfyUI frontends the
+// native canvas no longer calls widget.draw for these nodes, so the overlay
+// must be placed against the main canvas ourselves (mirrors AUNShowAnyMulti).
+function positionSliderOverlay(node) {
+  const w = getState(node)?.sliderWidget;
+  if (!w?.inputEl || !app?.canvas?.canvas) return;
+  if (node?.flags?.collapsed) {
+    w.inputEl.style.display = "none";
+    return;
+  }
+  const canvas = app.canvas;
+  const ds = canvas.ds;
+  if (!ds) {
+    w.inputEl.style.display = "none";
+    return;
+  }
+  const rect = canvas.canvas.getBoundingClientRect();
+  const scale = ds.scale;
+  const panX = ds.offset[0];
+  const panY = ds.offset[1];
+  const screenX = rect.left + (node.pos[0] + panX) * scale;
+  const screenY = rect.top + (node.pos[1] + panY) * scale;
+  const nodeW = (node.size?.[0] || 300) * scale;
+  const nodeH = (node.size?.[1] || 100) * scale;
+  const pad = 4 * scale;
+  const widgetY = (typeof w.y === "number" && w.y >= 0) ? w.y : (LiteGraph?.NODE_TITLE_HEIGHT || 30);
+  const left = screenX + pad;
+  const top = screenY + widgetY * scale + pad;
+  const width = Math.max(0, nodeW - pad * 2);
+  const height = Math.max(0, nodeH - widgetY * scale - pad * 2);
+  if (width <= 0 || height < 20 || isComparerOffScreen(node, canvas)) {
+    w.inputEl.style.display = "none";
+    return;
+  }
+  Object.assign(w.inputEl.style, {
+    position: "absolute",
+    zIndex: 5,
+    display: "",
+    left: `${left}px`,
+    top: `${top}px`,
+    width: `${width}px`,
+    height: `${height}px`,
+    transform: "none",
+  });
+}
+
+function startSliderOverlayLoop() {
   function tick() {
     for (const node of COLLAPSED_NODES) {
-      applySliderVisibility(node);
+      positionSliderOverlay(node);
     }
     requestAnimationFrame(tick);
   }
   requestAnimationFrame(tick);
 }
-startSliderVisibilityLoop();
+startSliderOverlayLoop();
 
 // Detect resize-handle drags on the LiteGraph canvas so that computeSize
 // can skip the Math.max(userH) guard while the user is actively dragging.
@@ -1023,6 +1062,7 @@ startSliderVisibilityLoop();
 
 const SAVED_HEIGHT_KEY = "__aun_cmp_saved_height";
 const SAVED_HEIGHT_COLLAPSED_KEY = "__aun_cmp_saved_height_collapsed";
+const MAX_CMP_HEIGHT = 1200;
 
 function applyCollapseHooks(node) {
   if (node.__aun_cmp_collapse_hooked) return;
@@ -1032,12 +1072,17 @@ function applyCollapseHooks(node) {
   const collapsed = isCollapsed(node);
   const savedKey = collapsed ? SAVED_HEIGHT_COLLAPSED_KEY : SAVED_HEIGHT_KEY;
   const persistedH = node.properties[savedKey];
-  if (typeof persistedH === "number" && persistedH > 0) {
+  if (typeof persistedH === "number" && persistedH > 0 && persistedH <= MAX_CMP_HEIGHT) {
     node.__aun_cmp_userHeight = persistedH;
     // Apply immediately so the height is correct even before computeSize runs.
     node.size[1] = persistedH;
   } else {
-    node.__aun_cmp_userHeight = node.size?.[1] ?? 0;
+    if (typeof persistedH === "number" && persistedH > MAX_CMP_HEIGHT) {
+      delete node.properties[savedKey];
+    }
+    const cur = node.size?.[1] ?? 0;
+    node.__aun_cmp_userHeight = Math.min(MAX_CMP_HEIGHT, cur > 0 ? cur : 0);
+    if (cur > MAX_CMP_HEIGHT) node.size[1] = MAX_CMP_HEIGHT;
   }
 
   const origGetInputPos = node.getInputPos?.bind(node);
@@ -1064,7 +1109,7 @@ function applyCollapseHooks(node) {
       // LiteGraph's computeSize auto-shrink on subsequent layout passes.
       // Check both our flag and LiteGraph's resizing_node for robustness.
       const resizing = this.__aun_cmp_resizing || app?.canvas?.resizing_node === this;
-      if (userH > 0 && !resizing) s[1] = Math.max(s[1], userH);
+      if (userH > 0 && userH <= MAX_CMP_HEIGHT && !resizing) s[1] = Math.max(s[1], userH);
     }
     return s;
   };
@@ -1073,14 +1118,21 @@ function applyCollapseHooks(node) {
   const origResize = node.onResize;
   node.onResize = function () {
     origResize?.apply(this, arguments);
-    // Skip saving during configure phase to prevent layout resizes from
-    // overwriting the restored user height.
+    // Only persist height changes caused by an actual resize drag. Automatic
+    // layout passes (configure, setSize, graph arrange) must never overwrite
+    // the user-set height, otherwise a transient large size gets locked in.
+    const resizing = this.__aun_cmp_resizing || app?.canvas?.resizing_node === this;
+    if (!resizing) return;
     if (this.__aun_configuring) return;
-    this.__aun_cmp_userHeight = this.size?.[1] ?? this.__aun_cmp_userHeight;
+    let h = this.size?.[1] ?? this.__aun_cmp_userHeight;
+    if (typeof h !== "number" || h <= 0 || h > MAX_CMP_HEIGHT) {
+      h = this.__aun_cmp_userHeight;
+    }
+    this.__aun_cmp_userHeight = h;
     const key = this.properties?.[COLLAPSE_KEY]
       ? SAVED_HEIGHT_COLLAPSED_KEY
       : SAVED_HEIGHT_KEY;
-    this.properties[key] = this.__aun_cmp_userHeight;
+    this.properties[key] = h;
   };
 
   // The native collapse dot toggles flags.collapsed; keep the DOM overlay in sync.
@@ -1105,9 +1157,11 @@ function applyCollapseHooks(node) {
     const collapsed = isCollapsed(this);
     const savedKey = collapsed ? SAVED_HEIGHT_COLLAPSED_KEY : SAVED_HEIGHT_KEY;
     const persistedH = this.properties?.[savedKey];
-    if (typeof persistedH === "number" && persistedH > 0) {
+    if (typeof persistedH === "number" && persistedH > 0 && persistedH <= MAX_CMP_HEIGHT) {
       this.__aun_cmp_userHeight = persistedH;
       this.size[1] = persistedH;
+    } else if (typeof persistedH === "number" && persistedH > MAX_CMP_HEIGHT) {
+      delete this.properties[savedKey];
     }
     applyCollapseWidgets(this);
     this.__aun_configuring = false;
