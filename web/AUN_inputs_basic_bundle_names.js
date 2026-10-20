@@ -26,6 +26,20 @@ app.registerExtension({
     async beforeRegisterNodeDef(nodeType, nodeData) {
         const name = nodeData.name;
         if (!BUNDLE_FIELDS[name]) return;
+        nodeType.prototype.obvpmConstantWidget = "set";
+        // Derive the bundle output slot from the node's actual outputs at
+        // runtime, so it never drifts out of sync with RETURN_TYPES (and never
+        // falls back to slot 0 / MODEL when a hardcoded number is stale).
+        if (!Object.prototype.hasOwnProperty.call(nodeType.prototype, "obvpmConstantOutput")) {
+            Object.defineProperty(nodeType.prototype, "obvpmConstantOutput", {
+                configurable: true,
+                get() {
+                    const outs = this.outputs || [];
+                    const idx = outs.findIndex((o) => String(o?.type ?? "") === "OBVPM_BUNDLE");
+                    return idx >= 0 ? idx : (outs.length ? outs.length - 1 : 0);
+                },
+            });
+        }
         const orig = nodeType.prototype.onNodeCreated;
         nodeType.prototype.onNodeCreated = function () {
             if (orig) orig.apply(this, arguments);
@@ -34,28 +48,5 @@ app.registerExtension({
         nodeType.prototype.obvpmBundleNames = function (slot, path) {
             return (BUNDLE_FIELDS[name] || []).slice();
         };
-    }
-});
-
-const CONSTANT_OUTPUT = {
-    AUNInputsBasic: 13,
-    AUNInputs: 18,
-    AUNInputsRefine: 20,
-    AUNInputsRefineBasic: 16,
-    AUNInputsDiffusers: 17,
-    AUNInputsDiffusersBasic: 12,
-    AUNInputsDiffusersRefineBasic: 16,
-    AUNInputsHybrid: 18,
-    AUNInputsWan22Basic: 24,
-    AUNInputsMiniMaxH3Basic: 18,
-};
-
-app.registerExtension({
-    name: "AUNNodes.Inputs.Constant",
-    async beforeRegisterNodeDef(nodeType, nodeData) {
-        const name = nodeData.name;
-        if (CONSTANT_OUTPUT[name] === undefined) return;
-        nodeType.prototype.obvpmConstantWidget = "set";
-        nodeType.prototype.obvpmConstantOutput = CONSTANT_OUTPUT[name];
     }
 });

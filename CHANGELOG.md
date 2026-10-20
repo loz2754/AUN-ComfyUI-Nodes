@@ -11,6 +11,12 @@
 
 ### Notes
 
+## [2.34.1] - 2026-10-21
+
+### Fixed
+
+- OBVPM constant slot for AUN Inputs nodes is now derived from the node's actual `OBVPM_BUNDLE` output at runtime instead of a hardcoded index, fixing "Return type mismatch ... received_type(MODEL)" when the frontend JS state is stale (e.g. manager-synced installs).
+
 ## [2.34.0] - 2026-10-20
 
 ### Added
