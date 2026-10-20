@@ -265,9 +265,21 @@ function ensureModal() {
   numInc.type = "button"; numInc.className = "AUN-pm-setup-action"; numInc.textContent = "+";
   stepper.append(numDec, numInput, numInc);
 
+  const captureRowSearch = document.createElement("input");
+  captureRowSearch.type = "text";
+  captureRowSearch.placeholder = "search rows";
+  captureRowSearch.className = "AUN-pm-setup-select";
+  captureRowSearch.style.width = "90px";
   const captureRowSelect = document.createElement("select");
   captureRowSelect.className = "AUN-pm-setup-select";
   captureRowSelect.title = "Target row for Capture";
+  captureRowSearch.addEventListener("input", () => {
+    const q = captureRowSearch.value.trim().toLowerCase();
+    for (const opt of captureRowSelect.options) {
+      const t = (opt.textContent || "").toLowerCase();
+      opt.hidden = !!q && !t.includes(q);
+    }
+  });
 
   const captureBtn = document.createElement("button");
   captureBtn.type = "button"; captureBtn.className = "AUN-pm-setup-action";
@@ -288,7 +300,7 @@ function ensureModal() {
   const status = document.createElement("span");
   status.className = "AUN-pm-setup-status";
 
-  toolbar.append(toolbarLabel, stepper, captureRowSelect, captureBtn, clearAllBtn, exportBtn, importBtn, status);
+  toolbar.append(toolbarLabel, stepper, captureRowSearch, captureRowSelect, captureBtn, clearAllBtn, exportBtn, importBtn, status);
 
   // Widget filter chips
   const chips = document.createElement("div");
