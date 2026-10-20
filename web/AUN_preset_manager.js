@@ -164,9 +164,14 @@ function buildPreviewText(node) {
 function getTargetTitle(node) {
   const ident = String(getWidget(node, "node_identifier")?.value ?? "").trim();
   if (!ident) return null;
-  const target = findNodeByIdentifier(node.graph || app?.graph, ident, node);
-  if (!target) return null;
-  return target.title || target.comfyClass || null;
+  const ids = ident.split(",").map((x) => x.trim()).filter(Boolean);
+  const titles = ids.map((x) => {
+    const t = findNodeByIdentifier(node.graph || app?.graph, x, node);
+    return t ? (t.title || t.comfyClass || x) : x;
+  });
+  if (titles.length === 0) return null;
+  if (titles.length === 1) return titles[0];
+  return titles[0] + " (+" + (titles.length - 1) + ")";
 }
 
 function applyAutoTitle(node, targetTitle, defaultTitle) {

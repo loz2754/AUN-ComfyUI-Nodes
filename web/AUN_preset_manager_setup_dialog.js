@@ -201,8 +201,9 @@ function ensureStyles() {
       text-overflow: ellipsis; white-space: nowrap;
     }
     .AUN-pm-setup-field input, .AUN-pm-setup-field select, .AUN-pm-setup-field textarea {
-      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 4px; color: #cdd6f4; font-size: 12px; padding: 2px 6px;
+      background: #1e1e2e; border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 4px; color: #e0e0e0; font-size: 12px; padding: 2px 6px;
+      color-scheme: dark;
     }
     .AUN-pm-setup-field input[type="checkbox"] {
       width: auto; accent-color: #89b4fa; margin-top: 2px;
