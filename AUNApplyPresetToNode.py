@@ -232,11 +232,6 @@ _ON_PROMPT_HANDLER_ATTR = "__AUN_apply_preset_handler_registered"
 
 
 def _aun_apply_presets_on_prompt(json_data):
-    try:
-        import logging
-        logging.warning("[AUN] handler called")
-    except Exception:
-        pass
     prompt = json_data.get("prompt") if isinstance(json_data, dict) else None
     if not isinstance(prompt, dict):
         return json_data
@@ -274,23 +269,20 @@ def _aun_apply_presets_on_prompt(json_data):
                     continue
                 notes = []
                 _write_values_into_node(target, tv, notes)
+                try:
+                    import logging
+                    logging.warning("[AUN] applied %s to %s: %s", tv, target_id, notes)
+                except Exception:
+                    pass
 
         elif ct == "AUNPresetManager":
             ident = str(inputs.get("node_identifier") or "").strip()
             if not ident:
                 continue
-            try:
-                print("[AUN] manager node", nid, "ident", ident, file=__import__("sys").stderr)
-            except Exception:
-                pass
             resolved = resolve_preset_selection(inputs)
             if not resolved:
                 continue
             values = resolved[0] if isinstance(resolved, (tuple, list)) else resolved
-            try:
-                print("[AUN] manager resolved", nid, values, file=__import__("sys").stderr)
-            except Exception:
-                pass
             if not isinstance(values, dict) or not values:
                 continue
             for single in [x.strip() for x in ident.split(",") if x.strip()] or [""]:
@@ -308,12 +300,7 @@ def _aun_apply_presets_on_prompt(json_data):
                 if not isinstance(tv, dict) or not tv:
                     continue
                 notes = []
-                applied = _write_values_into_node(target, tv, notes)
-                try:
-                    import logging
-                    logging.warning("[AUN] applied %s to %s: %s", tv, target_id, notes)
-                except Exception:
-                    pass
+                applied =                 _write_values_into_node(target, tv, notes)
                 # Keep frontend widgets in sync.
                 try:
                     from server import PromptServer
@@ -358,16 +345,9 @@ if not _register_prompt_handler():
 
     def _retry_register():
         import time
-        import sys
         for _ in range(50):
             time.sleep(0.5)
-            try:
-                inst = getattr(__import__("server").PromptServer, "instance", None)
-                logging.warning("[AUN] retry instance: %s", inst)
-            except Exception as e:
-                logging.warning("[AUN] retry err: %s", e)
             if _register_prompt_handler():
-                logging.warning("[AUN] registered")
                 break
 
     threading.Thread(target=_retry_register, daemon=True).start()
