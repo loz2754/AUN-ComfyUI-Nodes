@@ -34,14 +34,14 @@ function findTargetNode(node) {
 function getTargetWidgets(node) {
   const targets = findTargetNodes(node);
   if (!targets.length) return [];
-  const seen = new Set();
   const out = [];
   for (const target of targets) {
+    const title = target.title || target.comfyClass || String(target.id);
     for (const w of target.widgets || []) {
       const name = w?.name;
-      if (!name || w.type === "button" || seen.has(name)) continue;
-      seen.add(name);
-      out.push(w);
+      if (!name || w.type === "button") continue;
+      const tagged = Object.assign({}, w, { _target: target, _targetTitle: title });
+      out.push(tagged);
     }
   }
   return out;
@@ -546,21 +546,34 @@ function renderChips(refs) {
   });
   refs.chips.append(allBtn, noneBtn);
 
+  // Group chips by target node for clarity.
+  const groups = new Map();
   for (const w of refs.schema) {
-    const chip = document.createElement("span");
-    chip.className = "AUN-pm-setup-chip" + (includedSet.has(w.name) ? "" : " off");
-    chip.textContent = w.name;
-    chip.title = `Toggle ${w.name}`;
-    chip.addEventListener("click", () => {
-      const d = getPresetData(node);
-      const names = getIncluded(d, refs.schema.map((x) => x.name));
-      const set = new Set(names);
-      if (set.has(w.name)) set.delete(w.name); else set.add(w.name);
-      d.widgets = [...set];
-      setPresetData(node, d);
-      refresh(refs);
-    });
-    refs.chips.appendChild(chip);
+    const title = w._targetTitle || "Target";
+    if (!groups.has(title)) groups.set(title, []);
+    groups.get(title).push(w);
+  }
+  for (const [title, ws] of groups) {
+    const hdr = document.createElement("span");
+    hdr.className = "AUN-pm-setup-chips-group";
+    hdr.textContent = groups.size > 1 ? title + ":" : "";
+    if (hdr.textContent) refs.chips.appendChild(hdr);
+    for (const w of ws) {
+      const chip = document.createElement("span");
+      chip.className = "AUN-pm-setup-chip" + (includedSet.has(w.name) ? "" : " off");
+      chip.textContent = w.name;
+      chip.title = `Toggle ${w.name}`;
+      chip.addEventListener("click", () => {
+        const d = getPresetData(node);
+        const names = getIncluded(d, refs.schema.map((x) => x.name));
+        const set = new Set(names);
+        if (set.has(w.name)) set.delete(w.name); else set.add(w.name);
+        d.widgets = [...set];
+        setPresetData(node, d);
+        refresh(refs);
+      });
+      refs.chips.appendChild(chip);
+    }
   }
   if (refs.filterInput) refs.chips.appendChild(refs.filterInput);
 }
