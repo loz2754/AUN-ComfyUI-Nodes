@@ -175,8 +175,8 @@ function getTargetTitle(node) {
 }
 
 function applyAutoTitle(node, targetTitle, defaultTitle) {
-  const wanted = targetTitle ? `${targetTitle} Presets` : null;
-  if (!wanted) return;
+  // Leave the node title to the user; do not auto-rename.
+  return;
   const prev = node.__AUN_prevAutoTitle;
   const isDefault = !node.title || node.title === defaultTitle || node.title === prev;
   if (isDefault && node.title !== wanted) {
