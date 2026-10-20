@@ -237,22 +237,65 @@ def _aun_apply_presets_on_prompt(json_data):
         return json_data
 
     for nid, node in prompt.items():
-        if not isinstance(node, dict) or node.get("class_type") != "AUNApplyPresetToNode":
+        if not isinstance(node, dict):
             continue
+        ct = node.get("class_type")
         inputs = node.get("inputs") or {}
-        ident = str(inputs.get("node_identifier") or "").strip()
-        if not ident:
-            continue
-        values = _resolve_preset_values(prompt, node)
-        if values is None:
-            continue
-        values = _apply_aliases(values, inputs.get("aliases"))
-        values = _filter_values(values, inputs.get("only_widgets"))
-        target, target_id = _find_target(prompt, ident)
-        if target is None:
-            continue
-        notes = []
-        _write_values_into_node(target, values, notes)
+
+        if ct == "AUNApplyPresetToNode":
+            ident = str(inputs.get("node_identifier") or "").strip()
+            if not ident:
+                continue
+            values = _resolve_preset_values(prompt, node)
+            if values is None:
+                continue
+            values = _apply_aliases(values, inputs.get("aliases"))
+            values = _filter_values(values, inputs.get("only_widgets"))
+            for single in [x.strip() for x in ident.split(",") if x.strip()] or [""]:
+                target, target_id = _find_target(prompt, single)
+                if target is None:
+                    continue
+                tv = values
+                if isinstance(values, dict):
+                    meta = target.get("_meta", {}) if isinstance(target, dict) else {}
+                    title = meta.get("title") or (target.get("class_type") if isinstance(target, dict) else "")
+                    for key in (target_id, title, single):
+                        if key and isinstance(values.get(key), dict):
+                            tv = values.get(key)
+                            break
+                tv = _apply_aliases(tv, inputs.get("aliases"))
+                tv = _filter_values(tv, inputs.get("only_widgets"))
+                if not tv:
+                    continue
+                notes = []
+                _write_values_into_node(target, tv, notes)
+
+        elif ct == "AUNPresetManager":
+            ident = str(inputs.get("node_identifier") or "").strip()
+            if not ident:
+                continue
+            resolved = resolve_preset_selection(inputs)
+            if not resolved:
+                continue
+            values = resolved[0] if isinstance(resolved, (tuple, list)) else resolved
+            if not isinstance(values, dict) or not values:
+                continue
+            for single in [x.strip() for x in ident.split(",") if x.strip()] or [""]:
+                target, target_id = _find_target(prompt, single)
+                if target is None:
+                    continue
+                tv = values
+                if isinstance(values, dict):
+                    meta = target.get("_meta", {}) if isinstance(target, dict) else {}
+                    title = meta.get("title") or (target.get("class_type") if isinstance(target, dict) else "")
+                    for key in (target_id, title, single):
+                        if key and isinstance(values.get(key), dict):
+                            tv = values.get(key)
+                            break
+                if not isinstance(tv, dict) or not tv:
+                    continue
+                notes = []
+                _write_values_into_node(target, tv, notes)
 
     return json_data
 
