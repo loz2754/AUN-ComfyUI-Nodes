@@ -5,6 +5,16 @@
 
 ### Added
 
+### Changed
+
+### Fixed
+
+### Notes
+
+## [2.34.0] - 2026-10-20
+
+### Added
+
 - `AUNInputs` bundle support: OBVPM bundle support and widget config on Inputs nodes.
 - VHS `Video Combine` outputs with audio now save without the `-audio` filename suffix (wrapper patch in `aun_vhs_audio_suffix.py`; disable with `AUN_VHS_STRIP_AUDIO_SUFFIX=0`).
 - Preset Manager: named presets, multi-target capture/apply, per-target values, search filter, manual preset combo, footer preview, and widget visibility controls.
@@ -21,7 +31,6 @@
 - Image Slider Comparer: robust height persistence to avoid locked oversized nodes.
 
 ### Notes
-
 ## [2.33.0] - 2026-09-30
 
 ### Added
