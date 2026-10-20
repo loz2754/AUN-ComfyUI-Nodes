@@ -557,10 +557,12 @@ function renderChips(refs) {
     groups.get(title).push(w);
   }
   for (const [title, ws] of groups) {
+    const group = document.createElement("div");
+    group.style.cssText = "display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-bottom:4px;";
     const hdr = document.createElement("span");
     hdr.className = "AUN-pm-setup-chips-group";
     hdr.textContent = groups.size > 1 ? title + ":" : "";
-    if (hdr.textContent) refs.chips.appendChild(hdr);
+    if (hdr.textContent) group.appendChild(hdr);
     for (const w of ws) {
       const chip = document.createElement("span");
       chip.className = "AUN-pm-setup-chip" + (includedSet.has(w.name) ? "" : " off");
@@ -575,8 +577,9 @@ function renderChips(refs) {
         setPresetData(node, d);
         refresh(refs);
       });
-      refs.chips.appendChild(chip);
+      group.appendChild(chip);
     }
+    refs.chips.appendChild(group);
   }
   if (refs.filterInput) refs.chips.appendChild(refs.filterInput);
 }
