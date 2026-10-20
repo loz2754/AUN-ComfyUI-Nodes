@@ -5,9 +5,20 @@
 
 ### Added
 
+- `AUNInputs` bundle support: OBVPM bundle support and widget config on Inputs nodes.
+- VHS `Video Combine` outputs with audio now save without the `-audio` filename suffix (wrapper patch in `aun_vhs_audio_suffix.py`; disable with `AUN_VHS_STRIP_AUDIO_SUFFIX=0`).
+- Preset Manager: named presets, multi-target capture/apply, per-target values, search filter, manual preset combo, footer preview, and widget visibility controls.
+
 ### Changed
 
+- Image Slider Comparer: overlay is now positioned by a RAF loop, fixing breakage on newer ComfyUI frontends.
+- Preset Manager: improved auto-title, modal combo colors, widget chip grouping/sizing, and setup dialog layout.
+- Inputs: restored AUN-only safer widget config (reverted universal widget config).
+
 ### Fixed
+
+- Preset Manager: sync applied values to frontend, apply values at queue time, hide hidden widgets from footer preview, fix widget names and resize-on-toggle.
+- Image Slider Comparer: robust height persistence to avoid locked oversized nodes.
 
 ### Notes
 
