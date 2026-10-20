@@ -113,13 +113,16 @@ class AUNPresetManager:
     CATEGORY = "AUN Nodes/Utility"
     DESCRIPTION = (
         "Configure keyword-triggered preset rows for a target node's widgets "
-        "(use the Setup button; the dialog scans the target live). Outputs "
-        "the selected row's values as a JSON string plus the matched "
-        "keyword/index for AUNApplyPresetToNode (automatic application). "
+        "(use the Setup button; the dialog scans the target live). Supports "
+        "named presets and multiple comma-separated target nodes, with "
+        "per-target value sets. Outputs the selected row's values as a JSON "
+        "string plus the matched keyword/index for AUNApplyPresetToNode "
+        "(automatic application) or direct application by the manager itself. "
         "Also outputs up to 12 manual value slots (ANY type) labelled with "
         "the widget names, for wiring directly into a target node's "
         "converted inputs or into other nodes such as AUNSaveImageV2 "
-        "filename fields."
+        "filename fields. Warning: applying a preset overwrites the target "
+        "node's widget values (linked inputs are never overwritten)."
     )
     RETURN_TYPES = ("STRING", "STRING", "INT") + tuple(any_type for _ in range(MAX_MANUAL_OUTPUTS))
     RETURN_NAMES = ("selected_values", "matched_keyword", "matched_index") + tuple(
