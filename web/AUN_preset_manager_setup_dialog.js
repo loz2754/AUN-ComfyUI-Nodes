@@ -563,6 +563,31 @@ function renderChips(refs) {
     hdr.className = "AUN-pm-setup-chips-group";
     hdr.textContent = groups.size > 1 ? title + ":" : "";
     if (hdr.textContent) group.appendChild(hdr);
+    const allBtn = document.createElement("button");
+    allBtn.type = "button"; allBtn.className = "AUN-pm-setup-action";
+    allBtn.textContent = "All";
+    const noneBtn = document.createElement("button");
+    noneBtn.type = "button"; noneBtn.className = "AUN-pm-setup-action";
+    noneBtn.textContent = "None";
+    allBtn.addEventListener("click", () => {
+      const d = getPresetData(node);
+      const names = getIncluded(d, refs.schema.map((x) => x.name));
+      const set = new Set(names);
+      for (const w of ws) set.add(w.name);
+      d.widgets = [...set];
+      setPresetData(node, d);
+      refresh(refs);
+    });
+    noneBtn.addEventListener("click", () => {
+      const d = getPresetData(node);
+      const names = getIncluded(d, refs.schema.map((x) => x.name));
+      const set = new Set(names);
+      for (const w of ws) set.delete(w.name);
+      d.widgets = [...set];
+      setPresetData(node, d);
+      refresh(refs);
+    });
+    group.append(allBtn, noneBtn);
     for (const w of ws) {
       const chip = document.createElement("span");
       chip.className = "AUN-pm-setup-chip" + (includedSet.has(w.name) ? "" : " off");
