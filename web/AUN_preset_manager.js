@@ -123,7 +123,7 @@ function computeLocalPreview(node) {
 }
 
 function buildPreviewText(node) {
-  const preview = node.__AUN_localPreview || getLastMatch(node);
+  const preview = getLastMatch(node) || node.__AUN_localPreview;
   if (preview && preview.index > 0) {
     const parts = [];
     const rowName = (function () {

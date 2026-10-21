@@ -53,6 +53,7 @@
 ### Fixed
 
 - Preset Manager footer now updates on queue-time auto-apply (wireless path), even when the manager node does not execute.
+- Preset Manager footer now prefers the last executed/queued match over the local preview, fixing stale row display.
 - Preset Manager: added `cycle_mode` (Off/Sequential/Random) for wireless per-run cycling through visible rows.
 
 ### Notes
