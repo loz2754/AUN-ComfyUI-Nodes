@@ -9,6 +9,8 @@
 
 ### Fixed
 
+- Preset Manager footer now prefers the last executed/queued match over the local preview, fixing stale row display.
+
 ### Notes
 
 ## [2.34.9] - 2026-10-21
