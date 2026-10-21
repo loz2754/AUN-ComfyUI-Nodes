@@ -9,6 +9,8 @@
 
 ### Fixed
 
+- Preset Manager: made `manual_index` a forceInput INT input to avoid extra widget clutter.
+
 ### Notes
 
 ## [2.34.4] - 2026-10-21
