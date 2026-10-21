@@ -9,10 +9,19 @@
 
 ### Fixed
 
+### Notes
+
+## [2.34.6] - 2026-10-21
+
+### Added
+
+### Changed
+
+### Fixed
+
 - Preset Manager footer now updates on queue-time auto-apply (wireless path), even when the manager node does not execute.
 
 ### Notes
-
 ## [2.34.5] - 2026-10-21
 
 ### Added
