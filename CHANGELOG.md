@@ -19,7 +19,7 @@
 
 ### Fixed
 
-- Preset Manager: added optional `manual_index` (INT) input to select a preset row directly from an integer index (e.g. AUNPromptCycler output) without adapter nodes.
+- Preset Manager: added optional `manual_index` (INT, forceInput) input to select a preset row directly from an integer index (e.g. AUNPromptCycler output) without adapter nodes or visible widget clutter.
 
 ### Notes
 ## [2.34.3] - 2026-10-21

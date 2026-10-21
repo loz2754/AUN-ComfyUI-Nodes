@@ -273,7 +273,8 @@ class AUNPresetManager:
                 "min": 0,
                 "max": cls.MAX_ROWS,
                 "step": 1,
-                "tooltip": "When >0, selects that preset row (1-%d) directly, overriding manual_preset. Use 0 to fall back to manual_preset/keywords. Can be wired to an integer index output." % cls.MAX_ROWS,
+                "forceInput": True,
+                "tooltip": "When >0, selects that preset row (1-%d) directly, overriding manual_preset. Use 0 to fall back to manual_preset/keywords. Connect an integer index output here; leave unconnected to use manual_preset." % cls.MAX_ROWS,
             }),
             "visible_rows": ("INT", {
                 "default": 5,
