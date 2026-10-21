@@ -279,9 +279,7 @@ function updateVisibility(node) {
        const nm = String(r.name || "").trim();
        return nm ? nm : String(i + 1);
      });
-     for (const special of ["Sequential", "Random"]) {
-       if (!opts.includes(special)) opts.push(special);
-     }
+     if (!opts.includes("Sequential")) opts.push("Sequential");
      mpW.type = "combo";
      mpW.options = mpW.options || {};
      mpW.options.values = opts;
