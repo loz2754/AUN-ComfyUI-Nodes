@@ -14,14 +14,107 @@ class AlwaysEqualProxy(str):
 any_type = AlwaysEqualProxy("*")
 
 
-def resolve_preset_selection(inputs):
+def _resolve_linked_value(prompt, value, depth=0):
+    """Best-effort static resolution of a linked prompt input to a string.
+
+    Used when reference_phrase is connected to another node instead of being
+    an inlined primitive value. Only nodes whose output can be determined
+    from their own inputs (e.g. primitive/string nodes) resolve here.
+    """
+    if not isinstance(value, list) or len(value) != 2:
+        return value
+    if depth > 5 or not isinstance(prompt, dict):
+        return None
+    src = prompt.get(str(value[0]))
+    if not isinstance(src, dict):
+        return None
+    inputs = src.get("inputs")
+    if not isinstance(inputs, dict):
+        return None
+
+    # 1. Direct literal string fields (primitive/string nodes).
+    for key in ("value", "text", "string", "input", "prompt", "content"):
+        v = inputs.get(key)
+        if isinstance(v, str):
+            return v
+        if isinstance(v, list):
+            r = _resolve_linked_value(prompt, v, depth + 1)
+            if isinstance(r, str):
+                return r
+    str_values = [v for v in inputs.values() if isinstance(v, str)]
+    if len(str_values) == 1:
+        return str_values[0]
+
+    # 2. Execute our own (AUN*) nodes whose inputs are all statically
+    #    resolvable, so dynamic switch nodes can feed reference_phrase.
+    class_type = str(src.get("class_type") or "")
+    if class_type.startswith("AUN") and depth < 3:
+        try:
+            import inspect
+            from nodes import NODE_CLASS_MAPPINGS  # type: ignore[import-not-found]
+
+            cls = NODE_CLASS_MAPPINGS.get(class_type)
+            if cls is not None and hasattr(cls, "FUNCTION"):
+                resolved_inputs = {}
+                ok = True
+                for k, v in inputs.items():
+                    if isinstance(v, list):
+                        r = _resolve_linked_value(prompt, v, depth + 1)
+                        if r is None:
+                            ok = False
+                            break
+                        resolved_inputs[k] = r
+                    else:
+                        resolved_inputs[k] = v
+                if ok:
+                    fn = getattr(cls(), cls.FUNCTION)
+                    sig = inspect.signature(fn)
+                    call_args = {}
+                    var_kw = None
+                    for name, param in sig.parameters.items():
+                        if name in ("self", "cls"):
+                            continue
+                        if param.kind == inspect.Parameter.VAR_KEYWORD:
+                            var_kw = name
+                            continue
+                        if param.kind == inspect.Parameter.VAR_POSITIONAL:
+                            continue
+                        if name in resolved_inputs:
+                            call_args[name] = resolved_inputs[name]
+                        elif name == "unique_id":
+                            call_args[name] = str(value[0])
+                        elif param.default is not inspect.Parameter.empty:
+                            call_args[name] = param.default
+                        else:
+                            ok = False
+                            break
+                    extra_kwargs = {
+                        k: v for k, v in resolved_inputs.items()
+                        if k not in call_args
+                    }
+                    if ok:
+                        result = fn(**call_args, **extra_kwargs)
+                        if isinstance(result, tuple):
+                            slot = value[1] if isinstance(value[1], int) else 0
+                            if 0 <= slot < len(result) and isinstance(result[slot], str):
+                                return result[slot]
+                        elif isinstance(result, str):
+                            return result
+        except Exception:
+            pass
+
+    return None
+
+
+def resolve_preset_selection(inputs, prompt=None):
     """
     Statically evaluate a preset selection from a manager node's raw input
     dict (as found in the queued prompt). Shared by the node's own execution
     and by AUNApplyPresetToNode's queue-time prompt handler.
 
     Returns (values_dict, matched_keyword, matched_index) or None when the
-    inputs cannot be resolved statically (e.g. reference_phrase is a link).
+    inputs cannot be resolved statically (e.g. reference_phrase is a link that
+    cannot be resolved).
     """
     if not isinstance(inputs, dict):
         return None
@@ -54,7 +147,12 @@ def resolve_preset_selection(inputs):
 
     reference_phrase = inputs.get("reference_phrase", "")
     if isinstance(reference_phrase, list):
-        return None  # linked — cannot resolve statically at queue time
+        if prompt is None:
+            return None  # linked — cannot resolve statically without prompt context
+        resolved = _resolve_linked_value(prompt, reference_phrase)
+        if not isinstance(resolved, str):
+            return None
+        reference_phrase = resolved
     reference_phrase = str(reference_phrase or "")
 
     rows = []

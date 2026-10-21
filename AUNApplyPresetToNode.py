@@ -209,7 +209,7 @@ def _resolve_preset_values(prompt: dict, apply_node: dict):
     if values is None and _is_link(raw):
         src = prompt.get(str(raw[0]))
         if isinstance(src, dict) and src.get("class_type") == "AUNPresetManager":
-            selection = resolve_preset_selection(src.get("inputs") or {})
+            selection = resolve_preset_selection(src.get("inputs") or {}, prompt=prompt)
             if selection is not None:
                 values = selection[0]
 
@@ -279,7 +279,7 @@ def _aun_apply_presets_on_prompt(json_data):
             ident = str(inputs.get("node_identifier") or "").strip()
             if not ident:
                 continue
-            resolved = resolve_preset_selection(inputs)
+            resolved = resolve_preset_selection(inputs, prompt=prompt)
             if not resolved:
                 continue
             values = resolved[0] if isinstance(resolved, (tuple, list)) else resolved
