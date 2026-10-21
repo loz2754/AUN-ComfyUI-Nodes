@@ -9,10 +9,19 @@
 
 ### Fixed
 
+### Notes
+
+## [2.34.8] - 2026-10-21
+
+### Added
+
+### Changed
+
+### Fixed
+
 - Preset Manager: combined cycling into the `manual_preset` dropdown (Sequential/Random entries) instead of a separate `cycle_mode` widget.
 
 ### Notes
-
 ## [2.34.7] - 2026-10-21
 
 ### Added
