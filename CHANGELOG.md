@@ -20,6 +20,7 @@
 ### Fixed
 
 - Preset Manager: made `manual_index` a forceInput INT input to avoid extra widget clutter.
+- Preset Manager footer now updates on queue-time auto-apply (wireless path), even when the manager node does not execute.
 
 ### Notes
 ## [2.34.4] - 2026-10-21

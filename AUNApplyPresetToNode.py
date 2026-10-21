@@ -299,25 +299,44 @@ def _aun_apply_presets_on_prompt(json_data):
                             break
                 if not isinstance(tv, dict) or not tv:
                     continue
-                notes = []
-                applied =                 _write_values_into_node(target, tv, notes)
-                # Keep frontend widgets in sync.
-                try:
-                    from server import PromptServer
-                    meta = target.get("_meta", {}) if isinstance(target, dict) else {}
-                    target_title = meta.get("title") or (target.get("class_type") if isinstance(target, dict) else "")
-                    PromptServer.instance.send_sync(
-                        "AUN_apply_preset_applied",
-                        {
-                            "node_id": str(nid),
-                            "target_id": str(target_id or ""),
-                            "target_title": str(target_title or ""),
-                            "values": applied,
-                            "notes": notes,
-                        },
-                    )
-                except Exception:
-                    pass
+            notes = []
+            applied =                 _write_values_into_node(target, tv, notes)
+            # Keep frontend widgets in sync.
+            try:
+                from server import PromptServer
+                meta = target.get("_meta", {}) if isinstance(target, dict) else {}
+                target_title = meta.get("title") or (target.get("class_type") if isinstance(target, dict) else "")
+                PromptServer.instance.send_sync(
+                    "AUN_apply_preset_applied",
+                    {
+                        "node_id": str(nid),
+                        "target_id": str(target_id or ""),
+                        "target_title": str(target_title or ""),
+                        "values": applied,
+                        "notes": notes,
+                    },
+                )
+            except Exception:
+                pass
+
+            # Also notify the Preset Manager footer (wireless/auto-apply path
+            # may never execute the manager node, so it would not emit its own
+            # executed event).
+            try:
+                from server import PromptServer
+                mi = resolved[2] if isinstance(resolved, (tuple, list)) and len(resolved) > 2 else 0
+                mk = resolved[1] if isinstance(resolved, (tuple, list)) and len(resolved) > 1 else ""
+                PromptServer.instance.send_sync(
+                    "AUN_preset_manager_executed",
+                    {
+                        "node_id": str(nid),
+                        "matched_keyword": mk,
+                        "matched_index": int(mi or 0),
+                        "selected_values": json.dumps(values if isinstance(values, dict) else {}, ensure_ascii=False, separators=(",", ":")),
+                    },
+                )
+            except Exception:
+                pass
 
     return json_data
 
