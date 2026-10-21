@@ -31,6 +31,7 @@
 ### Fixed
 
 - Preset Manager footer now prefers the last executed/queued match over the local preview, fixing stale row display.
+- Preset Manager: added right-click "AUN: Hide/Show footer" option (persisted).
 - Preset Manager: removed Random from the cycling dropdown (Sequential only); use an external index for random selection.
 
 ### Notes

@@ -37,7 +37,23 @@ function getVisibleRows(node) {
   return Number.isFinite(val) ? Math.max(1, Math.min(MAX_ROWS, Math.floor(val))) : 5;
 }
 
+function isFooterVisible(node) {
+  try {
+    if (node?.properties && Object.prototype.hasOwnProperty.call(node.properties, "aun_pm_footerVisible")) {
+      return !!node.properties.aun_pm_footerVisible;
+    }
+  } catch (e) {}
+  return node?.__AUN_pm_footerVisible !== false;
+}
+
+function setFooterVisible(node, visible) {
+  node.__AUN_pm_footerVisible = !!visible;
+  if (!node.properties) node.properties = {};
+  node.properties.aun_pm_footerVisible = !!visible;
+}
+
 function getFooterHeight(node) {
+  if (!isFooterVisible(node)) return 0;
   if (!isCompact(node) || isNodeCollapsed(node)) return 0;
   return FOOTER_H;
 }
@@ -47,7 +63,8 @@ function getMinimumCompactHeight(node) {
   const widgetH = globalThis.LiteGraph?.NODE_WIDGET_HEIGHT ?? 22;
   const slotH = globalThis.LiteGraph?.NODE_SLOT_HEIGHT ?? 20;
   // Title + manual_preset combo + converged socket dots + footer preview.
-  return TITLE_H + widgetH + slotH * 0.6 + FOOTER_PAD + FOOTER_H + FOOTER_BOTTOM;
+  const footerH = isFooterVisible(node) ? (FOOTER_PAD + FOOTER_H + FOOTER_BOTTOM) : 0;
+  return TITLE_H + widgetH + slotH * 0.6 + footerH;
 }
 
 function resizeNode(node) {
@@ -545,15 +562,23 @@ app.registerExtension({
           toggleCompactMode(this);
         },
       });
-      options.push({
-        content: "AUN: Setup presets...",
-        callback: () => {
-          openPresetSetupDialog(this, {
-            onChanged: (n) => { updateVisibility(n); forceRedraw(n); },
-          });
-        },
-      });
-      return options;
+       options.push({
+         content: "AUN: Setup presets...",
+         callback: () => {
+           openPresetSetupDialog(this, {
+             onChanged: (n) => { updateVisibility(n); forceRedraw(n); },
+           });
+         },
+       });
+       options.push({
+         content: isFooterVisible(this) ? "AUN: Hide footer" : "AUN: Show footer",
+         callback: () => {
+           setFooterVisible(this, !isFooterVisible(this));
+           updateVisibility(this);
+           forceRedraw(this);
+         },
+       });
+       return options;
     };
   },
 
