@@ -9,6 +9,8 @@
 
 ### Fixed
 
+- Preset Manager: added right-click "AUN: Hide/Show footer" option (persisted).
+
 ### Notes
 
 ## [2.34.11] - 2026-10-21
