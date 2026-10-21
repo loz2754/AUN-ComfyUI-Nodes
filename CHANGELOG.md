@@ -9,10 +9,19 @@
 
 ### Fixed
 
+### Notes
+
+## [2.34.11] - 2026-10-21
+
+### Added
+
+### Changed
+
+### Fixed
+
 - Preset Manager: removed Random from the cycling dropdown (Sequential only); use an external index for random selection.
 
 ### Notes
-
 ## [2.34.10] - 2026-10-21
 
 ### Added
