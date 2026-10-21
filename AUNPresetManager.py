@@ -108,7 +108,38 @@ def _resolve_linked_value(prompt, value, depth=0):
     return None
 
 
-def resolve_preset_selection(inputs, prompt=None):
+_CYCLE_STATE = {}
+
+
+def _cycle_index(mode, key, visible_rows, queue_time=False):
+    st = _CYCLE_STATE.setdefault(str(key), {"last": 0, "pending": None})
+    if queue_time:
+        if mode == "Sequential":
+            st["last"] = (st["last"] % visible_rows) + 1
+        elif mode == "Random":
+            import random
+            st["last"] = random.randint(1, visible_rows)
+        else:
+            st["last"] = max(1, min(int(st["last"] or 1), visible_rows))
+        st["pending"] = st["last"]
+        return st["last"]
+    # execution time
+    if st.get("pending") is not None:
+        val = st["pending"]
+        st["pending"] = None
+        return val
+    if mode == "Sequential":
+        st["last"] = (st["last"] % visible_rows) + 1
+    elif mode == "Random":
+        import random
+        st["last"] = random.randint(1, visible_rows)
+    else:
+        st["last"] = max(1, min(int(st["last"] or 1), visible_rows))
+    st["pending"] = None
+    return st["last"]
+
+
+def resolve_preset_selection(inputs, prompt=None, queue_time=False):
     """
     Statically evaluate a preset selection from a manager node's raw input
     dict (as found in the queued prompt). Shared by the node's own execution
@@ -137,6 +168,10 @@ def resolve_preset_selection(inputs, prompt=None):
         # statically at queue time; wired execution handles it instead.
         return None
 
+    cycle_mode = str(inputs.get("cycle_mode") or "Off")
+    if cycle_mode not in ("Off", "Sequential", "Random"):
+        cycle_mode = "Off"
+
     _rows_for_name = []
     try:
         _parsed = json.loads(inputs.get("preset_data") or "[]")
@@ -154,7 +189,10 @@ def resolve_preset_selection(inputs, prompt=None):
         mi = int(manual_index)
     except (ValueError, TypeError):
         mi = 0
-    if mi > 0:
+    if cycle_mode != "Off":
+        key = inputs.get("unique_id") or inputs.get("node_identifier") or "global"
+        manual_n = _cycle_index(cycle_mode, key, visible_rows, queue_time=queue_time)
+    elif mi > 0:
         manual_n = mi
     else:
         try:
@@ -268,6 +306,10 @@ class AUNPresetManager:
             }),
         }
         optional = {
+            "cycle_mode": (["Off", "Sequential", "Random"], {
+                "default": "Off",
+                "tooltip": "Off: use manual_preset/manual_index/keywords. Sequential/Random: cycle through visible rows automatically (wireless-friendly).",
+            }),
             "manual_index": ("INT", {
                 "default": 0,
                 "min": 0,
@@ -315,16 +357,18 @@ class AUNPresetManager:
 
     def select_preset(self, node_identifier, manual_preset="1", match_keywords="Yes",
                       visible_rows=5, case_sensitive=False, reference_phrase="",
-                      preset_data="", manual_index=0, unique_id=None, **kwargs):
+                      preset_data="", manual_index=0, cycle_mode="Off", unique_id=None, **kwargs):
         values, matched_keyword, matched_index = resolve_preset_selection({
             "visible_rows": visible_rows,
             "manual_preset": manual_preset,
             "manual_index": manual_index,
+            "cycle_mode": cycle_mode,
             "match_keywords": match_keywords,
             "case_sensitive": case_sensitive,
             "reference_phrase": reference_phrase,
             "preset_data": preset_data,
-        })
+            "unique_id": unique_id,
+        }, queue_time=False)
         if values is None:
             values, matched_keyword, matched_index = {}, "", 0
 

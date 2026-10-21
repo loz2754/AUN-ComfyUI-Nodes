@@ -279,7 +279,7 @@ def _aun_apply_presets_on_prompt(json_data):
             ident = str(inputs.get("node_identifier") or "").strip()
             if not ident:
                 continue
-            resolved = resolve_preset_selection(inputs, prompt=prompt)
+            resolved = resolve_preset_selection(inputs, prompt=prompt, queue_time=True)
             if not resolved:
                 continue
             values = resolved[0] if isinstance(resolved, (tuple, list)) else resolved
