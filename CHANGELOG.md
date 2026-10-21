@@ -20,6 +20,7 @@
 ### Fixed
 
 - Preset Manager / Apply Preset To Node: keyword matching now works when `reference_phrase` is wired from another node (including dynamic AUN switch nodes), applying the matched preset to target nodes automatically.
+- Preset Manager: added optional `manual_index` (INT) input to select a preset row directly from an integer index (e.g. AUNPromptCycler output) without adapter nodes.
 
 ### Notes
 ## [2.34.2] - 2026-10-21

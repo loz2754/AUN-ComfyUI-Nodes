@@ -96,9 +96,11 @@ def _resolve_linked_value(prompt, value, depth=0):
                         result = fn(**call_args, **extra_kwargs)
                         if isinstance(result, tuple):
                             slot = value[1] if isinstance(value[1], int) else 0
-                            if 0 <= slot < len(result) and isinstance(result[slot], str):
-                                return result[slot]
-                        elif isinstance(result, str):
+                            if 0 <= slot < len(result):
+                                val = result[slot]
+                                if isinstance(val, (str, int, float, bool)):
+                                    return val
+                        elif isinstance(result, (str, int, float, bool)):
                             return result
         except Exception:
             pass
@@ -119,7 +121,21 @@ def resolve_preset_selection(inputs, prompt=None):
     if not isinstance(inputs, dict):
         return None
     visible_rows = max(1, min(int(inputs.get("visible_rows") or 5), AUNPresetManager.MAX_ROWS))
+
     manual_preset = inputs.get("manual_preset", "1")
+    if isinstance(manual_preset, list):
+        if prompt is None:
+            return None
+        resolved = _resolve_linked_value(prompt, manual_preset)
+        if resolved is None:
+            return None
+        manual_preset = resolved
+
+    manual_index = inputs.get("manual_index", 0)
+    if isinstance(manual_index, list):
+        # Linked manual_index (e.g. a cycling node) cannot be resolved
+        # statically at queue time; wired execution handles it instead.
+        return None
 
     _rows_for_name = []
     try:
@@ -135,12 +151,19 @@ def resolve_preset_selection(inputs, prompt=None):
 
     manual_n = 1
     try:
-        manual_n = int(manual_preset)
+        mi = int(manual_index)
     except (ValueError, TypeError):
-        for i, row in enumerate(_rows_for_name):
-            if isinstance(row, dict) and str(row.get("name", "")).strip() == str(manual_preset).strip():
-                manual_n = i + 1
-                break
+        mi = 0
+    if mi > 0:
+        manual_n = mi
+    else:
+        try:
+            manual_n = int(manual_preset)
+        except (ValueError, TypeError):
+            for i, row in enumerate(_rows_for_name):
+                if isinstance(row, dict) and str(row.get("name", "")).strip() == str(manual_preset).strip():
+                    manual_n = i + 1
+                    break
     manual_n = max(1, min(manual_n, visible_rows))
     match_keywords = inputs.get("match_keywords", "Yes")
     case_sensitive = bool(inputs.get("case_sensitive", False))
@@ -245,6 +268,13 @@ class AUNPresetManager:
             }),
         }
         optional = {
+            "manual_index": ("INT", {
+                "default": 0,
+                "min": 0,
+                "max": cls.MAX_ROWS,
+                "step": 1,
+                "tooltip": "When >0, selects that preset row (1-%d) directly, overriding manual_preset. Use 0 to fall back to manual_preset/keywords. Can be wired to an integer index output." % cls.MAX_ROWS,
+            }),
             "visible_rows": ("INT", {
                 "default": 5,
                 "min": 1,
@@ -284,10 +314,11 @@ class AUNPresetManager:
 
     def select_preset(self, node_identifier, manual_preset="1", match_keywords="Yes",
                       visible_rows=5, case_sensitive=False, reference_phrase="",
-                      preset_data="", unique_id=None, **kwargs):
+                      preset_data="", manual_index=0, unique_id=None, **kwargs):
         values, matched_keyword, matched_index = resolve_preset_selection({
             "visible_rows": visible_rows,
             "manual_preset": manual_preset,
+            "manual_index": manual_index,
             "match_keywords": match_keywords,
             "case_sensitive": case_sensitive,
             "reference_phrase": reference_phrase,
