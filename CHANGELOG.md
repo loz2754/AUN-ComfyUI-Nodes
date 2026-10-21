@@ -9,6 +9,8 @@
 
 ### Fixed
 
+- Preset Manager: added `cycle_mode` (Off/Sequential/Random) for wireless per-run cycling through visible rows.
+
 ### Notes
 
 ## [2.34.6] - 2026-10-21
