@@ -271,19 +271,22 @@ function updateVisibility(node) {
   applySlotLabels(node, compact);
   applyAutoTitle(node, getTargetTitle(node), "Preset Manager");
 
-  const mpW = getWidget(node, "manual_preset");
-  if (mpW) {
-    const rows = parsePresetData(node)?.rows || [];
-    const opts = Array.from({ length: count }, (_, i) => {
-      const r = rows[i] || {};
-      const nm = String(r.name || "").trim();
-      return nm ? nm : String(i + 1);
-    });
-    mpW.type = "combo";
-    mpW.options = mpW.options || {};
-    mpW.options.values = opts;
-    if (!opts.includes(String(mpW.value))) mpW.value = opts[0] || "1";
-  }
+   const mpW = getWidget(node, "manual_preset");
+   if (mpW) {
+     const rows = parsePresetData(node)?.rows || [];
+     const opts = Array.from({ length: count }, (_, i) => {
+       const r = rows[i] || {};
+       const nm = String(r.name || "").trim();
+       return nm ? nm : String(i + 1);
+     });
+     for (const special of ["Sequential", "Random"]) {
+       if (!opts.includes(special)) opts.push(special);
+     }
+     mpW.type = "combo";
+     mpW.options = mpW.options || {};
+     mpW.options.values = opts;
+     if (!opts.includes(String(mpW.value))) mpW.value = opts[0] || "1";
+   }
 
   if (compact && !isNodeCollapsed(node)) {
     node.size[1] = getMinimumCompactHeight(node);

@@ -19,7 +19,7 @@
 
 ### Fixed
 
-- Preset Manager: added `cycle_mode` (Off/Sequential/Random) for wireless per-run cycling through visible rows.
+- Preset Manager: combined cycling into the `manual_preset` dropdown (Sequential/Random entries) instead of a separate `cycle_mode` widget.
 
 ### Notes
 ## [2.34.6] - 2026-10-21

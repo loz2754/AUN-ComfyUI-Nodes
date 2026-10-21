@@ -170,7 +170,14 @@ def resolve_preset_selection(inputs, prompt=None, queue_time=False):
 
     cycle_mode = str(inputs.get("cycle_mode") or "Off")
     if cycle_mode not in ("Off", "Sequential", "Random"):
-        cycle_mode = "Off"
+        # Back-compat: allow cycle mode to be encoded in manual_preset.
+        mp = str(inputs.get("manual_preset") or "").strip().lower()
+        if mp == "sequential":
+            cycle_mode = "Sequential"
+        elif mp == "random":
+            cycle_mode = "Random"
+        else:
+            cycle_mode = "Off"
 
     _rows_for_name = []
     try:
@@ -306,10 +313,6 @@ class AUNPresetManager:
             }),
         }
         optional = {
-            "cycle_mode": (["Off", "Sequential", "Random"], {
-                "default": "Off",
-                "tooltip": "Off: use manual_preset/manual_index/keywords. Sequential/Random: cycle through visible rows automatically (wireless-friendly).",
-            }),
             "manual_index": ("INT", {
                 "default": 0,
                 "min": 0,
@@ -357,12 +360,11 @@ class AUNPresetManager:
 
     def select_preset(self, node_identifier, manual_preset="1", match_keywords="Yes",
                       visible_rows=5, case_sensitive=False, reference_phrase="",
-                      preset_data="", manual_index=0, cycle_mode="Off", unique_id=None, **kwargs):
+                      preset_data="", manual_index=0, unique_id=None, **kwargs):
         values, matched_keyword, matched_index = resolve_preset_selection({
             "visible_rows": visible_rows,
             "manual_preset": manual_preset,
             "manual_index": manual_index,
-            "cycle_mode": cycle_mode,
             "match_keywords": match_keywords,
             "case_sensitive": case_sensitive,
             "reference_phrase": reference_phrase,
