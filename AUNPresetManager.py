@@ -169,15 +169,13 @@ def resolve_preset_selection(inputs, prompt=None, queue_time=False):
         return None
 
     cycle_mode = str(inputs.get("cycle_mode") or "Off")
-    if cycle_mode not in ("Off", "Sequential", "Random"):
-        # Back-compat: allow cycle mode to be encoded in manual_preset.
+    if cycle_mode == "Off":
+        # Allow cycle mode to be encoded in the manual_preset dropdown.
         mp = str(inputs.get("manual_preset") or "").strip().lower()
         if mp == "sequential":
             cycle_mode = "Sequential"
         elif mp == "random":
             cycle_mode = "Random"
-        else:
-            cycle_mode = "Off"
 
     _rows_for_name = []
     try:
