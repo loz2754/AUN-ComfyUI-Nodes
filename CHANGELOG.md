@@ -9,10 +9,19 @@
 
 ### Fixed
 
+### Notes
+
+## [2.34.9] - 2026-10-21
+
+### Added
+
+### Changed
+
+### Fixed
+
 - Preset Manager: fixed `Sequential`/`Random` cycling when selected via the `manual_preset` dropdown.
 
 ### Notes
-
 ## [2.34.8] - 2026-10-21
 
 ### Added
