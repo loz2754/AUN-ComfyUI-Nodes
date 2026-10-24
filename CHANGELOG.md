@@ -4,7 +4,6 @@
 ## [Unreleased]
 
 ### Added
-- `ref_image` optional input on all AUN Inputs nodes: aspect mode is set automatically to match a connected reference image's orientation.
 
 ### Changed
 
@@ -12,6 +11,16 @@
 
 ### Notes
 
+## [2.34.13] - 2026-10-24
+
+### Added
+- `ref_image` optional input on all AUN Inputs nodes: aspect mode is set automatically to match a connected reference image's orientation.
+
+### Changed
+
+### Fixed
+
+### Notes
 ## [2.34.12] - 2026-10-21
 
 ### Added
