@@ -11,7 +11,6 @@ const BUNDLE_FIELDS = {
     AUNInputsHybrid: ["model","clip","vae","model_name","sampler","scheduler","cfg","steps","latent","width","height","seed","MainFolder","Filename","prefix","date_format","batch_size","name_mode"],
     AUNInputsWan22Basic: ["model_high","model_low","clip","vae","clip_vision","high_model_name","low_model_name","sampler","scheduler","cfg_high","cfg_low","boundary","sigma_shift","steps","seed","fps","frame_rate","frames","rife_multiplier","rife","latent","width","height","batch_size"],
     AUNInputsMiniMaxH3Basic: ["model","clip","vae_video","vae_audio","unet_name","sampler","scheduler","cfg","steps","seed","width","height","frames","fps","frame_rate","seconds","rife_multiplier","rife"],
-    AUNImageToBundle: ["image","filename","cleaned_filename"],
 };
 
 function attach(node, name) {

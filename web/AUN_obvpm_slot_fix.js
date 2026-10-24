@@ -4,7 +4,6 @@ const AUN_INPUT_CLASSES = new Set([
     "AUNInputs", "AUNInputsBasic", "AUNInputsRefine", "AUNInputsRefineBasic",
     "AUNInputsDiffusers", "AUNInputsDiffusersBasic", "AUNInputsDiffusersRefineBasic",
     "AUNInputsHybrid", "AUNInputsWan22Basic", "AUNInputsMiniMaxH3Basic",
-    "AUNImageToBundle",
 ]);
 
 function resolveExecNode(root, execId) {
