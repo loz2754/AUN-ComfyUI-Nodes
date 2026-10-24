@@ -9,7 +9,8 @@ import comfy.utils
 import folder_paths as comfy_paths
 import torch
 
-from .AUNResolutionHelper import ASPECT_RATIO_NAMES, ASPECT_MODE_OPTIONS, MEGAPIXELS_WIDGET, MULTIPLE_WIDGET, resolve_dimensions, apply_aspect_mode
+from .AUNResolutionHelper import ASPECT_RATIO_NAMES, ASPECT_MODE_OPTIONS, MEGAPIXELS_WIDGET, MULTIPLE_WIDGET, resolve_dimensions, apply_aspect_mode, aspect_mode_from_image
+from .aun_bundle_shared import BUNDLE
 
 class AnyType(str):
 
@@ -110,7 +111,10 @@ class AUNInputsBasicSwitch:
 
         return {
             "required": required,
-            "optional": {},
+            "optional": {
+                "ref_image": ("IMAGE", {"tooltip": "Optional reference image. When connected, aspect_mode is set automatically to match its orientation."}),
+                "bundle_input": (BUNDLE, {"tooltip": "Optional OBVPM bundle override. Matching fields (sampler, scheduler, cfg, steps, seed, ckpt name) replace the widget values when present."}),
+            },
             "hidden": {"unique_id": "UNIQUE_ID", "extra_pnginfo": "EXTRA_PNGINFO"}
         }
 
@@ -316,7 +320,7 @@ class AUNInputsBasicSwitch:
                       speed_lora, speed_lora_model, speed_lora_strength, clip_skip,
                       sampler, scheduler, cfg, steps, width, height, aspect_ratio, aspect_mode,
                       batch_size, seed, megapixels=1.0, multiple=8,
-                      unique_id=None, extra_pnginfo=None, **kwargs):
+                      unique_id=None, extra_pnginfo=None, ref_image=None, bundle_input=None, **kwargs):
 
         if unique_id is None:
             unique_id = "default_node"
@@ -396,6 +400,20 @@ class AUNInputsBasicSwitch:
         if seed_converted is not None:
             seed = seed_converted
 
+        if isinstance(bundle_input, dict):
+            if bundle_input.get("sampler") is not None:
+                sampler = self._clean_override(bundle_input.get("sampler")) or sampler
+            if bundle_input.get("scheduler") is not None:
+                scheduler = self._clean_override(bundle_input.get("scheduler")) or scheduler
+            if bundle_input.get("cfg") is not None:
+                cfg = bundle_input.get("cfg")
+            if bundle_input.get("steps") is not None:
+                steps = bundle_input.get("steps")
+            if bundle_input.get("seed") is not None:
+                seed = bundle_input.get("seed")
+            if bundle_input.get("ckpt_name") is not None:
+                ckpt_name = self._resolve_ckpt_name(self._clean_override(bundle_input.get("ckpt_name")), ckpt_name)
+
         ckpt_path = comfy_paths.get_full_path("checkpoints", ckpt_name)
         out = comfy.sd.load_checkpoint_guess_config(ckpt_path, output_vae=True, output_clip=True, embedding_directory=comfy_paths.get_folder_paths("embeddings"))
         model, clip, vae = out[0], out[1], out[2]
@@ -413,6 +431,8 @@ class AUNInputsBasicSwitch:
                     print(f"AUNInputsBasicSwitch: SpeedLoRA model '{lora_choice}' not found; skipping SpeedLoRA load.")
 
         width, height = resolve_dimensions(width, height, aspect_ratio, megapixels, multiple)
+        if ref_image is not None:
+            aspect_mode = aspect_mode_from_image(ref_image, width, height, aspect_ratio)
         width, height = apply_aspect_mode(width, height, aspect_mode)
 
         latent = torch.zeros([batch_size, 4, height // 8, width // 8])

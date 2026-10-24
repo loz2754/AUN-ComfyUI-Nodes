@@ -57,3 +57,23 @@ def apply_aspect_mode(width: int, height: int, aspect_mode: str) -> tuple[int, i
     elif aspect_mode == "Swap":
         width, height = height, width
     return width, height
+
+
+def aspect_mode_from_image(ref_image, width: int, height: int, aspect_ratio: str = "") -> str:
+    """Return 'Original' or 'Swap' so the final canvas matches ref_image orientation."""
+    try:
+        ref_h, ref_w = int(ref_image.shape[1]), int(ref_image.shape[2])
+    except Exception:
+        return "Original"
+    ref_portrait = ref_h > ref_w
+
+    base_w, base_h = int(width), int(height)
+    ar = (aspect_ratio or "").strip()
+    if ar in PRESETS:
+        base_w, base_h = PRESETS[ar]
+    elif ar in ASPECT_RATIOS:
+        rw, rh = ASPECT_RATIOS[ar]
+        base_w, base_h = rw, rh
+    base_portrait = base_h > base_w
+
+    return "Original" if (ref_portrait == base_portrait) else "Swap"

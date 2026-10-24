@@ -6,7 +6,7 @@ import comfy.utils
 import folder_paths as comfy_paths
 import torch
 
-from .AUNResolutionHelper import ASPECT_RATIO_NAMES, ASPECT_MODE_OPTIONS, MEGAPIXELS_WIDGET, MULTIPLE_WIDGET, resolve_dimensions, apply_aspect_mode
+from .AUNResolutionHelper import ASPECT_RATIO_NAMES, ASPECT_MODE_OPTIONS, MEGAPIXELS_WIDGET, MULTIPLE_WIDGET, resolve_dimensions, apply_aspect_mode, aspect_mode_from_image
 from .aun_bundle_shared import BUNDLE
 
 
@@ -52,6 +52,7 @@ class AUNInputsRefineBasic:
                 "multiple": MULTIPLE_WIDGET,
             },
             "optional": {
+                "ref_image": ("IMAGE", {"tooltip": "Optional reference image. When connected, aspect_mode is set automatically to match its orientation."}),
                 "bundle_input": (BUNDLE, {"tooltip": "Optional OBVPM bundle override."}),
                 "set": ("STRING", {"default": "", "tooltip": "Constant name. When non-empty, sets an OBVPM bundle constant."}),
             },
@@ -134,7 +135,7 @@ class AUNInputsRefineBasic:
         refine_strength = speed_lora_strength * (1.0 - speed_lora_ratio)
         return main_strength, refine_strength
 
-    def inputs(self, ckpt_name, refine_ckpt, speed_lora, speed_lora_model, speed_lora_strength, speed_lora_full_both, speed_lora_ratio, clip_skip, sampler, scheduler, cfg, steps, width, height, aspect_ratio, aspect_mode, batch_size, seed, megapixels=1.0, multiple=8, bundle_input=None, set=""):
+    def inputs(self, ckpt_name, refine_ckpt, speed_lora, speed_lora_model, speed_lora_strength, speed_lora_full_both, speed_lora_ratio, clip_skip, sampler, scheduler, cfg, steps, width, height, aspect_ratio, aspect_mode, batch_size, seed, megapixels=1.0, multiple=8, bundle_input=None, set="", ref_image=None):
         if isinstance(bundle_input, dict):
             if bundle_input.get("sampler") is not None:
                 sampler = bundle_input.get("sampler")
@@ -176,6 +177,8 @@ class AUNInputsRefineBasic:
                     print(f"SpeedLoRA model '{lora_choice}' not found; skipping SpeedLoRA load.")
 
         width, height = resolve_dimensions(width, height, aspect_ratio, megapixels, multiple)
+        if ref_image is not None:
+            aspect_mode = aspect_mode_from_image(ref_image, width, height, aspect_ratio)
         width, height = apply_aspect_mode(width, height, aspect_mode)
 
         latent = torch.zeros([batch_size, 4, height // 8, width // 8])

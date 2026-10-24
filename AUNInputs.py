@@ -6,7 +6,7 @@ import torch
 import comfy.samplers
 from datetime import datetime
 
-from .AUNResolutionHelper import PRESETS, ASPECT_RATIOS, ASPECT_RATIO_NAMES, ASPECT_MODE_OPTIONS, MEGAPIXELS_WIDGET, MULTIPLE_WIDGET, resolve_dimensions, apply_aspect_mode
+from .AUNResolutionHelper import PRESETS, ASPECT_RATIOS, ASPECT_RATIO_NAMES, ASPECT_MODE_OPTIONS, MEGAPIXELS_WIDGET, MULTIPLE_WIDGET, resolve_dimensions, apply_aspect_mode, aspect_mode_from_image
 from .aun_bundle_shared import BUNDLE
 
 class AnyType(str):
@@ -42,6 +42,7 @@ class AUNInputs:
     def INPUT_TYPES(s):
         return {
             "optional": {
+                "ref_image": ("IMAGE", {"tooltip": "Optional reference image. When connected, aspect_mode is set automatically to match its orientation."}),
                 "auto_name": ("STRING", {"multiline": False, "default": "Name", "forceInput": True, "tooltip": "Automatic name input, typically from a prompt node, used when 'name_mode' is set to Auto."}),
                 "bundle_input": (BUNDLE, {"tooltip": "Optional OBVPM bundle override. Matching fields replace widget values when present."}),
                 "set": ("STRING", {"default": "", "tooltip": "Constant name. When non-empty, this node sets an OBVPM bundle constant."}),
@@ -89,7 +90,7 @@ class AUNInputs:
     FUNCTION = 'inputs'
     CATEGORY = 'AUN Nodes/Loaders+Inputs'
 
-    def inputs(self, ckpt_name, speed_lora, speed_lora_model, speed_lora_strength, clip_skip, MainFolder, ManualName, name_mode, prefix, sampler, scheduler, cfg, steps, width, height, aspect_ratio, aspect_mode, batch_size, seed, date_format, crop, words, auto_name="Name", megapixels=1.0, multiple=8, bundle_input=None, set=""):
+    def inputs(self, ckpt_name, speed_lora, speed_lora_model, speed_lora_strength, clip_skip, MainFolder, ManualName, name_mode, prefix, sampler, scheduler, cfg, steps, width, height, aspect_ratio, aspect_mode, batch_size, seed, date_format, crop, words, auto_name="Name", megapixels=1.0, multiple=8, bundle_input=None, set="", ref_image=None):
         if isinstance(bundle_input, dict):
             if bundle_input.get("sampler") is not None:
                 sampler = bundle_input.get("sampler")
@@ -121,6 +122,8 @@ class AUNInputs:
                     print(f"SpeedLoRA model '{lora_choice}' not found; skipping SpeedLoRA load.")
 
         width, height = resolve_dimensions(width, height, aspect_ratio, megapixels, multiple)
+        if ref_image is not None:
+            aspect_mode = aspect_mode_from_image(ref_image, width, height, aspect_ratio)
         width, height = apply_aspect_mode(width, height, aspect_mode)
 
         # Store original dimensions

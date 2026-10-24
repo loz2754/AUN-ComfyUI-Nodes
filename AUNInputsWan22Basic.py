@@ -8,7 +8,7 @@ import folder_paths as comfy_paths
 import nodes
 import torch
 
-from .AUNResolutionHelper import ASPECT_RATIO_NAMES, ASPECT_MODE_OPTIONS, MEGAPIXELS_WIDGET, MULTIPLE_WIDGET, resolve_dimensions, apply_aspect_mode
+from .AUNResolutionHelper import ASPECT_RATIO_NAMES, ASPECT_MODE_OPTIONS, MEGAPIXELS_WIDGET, MULTIPLE_WIDGET, resolve_dimensions, apply_aspect_mode, aspect_mode_from_image
 from .aun_bundle_shared import BUNDLE
 
 
@@ -112,6 +112,7 @@ class AUNInputsWan22Basic:
 
         return {
             "optional": {
+                "ref_image": ("IMAGE", {"tooltip": "Optional reference image. When connected, aspect_mode is set automatically to match its orientation."}),
                 "bundle_input": (BUNDLE, {"tooltip": "Optional OBVPM bundle override."}),
                 "set": ("STRING", {"default": "", "tooltip": "Constant name. When non-empty, sets an OBVPM bundle constant."}),
                 "high_noise_input": ("STRING", {"forceInput": True, "tooltip": "High-noise diffusion filename override. When connected, replaces 'high_noise_name'."}),
@@ -404,7 +405,7 @@ class AUNInputsWan22Basic:
         length_input=None,
         rife_multiplier_input=None,
         bundle_input=None,
-        set="",
+        set="", ref_image=None,
     ):
         if isinstance(bundle_input, dict):
             if bundle_input.get("sampler") is not None:
@@ -510,6 +511,8 @@ class AUNInputsWan22Basic:
         model_low = self._mark_model(model_low)
 
         width, height = resolve_dimensions(width, height, aspect_ratio, megapixels, multiple)
+        if ref_image is not None:
+            aspect_mode = aspect_mode_from_image(ref_image, width, height, aspect_ratio)
         width, height = apply_aspect_mode(width, height, aspect_mode)
 
         latent = {"samples": self._build_video_latent(model_high, batch_size, length, width, height)}

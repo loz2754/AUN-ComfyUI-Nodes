@@ -7,7 +7,7 @@ import comfy.utils
 import folder_paths as comfy_paths
 import torch
 
-from .AUNResolutionHelper import PRESETS, ASPECT_RATIOS, ASPECT_RATIO_NAMES, ASPECT_MODE_OPTIONS, MEGAPIXELS_WIDGET, MULTIPLE_WIDGET, resolve_dimensions, apply_aspect_mode
+from .AUNResolutionHelper import PRESETS, ASPECT_RATIOS, ASPECT_RATIO_NAMES, ASPECT_MODE_OPTIONS, MEGAPIXELS_WIDGET, MULTIPLE_WIDGET, resolve_dimensions, apply_aspect_mode, aspect_mode_from_image
 from .aun_bundle_shared import BUNDLE
 
 class AnyType(str):
@@ -43,6 +43,7 @@ class AUNInputsBasic:
 
         return {
             "optional": {
+                "ref_image": ("IMAGE", {"tooltip": "Optional reference image. When connected, aspect_mode is set automatically to match its orientation."}),
                 "model_input": ("STRING", {"forceInput": True, "tooltip": "Checkpoint filename override. When connected, replaces 'ckpt_name' (resolved case-insensitively against installed checkpoints; falls back to the widget value if no match is found)."}),
                 "sampler_input": ("STRING", {"forceInput": True, "tooltip": "Sampler name override. When connected and non-empty, replaces the 'sampler' widget value."}),
                 "scheduler_input": ("STRING", {"forceInput": True, "tooltip": "Scheduler name override. When connected and non-empty, replaces the 'scheduler' widget value."}),
@@ -156,7 +157,7 @@ class AUNInputsBasic:
 
     def inputs(self, ckpt_name, speed_lora, speed_lora_model, speed_lora_strength, clip_skip, 
                sampler, scheduler, cfg, steps, width, height, aspect_ratio, aspect_mode, batch_size, seed,
-           megapixels=1.0, multiple=8, model_input="", sampler_input="", scheduler_input="", cfg_input=None, steps_input=None, seed_input=None, bundle_input=None, set=""
+           megapixels=1.0, multiple=8, model_input="", sampler_input="", scheduler_input="", cfg_input=None, steps_input=None, seed_input=None, bundle_input=None, set="", ref_image=None
            ):
         model_input = self._clean_override(model_input)
         sampler_input = self._clean_override(sampler_input)
@@ -204,6 +205,8 @@ class AUNInputsBasic:
                     print(f"SpeedLoRA model '{lora_choice}' not found; skipping SpeedLoRA load.")
 
         width, height = resolve_dimensions(width, height, aspect_ratio, megapixels, multiple)
+        if ref_image is not None:
+            aspect_mode = aspect_mode_from_image(ref_image, width, height, aspect_ratio)
         width, height = apply_aspect_mode(width, height, aspect_mode)
 
         # Create the empty latent

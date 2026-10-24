@@ -1,5 +1,5 @@
 import os
-from .AUNResolutionHelper import ASPECT_RATIO_NAMES, ASPECT_MODE_OPTIONS, MEGAPIXELS_WIDGET, MULTIPLE_WIDGET, resolve_dimensions, apply_aspect_mode
+from .AUNResolutionHelper import ASPECT_RATIO_NAMES, ASPECT_MODE_OPTIONS, MEGAPIXELS_WIDGET, MULTIPLE_WIDGET, resolve_dimensions, apply_aspect_mode, aspect_mode_from_image
 from .aun_bundle_shared import BUNDLE
 import torch
 from datetime import datetime
@@ -97,6 +97,7 @@ class AUNInputsDiffusers:
 
         return {
             "optional": {
+                "ref_image": ("IMAGE", {"tooltip": "Optional reference image. When connected, aspect_mode is set automatically to match its orientation."}),
                 "bundle_input": (BUNDLE, {"tooltip": "Optional OBVPM bundle override."}),
                 "set": ("STRING", {"default": "", "tooltip": "Constant name. When non-empty, sets an OBVPM bundle constant."}),
                 "auto_name": (
@@ -411,7 +412,7 @@ class AUNInputsDiffusers:
         megapixels=1.0,
         multiple=8,
         bundle_input=None,
-        set="",
+        set="", ref_image=None,
     ):
         if isinstance(bundle_input, dict):
             if bundle_input.get("sampler") is not None:
@@ -446,6 +447,8 @@ class AUNInputsDiffusers:
                     )
 
         width, height = resolve_dimensions(width, height, aspect_ratio, megapixels, multiple)
+        if ref_image is not None:
+            aspect_mode = aspect_mode_from_image(ref_image, width, height, aspect_ratio)
         width, height = apply_aspect_mode(width, height, aspect_mode)
 
         latent = {"samples": self._build_latent(model, batch_size, width, height, force_match=force_match)}

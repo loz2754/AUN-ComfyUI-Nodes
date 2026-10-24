@@ -6,7 +6,7 @@ import comfy.utils
 import folder_paths as comfy_paths
 import nodes
 
-from .AUNResolutionHelper import ASPECT_RATIO_NAMES, ASPECT_MODE_OPTIONS, MEGAPIXELS_WIDGET, resolve_dimensions, apply_aspect_mode
+from .AUNResolutionHelper import ASPECT_RATIO_NAMES, ASPECT_MODE_OPTIONS, MEGAPIXELS_WIDGET, resolve_dimensions, apply_aspect_mode, aspect_mode_from_image
 from .aun_bundle_shared import BUNDLE
 
 
@@ -182,6 +182,7 @@ class AUNInputsMiniMaxH3Basic:
                 "length_input": ("INT", {"forceInput": True, "tooltip": "Frame-length override. When connected, replaces the seconds-derived frame count."}),
                 "fps_input": ("FLOAT", {"forceInput": True, "tooltip": "FPS override. When connected, replaces the 'fps' widget value."}),
                 "rife_multiplier_input": ("INT", {"forceInput": True, "tooltip": "RIFE multiplier override. When connected, replaces the 'rife_multiplier' widget value. Only applies when 'rife' is on."}),
+                "ref_image": ("IMAGE", {"tooltip": "Optional reference image. When connected, aspect_mode is set automatically to match its orientation."}),
             },
             "required": {
                 "unet_name": (
@@ -371,6 +372,7 @@ class AUNInputsMiniMaxH3Basic:
         length_input=None,
         fps_input=None,
         rife_multiplier_input=None,
+        ref_image=None,
         bundle_input=None,
         set="",
     ):
@@ -415,7 +417,6 @@ class AUNInputsMiniMaxH3Basic:
             fps = fps_input
         if rife_multiplier_input is not None:
             rife_multiplier = rife_multiplier_input
-
         self._ensure_valid_choice(unet_name, self._NO_UNET, "A UNET (diffusion-model) file")
         self._ensure_valid_choice(clip_name, self._NO_CLIP, "A CLIP file")
         self._ensure_valid_choice(video_vae_name, self._NO_VAE, "A video VAE file")
@@ -456,6 +457,8 @@ class AUNInputsMiniMaxH3Basic:
                     model, clip, weights, float(turbo_lora_strength), 0.0)
 
         width, height = resolve_dimensions(width, height, aspect_ratio, megapixels, multiple)
+        if ref_image is not None:
+            aspect_mode = aspect_mode_from_image(ref_image, width, height, aspect_ratio)
         width, height = apply_aspect_mode(width, height, aspect_mode)
 
         fps = float(fps)
