@@ -101,6 +101,7 @@ from .AUNTextIndexSwitch4 import AUNTextIndexSwitch4
 from .AUNTextIndexSwitch5 import AUNTextIndexSwitch5
 from .AUNTextIndexSwitch5Diffusers import AUNTextIndexSwitch5Diffusers
 from .AUNImageTitleMultiPreview import AUNImageTitleMultiPreview
+from .AUNImageToBundle import AUNImageToBundle
 from .AUNTitleImagePreview import AUNTitleImagePreview
 from .AUNWan22MoE import AUNWan22MoE
 from .AUNWildcardAddToPrompt import AUNWildcardAddToPrompt
@@ -210,6 +211,7 @@ NODE_CLASS_MAPPINGS = {
     "AUNTextIndexSwitch5": AUNTextIndexSwitch5,
     "AUNTextIndexSwitch5Diffusers": AUNTextIndexSwitch5Diffusers,
     "AUNImageTitleMultiPreview": AUNImageTitleMultiPreview,
+    "AUNImageToBundle": AUNImageToBundle,
     "AUNTitleImagePreview": AUNTitleImagePreview,
     "AUNWan22MoE": AUNWan22MoE,
     "AUNWildcardAddToPrompt": AUNWildcardAddToPrompt,
@@ -316,6 +318,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "AUNTextIndexSwitch5": "Text Index Switch 5",
     "AUNTextIndexSwitch5Diffusers": "Text Index Switch 5 Diffusers",
     "AUNImageTitleMultiPreview": "AUN Image Title Multi Preview",
+    "AUNImageToBundle": "AUN Image To Bundle",
     "AUNTitleImagePreview": "Image Preview With Title",
     "AUNWan22MoE": "Wan2.2 MoE KSampler",
     "AUNWildcardAddToPrompt": "AUN Wildcard Add-To-Prompt",

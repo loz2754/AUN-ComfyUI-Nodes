@@ -248,6 +248,7 @@ Works best when coupled with AUN Save Image.
 - Img2Img (`AUNImg2Img`) provides a comprehensive Img2Img node, allowing you to switch between txt2img and img2img modes. It handles image loading, resizing, and encoding into the latent space, providing essential outputs for further processing.
 - Load & Resize Image (`AUNImageLoadResize`) load images with optional automatic resizing. Supports FramePack nearest-bucket sizing, maintains aspect ratio, and provides filename information for workflow organization.
 - Load Image Single/Batch 3 (`AUNImageSingleBatch3`) is a versatile way to either load a single uploaded image, or cycle through a batch of images from a folder - with multiple selection modes, including increment, random, range and search filtering by filename patterns.
+- AUN Image To Bundle (`AUNImageToBundle`) wraps an image (and optional filename) into an OBVPM bundle with a 'set' constant, so it can be stored and read back by an OBVPM Unbundle (get) or KJ Get.
 - Manual/Auto Image Switch (`AUNManualAutoImageSwitch`) switches a filename and image output together. In Auto mode it passes through the source image and filename; in Manual mode it outputs `ManualName` and a generated placeholder image with optional overlay text and color controls.
 - Resize Image (`AUNImageResize`) resize an input image using the same strategies as AUN Load & Resize Image, including FramePack buckets and fill/crop anchoring.
 - Save Image *Deprecated* (`AUNSaveImage`) is the legacy image saver for workflows that still provide separate `path` and `filename` inputs.
