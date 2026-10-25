@@ -18,6 +18,7 @@
 - `AUNAnyIndexSwitch`: added optional `set` STRING input and `bundle` (OBVPM_BUNDLE) output exposing `output`/`label` as an OBVPM constant. Registered as an OBVPM setter in the slot fix.
 - `AUNCheckpointLoaderWithClipSkip`: added optional `set` STRING input and `bundle` (OBVPM_BUNDLE) output exposing `model`/`clip`/`vae`/`name`/`clip_skip` as an OBVPM constant. Registered as an OBVPM setter in the slot fix.
 - `AUNLoraLoaderModelOnlyFromString`: added optional `set` STRING input and `bundle` (OBVPM_BUNDLE) output exposing `model`/`resolved_lora` as an OBVPM constant. Registered as an OBVPM setter in the slot fix.
+- `AUNLoraStackWithTriggers` and `AUNLoraStackWithTriggersModelClip`: added optional `set` STRING input and `bundle` (OBVPM_BUNDLE) output exposing their outputs as OBVPM constants. Registered as OBVPM setters in the slot fix.
 
 ### Changed
 

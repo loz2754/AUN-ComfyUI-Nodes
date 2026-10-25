@@ -1,6 +1,7 @@
 import comfy.sd
 import comfy.utils
 import folder_paths
+from .aun_bundle_shared import BUNDLE
 
 
 class AUNLoraStackWithTriggersModelClip:
@@ -127,9 +128,13 @@ class AUNLoraStackWithTriggersModelClip:
             ),
         })
 
+        optional["set"] = ("STRING", {
+            "default": "",
+            "tooltip": "Constant name. When non-empty, this node sets an OBVPM bundle constant readable by an OBVPM Unbundle (get) or KJ Get."
+        })
         return {"required": required, "optional": optional}
 
-    RETURN_TYPES = ("MODEL", "CLIP", "STRING", "STRING", "STRING", "STRING")
+    RETURN_TYPES = ("MODEL", "CLIP", "STRING", "STRING", "STRING", "STRING", BUNDLE)
     RETURN_NAMES = (
         "MODEL",
         "CLIP",
@@ -137,6 +142,7 @@ class AUNLoraStackWithTriggersModelClip:
         "labels",
         "trigger words",
         "trigger + prompt",
+        "bundle",
     )
     FUNCTION = "load_stack"
     CATEGORY = "AUN Nodes/Loras"
@@ -146,7 +152,8 @@ class AUNLoraStackWithTriggersModelClip:
         "Use this when you want separate model and clip strengths per slot. "
         "Double-click the node or use the right-click menu to toggle between compact and full view. "
         "In compact mode, drag a LoRA label onto another to swap their values (LoRA, strengths, and triggers). "
-        "Right-click menu: Hide/Show clip strength, Hide/Show footer with trigger words."
+        "Right-click menu: Hide/Show clip strength, Hide/Show footer with trigger words. "
+        "Set the 'set' widget to a constant name to expose all outputs as an OBVPM bundle constant."
     )
 
     def _normalize_slot_count(self, num_slots):
@@ -234,6 +241,7 @@ class AUNLoraStackWithTriggersModelClip:
         clip=None,
         base_prompt=None,
         selected_LoRAs="",
+        set="",
         **kwargs,
     ):
         active_slots = self._resolve_active_slots(num_slots, kwargs)
@@ -241,7 +249,8 @@ class AUNLoraStackWithTriggersModelClip:
         upstream_loras = str(selected_LoRAs or "").strip()
 
         if not bool(apply_stack) or not active_slots:
-            return (model, clip, upstream_loras, "", "", base_prompt_text)
+            bundle = {"model": model, "clip": clip, "selected_loras": upstream_loras, "labels": "", "trigger_words": "", "trigger_prompt": base_prompt_text}
+            return (model, clip, upstream_loras, "", "", base_prompt_text, bundle)
 
         trigger_parts = [item["trigger"] for item in active_slots if item["trigger"]]
         trigger_parts = self._dedupe_trigger_parts(trigger_parts, bool(dedupe_triggers))
@@ -285,6 +294,14 @@ class AUNLoraStackWithTriggersModelClip:
             except Exception:
                 continue
 
+        bundle = {
+            "model": loaded_model,
+            "clip": loaded_clip,
+            "selected_loras": selected_loras,
+            "labels": labels,
+            "trigger_words": trigger_words,
+            "trigger_prompt": trigger_prompt,
+        }
         return (
             loaded_model,
             loaded_clip,
@@ -292,6 +309,7 @@ class AUNLoraStackWithTriggersModelClip:
             labels,
             trigger_words,
             trigger_prompt,
+            bundle,
         )
 
     @classmethod

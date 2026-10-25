@@ -1,6 +1,7 @@
 import comfy.sd
 import comfy.utils
 import folder_paths
+from .aun_bundle_shared import BUNDLE
 
 
 class AUNLoraStackWithTriggers:
@@ -116,15 +117,20 @@ class AUNLoraStackWithTriggers:
             ),
         })
 
+        optional["set"] = ("STRING", {
+            "default": "",
+            "tooltip": "Constant name. When non-empty, this node sets an OBVPM bundle constant readable by an OBVPM Unbundle (get) or KJ Get."
+        })
         return {"required": required, "optional": optional}
 
-    RETURN_TYPES = ("MODEL", "STRING", "STRING", "STRING", "STRING")
+    RETURN_TYPES = ("MODEL", "STRING", "STRING", "STRING", "STRING", BUNDLE)
     RETURN_NAMES = (
         "MODEL",
         "selected LoRAs",
         "labels",
         "trigger words",
         "trigger + prompt",
+        "bundle",
     )
     FUNCTION = "load_stack"
     CATEGORY = "AUN Nodes/Loras"
@@ -215,6 +221,7 @@ class AUNLoraStackWithTriggers:
         dedupe_triggers,
         base_prompt=None,
         selected_LoRAs="",
+        set="",
         **kwargs,
     ):
         active_slots = self._resolve_active_slots(num_slots, kwargs)
@@ -222,7 +229,8 @@ class AUNLoraStackWithTriggers:
         upstream_loras = str(selected_LoRAs or "").strip()
 
         if not bool(apply_stack) or not active_slots:
-            return (model, upstream_loras, "", "", base_prompt_text)
+            bundle = {"model": model, "selected_loras": upstream_loras, "labels": "", "trigger_words": "", "trigger_prompt": base_prompt_text}
+            return (model, upstream_loras, "", "", base_prompt_text, bundle)
 
         trigger_parts = [item["trigger"] for item in active_slots if item["trigger"]]
         trigger_parts = self._dedupe_trigger_parts(trigger_parts, bool(dedupe_triggers))
@@ -265,12 +273,20 @@ class AUNLoraStackWithTriggers:
             except Exception:
                 continue
 
+        bundle = {
+            "model": loaded_model,
+            "selected_loras": selected_loras,
+            "labels": labels,
+            "trigger_words": trigger_words,
+            "trigger_prompt": trigger_prompt,
+        }
         return (
             loaded_model,
             selected_loras,
             labels,
             trigger_words,
             trigger_prompt,
+            bundle,
         )
 
     @classmethod

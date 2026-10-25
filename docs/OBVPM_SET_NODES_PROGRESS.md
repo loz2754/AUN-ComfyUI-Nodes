@@ -29,6 +29,8 @@ Track of AUN nodes adapted to act as OBVPM constants (via a `set` STRING input +
 - `AUNAnyIndexSwitch` — bundle fields: `output`, `label`
 - `AUNCheckpointLoaderWithClipSkip` — bundle fields: `model`, `clip`, `vae`, `name`, `clip_skip`
 - `AUNLoraLoaderModelOnlyFromString` — bundle fields: `model`, `resolved_lora`
+- `AUNLoraStackWithTriggers` — bundle fields: `model`, `selected_loras`, `labels`, `trigger_words`, `trigger_prompt`
+- `AUNLoraStackWithTriggersModelClip` — bundle fields: `model`, `clip`, `selected_loras`, `labels`, `trigger_words`, `trigger_prompt`
 
 ## Next candidates (image family done; suggested next families)
 
