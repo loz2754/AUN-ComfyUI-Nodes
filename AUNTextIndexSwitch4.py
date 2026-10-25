@@ -1,5 +1,6 @@
 import random
 import time
+from .aun_bundle_shared import BUNDLE
 
 class AUNTextIndexSwitch4:
     MAX_SLOTS = 20
@@ -57,12 +58,17 @@ class AUNTextIndexSwitch4:
 
         return {
             "required": required,
-            "optional": {},
+            "optional": {
+                "set": ("STRING", {
+                    "default": "",
+                    "tooltip": "Constant name. When non-empty, this node sets an OBVPM bundle constant readable by an OBVPM Unbundle (get) or KJ Get."
+                }),
+            },
             "hidden": {"unique_id": "UNIQUE_ID", "extra_pnginfo": "EXTRA_PNGINFO"}
         }
 
-    RETURN_TYPES = ("STRING", "STRING", "INT")
-    RETURN_NAMES = ("text", "label", "index")
+    RETURN_TYPES = ("STRING", "STRING", "INT", BUNDLE)
+    RETURN_NAMES = ("text", "label", "index", "bundle")
     FUNCTION = "text_index_switch"
     CATEGORY = "AUN Nodes/Prompts"
     OUTPUT_NODE = True
@@ -274,7 +280,8 @@ class AUNTextIndexSwitch4:
             },
         )
 
-        return (selected_text, selected_label, final_index)
+        bundle = {"text": selected_text, "label": selected_label, "index": final_index}
+        return (selected_text, selected_label, final_index, bundle)
 
     @classmethod
     def IS_CHANGED(cls, minimum=None, maximum=None, mode=None, range=None, slot_count=None, index=None, **kwargs):

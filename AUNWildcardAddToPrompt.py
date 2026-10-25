@@ -4,6 +4,7 @@ import time
 from pathlib import Path
 
 from .AUNAddToPrompt import AUNAddToPrompt
+from .aun_bundle_shared import BUNDLE
 
 
 class _LocalWildcardProcessor:
@@ -182,6 +183,10 @@ class AUNWildcardAddToPrompt(AUNAddToPrompt):
                         "tooltip": "Optional prompt to extend.",
                     },
                 ),
+                "set": ("STRING", {
+                    "default": "",
+                    "tooltip": "Constant name. When non-empty, this node sets an OBVPM bundle constant readable by an OBVPM Unbundle (get) or KJ Get."
+                }),
             },
             "required": {
                 "wildcards": (
@@ -224,11 +229,11 @@ class AUNWildcardAddToPrompt(AUNAddToPrompt):
             "hidden": {"unique_id": "UNIQUE_ID", "extra_pnginfo": "EXTRA_PNGINFO"},
         }
 
-    RETURN_TYPES = ("STRING", "STRING")
-    RETURN_NAMES = ("prompt", "populated_text")
+    RETURN_TYPES = ("STRING", "STRING", BUNDLE)
+    RETURN_NAMES = ("prompt", "populated_text", "bundle")
     FUNCTION = "add_wildcard_to_prompt"
     CATEGORY = "AUN Nodes/Prompts"
-    DESCRIPTION = "Randomize local wildcard syntax each execution, then conditionally add the populated text to a prompt."
+    DESCRIPTION = "Randomize local wildcard syntax each execution, then conditionally add the populated text to a prompt. Set the 'set' widget to a constant name to expose all outputs as an OBVPM bundle constant."
 
     @staticmethod
     def _process_wildcards(text):
@@ -271,6 +276,7 @@ class AUNWildcardAddToPrompt(AUNAddToPrompt):
         prompt=None,
         unique_id=None,
         extra_pnginfo=None,
+        set="",
     ):
         source_text = wildcards or ""
         processed_text = self._process_wildcards(source_text)
@@ -299,7 +305,8 @@ class AUNWildcardAddToPrompt(AUNAddToPrompt):
             },
         )
 
-        return {"ui": {"populated_text": [processed_text]}, "result": (result, processed_text)}
+        bundle = {"prompt": result, "populated_text": processed_text}
+        return {"ui": {"populated_text": [processed_text]}, "result": (result, processed_text, bundle)}
 
     @classmethod
     def IS_CHANGED(cls, wildcards, wildcard_selector, delimiter, order, mode, prompt=None, **kwargs):

@@ -1,5 +1,6 @@
 import random
 import time
+from .aun_bundle_shared import BUNDLE
 
 lazy_options = {"lazy": True}
 
@@ -59,10 +60,14 @@ class AUNRandomTextIndexSwitchV2:
                     "tooltip": f"Text input {i}. Only the selected index is output.",
                 },
             )
+        inputs["optional"]["set"] = ("STRING", {
+            "default": "",
+            "tooltip": "Constant name. When non-empty, this node sets an OBVPM bundle constant readable by an OBVPM Unbundle (get) or KJ Get."
+        })
         return inputs
 
-    RETURN_TYPES = ("STRING", "STRING", "INT", "STRING")
-    RETURN_NAMES = ("text", "label", "index", "prefixed_label")
+    RETURN_TYPES = ("STRING", "STRING", "INT", "STRING", BUNDLE)
+    RETURN_NAMES = ("text", "label", "index", "prefixed_label", "bundle")
     FUNCTION = "random_text_switch"
     CATEGORY = "AUN Nodes/Prompts"
     OUTPUT_NODE = True
@@ -190,7 +195,7 @@ class AUNRandomTextIndexSwitchV2:
         # Check if the selected input exists and has a value
         if key not in kwargs or kwargs[key] is None:
             fallback_label = "Text " + str(index)
-            return ("", fallback_label, index, self._build_prefixed_label(index, fallback_label))
+            return ("", fallback_label, index, self._build_prefixed_label(index, fallback_label), {"text": "", "label": fallback_label, "index": index, "prefixed_label": self._build_prefixed_label(index, fallback_label)})
 
         selected_label = "Text " + str(index)
         node_id = kwargs.get('unique_id')
@@ -250,7 +255,8 @@ class AUNRandomTextIndexSwitchV2:
             }
         )
 
-        return (selected_text, selected_label, index, prefixed_label)
+        bundle = {"text": selected_text, "label": selected_label, "index": index, "prefixed_label": prefixed_label}
+        return (selected_text, selected_label, index, prefixed_label, bundle)
 
     @classmethod
     def IS_CHANGED(cls, minimum=None, maximum=None, mode=None, select=None, **kwargs):

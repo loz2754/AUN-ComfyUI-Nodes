@@ -1,4 +1,5 @@
 import comfy.utils
+from .aun_bundle_shared import BUNDLE
 #from typing import Iterator, List, Tuple, Dict, Any, Union, Optional
 #import numpy as np
 
@@ -49,13 +50,17 @@ class AUNTextIndexSwitch:
                     **lazy_options,
                 },
             )
+        inputs["optional"]["set"] = ("STRING", {
+            "default": "",
+            "tooltip": "Constant name. When non-empty, this node sets an OBVPM bundle constant readable by an OBVPM Unbundle (get) or KJ Get."
+        })
         return inputs
 
-    RETURN_TYPES = ("STRING", "STRING")
-    RETURN_NAMES = ("text", "label")
+    RETURN_TYPES = ("STRING", "STRING", BUNDLE)
+    RETURN_NAMES = ("text", "label", "bundle")
     FUNCTION = "index_switch"
     CATEGORY = "AUN Nodes/Prompts"
-    DESCRIPTION = "Switch between up to 20 text inputs based on index number. Useful for dynamic prompt selection with control over how many sockets are visible on the node. Inputs take the title of the connected node, which is also used as the label."
+    DESCRIPTION = "Switch between up to 20 text inputs based on index number. Useful for dynamic prompt selection with control over how many sockets are visible on the node. Inputs take the title of the connected node, which is also used as the label. Set the 'set' widget to a constant name to expose all outputs as an OBVPM bundle constant."
 
     def _clamp_visible_inputs(self, visible_inputs):
         return max(self.MIN_VISIBLE_INPUTS, min(int(visible_inputs or self.MAX_INPUTS), self.MAX_INPUTS))
@@ -80,7 +85,7 @@ class AUNTextIndexSwitch:
         
         # Check if the selected input exists
         if key not in kwargs or kwargs[key] is None:
-            return ("", key)  # Return the key as the label
+            return ("", key, {"text": "", "label": key})  # Return the key as the label
         
         selected_label = key
         node_id = kwargs.get('unique_id')
@@ -126,7 +131,7 @@ class AUNTextIndexSwitch:
                         selected_label = node['type']
                     break
         
-        return (kwargs[key], selected_label)        
+        return (kwargs[key], selected_label, {"text": kwargs[key], "label": selected_label})        
         
 NODE_CLASS_MAPPINGS = {
     "AUNTextIndexSwitch": AUNTextIndexSwitch,

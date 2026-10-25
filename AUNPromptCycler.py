@@ -1,5 +1,6 @@
 import random
 from typing import List, Tuple, Any
+from .aun_bundle_shared import BUNDLE
 
 class AUNPromptCycler:
     """
@@ -76,16 +77,20 @@ class AUNPromptCycler:
                     "dynamicPrompts": True,
                     "default": default_prompts,
                     "tooltip": "Enter your own prompts, one per line. Optional title: use 'Title: Prompt text' format. Lines without a title get auto-generated ones (e.g., 'Prompt 1')."
-                })
+                }),
+                "set": ("STRING", {
+                    "default": "",
+                    "tooltip": "Constant name. When non-empty, this node sets an OBVPM bundle constant readable by an OBVPM Unbundle (get) or KJ Get."
+                }),
             },
             "hidden": {
                 "unique_id": "UNIQUE_ID",
             }
         }
 
-    DESCRIPTION = "Cycle through prompts sequentially, randomly, by range (e.g. '1,2,4-8,11'), or by search. Supports custom titles. Original by tenitsky."
-    RETURN_TYPES = ("STRING", "STRING", "INT")
-    RETURN_NAMES = ("prompt", "prompt_title", "index")
+    DESCRIPTION = "Cycle through prompts sequentially, randomly, by range (e.g. '1,2,4-8,11'), or by search. Supports custom titles. Original by tenitsky. Set the 'set' widget to a constant name to expose all outputs as an OBVPM bundle constant."
+    RETURN_TYPES = ("STRING", "STRING", "INT", BUNDLE)
+    RETURN_NAMES = ("prompt", "prompt_title", "index", "bundle")
     FUNCTION = "cycle_prompt"
     CATEGORY = "AUN Nodes/Prompts"
     OUTPUT_NODE = True
@@ -106,7 +111,7 @@ class AUNPromptCycler:
         except Exception:
             pass
 
-    def cycle_prompt(self, cycle_mode: str, manual_index: int = 1, range_indices: str = "1-10", search_query: str = "", custom_prompts: str = "", unique_id=None, **kwargs):
+    def cycle_prompt(self, cycle_mode: str, manual_index: int = 1, range_indices: str = "1-10", search_query: str = "", custom_prompts: str = "", unique_id=None, set="", **kwargs):
         """
         Cycle through prompts and return the current one.
         Supports infinite number of prompts via custom_prompts input.
@@ -209,7 +214,8 @@ class AUNPromptCycler:
 
         self._emit_selected_prompt(unique_id, title, cycle_index)
 
-        return (prompt, title, cycle_index)
+        bundle = {"prompt": prompt, "prompt_title": title, "index": cycle_index}
+        return (prompt, title, cycle_index, bundle)
 
     @classmethod
     def IS_CHANGED(cls, **kwargs):

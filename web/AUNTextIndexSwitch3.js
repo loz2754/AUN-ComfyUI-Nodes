@@ -27,6 +27,7 @@ const PARAM_OUTPUTS = new Set([
   "cfg",
   "steps",
   "seed",
+  "bundle",
 ]);
 // Only the switch5 classes have the param-output layout that converges in
 // compact mode. AUNInputsBasicSwitch shares PARAM_OUTPUTS slot names (sampler,
@@ -201,24 +202,24 @@ function ensureHiddenAwareWidget(widget) {
       return LiteGraph?.NODE_WIDTH ?? 200;
     };
 
-    if (this.hidden) {
+    if (widget.hidden) {
       return [resolveWidth(), 0];
     }
 
     if (originalComputeSize) {
-      const size = originalComputeSize.apply(this, args);
+      const size = originalComputeSize.apply(widget, args);
       if (Array.isArray(size) && size.length >= 2) {
         const pad =
-          (this.__AUN_boundaryPad ? BOUNDARY_PAD : 0) +
-          (this.__AUN_textSelPad ? TEXT_SELECTION_PAD : 0);
+          (widget.__AUN_boundaryPad ? BOUNDARY_PAD : 0) +
+          (widget.__AUN_textSelPad ? TEXT_SELECTION_PAD : 0);
         return [size[0], size[1] + pad];
       }
     }
 
     const height = LiteGraph?.NODE_WIDGET_HEIGHT ?? 24;
     const pad =
-      (this.__AUN_boundaryPad ? BOUNDARY_PAD : 0) +
-      (this.__AUN_textSelPad ? TEXT_SELECTION_PAD : 0);
+      (widget.__AUN_boundaryPad ? BOUNDARY_PAD : 0) +
+      (widget.__AUN_textSelPad ? TEXT_SELECTION_PAD : 0);
     return [resolveWidth(), height + pad];
   };
 }
@@ -2440,6 +2441,13 @@ function ensureTextWidgetsExist(node, slotCount) {
 function updateNodeVisualState(node) {
   if (!node) return;
 
+  // Ensure every widget (including the newly added 'set' constant widget) is
+  // height-aware, so hidden widgets actually reduce the node height. This is
+  // idempotent and covers widgets created after the initial patch pass.
+  for (const w of node.widgets || []) {
+    if (w && typeof w === "object") ensureHiddenAwareWidget(w);
+  }
+
   const slotCountWidget = getWidget(node, "slot_count");
   if (!slotCountWidget) return;
 
@@ -2452,6 +2460,11 @@ function updateNodeVisualState(node) {
 
   // Hide slot_count widget in compact mode
   applyWidgetHiddenState(slotCountWidget, compact);
+
+  // The OBVPM 'set' constant widget is only needed in compact mode (it is
+  // hidden in full/"show all widgets" mode, where the full slot rail is visible
+  // and would otherwise clip it).
+  applyWidgetHiddenState(getWidget(node, "set"), !compact);
 
   // In compact mode hide only the numeric bounds (minimum/maximum). The mode,
   // index and range widgets stay visible in both modes so selection can always
@@ -2626,11 +2639,13 @@ function updateNodeVisualState(node) {
     typeof node.setSize === "function"
   ) {
     try {
+      // Force a clean recompute: reset height to 0 first so LiteGraph/ComfyUI
+      // recompute from scratch (avoids stale tall heights after widget changes).
+      const savedW = node.size[0];
+      node.size[1] = 0;
       const newSize = node.computeSize();
       if (newSize && Array.isArray(newSize) && newSize.length >= 2) {
-        // Always preserve the user's current width
-        const widthToUse = node.size[0];
-        node.setSize([widthToUse, newSize[1] + 15]);
+        node.setSize([savedW, newSize[1] + 15]);
       }
     } catch (e) {
       // ignore
@@ -3196,7 +3211,7 @@ try {
               s[1] = Math.max(
                 (this.constructor?.slot_start_y || 0) +
                   LiteGraph.NODE_SLOT_HEIGHT,
-                s[1] - (paramCount - 1) * LiteGraph.NODE_SLOT_HEIGHT,
+                s[1] - (paramCount) * LiteGraph.NODE_SLOT_HEIGHT,
               );
             }
           }

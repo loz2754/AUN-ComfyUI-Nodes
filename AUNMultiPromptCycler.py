@@ -1,7 +1,8 @@
 import random
+from .aun_bundle_shared import BUNDLE
 
 class AUNMultiPromptCycler:
-    DESCRIPTION = "Outputs all prompts matching a range or search query as lists. Each list element triggers a separate downstream execution."
+    DESCRIPTION = "Outputs all prompts matching a range or search query as lists. Each list element triggers a separate downstream execution. Set the 'set' widget to a constant name to expose all outputs as an OBVPM bundle constant."
 
     def __init__(self):
         self.example_prompts = [
@@ -37,16 +38,20 @@ class AUNMultiPromptCycler:
                     "dynamicPrompts": True,
                     "default": "Enter prompts here...",
                     "tooltip": "Enter your own prompts, one per line. Optional title: use 'Title: Prompt text' format. Lines without a title get auto-generated ones (e.g., 'Prompt 1')."
-                })
+                }),
+                "set": ("STRING", {
+                    "default": "",
+                    "tooltip": "Constant name. When non-empty, this node sets an OBVPM bundle constant readable by an OBVPM Unbundle (get) or KJ Get."
+                }),
             },
             "hidden": {
                 "unique_id": "UNIQUE_ID",
             }
         }
 
-    RETURN_TYPES = ("STRING", "STRING")
-    RETURN_NAMES = ("prompt", "prompt_title")
-    OUTPUT_IS_LIST = (True, True)
+    RETURN_TYPES = ("STRING", "STRING", BUNDLE)
+    RETURN_NAMES = ("prompt", "prompt_title", "bundle")
+    OUTPUT_IS_LIST = (True, True, False)
     FUNCTION = "get_prompts"
     CATEGORY = "AUN Nodes/Prompts"
     OUTPUT_NODE = True
@@ -71,7 +76,7 @@ class AUNMultiPromptCycler:
         return prompts_to_use, titles_to_use
 
     def _fallback(self):
-        return ([""], [""])
+        return ([""], [""], {"prompt": [""], "prompt_title": [""]})
 
     def _get_range_indices(self, mode_input, max_len):
         indices = []
@@ -114,7 +119,7 @@ class AUNMultiPromptCycler:
             return any(all(word in t for word in group) for group in or_groups)
         return [(p, t) for p, t in zip(prompts_to_use, titles_to_use) if matches(p)]
 
-    def get_prompts(self, mode, mode_input, custom_prompts="", unique_id=None, **kwargs):
+    def get_prompts(self, mode, mode_input, custom_prompts="", unique_id=None, set="", **kwargs):
         prompts_to_use, titles_to_use = self._parse_prompts(custom_prompts)
         if not prompts_to_use:
             return self._fallback()
@@ -125,7 +130,7 @@ class AUNMultiPromptCycler:
                 return self._fallback()
             prompts = [prompts_to_use[i - 1] for i in indices]
             titles = [titles_to_use[i - 1] for i in indices]
-            return (prompts, titles)
+            return (prompts, titles, {"prompt": prompts, "prompt_title": titles})
 
         else:
             matches = self._get_search_matches(mode_input, prompts_to_use, titles_to_use)
@@ -133,7 +138,7 @@ class AUNMultiPromptCycler:
                 return self._fallback()
             prompts = [p for p, _ in matches]
             titles = [t for _, t in matches]
-            return (prompts, titles)
+            return (prompts, titles, {"prompt": prompts, "prompt_title": titles})
 
     @classmethod
     def IS_CHANGED(cls, **kwargs):

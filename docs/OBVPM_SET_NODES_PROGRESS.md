@@ -16,6 +16,16 @@ Track of AUN nodes adapted to act as OBVPM constants (via a `set` STRING input +
 - `AUNImageResize` — bundle fields: `image`, `mask`, `width`, `height`
 - `AUNManualAutoImageSwitch` — bundle fields: `filename`, `manual_name`, `name_mode`, `image`
 - `AUNKSamplerPlusv3` — bundle fields: `base_image`, `image_upscaled`, `latent_upscaled`, `both_upscaled`, `refined_image`, `latent`, `upscaled_type`
+- `AUNPromptCycler` — bundle fields: `prompt`, `prompt_title`, `index`
+- `AUNMultiPromptCycler` — bundle fields: `prompt`, `prompt_title`
+- `AUNWildcardAddToPrompt` — bundle fields: `prompt`, `populated_text`
+- `AUNTextIndexSwitch` — bundle fields: `text`, `label`
+- `AUNTextIndexSwitch3` — bundle fields: `text`, `label`, `index`
+- `AUNTextIndexSwitch4` — bundle fields: `text`, `label`, `index`
+- `AUNTextIndexSwitch5` — bundle fields: `text`, `label`, `index`, `model`, `sampler`, `scheduler`, `cfg`, `steps`, `seed`
+- `AUNTextIndexSwitch5Diffusers` — bundle fields: `text`, `label`, `index`, `diffusion_name`, `clip_name`, `vae_name`, `clip_type`, `sampler`, `scheduler`, `cfg`, `steps`, `seed`
+- `AUNRandomTextIndexSwitch` — bundle fields: `text`, `label`, `index`
+- `AUNRandomTextIndexSwitchV2` — bundle fields: `text`, `label`, `index`, `prefixed_label`
 
 ## Next candidates (image family done; suggested next families)
 

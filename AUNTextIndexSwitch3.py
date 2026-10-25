@@ -1,4 +1,5 @@
 import comfy.utils
+from .aun_bundle_shared import BUNDLE
 
 class AUNTextIndexSwitch3:
 
@@ -25,11 +26,16 @@ class AUNTextIndexSwitch3:
             
         return {
             "required": required, 
-            "optional": {}, 
+            "optional": {
+                "set": ("STRING", {
+                    "default": "",
+                    "tooltip": "Constant name. When non-empty, this node sets an OBVPM bundle constant readable by an OBVPM Unbundle (get) or KJ Get."
+                }),
+            }, 
             "hidden": {"unique_id": "UNIQUE_ID", "extra_pnginfo": "EXTRA_PNGINFO"}} 
 
-    RETURN_TYPES = ("STRING", "STRING","INT",)
-    RETURN_NAMES = ("text", "label", "index")
+    RETURN_TYPES = ("STRING", "STRING", "INT", BUNDLE)
+    RETURN_NAMES = ("text", "label", "index", "bundle")
     FUNCTION = "index_switch"
     CATEGORY = "AUN Nodes/Prompts"
     OUTPUT_NODE = True
@@ -140,7 +146,8 @@ class AUNTextIndexSwitch3:
 
         self._emit_selected_index(unique_id, clamped_index)
 
-        return (texts[idx], selected_label, clamped_index)
+        bundle = {"text": texts[idx], "label": selected_label, "index": clamped_index}
+        return (texts[idx], selected_label, clamped_index, bundle)
     
     def _emit_selected_index(self, unique_id, index):
         if unique_id is None:

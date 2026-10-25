@@ -1,6 +1,7 @@
 import random
 import re
 import time
+from .aun_bundle_shared import BUNDLE
 
 
 class AUNTextIndexSwitch5:
@@ -73,17 +74,24 @@ class AUNTextIndexSwitch5:
 
         return {
             "required": required,
-            "optional": {},
+            "optional": {
+                "set": ("STRING", {
+                    "default": "",
+                    "tooltip": "Constant name. When non-empty, this node sets an OBVPM bundle constant readable by an OBVPM Unbundle (get) or KJ Get."
+                }),
+            },
             "hidden": {"unique_id": "UNIQUE_ID", "extra_pnginfo": "EXTRA_PNGINFO"}
         }
 
     RETURN_TYPES = (
         "STRING", "STRING", "INT",
         "STRING", "STRING", "STRING", "FLOAT", "INT", "INT",
+        BUNDLE,
     )
     RETURN_NAMES = (
         "text", "label", "index",
         "model", "sampler", "scheduler", "cfg", "steps", "seed",
+        "bundle",
     )
     FUNCTION = "text_index_switch"
     CATEGORY = "AUN Nodes/Prompts"
@@ -342,7 +350,9 @@ class AUNTextIndexSwitch5:
             raw = extracted.get(param_key)
             param_outputs.append(self._convert_value(param_key, raw))
 
-        return (cleaned_text, selected_label, final_index, *param_outputs)
+        bundle = {"text": cleaned_text, "label": selected_label, "index": final_index}
+        bundle.update(dict(zip(("model", "sampler", "scheduler", "cfg", "steps", "seed"), param_outputs)))
+        return (cleaned_text, selected_label, final_index, *param_outputs, bundle)
 
     @classmethod
     def IS_CHANGED(cls, minimum=None, maximum=None, mode=None, range=None, slot_count=None, index=None, **kwargs):
