@@ -4,7 +4,6 @@
 ## [Unreleased]
 
 ### Added
-- Text index switches (`AUNTextIndexSwitch`, `3`, `4`, `5`, `5Diffusers`, `Random`, `RandomV2`): added optional `set` STRING input and `bundle` (OBVPM_BUNDLE) output exposing their outputs as OBVPM constants. Registered as OBVPM setters in the slot fix. Also fixed compact-mode height and `set` widget clipping in `AUNTextIndexSwitch3`.
 
 ### Changed
 
@@ -12,6 +11,16 @@
 
 ### Notes
 
+## [2.34.15] - 2026-10-25
+
+### Added
+- Text index switches (`AUNTextIndexSwitch`, `3`, `4`, `5`, `5Diffusers`, `Random`, `RandomV2`): added optional `set` STRING input and `bundle` (OBVPM_BUNDLE) output exposing their outputs as OBVPM constants. Registered as OBVPM setters in the slot fix. Also fixed compact-mode height and `set` widget clipping in `AUNTextIndexSwitch3`.
+
+### Changed
+
+### Fixed
+
+### Notes
 ## [2.34.14] - 2026-10-25
 
 ### Added
