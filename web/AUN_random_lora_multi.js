@@ -506,7 +506,7 @@ function ensureHiddenAwareWidget(widget) {
       return globalThis.LiteGraph?.NODE_WIDTH ?? 200;
     };
 
-    if (this.hidden) {
+    if (this.hidden || this.__AUN_zeroSize) {
       if (Array.isArray(firstArg)) {
         firstArg[1] = 0;
         return firstArg;
@@ -1885,6 +1885,39 @@ function applyCompact(node) {
     applyWidgetHiddenState(labelW, compact);
   }
 
+  // OBVPM 'set' widget: visible in full mode, hidden in compact mode (where
+  // it would sit behind the overlays). Search by name, falling back to the
+  // last widget (ComfyUI appends optional widgets last).
+  let setW = getWidget(node, "set");
+  if (!setW && Array.isArray(node?.widgets) && node.widgets.length) {
+    const last = node.widgets[node.widgets.length - 1];
+    if (last && (last.name === "set" || last.name === undefined)) setW = last;
+  }
+  if (setW) {
+    // Keep the widget 'visible' (hidden=false) so OBVPM can find and read it,
+    // but make it occupy zero space and draw nothing so it never renders in
+    // the node. The value is edited via the context menu.
+    ensureHiddenAwareWidget(setW);
+    setW.hidden = false;
+    setW.__AUN_visible = true;
+    setW.__AUN_zeroSize = true;
+    setW.draw = () => {};
+    setW.label = " ";
+    const hideSetDom = () => {
+      if (!setW) return;
+      if (setW.inputEl) {
+        setW.inputEl.style.display = "none";
+        let el = setW.inputEl.parentElement;
+        for (let i = 0; i < 3 && el; i++) {
+          el.style.display = "none";
+          el = el.parentElement;
+        }
+      }
+    };
+    hideSetDom();
+    requestAnimationFrame(() => hideSetDom());
+  }
+
   // Hide num_prompts in compact mode
   const numPromptsW = getWidget(node, "num_prompts");
   if (numPromptsW) {
@@ -2608,6 +2641,23 @@ app.registerExtension({
       options.push({
         content: "AUN: Setup prompts…",
         callback: () => openSetupDialog(this),
+      });
+      options.push({
+        content: "AUN: Set OBVPM constant name…",
+        callback: () => {
+          const setW = getWidget(this, "set");
+          const current = String(setW?.value ?? "");
+          const value = prompt(
+            "OBVPM constant name (empty to clear). Readable by OBVPM Unbundle (get) / KJ Get.",
+            current,
+          );
+          if (value === null) return;
+          if (setW) {
+            setW.value = value;
+            setW.callback?.call(setW, value);
+          }
+          this.setDirtyCanvas?.(true, true);
+        },
       });
       options.push({
         content: compact ? "AUN: Show all prompts" : "AUN: Compact mode",
