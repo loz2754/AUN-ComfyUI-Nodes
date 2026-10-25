@@ -1,6 +1,7 @@
 import comfy.sd
 import comfy.utils
 import folder_paths
+from .aun_bundle_shared import BUNDLE
 
 
 class AUNLoRAsByPromptIndex:
@@ -133,9 +134,13 @@ class AUNLoRAsByPromptIndex:
         hidden = {
             "unique_id": "UNIQUE_ID",
         }
+        optional["set"] = ("STRING", {
+            "default": "",
+            "tooltip": "Constant name. When non-empty, this node sets an OBVPM bundle constant readable by an OBVPM Unbundle (get) or KJ Get."
+        })
         return {"required": required, "optional": optional, "hidden": hidden}
 
-    RETURN_TYPES = ("MODEL", "CLIP", "STRING", "INT", "STRING", "STRING",)
+    RETURN_TYPES = ("MODEL", "CLIP", "STRING", "INT", "STRING", "STRING", BUNDLE)
     RETURN_NAMES = (
         "MODEL",
         "CLIP",
@@ -143,6 +148,7 @@ class AUNLoRAsByPromptIndex:
         "index",
         "trigger words",
         "trigger + prompt",
+        "bundle",
     )
     FUNCTION = "load_loras_for_prompt"
     CATEGORY = "AUN Nodes/Loras"
@@ -155,7 +161,8 @@ class AUNLoRAsByPromptIndex:
         "Double-click to toggle compact mode for quick preview. "
         "In compact mode, drag a LoRA label onto another to swap their values (LoRA, strengths, and triggers). "
         "Right-click menu: Hide/Show clip strength, Hide/Show footer with trigger words. "
-        "Per-slot enable/disable toggles available in compact mode."
+        "Per-slot enable/disable toggles available in compact mode. "
+        "Set the 'set' widget to a constant name to expose all outputs as an OBVPM bundle constant."
     )
 
     def _is_empty_slot(self, value):
@@ -229,6 +236,7 @@ class AUNLoRAsByPromptIndex:
         num_prompts=5,
         selected_LoRAs="",
         label="",
+        set="",
         **kwargs,
     ):
         base_prompt = kwargs.get("base_prompt", "")
@@ -246,7 +254,7 @@ class AUNLoRAsByPromptIndex:
                 [],
                 apply_lora,
             )
-            return (model, clip, upstream_loras, prompt_idx, "", str(base_prompt or ""))
+            return (model, clip, upstream_loras, prompt_idx, "", str(base_prompt or ""), {"model": model, "clip": clip, "selected_loras": upstream_loras, "index": prompt_idx, "trigger_words": "", "trigger_prompt": str(base_prompt or "")})
 
         # Gather LoRAs for this prompt
         selected_loras = []
@@ -282,7 +290,7 @@ class AUNLoRAsByPromptIndex:
                 [],
                 apply_lora,
             )
-            return (model, clip, upstream_loras, prompt_idx, "", str(base_prompt or ""))
+            return (model, clip, upstream_loras, prompt_idx, "", str(base_prompt or ""), {"model": model, "clip": clip, "selected_loras": upstream_loras, "index": prompt_idx, "trigger_words": "", "trigger_prompt": str(base_prompt or "")})
 
         # Apply LoRAs sequentially
         current_model = model
@@ -345,6 +353,14 @@ class AUNLoRAsByPromptIndex:
             apply_lora,
         )
 
+        bundle = {
+            "model": current_model,
+            "clip": current_clip,
+            "selected_loras": final_selected_loras,
+            "index": prompt_idx,
+            "trigger_words": combined_triggers,
+            "trigger_prompt": composed_prompt,
+        }
         return (
             current_model,
             current_clip,
@@ -352,6 +368,7 @@ class AUNLoRAsByPromptIndex:
             prompt_idx,
             combined_triggers,
             composed_prompt,
+            bundle,
         )
 
 

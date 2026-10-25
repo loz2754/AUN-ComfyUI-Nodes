@@ -31,6 +31,7 @@ Track of AUN nodes adapted to act as OBVPM constants (via a `set` STRING input +
 - `AUNLoraLoaderModelOnlyFromString` — bundle fields: `model`, `resolved_lora`
 - `AUNLoraStackWithTriggers` — bundle fields: `model`, `selected_loras`, `labels`, `trigger_words`, `trigger_prompt`
 - `AUNLoraStackWithTriggersModelClip` — bundle fields: `model`, `clip`, `selected_loras`, `labels`, `trigger_words`, `trigger_prompt`
+- `AUNLoRAsByPromptIndex` — bundle fields: `model`, `clip`, `selected_loras`, `index`, `trigger_words`, `trigger_prompt`
 
 ## Next candidates (image family done; suggested next families)
 
