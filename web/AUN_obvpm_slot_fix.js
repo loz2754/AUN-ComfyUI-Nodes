@@ -7,6 +7,7 @@ const AUN_INPUT_CLASSES = new Set([
     "AUNImageSingleBatch3", "AUNImageLoadResize", "AUNImageResize", "AUNManualAutoImageSwitch", "AUNKSamplerPlusv3", "AUNPromptCycler", "AUNMultiPromptCycler", "AUNWildcardAddToPrompt",
     "AUNTextIndexSwitch", "AUNTextIndexSwitch3", "AUNTextIndexSwitch4", "AUNTextIndexSwitch5", "AUNTextIndexSwitch5Diffusers",
     "AUNRandomTextIndexSwitch", "AUNRandomTextIndexSwitchV2", "AUNAnyIndexSwitch", "AUNCheckpointLoaderWithClipSkip",
+    "AUNLoraLoaderModelOnlyFromString",
 ]);
 
 function resolveExecNode(root, execId) {

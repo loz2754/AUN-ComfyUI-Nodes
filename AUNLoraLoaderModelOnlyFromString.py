@@ -3,6 +3,7 @@ import os
 import comfy.sd
 import comfy.utils
 import folder_paths
+from .aun_bundle_shared import BUNDLE
 
 
 class AUNLoraLoaderModelOnlyFromString:
@@ -29,15 +30,21 @@ class AUNLoraLoaderModelOnlyFromString:
                         "tooltip": "LoRA strength applied to the model.",
                     },
                 ),
-            }
+            },
+            "optional": {
+                "set": ("STRING", {
+                    "default": "",
+                    "tooltip": "Constant name. When non-empty, this node sets an OBVPM bundle constant readable by an OBVPM Unbundle (get) or KJ Get."
+                }),
+            },
         }
 
-    RETURN_TYPES = ("MODEL", "STRING")
-    RETURN_NAMES = ("MODEL", "resolved_lora")
+    RETURN_TYPES = ("MODEL", "STRING", BUNDLE)
+    RETURN_NAMES = ("MODEL", "resolved_lora", "bundle")
     FUNCTION = "load_lora"
     CATEGORY = "AUN Nodes/Loras"
     OUTPUT_NODE = False
-    DESCRIPTION = "Loads a LoRA into a MODEL from a STRING input. Useful when core LoraLoaderModelOnly lora_name is COMBO-only."
+    DESCRIPTION = "Loads a LoRA into a MODEL from a STRING input. Useful when core LoraLoaderModelOnly lora_name is COMBO-only. Set the 'set' widget to a constant name to expose all outputs as an OBVPM bundle constant."
 
     @staticmethod
     def _normalize_name(value):
@@ -84,7 +91,7 @@ class AUNLoraLoaderModelOnlyFromString:
 
         return None
 
-    def load_lora(self, model, lora_name, strength_model):
+    def load_lora(self, model, lora_name, strength_model, set=""):
         lora_path = self._resolve_lora_path(lora_name)
         if not lora_path:
             raise FileNotFoundError(f"LoRA not found: {lora_name}")
@@ -105,7 +112,8 @@ class AUNLoraLoaderModelOnlyFromString:
                     break
             except Exception:
                 continue
-        return (loaded_model, resolved)
+        bundle = {"model": loaded_model, "resolved_lora": resolved}
+        return (loaded_model, resolved, bundle)
 
     @classmethod
     def IS_CHANGED(cls, model=None, lora_name=None, strength_model=None):

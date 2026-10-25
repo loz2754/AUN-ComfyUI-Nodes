@@ -17,6 +17,7 @@
 - Text index switches (`AUNTextIndexSwitch`, `3`, `4`, `5`, `5Diffusers`, `Random`, `RandomV2`): added optional `set` STRING input and `bundle` (OBVPM_BUNDLE) output exposing their outputs as OBVPM constants. Registered as OBVPM setters in the slot fix. Also fixed compact-mode height and `set` widget clipping in `AUNTextIndexSwitch3`.
 - `AUNAnyIndexSwitch`: added optional `set` STRING input and `bundle` (OBVPM_BUNDLE) output exposing `output`/`label` as an OBVPM constant. Registered as an OBVPM setter in the slot fix.
 - `AUNCheckpointLoaderWithClipSkip`: added optional `set` STRING input and `bundle` (OBVPM_BUNDLE) output exposing `model`/`clip`/`vae`/`name`/`clip_skip` as an OBVPM constant. Registered as an OBVPM setter in the slot fix.
+- `AUNLoraLoaderModelOnlyFromString`: added optional `set` STRING input and `bundle` (OBVPM_BUNDLE) output exposing `model`/`resolved_lora` as an OBVPM constant. Registered as an OBVPM setter in the slot fix.
 
 ### Changed
 
