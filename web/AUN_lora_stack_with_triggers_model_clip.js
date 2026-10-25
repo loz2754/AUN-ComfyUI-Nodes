@@ -19,6 +19,7 @@ const STATIC_WIDGETS = [
   "apply_stack",
   "trigger_joiner",
   "dedupe_triggers",
+  "set",
 ];
 
 const SLOT_WIDGET_ORDER = [
