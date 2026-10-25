@@ -4,6 +4,9 @@
 ## [Unreleased]
 
 ### Added
+- `AUNImageSingleBatch3`: added optional `set` STRING input and `bundle` (OBVPM_BUNDLE) output, exposing `image`/`filename`/`cleaned_filename` as an OBVPM constant for OBVPM Unbundle (get) / KJ Get. Registered as an OBVPM setter in the slot fix.
+- `AUNImageLoadResize`, `AUNImageResize`, `AUNManualAutoImageSwitch`: added optional `set` STRING input and `bundle` (OBVPM_BUNDLE) output exposing all node outputs as OBVPM constants. Registered as OBVPM setters in the slot fix.
+- `AUNKSamplerPlusv3`: added optional `set` STRING input and `bundle` (OBVPM_BUNDLE) output exposing all pass outputs as an OBVPM constant. Registered as an OBVPM setter in the slot fix.
 
 ### Changed
 

@@ -95,3 +95,4 @@ Generated list of documentation files under `docs/`.
 - [Pack architecture: what links to what](./ARCHITECTURE.md)
 - [New node checklist](./NEW_NODE_CHECKLIST.md)
 - [Registry moderation incident 2026-09-05 (Manager stuck at v2.22.0)](./registry-moderation-2026-09-05.md)
+- [OBVPM set-node conversion progress](./OBVPM_SET_NODES_PROGRESS.md)

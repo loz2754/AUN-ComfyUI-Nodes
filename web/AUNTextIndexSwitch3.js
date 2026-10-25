@@ -112,8 +112,9 @@ function applyCompactSlotLabels(node) {
 function applyCollapseSlotLabels(node) {
   if (!node || node.comfyClass !== "AUNInputsBasicSwitch") return;
   const collapsed = isCollapseConnections(node);
-  const slots = node.outputs || [];
-  for (const slot of slots) {
+  // Outputs: blank every non-switch output label when collapsed.
+  const outSlots = node.outputs || [];
+  for (const slot of outSlots) {
     if (!slot) continue;
     if (SWITCH_OUTPUT_NAMES.has(slot.name)) continue;
     if (collapsed) {
@@ -122,6 +123,27 @@ function applyCollapseSlotLabels(node) {
       }
       // NOTE: falsy "" (not " ") so `label || name` readers (e.g. Use
       // Everywhere broadcast matching) fall back to the real slot name.
+      slot.label = "";
+    } else {
+      if ("__aun_collapse_origLabel" in slot) {
+        slot.label = slot.__aun_collapse_origLabel;
+        delete slot.__aun_collapse_origLabel;
+      }
+      if (slot.label === "" || slot.label === " ") {
+        delete slot.label;
+      }
+    }
+  }
+  // Inputs: blank every connection (non-widget) input label when collapsed,
+  // mirroring the other AUN collapse nodes. Widget-backed inputs are skipped.
+  const inSlots = node.inputs || [];
+  for (const slot of inSlots) {
+    if (!slot) continue;
+    if (node.widgets?.length && slot.widget) continue;
+    if (collapsed) {
+      if (!("__aun_collapse_origLabel" in slot)) {
+        slot.__aun_collapse_origLabel = slot.label;
+      }
       slot.label = "";
     } else {
       if ("__aun_collapse_origLabel" in slot) {
@@ -3218,6 +3240,9 @@ try {
       }
 
       patchTargetNode(node);
+      if (node.comfyClass === "AUNInputsBasicSwitch" && isCollapseConnections(node)) {
+        applyCollapseSlotLabels(node);
+      }
     },
   });
 } catch (err) {

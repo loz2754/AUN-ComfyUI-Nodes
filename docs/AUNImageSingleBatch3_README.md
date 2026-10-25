@@ -10,6 +10,7 @@ Purpose: Load images from uploads or batch process folders with multiple selecti
 - `predefined_path` (DROPDOWN): Select from predefined paths (edit `predefined_paths.json` to customize)
 - `manual_path` (STRING): Enter custom folder path when using manual mode
 - `image_upload` (FILE): Select image file when using single upload mode
+- `set` (STRING, optional): Constant name. When non-empty, this node sets an OBVPM bundle constant readable by an OBVPM Unbundle (get) or KJ Get.
 
 ### Batch Processing:
 - `batch_mode` (DROPDOWN): How to select images from folder:
@@ -49,6 +50,7 @@ Purpose: Load images from uploads or batch process folders with multiple selecti
 - `image` (IMAGE): Loaded image tensor
 - `filename` (STRING): Original filename without extension
 - `cleaned filename` (STRING): Sanitized filename suitable for output paths (symbols removed, whitespace normalized, and optional trailing numeric counter trimmed).
+- `bundle` (OBVPM_BUNDLE): OBVPM bundle exposing `image`, `filename`, and `cleaned_filename` fields for OBVPM Unbundle (get) / KJ Get when the `set` widget is filled with a constant name.
 
 ## Usage Examples:
 

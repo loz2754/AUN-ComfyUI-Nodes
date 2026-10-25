@@ -13,6 +13,7 @@ from comfy.cli_args import args
 from server import PromptServer
 import re
 import comfy
+from .aun_bundle_shared import BUNDLE
 
 # FramePack-style bucket options and helper (embedded to avoid cross-package imports)
 _FRAMEPACK_BUCKET_OPTIONS = {
@@ -137,17 +138,23 @@ class AUNImageLoadResize:
                         "tooltip": "Maximum number of words to keep for both filename outputs. Set to 0 for no limit."
                     }),
                     },
+                "optional": {
+                    "set": ("STRING", {
+                        "default": "",
+                        "tooltip": "Constant name. When non-empty, this node sets an OBVPM bundle constant readable by an OBVPM Unbundle (get) or KJ Get."
+                    }),
+                },
                 "hidden": {"prompt": "PROMPT"}
                 }
 
     CATEGORY = "AUN Nodes/Image"
     OUTPUT_NODE = True
-    RETURN_TYPES = ("IMAGE", "MASK", "STRING", "STRING", "INT", "INT")
-    RETURN_NAMES = ("IMAGE", "MASK", "filename", "cleaned filename", "width", "height")
+    RETURN_TYPES = ("IMAGE", "MASK", "STRING", "STRING", "INT", "INT", BUNDLE)
+    RETURN_NAMES = ("IMAGE", "MASK", "filename", "cleaned filename", "width", "height", "bundle")
     FUNCTION = "load_image"
-    DESCRIPTION = "Load images with optional automatic resizing. Supports FramePack nearest-bucket sizing, maintains aspect ratio, and provides filename information for workflow organization."
+    DESCRIPTION = "Load images with optional automatic resizing. Supports FramePack nearest-bucket sizing, maintains aspect ratio, and provides filename information for workflow organization. Set the 'set' widget to a constant name to expose all outputs as an OBVPM bundle constant."
 
-    def load_image(self, image, resize, use_framepack_bucket, base_resolution, width, height, method="keep proportion", crop_position="center", interpolation="lanczos", max_num_words=0, divisible_by=8, prompt=None):
+    def load_image(self, image, resize, use_framepack_bucket, base_resolution, width, height, method="keep proportion", crop_position="center", interpolation="lanczos", max_num_words=0, divisible_by=8, prompt=None, set=""):
 
         image_path = folder_paths.get_annotated_filepath(image)
         filename = image.rsplit('.', 1)[0]  # get image name
@@ -303,7 +310,8 @@ class AUNImageLoadResize:
         output_h = final_h or height
         self.width = output_w
         self.height = output_h
-        return (output_image, output_mask, filename, cleaned_filename, output_w, output_h)
+        bundle = {"image": output_image, "mask": output_mask, "filename": filename, "cleaned_filename": cleaned_filename, "width": output_w, "height": output_h}
+        return (output_image, output_mask, filename, cleaned_filename, output_w, output_h, bundle)
 
 
     # @classmethod

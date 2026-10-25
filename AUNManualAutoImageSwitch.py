@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 from PIL import Image, ImageDraw, ImageFont
+from .aun_bundle_shared import BUNDLE
 
 
 class AUNManualAutoImageSwitch:
@@ -77,14 +78,20 @@ class AUNManualAutoImageSwitch:
                     "multiline": False,
                     "tooltip": "Overlay box color as hex, for example 000000 or #000000."
                 }),
+            },
+            "optional": {
+                "set": ("STRING", {
+                    "default": "",
+                    "tooltip": "Constant name. When non-empty, this node sets an OBVPM bundle constant readable by an OBVPM Unbundle (get) or KJ Get."
+                }),
             }
         }
 
-    RETURN_TYPES = ("STRING", "STRING", "BOOLEAN", "IMAGE")
-    RETURN_NAMES = ("Filename", "ManualName", "Name Mode", "image")
+    RETURN_TYPES = ("STRING", "STRING", "BOOLEAN", "IMAGE", BUNDLE)
+    RETURN_NAMES = ("Filename", "ManualName", "Name Mode", "image", "bundle")
     FUNCTION = "output"
     CATEGORY = "AUN Nodes/Image"
-    DESCRIPTION = "Replaces the manual/auto subgraph with one node. Auto passes through the input image and filename. Manual returns a blank image sized from width/height and uses the manual name. TIP: Double-click the node or right-click and select the AUN menu option to show overlay controls."
+    DESCRIPTION = "Replaces the manual/auto subgraph with one node. Auto passes through the input image and filename. Manual returns a blank image sized from width/height and uses the manual name. TIP: Double-click the node or right-click and select the AUN menu option to show overlay controls. Set the 'set' widget to a constant name to expose all outputs as an OBVPM bundle constant."
 
     @staticmethod
     def _to_bool(value):
@@ -158,7 +165,7 @@ class AUNManualAutoImageSwitch:
     def IS_CHANGED(cls, image, Filename, width, height, ManualName, name_mode, show_overlay, overlay_text, background_color, text_color, box_color):
         return float("nan")
 
-    def output(self, image, Filename, width, height, ManualName, name_mode, show_overlay=True, overlay_text="No image loaded", background_color="181818", text_color="E6E6E6", box_color="000000"):
+    def output(self, image, Filename, width, height, ManualName, name_mode, show_overlay=True, overlay_text="No image loaded", background_color="181818", text_color="E6E6E6", box_color="000000", set=""):
         selected_filename = Filename if name_mode else ManualName
         output_image = self._blank_image(
             width,
@@ -170,7 +177,8 @@ class AUNManualAutoImageSwitch:
             box_color=box_color,
             like_image=image,
         ) if not name_mode else image
-        return selected_filename, ManualName, name_mode, output_image
+        bundle = {"filename": selected_filename, "manual_name": ManualName, "name_mode": name_mode, "image": output_image}
+        return selected_filename, ManualName, name_mode, output_image, bundle
 
 
 NODE_CLASS_MAPPINGS = {

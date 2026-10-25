@@ -3,6 +3,7 @@ import torch.nn.functional as F
 import comfy
 
 from .AUNImageLoadResize import _find_nearest_framepack_bucket
+from .aun_bundle_shared import BUNDLE
 
 
 class AUNImageResize:
@@ -50,15 +51,19 @@ class AUNImageResize:
             "optional": {
                 "mask": ("MASK", {
                     "tooltip": "Optional mask tensor resized alongside the image."
-                })
+                }),
+                "set": ("STRING", {
+                    "default": "",
+                    "tooltip": "Constant name. When non-empty, this node sets an OBVPM bundle constant readable by an OBVPM Unbundle (get) or KJ Get."
+                }),
             }
         }
 
     CATEGORY = "AUN Nodes/Image"
-    RETURN_TYPES = ("IMAGE", "MASK", "INT", "INT")
-    RETURN_NAMES = ("IMAGE", "MASK", "width", "height")
+    RETURN_TYPES = ("IMAGE", "MASK", "INT", "INT", BUNDLE)
+    RETURN_NAMES = ("IMAGE", "MASK", "width", "height", "bundle")
     FUNCTION = "resize_image"
-    DESCRIPTION = "Resize an input image tensor using the same strategies as AUN Load & Resize Image, including FramePack buckets and fill/crop anchoring, but without handling file I/O."
+    DESCRIPTION = "Resize an input image tensor using the same strategies as AUN Load & Resize Image, including FramePack buckets and fill/crop anchoring, but without handling file I/O. Set the 'set' widget to a constant name to expose all outputs as an OBVPM bundle constant."
 
     def resize_image(
         self,
@@ -73,6 +78,7 @@ class AUNImageResize:
         interpolation="lanczos",
         mask=None,
         divisible_by=8,
+        set="",
     ):
         if image is None:
             raise ValueError("Image input is required.")
@@ -179,7 +185,8 @@ class AUNImageResize:
         output_image = rgb_out.permute(0, 2, 3, 1).contiguous()
         output_mask = mask_out.squeeze(1)
 
-        return (output_image, output_mask, final_w, final_h)
+        bundle = {"image": output_image, "mask": output_mask, "width": final_w, "height": final_h}
+        return (output_image, output_mask, final_w, final_h, bundle)
 
 
 NODE_CLASS_MAPPINGS = {

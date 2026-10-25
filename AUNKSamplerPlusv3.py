@@ -8,6 +8,7 @@ import numpy as np
 from comfy.sd import VAE
 import folder_paths as comfy_paths
 import latent_preview
+from .aun_bundle_shared import BUNDLE
 
 SCHEDULERS = comfy.samplers.KSampler.SCHEDULERS + ["AYS SD1", "AYS SDXL", "AYS SVD"]
 
@@ -116,11 +117,17 @@ class AUNKSamplerPlusv3:
                     "tooltip": "Print detailed pass logs and timings to the console."
                 })
             },
+            "optional": {
+                "set": ("STRING", {
+                    "default": "",
+                    "tooltip": "Constant name. When non-empty, this node sets an OBVPM bundle constant readable by an OBVPM Unbundle (get) or KJ Get."
+                }),
+            },
             "hidden": {"prompt": "PROMPT"}
         }
 
-    RETURN_TYPES = ("IMAGE", "IMAGE", "IMAGE", "IMAGE", "IMAGE", "LATENT", "STRING")
-    RETURN_NAMES = ("Base image", "Image upscaled", "Latent upscaled", "Both upscaled", "Refined image", "LATENT", "Upscaled type")
+    RETURN_TYPES = ("IMAGE", "IMAGE", "IMAGE", "IMAGE", "IMAGE", "LATENT", "STRING", BUNDLE)
+    RETURN_NAMES = ("Base image", "Image upscaled", "Latent upscaled", "Both upscaled", "Refined image", "LATENT", "Upscaled type", "bundle")
     FUNCTION = "qmSample"
     OUTPUT_NODE = True
     CATEGORY = "AUN Nodes/KSampler"
@@ -130,6 +137,7 @@ class AUNKSamplerPlusv3:
         "Upscaled type returns one of: 'Both upscaled', 'Latent upscaled', 'Image upscaled', or 'No upscale'. If refine is enabled, ' Refined' is appended. "
         "Each pass outputs an image: Base (first pass decoded), Image upscaled (base image upscaled in pixel space), Latent upscaled (second pass decoded), Both upscaled (pixel-upscaled decoded latent, then resampled), Refined image (final optional refinement)."
         "\n\nRight-click → \"Collapse Connections\" or double-click to hide slot labels and converge connection lines."
+        " Set the 'set' widget to a constant name to expose all outputs as an OBVPM bundle constant."
     )
 
     def pil_upscale(self, img, ratio, method, model_name="None"):
@@ -284,7 +292,7 @@ class AUNKSamplerPlusv3:
         self, vae, model, seed, steps_total, steps_first, start_step_second, cfg, cfg_latent_upscale, sampler_name, scheduler,
         positive, negative, latent_image, denoise, latent_upscale, image_upscale, upscale_method="bilinear", ratio=1.5,
         upscaling_denoise=0.61, image_upscale_method="lanczos", image_upscale_model="None", image_upscale_ratio=1.5, image_upscale_refine=False,
-        img_refine_steps=4, img_refine_denoise=0.25, verbose=False, prompt=None
+        img_refine_steps=4, img_refine_denoise=0.25, verbose=False, prompt=None, set=""
     ):
         latent = latent_image
         latent_data = latent_image or {}
@@ -537,6 +545,15 @@ class AUNKSamplerPlusv3:
             f"t1={pass1_time:.2f}s, t2={pass2_time:.2f}s, t3={pass3_time:.2f}s, tr={refine_time:.2f}s"
         )
 
+        bundle = {
+            "base_image": base_output,
+            "image_upscaled": image_upscaled_output,
+            "latent_upscaled": latent_upscaled_output,
+            "both_upscaled": both_upscaled_output,
+            "refined_image": refined_image_output,
+            "latent": {"samples": latent_output},
+            "upscaled_type": upscaled_type,
+        }
         return (
             base_output,
             image_upscaled_output,
@@ -545,6 +562,7 @@ class AUNKSamplerPlusv3:
             refined_image_output,
             {"samples": latent_output},
             upscaled_type,
+            bundle,
         )
 
 NODE_CLASS_MAPPINGS = {"AUNKSamplerPlusv3": AUNKSamplerPlusv3}

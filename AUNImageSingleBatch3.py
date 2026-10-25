@@ -10,6 +10,7 @@ import re
 import fnmatch
 from nodes import PreviewImage
 from server import PromptServer  # already available in ComfyUI core
+from .aun_bundle_shared import BUNDLE
 
 def clean_filename_for_output(filename_without_ext, max_words=0):
     """Replace symbols with spaces, collapse whitespace, optionally drop a trailing numeric counter,
@@ -254,6 +255,12 @@ class AUNImageSingleBatch3(PreviewImage):
                     "tooltip": "When enabled with 'range', 'fixed', or 'search' batch modes, output ALL matching images as a list (one per downstream execution) with corresponding filename lists."
                 }),
             },
+            "optional": {
+                "set": ("STRING", {
+                    "default": "",
+                    "tooltip": "Constant name. When non-empty, this node sets an OBVPM bundle constant readable by an OBVPM Unbundle (get) or KJ Get."
+                }),
+            },
             "hidden": {
                 "prompt": "PROMPT",
                 "extra_pnginfo": "EXTRA_PNGINFO",
@@ -261,12 +268,12 @@ class AUNImageSingleBatch3(PreviewImage):
             },
         }
     
-    RETURN_TYPES = ("IMAGE", "STRING", "STRING")
-    RETURN_NAMES = ("image", "filename", "cleaned filename")
+    RETURN_TYPES = ("IMAGE", "STRING", "STRING", BUNDLE)
+    RETURN_NAMES = ("image", "filename", "cleaned filename", "bundle")
     FUNCTION = "load_image"
     OUTPUT_NODE = True
     CATEGORY = "AUN Nodes/Image"
-    DESCRIPTION = "Load a single uploaded image or cycle through a batch of images from a folder with multiple selection modes. Enable 'output_is_list' in range/fixed/search modes to output all matching images and filenames as lists for per-item downstream processing."
+    DESCRIPTION = "Load a single uploaded image or cycle through a batch of images from a folder with multiple selection modes. Enable 'output_is_list' in range/fixed/search modes to output all matching images and filenames as lists for per-item downstream processing. Set the 'set' widget to a constant name to expose image/filename/cleaned filename as an OBVPM bundle constant."
 
     def __init__(self):
         super().__init__()
@@ -300,7 +307,7 @@ class AUNImageSingleBatch3(PreviewImage):
         else:
             return output_images[0]
 
-    def load_image(self, source_mode, path_mode, predefined_path, manual_path, batch_mode, range_or_pattern, image_upload, max_num_words=0, output_is_list=False, hide_preview=False, unique_id=None, **kwargs):
+    def load_image(self, source_mode, path_mode, predefined_path, manual_path, batch_mode, range_or_pattern, image_upload, max_num_words=0, output_is_list=False, hide_preview=False, set="", unique_id=None, **kwargs):
         # Retrieve or initialize state for this node instance
         if unique_id is not None:
             if isinstance(unique_id, (list, tuple)):
@@ -320,7 +327,7 @@ class AUNImageSingleBatch3(PreviewImage):
             # Fallback to instance variables if unique_id is missing
             state = self.__dict__
 
-        self.OUTPUT_IS_LIST = (True, True, True) if output_is_list else (False, False, False)
+        self.OUTPUT_IS_LIST = (True, True, True, False) if output_is_list else (False, False, False, False)
 
         image_path = ""
         filename_without_ext = ""
@@ -418,7 +425,8 @@ class AUNImageSingleBatch3(PreviewImage):
                 raw_fn = os.path.splitext(sf)[0]
                 filename_list.append(raw_fn)
                 cleaned_list.append(clean_filename_for_output(raw_fn, max_num_words))
-            return (image_list, filename_list, cleaned_list)
+            bundle = {"image": image_list, "filename": filename_list, "cleaned_filename": cleaned_list}
+            return (image_list, filename_list, cleaned_list, bundle)
         
         if output_is_list:
             pil_image = Image.open(image_path)
@@ -440,7 +448,7 @@ class AUNImageSingleBatch3(PreviewImage):
                         break
                     new_parts.append(p)
                 fn = "".join(new_parts).rstrip("_ -")
-            return ([t], [fn], [cfn])
+            return ([t], [fn], [cfn], {"image": [t], "filename": [fn], "cleaned_filename": [cfn]})
         
         pil_image = Image.open(image_path)
         tensor_image = self._process_pil_image(pil_image)
@@ -459,13 +467,15 @@ class AUNImageSingleBatch3(PreviewImage):
                 new_parts.append(p)
             filename = "".join(new_parts).rstrip("_ -")
         
+        bundle = {"image": tensor_image, "filename": filename, "cleaned_filename": cleaned_filename}
+
         if hide_preview:
-            return {"ui": {"images": [], "filename": filename}, "result": (tensor_image, filename, cleaned_filename)}
-        
+            return {"ui": {"images": [], "filename": filename}, "result": (tensor_image, filename, cleaned_filename, bundle)}
+
         preview = self.save_images(tensor_image, "AUNImageSingleBatch", kwargs.get("prompt"), kwargs.get("extra_pnginfo"))
         ui_data = preview.get("ui", {})
         ui_data["filename"] = filename
-        return {"ui": ui_data, "result": (tensor_image, filename, cleaned_filename)}
+        return {"ui": ui_data, "result": (tensor_image, filename, cleaned_filename, bundle)}
 
     @classmethod  
     def IS_CHANGED(
