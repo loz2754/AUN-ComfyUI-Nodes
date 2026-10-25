@@ -3,6 +3,7 @@ from datetime import datetime
 from sys import float_info
 import json
 import comfy.sd
+from .aun_bundle_shared import BUNDLE
 
 class AnyType(str):
    
@@ -15,11 +16,11 @@ sampler = AnyType("*")
 class KSamplerInputs:
     
 
-    RETURN_TYPES = (sampler, scheduler, "FLOAT", "INT")
-    RETURN_NAMES = ("ksampler", "scheduler", "cfg", "steps",)
+    RETURN_TYPES = (sampler, scheduler, "FLOAT", "INT", BUNDLE)
+    RETURN_NAMES = ("ksampler", "scheduler", "cfg", "steps", "bundle")
     CATEGORY = "AUN Nodes/KSampler"   
     FUNCTION = "get_names"
-    DESCRIPTION = "This node provides a convenient way to set the KSampler inputs (sampler, scheduler, CFG, and steps) in one place. This is useful for organizing your workflow and making it easier to manage these common parameters."
+    DESCRIPTION = "This node provides a convenient way to set the KSampler inputs (sampler, scheduler, CFG, and steps) in one place. This is useful for organizing your workflow and making it easier to manage these common parameters. Set the 'set' widget to a constant name to expose all outputs as an OBVPM bundle constant."
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -29,10 +30,17 @@ class KSamplerInputs:
                     "scheduler": (comfy.samplers.KSampler.SCHEDULERS + ['AYS SDXL', 'AYS SD1', 'AYS SVD', 'GITS[coeff=1.2]'], {"tooltip": "The scheduler to use for the KSampler."}), 
                     "cfg": ("FLOAT", {"default": 2.0, "min": -2.0, "max": 100.0, "step": 0.1, "round": 0.1, "tooltip": "The CFG (Classifier-Free Guidance) value to use."}),
                     "steps": ("INT", {"default": 10, "tooltip": "The number of steps to use for the KSampler."}),
+                },
+                "optional": {
+                    "set": ("STRING", {
+                        "default": "",
+                        "tooltip": "Constant name. When non-empty, this node sets an OBVPM bundle constant readable by an OBVPM Unbundle (get) or KJ Get."
+                    }),
                 }
             }
-    def get_names(self, sampler, scheduler, cfg, steps,):
-        return (sampler, scheduler, cfg, steps)
+    def get_names(self, sampler, scheduler, cfg, steps, set=""):
+        bundle = {"sampler": sampler, "scheduler": scheduler, "cfg": cfg, "steps": steps}
+        return (sampler, scheduler, cfg, steps, bundle)
 
 
 NODE_CLASS_MAPPINGS = {

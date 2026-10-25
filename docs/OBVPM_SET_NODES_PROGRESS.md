@@ -32,6 +32,7 @@ Track of AUN nodes adapted to act as OBVPM constants (via a `set` STRING input +
 - `AUNLoraStackWithTriggers` — bundle fields: `model`, `selected_loras`, `labels`, `trigger_words`, `trigger_prompt`
 - `AUNLoraStackWithTriggersModelClip` — bundle fields: `model`, `clip`, `selected_loras`, `labels`, `trigger_words`, `trigger_prompt`
 - `AUNLoRAsByPromptIndex` — bundle fields: `model`, `clip`, `selected_loras`, `index`, `trigger_words`, `trigger_prompt`. The `set` widget is kept invisible (zero-size + no canvas draw + DOM hidden) and edited via right-click → "AUN: Set OBVPM constant name…" because its overlay system clips a visible widget.
+- `KSamplerInputs` — bundle fields: `sampler`, `scheduler`, `cfg`, `steps`
 
 ## Next candidates (image family done; suggested next families)
 

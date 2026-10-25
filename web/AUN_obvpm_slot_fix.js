@@ -8,7 +8,7 @@ const AUN_INPUT_CLASSES = new Set([
     "AUNTextIndexSwitch", "AUNTextIndexSwitch3", "AUNTextIndexSwitch4", "AUNTextIndexSwitch5", "AUNTextIndexSwitch5Diffusers",
     "AUNRandomTextIndexSwitch", "AUNRandomTextIndexSwitchV2", "AUNAnyIndexSwitch", "AUNCheckpointLoaderWithClipSkip",
     "AUNLoraLoaderModelOnlyFromString", "AUNLoraStackWithTriggers", "AUNLoraStackWithTriggersModelClip",
-    "AUNLoRAsByPromptIndex",
+    "AUNLoRAsByPromptIndex", "KSamplerInputs",
 ]);
 
 function resolveExecNode(root, execId) {

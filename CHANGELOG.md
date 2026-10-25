@@ -19,7 +19,8 @@
 - `AUNCheckpointLoaderWithClipSkip`: added optional `set` STRING input and `bundle` (OBVPM_BUNDLE) output exposing `model`/`clip`/`vae`/`name`/`clip_skip` as an OBVPM constant. Registered as an OBVPM setter in the slot fix.
 - `AUNLoraLoaderModelOnlyFromString`: added optional `set` STRING input and `bundle` (OBVPM_BUNDLE) output exposing `model`/`resolved_lora` as an OBVPM constant. Registered as an OBVPM setter in the slot fix.
 - `AUNLoraStackWithTriggers` and `AUNLoraStackWithTriggersModelClip`: added optional `set` STRING input and `bundle` (OBVPM_BUNDLE) output exposing their outputs as OBVPM constants. Registered as OBVPM setters in the slot fix.
-- `AUNLoRAsByPromptIndex`: added optional `set` STRING input and `bundle` (OBVPM_BUNDLE) output exposing its outputs as an OBVPM constant. Registered as an OBVPM setter in the slot fix.
+- `AUNLoRAsByPromptIndex`: added optional `set` STRING input and `bundle` (OBVPM_BUNDLE) output exposing its outputs as an OBVPM constant. Registered as an OBVPM setter in the slot fix. The `set` widget is hidden and edited via the right-click menu.
+- `KSamplerInputs`: added optional `set` STRING input and `bundle` (OBVPM_BUNDLE) output exposing `sampler`/`scheduler`/`cfg`/`steps` as an OBVPM constant. Registered as an OBVPM setter in the slot fix.
 
 ### Changed
 
