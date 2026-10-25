@@ -27,6 +27,7 @@ Track of AUN nodes adapted to act as OBVPM constants (via a `set` STRING input +
 - `AUNRandomTextIndexSwitch` — bundle fields: `text`, `label`, `index`
 - `AUNRandomTextIndexSwitchV2` — bundle fields: `text`, `label`, `index`, `prefixed_label`
 - `AUNAnyIndexSwitch` — bundle fields: `output`, `label`
+- `AUNCheckpointLoaderWithClipSkip` — bundle fields: `model`, `clip`, `vae`, `name`, `clip_skip`
 
 ## Next candidates (image family done; suggested next families)
 

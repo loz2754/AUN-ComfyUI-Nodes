@@ -1,6 +1,7 @@
 import os
 import folder_paths as comfy_paths
 import comfy.sd
+from .aun_bundle_shared import BUNDLE
 
 class AUNCheckpointLoaderWithClipSkip:
     @classmethod
@@ -8,17 +9,23 @@ class AUNCheckpointLoaderWithClipSkip:
         return {"required": {
                 "ckpt_name": (comfy_paths.get_filename_list("checkpoints"), {"tooltip": "Select the checkpoint to load."}),
                 "clip_skip": ("INT", {"default": -1, "min": -24, "max": -1, "step": 1, "tooltip": "Set the clip skip value. This determines how many layers of the CLIP model to skip."}),
-             },
-             "hidden": {"prompt": "PROMPT"}
-             }
+              },
+              "optional": {
+                "set": ("STRING", {
+                    "default": "",
+                    "tooltip": "Constant name. When non-empty, this node sets an OBVPM bundle constant readable by an OBVPM Unbundle (get) or KJ Get."
+                }),
+              },
+              "hidden": {"prompt": "PROMPT"}
+              }
     
-    RETURN_TYPES = ("MODEL", "CLIP", "VAE", "STRING", "INT")
-    RETURN_NAMES = ("MODEL", "CLIP", "VAE", "name", "clip skip")
+    RETURN_TYPES = ("MODEL", "CLIP", "VAE", "STRING", "INT", BUNDLE)
+    RETURN_NAMES = ("MODEL", "CLIP", "VAE", "name", "clip skip", "bundle")
     FUNCTION = "load_checkpoint_with_clip_skip"
     CATEGORY = "AUN Nodes/Loaders"
-    DESCRIPTION = "Loads a checkpoint and applies a specified Clip Skip value. It also outputs the checkpoint name, which is useful for file naming or other metadata in your workflow."
+    DESCRIPTION = "Loads a checkpoint and applies a specified Clip Skip value. It also outputs the checkpoint name, which is useful for file naming or other metadata in your workflow. Set the 'set' widget to a constant name to expose all outputs as an OBVPM bundle constant."
 
-    def load_checkpoint_with_clip_skip(self, ckpt_name, clip_skip, prompt=None):
+    def load_checkpoint_with_clip_skip(self, ckpt_name, clip_skip, prompt=None, set=""):
         ckpt_path = comfy_paths.get_full_path("checkpoints", ckpt_name)
         out = comfy.sd.load_checkpoint_guess_config(ckpt_path, output_vae=True, output_clip=True, embedding_directory=comfy_paths.get_folder_paths("embeddings"))
         
@@ -26,7 +33,8 @@ class AUNCheckpointLoaderWithClipSkip:
         clip = out[1]
         clip.clip_layer(clip_skip)
         
-        return (out[0], clip, out[2], os.path.splitext(os.path.basename(ckpt_name))[0], clip_skip)
+        bundle = {"model": out[0], "clip": clip, "vae": out[2], "name": os.path.splitext(os.path.basename(ckpt_name))[0], "clip_skip": clip_skip}
+        return (out[0], clip, out[2], os.path.splitext(os.path.basename(ckpt_name))[0], clip_skip, bundle)
 
 NODE_CLASS_MAPPINGS = {
     "AUNCheckpointLoaderWithClipSkip": AUNCheckpointLoaderWithClipSkip
