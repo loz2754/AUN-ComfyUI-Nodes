@@ -1,4 +1,5 @@
 import comfy.utils
+from .aun_bundle_shared import BUNDLE
 
 class AlwaysEqualProxy(str):
     def __eq__(self, _):
@@ -49,13 +50,17 @@ class AUNAnyIndexSwitch:
                     **lazy_options,
                 },
             )
+        inputs["optional"]["set"] = ("STRING", {
+            "default": "",
+            "tooltip": "Constant name. When non-empty, this node sets an OBVPM bundle constant readable by an OBVPM Unbundle (get) or KJ Get."
+        })
         return inputs
 
-    RETURN_TYPES = (any_type, "STRING")
-    RETURN_NAMES = ("output", "label")
+    RETURN_TYPES = (any_type, "STRING", BUNDLE)
+    RETURN_NAMES = ("output", "label", "bundle")
     FUNCTION = "index_switch"
     CATEGORY = "AUN Nodes/Utility"
-    DESCRIPTION = "Switch between up to 20 inputs of any type based on index number. Useful for dynamic routing of models, latents, images, or any other type. The label output can show the connected node's title or the connected output slot's label."
+    DESCRIPTION = "Switch between up to 20 inputs of any type based on index number. Useful for dynamic routing of models, latents, images, or any other type. The label output can show the connected node's title or the connected output slot's label. Set the 'set' widget to a constant name to expose all outputs as an OBVPM bundle constant."
 
     def _clamp_visible_inputs(self, visible_inputs):
         return max(self.MIN_VISIBLE_INPUTS, min(int(visible_inputs or self.MAX_INPUTS), self.MAX_INPUTS))
@@ -77,7 +82,7 @@ class AUNAnyIndexSwitch:
         key = "value%d" % selected_index
         
         if key not in kwargs or kwargs[key] is None:
-            return (None, key)
+            return (None, key, {"output": None, "label": key})
         
         selected_label = key
         node_id = kwargs.get('unique_id')
@@ -126,7 +131,8 @@ class AUNAnyIndexSwitch:
                             selected_label = node['type']
                     break
         
-        return (kwargs[key], selected_label)        
+        bundle = {"output": kwargs[key], "label": selected_label}
+        return (kwargs[key], selected_label, bundle)        
         
 NODE_CLASS_MAPPINGS = {
     "AUNAnyIndexSwitch": AUNAnyIndexSwitch,

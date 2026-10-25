@@ -26,6 +26,7 @@ Track of AUN nodes adapted to act as OBVPM constants (via a `set` STRING input +
 - `AUNTextIndexSwitch5Diffusers` — bundle fields: `text`, `label`, `index`, `diffusion_name`, `clip_name`, `vae_name`, `clip_type`, `sampler`, `scheduler`, `cfg`, `steps`, `seed`
 - `AUNRandomTextIndexSwitch` — bundle fields: `text`, `label`, `index`
 - `AUNRandomTextIndexSwitchV2` — bundle fields: `text`, `label`, `index`, `prefixed_label`
+- `AUNAnyIndexSwitch` — bundle fields: `output`, `label`
 
 ## Next candidates (image family done; suggested next families)
 
