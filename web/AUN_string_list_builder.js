@@ -24,33 +24,75 @@ function getVisibleStringWidgets(node) {
   return out;
 }
 
+function refreshWeight(w) {
+  try {
+    const el = w?.inputEl;
+    if (el) {
+      const prev = el.style.height;
+      el.style.height = "auto";
+      const sh = el.scrollHeight || 0;
+      el.style.height = prev;
+      if (sh > 0) {
+        if (w) w.__aun_weight = sh;
+        return sh;
+      }
+    }
+  } catch {}
+  const fb = Math.max(1, String(w?.value ?? "").split("\n").length) * 20;
+  if (w) w.__aun_weight = fb;
+  return fb;
+}
+
+function cachedWeight(w) {
+  if (w?.__aun_weight) return w.__aun_weight;
+  return refreshWeight(w);
+}
+
+const MIN_TEXTAREA_H = 40; // ~2 lines of text
+
 function ensureStretchable(widget, node) {
   if (!widget || widget.__aun_stretchable) return;
   widget.__aun_stretchable = true;
+  widget.__aun_stretchExtra = 0;
   const inner = widget.computeSize;
   widget.computeSize = function (...args) {
+    if (this.hidden) return [args[0] ?? 200, 0];
     let [w, h] = inner
       ? inner.apply(this, args)
-      : [args[0] ?? 200, this.comfyHeight ?? 100];
-    if (!this.hidden && this.__AUN_visible !== false) {
-      h += WIDGET_GAP;
-      const per = node.__aun_stretchPerWidget || 0;
-      if (per > 0) {
-        h += per;
-      }
+      : [args[0] ?? 200, this.comfyHeight ?? MIN_TEXTAREA_H];
+    if (this.__AUN_visible === false) return [w, 0];
+    h = Math.max(h, MIN_TEXTAREA_H);
+    h += WIDGET_GAP;
+    const extra = this.__aun_stretchExtra || 0;
+    if (extra > 0) {
+      h += extra;
     }
     return [w, h];
   };
+  // Re-distribute extra height when the text content changes.
+  if (widget.inputEl && !widget.__aun_inputHooked) {
+    widget.__aun_inputHooked = true;
+    widget.inputEl.addEventListener("input", () => {
+      try {
+        refreshWeight(widget);
+        const [, ch] = node.computeSize();
+        const baseH = Math.max(ch, MIN_NODE_H);
+        if (node.size[1] >= baseH) {
+          applyStretchForSize(node, baseH);
+        }
+      } catch {}
+    });
+  }
 }
 
 function clearStretchStyles(node) {
-  node.__aun_stretchPerWidget = 0;
   for (let i = 1; i <= MAX_INPUTS; i++) {
     const w = getWidget(node, `string_${i}`);
+    if (w) w.__aun_stretchExtra = 0;
     try {
       if (w?.inputEl?.style) {
         w.inputEl.style.height = "";
-        w.inputEl.style.minHeight = "80px";
+        w.inputEl.style.minHeight = `${MIN_TEXTAREA_H}px`;
       }
     } catch {}
   }
@@ -59,25 +101,51 @@ function clearStretchStyles(node) {
 function applyStretchForSize(node, baseH) {
   const visible = getVisibleStringWidgets(node).filter((w) => !w.hidden);
   if (!visible.length) {
-    node.__aun_stretchPerWidget = 0;
+    for (let i = 1; i <= MAX_INPUTS; i++) {
+      const w = getWidget(node, `string_${i}`);
+      if (w) w.__aun_stretchExtra = 0;
+    }
     return;
   }
   const extra = node.size[1] - baseH;
-  const per = extra > 0 ? extra / visible.length : 0;
-  node.__aun_stretchPerWidget = per;
-  if (per <= 0) return;
-  for (const w of visible) {
+  if (extra <= 0) {
+    for (const w of visible) {
+      w.__aun_stretchExtra = 0;
+      try {
+        if (w.inputEl?.style) {
+          w.inputEl.style.height = "";
+          w.inputEl.style.minHeight = `${MIN_TEXTAREA_H}px`;
+        }
+      } catch {}
+    }
+    node.widgets_dirty = true;
+    return;
+  }
+  const weights = visible.map(cachedWeight);
+  const totalWeight = weights.reduce((a, b) => a + b, 0) || visible.length;
+  const pendingHeights = [];
+  for (let idx = 0; idx < visible.length; idx++) {
+    const w = visible[idx];
+    const share = (weights[idx] / totalWeight) * extra;
+    w.__aun_stretchExtra = share;
     try {
       const [, wh] = w.computeSize(node.size[0]);
       // Slot height includes WIDGET_GAP; the textarea itself excludes it.
-      const taH = Math.max(wh - WIDGET_GAP, 40);
-      if (w.inputEl?.style) {
-        w.inputEl.style.height = `${taH}px`;
-        w.inputEl.style.minHeight = `${taH}px`;
-      }
+      const taH = Math.max(wh - WIDGET_GAP, MIN_TEXTAREA_H);
+      pendingHeights.push([w, taH]);
     } catch {}
   }
   node.widgets_dirty = true;
+  requestAnimationFrame(() => {
+    for (const [w, taH] of pendingHeights) {
+      try {
+        if (w?.inputEl?.style) {
+          w.inputEl.style.height = `${taH}px`;
+          w.inputEl.style.minHeight = `${taH}px`;
+        }
+      } catch {}
+    }
+  });
 }
 
 function updateNodeVisibility(node, preserveExtra = false) {
@@ -85,7 +153,19 @@ function updateNodeVisibility(node, preserveExtra = false) {
 
   for (let i = 1; i <= MAX_INPUTS; i++) {
     const w = getWidget(node, `string_${i}`);
-    applyWidgetHiddenState(w, i > numInputs);
+    const hidden = i > numInputs;
+    if (w) {
+      w.hidden = !!hidden;
+      w.__AUN_visible = !hidden;
+      if (w.flags) {
+        w.flags.hidden = !!hidden;
+        w.flags.collapsed = !!hidden;
+      }
+      if (w.options) w.options.noDraw = !!hidden;
+      if (w.inputEl?.style) {
+        w.inputEl.style.display = hidden ? "none" : "";
+      }
+    }
     if (w) ensureStretchable(w, node);
   }
 
@@ -95,6 +175,7 @@ function updateNodeVisibility(node, preserveExtra = false) {
   const prevH = node.size?.[1] ?? 0;
   clearStretchStyles(node);
   node.widgets_dirty = true;
+  for (const w of getVisibleStringWidgets(node)) refreshWeight(w);
   const [, ch] = node.computeSize();
   const baseH = Math.max(ch, MIN_NODE_H);
   if (preserveExtra && prevH > baseH + 1) {
@@ -118,13 +199,24 @@ function patchNode(node) {
   node.computeSize = function () {
     // Report the base (unstretched) height: LiteGraph clamps manual resize
     // to computeSize(), so including stretch here would block downsizing.
-    const saved = this.__aun_stretchPerWidget || 0;
-    this.__aun_stretchPerWidget = 0;
+    const saved = [];
+    for (let i = 1; i <= MAX_INPUTS; i++) {
+      const wgt = getWidget(this, `string_${i}`);
+      if (wgt) {
+        saved.push([wgt, wgt.__aun_stretchExtra || 0]);
+        wgt.__aun_stretchExtra = 0;
+      }
+    }
     let w, h;
     try {
       [w, h] = origComputeSize ? origComputeSize.apply(this, arguments) : [this.size?.[0] ?? 300, MIN_NODE_H];
+    } catch {
+      w = this.size?.[0] ?? 300;
+      h = MIN_NODE_H;
     } finally {
-      this.__aun_stretchPerWidget = saved;
+      for (const [wgt, extra] of saved) {
+        wgt.__aun_stretchExtra = extra;
+      }
     }
     h = Math.max(h, MIN_NODE_H);
     return [w, h];
@@ -135,7 +227,7 @@ function patchNode(node) {
     const origCb = numInputsW.callback;
     numInputsW.callback = function (value) {
       const result = origCb?.apply(this, arguments);
-      updateNodeVisibility(node);
+      updateNodeVisibility(node, true);
       return result;
     };
   }
@@ -153,7 +245,7 @@ function patchNode(node) {
     try {
       node.__aun_adjusting = true;
       // node.computeSize() is base-only (stretch excluded), so the user can
-      // always shrink back down; extra space is redistributed equally.
+      // always shrink back down; extra space is redistributed by content size.
       let baseH = MIN_NODE_H;
       try {
         const [, ch] = node.computeSize();
@@ -175,7 +267,6 @@ function patchNode(node) {
   const origRemoved = node.onRemoved;
   node.onRemoved = function () {
     delete node.__aun_patched;
-    delete node.__aun_stretchPerWidget;
     delete node.__aun_adjusting;
     origRemoved?.apply(this, arguments);
   };

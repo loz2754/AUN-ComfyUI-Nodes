@@ -11,6 +11,18 @@
 
 ### Notes
 
+## [2.34.17] - 2026-10-26
+
+### Added
+
+### Changed
+- `AUNStringListBuilder`: extra node height is now distributed across string boxes by content size (line count) instead of equally; boxes can shrink to ~2 lines; user-set height/width respected even when adding inputs.
+
+### Fixed
+- `AUNStringListBuilder`: fixed resize jitter/feedback loop by measuring base height with stretch extras zeroed.
+
+### Notes
+
 ## [2.34.16] - 2026-10-25
 
 ### Added
