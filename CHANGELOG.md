@@ -4,6 +4,11 @@
 ## [Unreleased]
 
 ### Added
+- `AUNInputsBasicSwitch`: added optional `set` STRING input and `bundle` (OBVPM_BUNDLE) output exposing `model`/`clip`/`vae`/`ckpt_name`/`sampler`/`scheduler`/`cfg`/`steps`/`latent`/`width`/`height`/`seed`/`batch_size`/`text`/`label`/`index` as an OBVPM constant. Registered as an OBVPM setter in the slot fix.
+- `AUNImgLoader`: added optional `set` STRING input and `bundle` (OBVPM_BUNDLE) output exposing `image`/`mask`/`filename`/`cleaned_filename` as an OBVPM constant. Registered as an OBVPM setter in the slot fix.
+- `AUNKSamplerPlusV2`, `AUNKSamplerPlusv4`: added optional `set` STRING input and `bundle` (OBVPM_BUNDLE) output exposing `base_image`/`image_upscaled`/`latent_upscaled`/`both_upscaled`/`refined_image`/`latent`/`upscaled_type`. Registered as OBVPM setters in the slot fix.
+- `AUNEmptyLatent`: added optional `set` STRING input and `bundle` (OBVPM_BUNDLE) output exposing `latent`/`width`/`height`/`seed`. Registered as an OBVPM setter in the slot fix.
+- `AUNWan22MoE`: added optional `set` STRING input and `bundle` (OBVPM_BUNDLE) output exposing `latent`/`image`. Registered as an OBVPM setter in the slot fix.
 
 ### Changed
 

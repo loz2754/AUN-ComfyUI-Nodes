@@ -14,6 +14,7 @@ Track of AUN nodes adapted to act as OBVPM constants (via a `set` STRING input +
 - `AUNImageSingleBatch3` — bundle fields: `image`, `filename`, `cleaned_filename`
 - `AUNImageLoadResize` — bundle fields: `image`, `mask`, `filename`, `cleaned_filename`, `width`, `height`
 - `AUNImageResize` — bundle fields: `image`, `mask`, `width`, `height`
+- `AUNImgLoader` — bundle fields: `image`, `mask`, `filename`, `cleaned_filename`
 - `AUNManualAutoImageSwitch` — bundle fields: `filename`, `manual_name`, `name_mode`, `image`
 - `AUNKSamplerPlusv3` — bundle fields: `base_image`, `image_upscaled`, `latent_upscaled`, `both_upscaled`, `refined_image`, `latent`, `upscaled_type`
 - `AUNPromptCycler` — bundle fields: `prompt`, `prompt_title`, `index`
@@ -33,6 +34,10 @@ Track of AUN nodes adapted to act as OBVPM constants (via a `set` STRING input +
 - `AUNLoraStackWithTriggersModelClip` — bundle fields: `model`, `clip`, `selected_loras`, `labels`, `trigger_words`, `trigger_prompt`
 - `AUNLoRAsByPromptIndex` — bundle fields: `model`, `clip`, `selected_loras`, `index`, `trigger_words`, `trigger_prompt`. The `set` widget is kept invisible (zero-size + no canvas draw + DOM hidden) and edited via right-click → "AUN: Set OBVPM constant name…" because its overlay system clips a visible widget.
 - `KSamplerInputs` — bundle fields: `sampler`, `scheduler`, `cfg`, `steps`
+- `AUNKSamplerPlusV2` / `AUNKSamplerPlusv4` — bundle fields: `base_image`, `image_upscaled`, `latent_upscaled`, `both_upscaled`, `refined_image`, `latent`, `upscaled_type`
+- `AUNEmptyLatent` — bundle fields: `latent`, `width`, `height`, `seed`
+- `AUNWan22MoE` — bundle fields: `latent`, `image`
+- `AUNInputsBasicSwitch` — bundle fields: `model`, `clip`, `vae`, `ckpt_name`, `sampler`, `scheduler`, `cfg`, `steps`, `latent`, `width`, `height`, `seed`, `batch_size`, `text`, `label`, `index`
 
 ## Next candidates (image family done; suggested next families)
 

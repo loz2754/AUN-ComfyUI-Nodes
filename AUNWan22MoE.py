@@ -1,5 +1,7 @@
 import torch
 
+from .aun_bundle_shared import BUNDLE
+
 import comfy.sample
 import comfy.samplers
 import comfy.utils
@@ -113,11 +115,17 @@ class AUNWan22MoE:
                 "ratio": ("FLOAT", {"default": 1.5, "min": 1.0, "max": 4.0, "step": 0.05, "tooltip": "Latent upscale ratio for the optional pass."}),
                 "upscale_method": (s.upscale_methods, {"tooltip": "Latent upscale algorithm."}),
                 "upscaling_denoise": ("FLOAT", {"default": 0.5, "min": 0.01, "max": 1.0, "step": 0.01, "tooltip": "Denoise strength for the optional upscale resample pass."}),
+            },
+            "optional": {
+                "set": ("STRING", {
+                    "default": "",
+                    "tooltip": "Constant name. When non-empty, this node sets an OBVPM bundle constant readable by an OBVPM Unbundle (get) or KJ Get."
+                }),
             }
         }
 
-    RETURN_TYPES = ("LATENT", "IMAGE")
-    RETURN_NAMES = ("LATENT", "IMAGE")
+    RETURN_TYPES = ("LATENT", "IMAGE", BUNDLE)
+    RETURN_NAMES = ("LATENT", "IMAGE", "bundle")
     OUTPUT_TOOLTIPS = ("Denoised latent (upscaled if enabled).", "Decoded preview image.")
     FUNCTION = "sample"
     CATEGORY = "AUN Nodes/KSampler"
@@ -177,7 +185,7 @@ class AUNWan22MoE:
                cfg_high_noise, cfg_low_noise, sampler_name, scheduler, sigma_shift,
                positive, negative, latent_image, denoise, vae,
                latent_upscale=False, ratio=1.5, upscale_method="bicubic",
-               upscaling_denoise=0.5):
+               upscaling_denoise=0.5, set=""):
         if sigma_shift is not None and float(sigma_shift) >= 0.0:
             model_high_noise = _aun_set_shift(model_high_noise, sigma_shift)
             model_low_noise = _aun_set_shift(model_low_noise, sigma_shift)
@@ -228,7 +236,8 @@ class AUNWan22MoE:
         out_latent = dict(latent) if isinstance(latent, dict) else {}
         out_latent["samples"] = samples_external
         image = self._decode_latent(vae, samples_external)
-        return (out_latent, image)
+        bundle = {"latent": out_latent, "image": image}
+        return (out_latent, image, bundle)
 
 
 NODE_CLASS_MAPPINGS = {"AUNWan22MoE": AUNWan22MoE}

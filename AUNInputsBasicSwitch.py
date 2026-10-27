@@ -114,6 +114,7 @@ class AUNInputsBasicSwitch:
             "optional": {
                 "ref_image": ("IMAGE", {"tooltip": "Optional reference image. When connected, aspect_mode is set automatically to match its orientation."}),
                 "bundle_input": (BUNDLE, {"tooltip": "Optional OBVPM bundle override. Matching fields (sampler, scheduler, cfg, steps, seed, ckpt name) replace the widget values when present."}),
+                "set": ("STRING", {"default": "", "tooltip": "Constant name. When non-empty, this node sets an OBVPM bundle constant readable by an OBVPM Unbundle (get) or KJ Get."}),
             },
             "hidden": {"unique_id": "UNIQUE_ID", "extra_pnginfo": "EXTRA_PNGINFO"}
         }
@@ -130,6 +131,7 @@ class AUNInputsBasicSwitch:
         "INT",
         "INT",
         "STRING", "STRING", "INT",
+        BUNDLE,
     )
     RETURN_NAMES = (
         "MODEL",
@@ -148,13 +150,15 @@ class AUNInputsBasicSwitch:
         "text",
         "label",
         "index",
+        "bundle",
     )
     FUNCTION = "switch_inputs"
     CATEGORY = "AUN Nodes/Loaders+Inputs"
     OUTPUT_NODE = True
     DESCRIPTION = ("All-in-one node combining a text index switch with AUN Inputs Basic: select one of up to 20 text slots, "
     "and load the checkpoint, latent and sampler settings in a single node. "
-    "The selected text is scanned for key=value tokens (model, sampler, scheduler, cfg, steps, seed) which override the matching loader widgets and are removed from the text output."
+    "The selected text is scanned for key=value tokens (model, sampler, scheduler, cfg, steps, seed) which override the matching loader widgets and are removed from the text output. "
+    "Set the 'set' widget to a constant name to expose all outputs as an OBVPM bundle constant."
     )
 
     def _clamp_slot_count(self, slot_count):
@@ -320,7 +324,7 @@ class AUNInputsBasicSwitch:
                       speed_lora, speed_lora_model, speed_lora_strength, clip_skip,
                       sampler, scheduler, cfg, steps, width, height, aspect_ratio, aspect_mode,
                       batch_size, seed, megapixels=1.0, multiple=8,
-                      unique_id=None, extra_pnginfo=None, ref_image=None, bundle_input=None, **kwargs):
+                      unique_id=None, extra_pnginfo=None, ref_image=None, bundle_input=None, set="", **kwargs):
 
         if unique_id is None:
             unique_id = "default_node"
@@ -437,9 +441,28 @@ class AUNInputsBasicSwitch:
 
         latent = torch.zeros([batch_size, 4, height // 8, width // 8])
 
-        return (model, clip, vae, os.path.splitext(os.path.basename(ckpt_name))[0],
+        _ckpt_short = os.path.splitext(os.path.basename(ckpt_name))[0]
+        bundle = {
+            "model": model,
+            "clip": clip,
+            "vae": vae,
+            "ckpt_name": _ckpt_short,
+            "sampler": sampler,
+            "scheduler": scheduler,
+            "cfg": cfg,
+            "steps": steps,
+            "latent": {"samples": latent},
+            "width": width,
+            "height": height,
+            "seed": seed,
+            "batch_size": int(batch_size),
+            "text": cleaned_text,
+            "label": selected_label,
+            "index": final_index,
+        }
+        return (model, clip, vae, _ckpt_short,
                 sampler, scheduler, cfg, steps, {"samples": latent}, width, height, seed,
-                int(batch_size), cleaned_text, selected_label, final_index)
+                int(batch_size), cleaned_text, selected_label, final_index, bundle)
 
     @classmethod
     def IS_CHANGED(cls, minimum=None, maximum=None, mode=None, range=None, slot_count=None, index=None, **kwargs):

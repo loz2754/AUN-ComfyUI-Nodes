@@ -2,6 +2,7 @@ import { app } from "../../scripts/app.js";
 
 const BUNDLE_FIELDS = {
     AUNInputsBasic: ["model","clip","vae","ckpt_name","sampler","scheduler","cfg","steps","latent","width","height","seed","batch_size"],
+    AUNInputsBasicSwitch: ["model","clip","vae","ckpt_name","sampler","scheduler","cfg","steps","latent","width","height","seed","batch_size","text","label","index"],
     AUNInputs: ["model","clip","vae","ckpt_name","sampler","scheduler","cfg","steps","latent","width","height","seed","MainFolder","Filename","prefix","date_format","batch_size","name_mode"],
     AUNInputsRefine: ["model","clip","vae","refine_model","ckpt_name","ckpt_name_refine","sampler","scheduler","cfg","steps","latent","width","height","seed","MainFolder","Filename","prefix","date_format","batch_size","name_mode","speed_lora_ratio"],
     AUNInputsRefineBasic: ["model","clip","vae","refine_model","ckpt_name","ckpt_name_refine","sampler","scheduler","cfg","steps","latent","width","height","seed","batch_size","speed_lora_ratio"],

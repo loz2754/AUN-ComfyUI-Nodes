@@ -6,6 +6,7 @@ const MAX_INPUTS = 20;
 const INPUT_PREFIX = "input_";
 const COLLAPSE_KEY = "collapse_connections";
 const SHOW_TYPES_KEY = "show_types";
+const IMAGE_PREVIEW_KEY = "show_image_preview";
 const MAX_VALUE_LEN_KEY = "max_value_len";
 
 
@@ -280,7 +281,7 @@ function removeOverlayState(node) {
   }
 }
 
-function buildOverlayCards(container, entries, showTypes = true) {
+function buildOverlayCards(container, entries, showTypes = true, showImagePreview = true) {
   container.innerHTML = "";
   for (const entry of entries) {
     const card = document.createElement("div");
@@ -329,7 +330,7 @@ function buildOverlayCards(container, entries, showTypes = true) {
 
     card.appendChild(header);
 
-    if (entry.preview) {
+    if (entry.preview && showImagePreview) {
       const img = document.createElement("img");
       img.src = `data:image/png;base64,${entry.preview}`;
       img.style.cssText = `
@@ -356,6 +357,17 @@ function buildOverlayCards(container, entries, showTypes = true) {
         if (entry.full_value) valEl.title = entry.full_value;
         card.appendChild(valEl);
       }
+    } else if (entry.tensor_info) {
+      const valEl = document.createElement("div");
+      valEl.style.cssText = `
+        font: 12px sans-serif;
+        color: #d0d0d0;
+        white-space: pre-wrap;
+        word-break: break-word;
+        line-height: 1.4;
+      `;
+      valEl.textContent = entry.tensor_info;
+      card.appendChild(valEl);
     } else if (entry.value) {
       const valEl = document.createElement("div");
       valEl.style.cssText = `
@@ -591,7 +603,7 @@ function setupShowTypes(node) {
     if (this._aunEntries) {
       const state = overlayRegistry.get(this);
       if (state) {
-        buildOverlayCards(state.container, this._aunEntries, this.properties[SHOW_TYPES_KEY]);
+        buildOverlayCards(state.container, this._aunEntries, this.properties[SHOW_TYPES_KEY], this.properties[IMAGE_PREVIEW_KEY] !== false);
       }
     }
   }
@@ -607,13 +619,43 @@ function setupShowTypes(node) {
   };
 }
 
+// ── Image Preview (right-click menu) ────────────────────────────────
+
+function setupImagePreview(node) {
+  if (node.__aun_image_preview_hooked) return;
+  node.__aun_image_preview_hooked = true;
+
+  node.properties = node.properties || {};
+  if (typeof node.properties[IMAGE_PREVIEW_KEY] !== "boolean") {
+    node.properties[IMAGE_PREVIEW_KEY] = true;
+  }
+
+  const origMenu = node.getExtraMenuOptions;
+  node.getExtraMenuOptions = function (canvas, options) {
+    if (origMenu) origMenu.apply(this, [canvas, options]);
+    const on = !!this.properties?.[IMAGE_PREVIEW_KEY];
+    options.push({
+      content: on ? "Hide Image Preview" : "Show Image Preview",
+      callback: () => {
+        this.properties[IMAGE_PREVIEW_KEY] = !this.properties[IMAGE_PREVIEW_KEY];
+        if (this._aunEntries) {
+          const state = overlayRegistry.get(this);
+          if (state) {
+            buildOverlayCards(state.container, this._aunEntries, this.properties[SHOW_TYPES_KEY], this.properties[IMAGE_PREVIEW_KEY] !== false);
+          }
+        }
+      },
+    });
+  };
+}
+
 // ── Max Value Len (right-click menu) ────────────────────────────────
 
 const MAX_VALUE_LEN_PRESETS = [
   { label: "200", value: 200 },
-  { label: "500 (default)", value: 500 },
+  { label: "500", value: 500 },
   { label: "1000", value: 1000 },
-  { label: "2000", value: 2000 },
+  { label: "2000 (default)", value: 2000 },
   { label: "Unlimited", value: 0 },
 ];
 
@@ -623,7 +665,7 @@ function setupMaxValueLen(node) {
 
   node.properties = node.properties || {};
   if (typeof node.properties[MAX_VALUE_LEN_KEY] !== "number") {
-    node.properties[MAX_VALUE_LEN_KEY] = 500;
+    node.properties[MAX_VALUE_LEN_KEY] = 2000;
   }
 
   const origMenu = node.getExtraMenuOptions;
@@ -674,7 +716,7 @@ app.registerExtension({
         this.properties.aun_entries = JSON.stringify(message.entries);
 
         const state = getOverlayState(this);
-        buildOverlayCards(state.container, message.entries, this.properties?.show_types !== false);
+        buildOverlayCards(state.container, message.entries, this.properties?.show_types !== false, this.properties?.[IMAGE_PREVIEW_KEY] !== false);
         positionOverlay(this);
       }
     };
@@ -703,7 +745,7 @@ app.registerExtension({
             this._aunEntries = entries;
             requestAnimationFrame(() => {
               const state = getOverlayState(this);
-              buildOverlayCards(state.container, entries, this.properties?.show_types !== false);
+              buildOverlayCards(state.container, entries, this.properties?.show_types !== false, this.properties?.[IMAGE_PREVIEW_KEY] !== false);
               positionOverlay(this);
             });
           }
@@ -722,6 +764,7 @@ app.registerExtension({
     if (node.comfyClass === NODE_TYPE) {
       setupCollapseConnections(node);
       setupShowTypes(node);
+      setupImagePreview(node);
       setupMaxValueLen(node);
       requestAnimationFrame(() => {
         if (!node.__aun_recalc_done) {
@@ -753,6 +796,7 @@ app.registerExtension({
     if (node.comfyClass === NODE_TYPE) {
       setupCollapseConnections(node);
       setupShowTypes(node);
+      setupImagePreview(node);
       setupMaxValueLen(node);
     }
   },

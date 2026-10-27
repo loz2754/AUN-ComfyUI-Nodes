@@ -17,7 +17,7 @@ class AlwaysEqualProxy(str):
 
 any_type = AlwaysEqualProxy("*")
 
-_MAX_VALUE_LEN = 500
+_MAX_VALUE_LEN = 2000
 _MAX_IMG_SIDE = 400
 
 
@@ -76,6 +76,15 @@ class AUNShowAnyMulti:
 
             caption = captions.get(key, f"Input {i}")
             type_name = type_map.get(key, self._infer_type(value))
+
+            inferred = self._infer_type(value)
+            if type_name in ("", "*", "ANY", "OBVPM_BUNDLE") or type_name not in (
+                "IMAGE", "STRING", "LATENT", "MODEL", "CLIP", "VAE",
+                "TENSOR", "DICT", "LIST", "CONDITIONING",
+            ):
+                type_name = inferred
+            if inferred == "IMAGE":
+                type_name = "IMAGE"
             entry = {"caption": caption, "type": type_name, "value": "", "preview": None}
 
             if type_name == "IMAGE":
@@ -84,6 +93,16 @@ class AUNShowAnyMulti:
                 entry["value"] = val
                 if full:
                     entry["full_value"] = full
+                # Also store a tensor-style summary so the client can toggle
+                # between image preview and tensor info without re-running.
+                if isinstance(value, torch.Tensor):
+                    t = value
+                    if t.dim() == 4:
+                        t = t[0]
+                    entry["tensor_info"] = (
+                        f"Tensor(shape={list(value.shape)}, "
+                        f"dtype={value.dtype}, device={value.device})"
+                    )
             elif type_name == "STRING":
                 val, full = _truncate(str(value), max_value_len)
                 entry["value"] = val
@@ -230,6 +249,31 @@ class AUNShowAnyMulti:
             return int(val)
         except Exception:
             return default
+
+    @staticmethod
+    def _read_bool_property(unique_id, extra_pnginfo, prop_name, default=True):
+        if unique_id is None or extra_pnginfo is None:
+            return default
+        workflow = extra_pnginfo.get("workflow", {})
+        nodelist = workflow.get("nodes", [])
+        my_node = next(
+            (n for n in nodelist if str(n.get("id")) == str(unique_id)),
+            None,
+        )
+        if not my_node:
+            return default
+        props = my_node.get("properties", {})
+        val = props.get(prop_name)
+        if val is None:
+            return default
+        if isinstance(val, bool):
+            return val
+        s = str(val).strip().lower()
+        if s in ("true", "1", "yes", "on"):
+            return True
+        if s in ("false", "0", "no", "off"):
+            return False
+        return default
 
     # ── value formatting ────────────────────────────────────────────
 

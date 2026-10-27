@@ -1,6 +1,7 @@
 import hashlib
 import os
 import time
+from .aun_bundle_shared import BUNDLE
 from pathlib import Path
 from PIL.PngImagePlugin import PngInfo
 import folder_paths
@@ -58,17 +59,23 @@ class AUNImgLoader:
                         "tooltip": "Maximum number of words to keep for both filename outputs. Set to 0 for no limit."
                     }),
                 },
-                "hidden": {"prompt": "PROMPT"}
+                "optional": {
+                     "set": ("STRING", {
+                         "default": "",
+                         "tooltip": "Constant name. When non-empty, this node sets an OBVPM bundle constant readable by an OBVPM Unbundle (get) or KJ Get."
+                     }),
+                 },
+                 "hidden": {"prompt": "PROMPT"}
                 }
 
     CATEGORY = "AUN Nodes/Image"
-    DESCRIPTION = "Loads an image and returns the image data, a mask, the original filename, and a cleaned filename. The cleaned filename is useful for prompts or file outputs in other nodes."
+    DESCRIPTION = "Loads an image and returns the image data, a mask, the original filename, and a cleaned filename. The cleaned filename is useful for prompts or file outputs in other nodes. Set the 'set' widget to a constant name to expose all outputs as an OBVPM bundle constant."
 
-    RETURN_TYPES = ("IMAGE", "MASK", "STRING", "STRING")
-    RETURN_NAMES = ("IMAGE", "MASK", "image name", "cleaned filename")
+    RETURN_TYPES = ("IMAGE", "MASK", "STRING", "STRING", BUNDLE)
+    RETURN_NAMES = ("IMAGE", "MASK", "image name", "cleaned filename", "bundle")
     FUNCTION = "load_image"
 
-    def load_image(self, image, max_num_words=0, prompt=None):
+    def load_image(self, image, max_num_words=0, prompt=None, set=""):
         image_path = folder_paths.get_annotated_filepath(image)
         filename = image.rsplit('.', 1)[0]  # get image name
         img = node_helpers.pillow(Image.open, image_path)
@@ -125,7 +132,8 @@ class AUNImgLoader:
                 new_parts.append(p)
             filename = "".join(new_parts).rstrip("_ -")
 
-        return (output_image, output_mask, filename, cleaned_filename)
+        bundle = {"image": output_image, "mask": output_mask, "filename": filename, "cleaned_filename": cleaned_filename}
+        return (output_image, output_mask, filename, cleaned_filename, bundle)
 
 
     @classmethod

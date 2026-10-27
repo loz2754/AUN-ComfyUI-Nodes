@@ -2,6 +2,7 @@ import torch
 import time
 import random
 import numpy as np
+from .aun_bundle_shared import BUNDLE
 
 class AUNEmptyLatent:
     def __init__(self):
@@ -32,17 +33,24 @@ class AUNEmptyLatent:
                 "mode": (["random", "fixed"], {"default": "fixed", "tooltip": "In 'random' mode, there's a 50% chance of swapping width and height. In 'fixed' mode, the dimensions are used as specified."}),
                 "swap_dimensions": (["Yes", "No"], {"default": "No", "tooltip": "Explicitly swap the width and height dimensions."}),
                 "batch_size": ("INT", {"default": 1, "min": 1, "max": 64, "tooltip": "The number of latent images to generate in a batch."}),
-                "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff, "tooltip": "The seed for the random number generator."})}
+                "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff, "tooltip": "The seed for the random number generator."})
+            },
+            "optional": {
+                "set": ("STRING", {
+                    "default": "",
+                    "tooltip": "Constant name. When non-empty, this node sets an OBVPM bundle constant readable by an OBVPM Unbundle (get) or KJ Get."
+                }),
+            }
         }
  
-    RETURN_TYPES = ("LATENT", "INT", "INT", "INT")
-    RETURN_NAMES = ("latent", "width", "height", "seed")
+    RETURN_TYPES = ("LATENT", "INT", "INT", "INT", BUNDLE)
+    RETURN_NAMES = ("latent", "width", "height", "seed", "bundle")
     FUNCTION = "EmptyLatent"
     CATEGORY = "AUN Nodes/Image"
     DESCRIPTION = "This node generates an empty latent image with specified dimensions. It offers options for predefined aspect ratios, random dimension swapping, and batching, making it a flexible starting point for your image generation workflows."        
 
 
-    def EmptyLatent(self, width, height, aspect_ratio, mode, swap_dimensions, batch_size, seed):
+    def EmptyLatent(self, width, height, aspect_ratio, mode, swap_dimensions, batch_size, seed, set=""):
         # Set dimensions based on aspect ratio
         if aspect_ratio == "512x512":
             width, height = 512, 512
@@ -87,7 +95,8 @@ class AUNEmptyLatent:
         # Create the empty latent
         latent = torch.zeros([batch_size, 4, height // 8, width // 8])
         
-        return ({"samples": latent}, width, height, seed)   
+        bundle = {"latent": {"samples": latent}, "width": width, "height": height, "seed": seed}
+        return ({"samples": latent}, width, height, seed, bundle)   
     
     @classmethod
     def IS_CHANGED(self, width, height, aspect_ratio, mode, swap_dimensions, batch_size,seed):

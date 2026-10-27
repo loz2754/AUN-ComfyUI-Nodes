@@ -17,7 +17,7 @@ class AlwaysEqualProxy(str):
 
 any_type = AlwaysEqualProxy("*")
 
-_MAX_VALUE_LEN = 500
+_MAX_VALUE_LEN = 2000
 _MAX_IMG_SIDE = 400
 
 
@@ -99,6 +99,15 @@ class AUNPassthroughAnyMulti:
 
             caption = captions.get(key, f"Input {i}")
             type_name = type_map.get(key, self._infer_type(value))
+
+            inferred = self._infer_type(value)
+            if type_name in ("", "*", "ANY", "OBVPM_BUNDLE") or type_name not in (
+                "IMAGE", "STRING", "LATENT", "MODEL", "CLIP", "VAE",
+                "TENSOR", "DICT", "LIST", "CONDITIONING",
+            ):
+                type_name = inferred
+            if inferred == "IMAGE":
+                type_name = "IMAGE"
             entry = {"caption": caption, "type": type_name, "value": "", "preview": None}
 
             try:
@@ -108,6 +117,11 @@ class AUNPassthroughAnyMulti:
                     entry["value"] = val
                     if full:
                         entry["full_value"] = full
+                    if isinstance(value, torch.Tensor):
+                        entry["tensor_info"] = (
+                            f"Tensor(shape={list(value.shape)}, "
+                            f"dtype={value.dtype}, device={value.device})"
+                        )
                 elif type_name == "STRING":
                     val, full = _truncate(str(value), max_value_len)
                     entry["value"] = val

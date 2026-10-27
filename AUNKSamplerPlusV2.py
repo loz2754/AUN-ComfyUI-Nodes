@@ -1,5 +1,6 @@
 import torch
 import time
+from .aun_bundle_shared import BUNDLE
 from PIL import Image
 import comfy.samplers
 import comfy.sample
@@ -116,11 +117,17 @@ class AUNKSamplerPlusV2:
                     "default": False, "label_on": "Yes", "label_off": "No",
                     "tooltip": "Print detailed pass logs and timings to the console."
                 })
-            }
+            },
+            "optional": {
+                "set": ("STRING", {
+                    "default": "",
+                    "tooltip": "Constant name. When non-empty, this node sets an OBVPM bundle constant readable by an OBVPM Unbundle (get) or KJ Get."
+                }),
+            },
+            "hidden": {"prompt": "PROMPT"}
         }
-
-    RETURN_TYPES = ("IMAGE", "IMAGE", "IMAGE", "IMAGE", "IMAGE", "LATENT", "STRING")
-    RETURN_NAMES = ("Base image", "Image upscaled", "Latent upscaled", "Both upscaled", "Refined image", "LATENT", "Upscaled type")
+    RETURN_TYPES = ("IMAGE", "IMAGE", "IMAGE", "IMAGE", "IMAGE", "LATENT", "STRING", BUNDLE)
+    RETURN_NAMES = ("Base image", "Image upscaled", "Latent upscaled", "Both upscaled", "Refined image", "LATENT", "Upscaled type", "bundle")
     FUNCTION = "qmSample"
     OUTPUT_NODE = True
     CATEGORY = "AUN Nodes/Deprecated/KSampler"
@@ -274,7 +281,7 @@ class AUNKSamplerPlusV2:
         self, vae, model, seed, steps_total, steps_first, start_step_second, cfg, cfg_latent_upscale, sampler_name, scheduler,
         positive, negative, latent_image, denoise, latent_upscale, image_upscale, upscale_method="bilinear", ratio=1.5,
         upscaling_denoise=0.61, image_upscale_method="lanczos", image_upscale_model="None", image_upscale_ratio=1.5, image_upscale_refine=False,
-        img_refine_steps=4, img_refine_denoise=0.25, verbose=False
+        img_refine_steps=4, img_refine_denoise=0.25, verbose=False, prompt=None, set=""
     ):
         latent = latent_image
         latent_data = latent_image or {}
@@ -531,6 +538,15 @@ class AUNKSamplerPlusV2:
             f"t1={pass1_time:.2f}s, t2={pass2_time:.2f}s, t3={pass3_time:.2f}s, tr={refine_time:.2f}s"
         )
 
+        bundle = {
+            "base_image": base_output,
+            "image_upscaled": image_upscaled_output,
+            "latent_upscaled": latent_upscaled_output,
+            "both_upscaled": both_upscaled_output,
+            "refined_image": refined_image_output,
+            "latent": {"samples": latent_output},
+            "upscaled_type": upscaled_type,
+        }
         return (
             base_output,
             image_upscaled_output,
@@ -539,6 +555,7 @@ class AUNKSamplerPlusV2:
             refined_image_output,
             {"samples": latent_output},
             upscaled_type,
+            bundle,
         )
 
 

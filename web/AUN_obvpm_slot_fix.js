@@ -1,14 +1,15 @@
 import { app } from "../../scripts/app.js";
 
 const AUN_INPUT_CLASSES = new Set([
-    "AUNInputs", "AUNInputsBasic", "AUNInputsRefine", "AUNInputsRefineBasic",
+    "AUNInputs", "AUNInputsBasic", "AUNInputsBasicSwitch", "AUNInputsRefine", "AUNInputsRefineBasic",
     "AUNInputsDiffusers", "AUNInputsDiffusersBasic", "AUNInputsDiffusersRefineBasic",
     "AUNInputsHybrid", "AUNInputsWan22Basic", "AUNInputsMiniMaxH3Basic",
-    "AUNImageSingleBatch3", "AUNImageLoadResize", "AUNImageResize", "AUNManualAutoImageSwitch", "AUNKSamplerPlusv3", "AUNPromptCycler", "AUNMultiPromptCycler", "AUNWildcardAddToPrompt",
+    "AUNImageSingleBatch3", "AUNImageLoadResize", "AUNImageResize", "AUNImgLoader", "AUNManualAutoImageSwitch", "AUNKSamplerPlusv3", "AUNPromptCycler", "AUNMultiPromptCycler", "AUNWildcardAddToPrompt",
     "AUNTextIndexSwitch", "AUNTextIndexSwitch3", "AUNTextIndexSwitch4", "AUNTextIndexSwitch5", "AUNTextIndexSwitch5Diffusers",
     "AUNRandomTextIndexSwitch", "AUNRandomTextIndexSwitchV2", "AUNAnyIndexSwitch", "AUNCheckpointLoaderWithClipSkip",
     "AUNLoraLoaderModelOnlyFromString", "AUNLoraStackWithTriggers", "AUNLoraStackWithTriggersModelClip",
     "AUNLoRAsByPromptIndex", "KSamplerInputs",
+    "AUNKSamplerPlusV2", "AUNKSamplerPlusv4", "AUNEmptyLatent", "AUNWan22MoE",
 ]);
 
 function resolveExecNode(root, execId) {
