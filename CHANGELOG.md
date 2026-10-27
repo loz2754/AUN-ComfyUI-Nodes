@@ -8,10 +8,19 @@
 ### Changed
 
 ### Fixed
-- `AUNWildcardAddToPrompt`: hide the OBVPM `set` widget in compact mode so the node footer no longer drops off the bottom edge.
 
 ### Notes
 
+## [2.34.19] - 2026-10-27
+
+### Added
+
+### Changed
+
+### Fixed
+- `AUNWildcardAddToPrompt`: hide the OBVPM `set` widget in compact mode so the node footer no longer drops off the bottom edge.
+
+### Notes
 ## [2.34.18] - 2026-10-27
 
 ### Added
