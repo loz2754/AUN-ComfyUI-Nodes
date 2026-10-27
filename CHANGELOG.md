@@ -8,6 +8,7 @@
 ### Changed
 
 ### Fixed
+- `AUNTextIndexSwitch3`/`4`/`5`: text-edit modal no longer auto-selects all text; double-clicking a word keeps that word selected and scrolled into view; modal no longer jumps to the top-left.
 
 ### Notes
 

@@ -1532,6 +1532,10 @@ function showTextEditPopup(node, widgetName, widget, positionHint) {
   // Use the widget's native inputEl for dynamic prompt support
   // This ensures the same behavior as normal ComfyUI text widgets
   const textarea = widget.inputEl;
+  // Capture selection before detaching the textarea from its original parent.
+  const _hadSelection = (typeof textarea.selectionStart === "number" && textarea.selectionStart !== textarea.selectionEnd);
+  const _capturedSelStart = _hadSelection ? textarea.selectionStart : 0;
+  const _capturedSelEnd = _hadSelection ? textarea.selectionEnd : 0;
   const originalParent = textarea.parentNode;
   const originalStyles = {
     cssText: textarea.style.cssText,
@@ -1641,7 +1645,7 @@ function showTextEditPopup(node, widgetName, widget, positionHint) {
   if (positionHint) {
     left = positionHint.left;
     top = positionHint.top;
-  } else if (originalRect) {
+  } else if (originalRect && originalRect.width > 0 && originalRect.height > 0) {
     left = originalRect.left;
     top = originalRect.bottom + 10;
   } else {
@@ -1788,10 +1792,33 @@ function showTextEditPopup(node, widgetName, widget, positionHint) {
   document.body.appendChild(popup);
   currentPopup = { popup, widget, widgetName };
 
-  // Focus textarea
+  // Focus textarea without selecting all text (preserves any double-click
+  // word selection captured before the textarea was detached).
   setTimeout(() => {
     textarea.focus();
-    textarea.select();
+    try {
+      const s = _capturedSelStart;
+      const e = _capturedSelEnd;
+      if (typeof s === "number" && typeof e === "number") {
+        textarea.setSelectionRange(s, e);
+      } else {
+        const len = textarea.value.length;
+        textarea.selectionStart = textarea.selectionEnd = len;
+      }
+    } catch (err) {
+      /* ignore */
+    }
+    // Keep the selected word in view instead of jumping to the top of the text.
+    try {
+      const caret = (typeof textarea.selectionStart === "number") ? textarea.selectionStart : 0;
+      const before = textarea.value.substring(0, caret);
+      const line = before.split("\\n").length - 1;
+      const lineHeight = 12 * 1.4; // matches textarea font-size/line-height
+      const target = Math.max(0, line * lineHeight - 60);
+      textarea.scrollTop = target;
+    } catch (err) {
+      /* ignore */
+    }
   }, 100);
 
   // Make draggable
@@ -1921,6 +1948,10 @@ function showTextEditPopupCentered(node, widgetName, widget) {
   // Use the widget's native inputEl for dynamic prompt support
   // This ensures the same behavior as normal ComfyUI text widgets
   const textarea = widget.inputEl;
+  // Capture selection before detaching the textarea from its original parent.
+  const _hadSelection = (typeof textarea.selectionStart === "number" && textarea.selectionStart !== textarea.selectionEnd);
+  const _capturedSelStart = _hadSelection ? textarea.selectionStart : 0;
+  const _capturedSelEnd = _hadSelection ? textarea.selectionEnd : 0;
   const originalParent = textarea.parentNode;
   const originalStyles = {
     cssText: textarea.style.cssText,
@@ -2031,10 +2062,33 @@ function showTextEditPopupCentered(node, widgetName, widget) {
   document.body.appendChild(popup);
   currentPopup = { popup, widget, widgetName };
 
-  // Focus textarea
+  // Focus textarea without selecting all text (preserves any double-click
+  // word selection captured before the textarea was detached).
   setTimeout(() => {
     textarea.focus();
-    textarea.select();
+    try {
+      const s = _capturedSelStart;
+      const e = _capturedSelEnd;
+      if (typeof s === "number" && typeof e === "number") {
+        textarea.setSelectionRange(s, e);
+      } else {
+        const len = textarea.value.length;
+        textarea.selectionStart = textarea.selectionEnd = len;
+      }
+    } catch (err) {
+      /* ignore */
+    }
+    // Keep the selected word in view instead of jumping to the top of the text.
+    try {
+      const caret = (typeof textarea.selectionStart === "number") ? textarea.selectionStart : 0;
+      const before = textarea.value.substring(0, caret);
+      const line = before.split("\\n").length - 1;
+      const lineHeight = 12 * 1.4; // matches textarea font-size/line-height
+      const target = Math.max(0, line * lineHeight - 60);
+      textarea.scrollTop = target;
+    } catch (err) {
+      /* ignore */
+    }
   }, 100);
 
   // Make draggable
@@ -2122,7 +2176,21 @@ function setupTextEditHandlers(node) {
       e.preventDefault();
       e.stopPropagation();
       hideTextTooltip(); // Hide tooltip on double-click
-      showTextEditPopup(node, `text${i}`, widget);
+      // Position near the node (consistent with the Edit button path) instead of
+      // relying on the widget's (possibly stale) rect, which could jump to 0,0.
+      const graphRect = app.canvas?.canvas?.getBoundingClientRect?.();
+      let hintLeft = window.innerWidth / 2 - 200;
+      let hintTop = window.innerHeight / 2 - 150;
+      if (graphRect && node.pos) {
+        const scale = app.canvas.ds?.scale || 1;
+        const canvasOffset = app.canvas.ds?.offset || [0, 0];
+        const nodeLeft = graphRect.left + (node.pos[0] + canvasOffset[0]) * scale;
+        const nodeTop = graphRect.top + (node.pos[1] + canvasOffset[1]) * scale;
+        const nodeWidth = (node.size?.[0] || 300) * scale;
+        hintLeft = nodeLeft + nodeWidth + 10;
+        hintTop = nodeTop;
+      }
+      showTextEditPopup(node, `text${i}`, widget, { left: hintLeft, top: hintTop, width: 400, height: 350 });
     });
 
     // Hover tooltip
