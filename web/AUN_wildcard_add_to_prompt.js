@@ -13,6 +13,7 @@ const ALL_WIDGETS = [
   "order",
   "mode",
   "populated_text",
+  "set",
 ];
 const COMPACT_VISIBLE = new Set(["mode", "populated_text"]);
 
