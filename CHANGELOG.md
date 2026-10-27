@@ -19,8 +19,10 @@
 - `AUNKSamplerPlusV2`, `AUNKSamplerPlusv4`: added optional `set` STRING input and `bundle` (OBVPM_BUNDLE) output exposing `base_image`/`image_upscaled`/`latent_upscaled`/`both_upscaled`/`refined_image`/`latent`/`upscaled_type`. Registered as OBVPM setters in the slot fix.
 - `AUNEmptyLatent`: added optional `set` STRING input and `bundle` (OBVPM_BUNDLE) output exposing `latent`/`width`/`height`/`seed`. Registered as an OBVPM setter in the slot fix.
 - `AUNWan22MoE`: added optional `set` STRING input and `bundle` (OBVPM_BUNDLE) output exposing `latent`/`image`. Registered as an OBVPM setter in the slot fix.
+- `AUNShowAnyMulti`, `AUNPassthroughAnyMulti`: added OBVPM/wildcard type handling so image tensors arriving via OBVPM Get render as image previews; added `tensor_info` field; added right-click "Show/Hide Image Preview" toggle.
 
 ### Changed
+- `AUNShowAnyMulti`, `AUNPassthroughAnyMulti`: default `Max Value Len` raised from 500 to 2000.
 
 ### Fixed
 
