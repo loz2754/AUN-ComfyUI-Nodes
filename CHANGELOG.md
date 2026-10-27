@@ -4,6 +4,7 @@
 ## [Unreleased]
 
 ### Added
+- `AUNWidgetConfig`: helper node with a checkbox dialog (and button) to manage which nodes get the right-click 'Configure widgets' option; saves to `web/AUN_widget_config_targets.js` via a server endpoint. Supports non-AUN node classes.
 
 ### Changed
 

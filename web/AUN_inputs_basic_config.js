@@ -1,8 +1,34 @@
 import { app } from "../../scripts/app.js";
+import { WIDGET_CONFIG_TARGETS } from "./AUN_widget_config_targets.js";
 
-const WIDGETS_BY_NODE = {
-    AUNInputsBasic: ["ckpt_name","speed_lora","speed_lora_model","speed_lora_strength","clip_skip","sampler","scheduler","cfg","steps","aspect_ratio","aspect_mode","megapixels","multiple","batch_size","seed","width","height"],
-};
+// Merge file-based targets with any saved at runtime via the AUN Widget Config node.
+function loadTargets() {
+    const set = new Set(WIDGET_CONFIG_TARGETS || []);
+    try {
+        const saved = JSON.parse(localStorage.getItem("aun_widget_config_targets") || "[]");
+        for (const n of saved || []) if (n) set.add(n);
+    } catch (e) { /* ignore */ }
+    return [...set];
+}
+
+// Nodes that get the "Configure widgets" right-click option.
+const TARGET_NODES = loadTargets();
+
+// Widgets that must never be hidden (keep them always visible).
+const EXCLUDE = new Set(["control_after_generate", "set"]);
+
+function toggleableWidgets(node) {
+    const names = [];
+    const seen = new Set();
+    for (const w of node.widgets || []) {
+        if (!w || !w.name) continue;
+        if (EXCLUDE.has(w.name)) continue;
+        if (seen.has(w.name)) continue;
+        seen.add(w.name);
+        names.push(w.name);
+    }
+    return names;
+}
 
 function getCfg(node) {
     if (!node.properties) node.properties = {};
@@ -13,11 +39,10 @@ function getCfg(node) {
 function applyHidden(node) {
     const cfg = getCfg(node);
     const hidden = new Set(cfg.hidden || []);
-    const widgets = WIDGETS_BY_NODE[node.comfyClass] || [];
     for (const w of node.widgets || []) {
+        if (EXCLUDE.has(w.name)) continue;
         let isHidden = hidden.has(w.name);
         if (w.name === "control_after_generate" && hidden.has("seed")) isHidden = true;
-        if (!widgets.includes(w.name) && w.name !== "control_after_generate") continue;
         w.hidden = isHidden;
         if (w.hidden) {
             w.computeSize = () => [0, -4];
@@ -31,7 +56,7 @@ function applyHidden(node) {
 }
 
 function openConfig(node) {
-    const widgets = WIDGETS_BY_NODE[node.comfyClass] || [];
+    const widgets = toggleableWidgets(node);
     const overlay = document.createElement("div");
     overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;";
     const panel = document.createElement("div");
@@ -60,13 +85,11 @@ function openConfig(node) {
         cb.onchange = () => {
             if (cb.checked) hidden.delete(name); else hidden.add(name);
         };
-        cbs.push({cb,name});
+        cbs.push({ name, cb });
         row.appendChild(cb);
         row.appendChild(document.createTextNode(" " + name));
         panel.appendChild(row);
     }
-    allBtn.onclick = () => { cbs.forEach(o => { o.cb.checked = true; hidden.delete(o.name); }); };
-    noneBtn.onclick = () => { cbs.forEach(o => { o.cb.checked = false; hidden.add(o.name); }); };
     const btn = document.createElement("button");
     btn.textContent = "Apply";
     btn.style.cssText = "margin-top:10px;padding:4px 12px;";
@@ -75,15 +98,17 @@ function openConfig(node) {
         applyHidden(node);
         document.body.removeChild(overlay);
     };
+    allBtn.onclick = () => { for (const c of cbs) { c.cb.checked = true; hidden.delete(c.name); } };
+    noneBtn.onclick = () => { for (const c of cbs) { c.cb.checked = false; hidden.add(c.name); } };
     panel.appendChild(btn);
     overlay.appendChild(panel);
     document.body.appendChild(overlay);
 }
 
 app.registerExtension({
-    name: "AUNNodes.InputsBasic.Config",
+    name: "AUNNodes.WidgetConfig",
     async beforeRegisterNodeDef(nodeType, nodeData) {
-        if (nodeData.name !== "AUNInputsBasic") return;
+        if (!TARGET_NODES.includes(nodeData.name)) return;
         const orig = nodeType.prototype.onNodeCreated;
         nodeType.prototype.onNodeCreated = function () {
             if (orig) orig.apply(this, arguments);

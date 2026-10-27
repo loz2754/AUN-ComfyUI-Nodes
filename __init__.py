@@ -3,6 +3,7 @@ import logging
 from . import aun_lora_info_server as _aun_lora_info_server
 from . import aun_lora_multi_setup_server as _aun_lora_multi_setup_server
 from . import aun_vhs_audio_suffix as _aun_vhs_audio_suffix
+from . import aun_widget_config_server as _aun_widget_config_server
 from .AUNAddToPrompt import AUNAddToPrompt
 from .AUNAddToPromptMulti import AUNAddToPromptMulti
 from .AUNAny import AUNAny
@@ -103,6 +104,7 @@ from .AUNTextIndexSwitch5Diffusers import AUNTextIndexSwitch5Diffusers
 from .AUNImageTitleMultiPreview import AUNImageTitleMultiPreview
 from .AUNTitleImagePreview import AUNTitleImagePreview
 from .AUNWan22MoE import AUNWan22MoE
+from .AUNWidgetConfig import AUNWidgetConfig
 from .AUNWildcardAddToPrompt import AUNWildcardAddToPrompt
 from .KSamplerInputs import KSamplerInputs
 from .MainFolderManualName import MainFolderManualName
@@ -212,6 +214,7 @@ NODE_CLASS_MAPPINGS = {
     "AUNImageTitleMultiPreview": AUNImageTitleMultiPreview,
     "AUNTitleImagePreview": AUNTitleImagePreview,
     "AUNWan22MoE": AUNWan22MoE,
+    "AUNWidgetConfig": AUNWidgetConfig,
     "AUNWildcardAddToPrompt": AUNWildcardAddToPrompt,
     "KSamplerInputs": KSamplerInputs,
     "MainFolderManualName": MainFolderManualName,
@@ -318,6 +321,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "AUNImageTitleMultiPreview": "AUN Image Title Multi Preview",
     "AUNTitleImagePreview": "Image Preview With Title",
     "AUNWan22MoE": "Wan2.2 MoE KSampler",
+    "AUNWidgetConfig": "AUN Widget Config",
     "AUNWildcardAddToPrompt": "AUN Wildcard Add-To-Prompt",
     "KSamplerInputs": "KSampler Inputs",
     "MainFolderManualName": "Manual Name",
