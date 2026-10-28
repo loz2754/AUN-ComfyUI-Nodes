@@ -36,7 +36,79 @@ function getCfg(node) {
     return node.properties._aunInputsCfg;
 }
 
-function applyHidden(node) {
+// Force LiteGraph to rebuild link endpoints by disconnecting and reconnecting
+// every link touching the node. Preserves node id, values and references.
+function reconnectNodeLinks(node) {
+    const graph = node?.graph || app.graph;
+    if (!graph) return false;
+    const recs = [];
+    const seen = new Set();
+    const record = (id) => {
+        if (id == null || seen.has(id)) return;
+        seen.add(id);
+        let l = null;
+        try { l = graph.links?.get?.(id) ?? graph.links?.[id]; } catch (e) { /* ignore */ }
+        if (!l) return;
+        recs.push({
+            origin_id: l.origin_id,
+            origin_slot: l.origin_slot,
+            target_id: l.target_id,
+            target_slot: l.target_slot,
+        });
+    };
+    for (const inp of node.inputs || []) if (inp && inp.link != null) record(inp.link);
+    for (const out of node.outputs || []) for (const lid of out.links || []) record(lid);
+    if (!recs.length) return false;
+
+    for (const id of seen) { try { graph.removeLink(id); } catch (e) { /* ignore */ } }
+    for (const r of recs) {
+        try {
+            const origin = graph.getNodeById?.(r.origin_id);
+            const target = graph.getNodeById?.(r.target_id);
+            if (origin && target && typeof origin.connect === "function") {
+                origin.connect(r.origin_slot, target, r.target_slot);
+            }
+        } catch (e) { /* ignore */ }
+    }
+    return true;
+}
+
+// Reliable fallback: reload the graph from its serialized state (in-app F5).
+// Preserves node ids, values and links, and rebuilds all slot geometry.
+function reloadGraph() {
+    try {
+        const data = app.graph?.serialize?.();
+        if (!data) return false;
+        if (typeof app.loadGraphData === "function") {
+            app.loadGraphData(data);
+            return true;
+        }
+        app.graph.configure(data);
+        return true;
+    } catch (e) {
+        console.warn("[AUN Widget Config] graph reload failed", e);
+        return false;
+    }
+}
+
+function nodeHasLinks(node) {
+    return (node.inputs || []).some((i) => i && i.link != null) ||
+        (node.outputs || []).some((o) => o && Array.isArray(o.links) && o.links.length);
+}
+
+function sizeNudge(node) {
+    try {
+        const w = node.size?.[0];
+        const h = node.size?.[1];
+        if (!Number.isFinite(w) || !Number.isFinite(h)) return;
+        node.setSize([w, h + 1]);
+        requestAnimationFrame(() => {
+            try { node.setSize([w, h]); node.setDirtyCanvas(true, true); } catch (e) { /* ignore */ }
+        });
+    } catch (e) { /* ignore */ }
+}
+
+function applyHidden(node, { reconnect = true } = {}) {
     const cfg = getCfg(node);
     const hidden = new Set(cfg.hidden || []);
     for (const w of node.widgets || []) {
@@ -51,8 +123,35 @@ function applyHidden(node) {
         }
     }
     const cs = node.computeSize();
-    node.size[1] = cs[1];
+    // Preserve manual width; recompute height via setSize so LiteGraph refreshes
+    // internal slot geometry (prevents links from sticking to stale widget positions).
+    const w = (node.size && Number.isFinite(node.size[0])) ? node.size[0] : (cs[0] || 0);
+    if (typeof node.setSize === "function") {
+        node.setSize([w, cs[1]]);
+    } else {
+        if (!Array.isArray(node.size)) node.size = [w, cs[1]];
+        node.size[1] = cs[1];
+    }
+
+    // Recompute widget/slot geometry so links follow the new layout.
+    // _setConcreteSlots must run first: arrange() updates widget input slot
+    // positions from the (now hidden/shown) widget rows using _concreteInputs.
+    try {
+        node._widgetSlotsDirty = true;
+        node._setConcreteSlots?.();
+        node.arrange?.();
+    } catch (e) { /* ignore */ }
     node.setDirtyCanvas(true, true);
+    try { app.canvas?.setDirty?.(true, true); } catch (e) { /* ignore */ }
+    try { app.graph?.setDirtyCanvas?.(true, true); } catch (e) { /* ignore */ }
+
+    // Rebuild link endpoints; fall back to a size nudge if that fails.
+    if (reconnect) {
+        let ok = false;
+        try { ok = reconnectNodeLinks(node); } catch (e) { ok = false; }
+        if (!ok) sizeNudge(node);
+        try { app.canvas?.setDirty?.(true, true); } catch (e) { /* ignore */ }
+    }
 }
 
 function openConfig(node) {
@@ -95,8 +194,12 @@ function openConfig(node) {
     btn.style.cssText = "margin-top:10px;padding:4px 12px;";
     btn.onclick = () => {
         cfg.hidden = [...hidden];
-        applyHidden(node);
+        const hadLinks = nodeHasLinks(node);
+        applyHidden(node, { reconnect: false });
         document.body.removeChild(overlay);
+        // In-place slot updates don't stick reliably in the user's frontend;
+        // an in-app graph reload is the dependable fix (same as F5).
+        if (hadLinks) reloadGraph();
     };
     allBtn.onclick = () => { for (const c of cbs) { c.cb.checked = true; hidden.delete(c.name); } };
     noneBtn.onclick = () => { for (const c of cbs) { c.cb.checked = false; hidden.add(c.name); } };
@@ -122,7 +225,8 @@ app.registerExtension({
         const origCfg = nodeType.prototype.onConfigure;
         nodeType.prototype.onConfigure = function (info) {
             if (origCfg) origCfg.apply(this, arguments);
-            applyHidden(this);
+            // Layout is built fresh during load, so no link rebuild needed here.
+            applyHidden(this, { reconnect: false });
         };
     }
 });

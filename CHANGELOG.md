@@ -8,6 +8,7 @@
 ### Changed
 
 ### Fixed
+- `AUNInputsBasic`/`AUNKSampler*` "Configure widgets": on nodes with links connected to widgets, applying or reverting widget visibility now reloads the graph in place so links stay attached to the correct widgets (previously required a browser refresh).
 
 ### Notes
 
