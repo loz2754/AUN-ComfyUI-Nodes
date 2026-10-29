@@ -75,15 +75,39 @@ function reconnectNodeLinks(node) {
 
 // Reliable fallback: reload the graph from its serialized state (in-app F5).
 // Preserves node ids, values and links, and rebuilds all slot geometry.
-function reloadGraph() {
+function reloadGraph(excludeNodeId = null) {
     try {
         const data = app.graph?.serialize?.();
         if (!data) return false;
-        if (typeof app.loadGraphData === "function") {
-            app.loadGraphData(data);
-            return true;
+        // Capture user-set node sizes so the reload doesn't reset them.
+        const sizes = new Map();
+        for (const n of (app.graph?._nodes || [])) {
+            if (n?.id != null && Array.isArray(n.size)) {
+                sizes.set(n.id, [n.size[0], n.size[1]]);
+            }
         }
-        app.graph.configure(data);
+        const restore = () => {
+            for (const n of (app.graph?._nodes || [])) {
+                if (n?.id == null || n.id === excludeNodeId) continue;
+                const s = sizes.get(n.id);
+                if (!s) continue;
+                try {
+                    if (n.size?.[0] !== s[0] || n.size?.[1] !== s[1]) n.setSize([s[0], s[1]]);
+                } catch (e) { /* ignore */ }
+            }
+            try { app.canvas?.setDirty?.(true, true); } catch (e) { /* ignore */ }
+        };
+        let p;
+        if (typeof app.loadGraphData === "function") {
+            p = app.loadGraphData(data);
+        } else {
+            app.graph.configure(data);
+            p = Promise.resolve();
+        }
+        Promise.resolve(p).then(() => {
+            setTimeout(restore, 120);
+            setTimeout(restore, 400);
+        });
         return true;
     } catch (e) {
         console.warn("[AUN Widget Config] graph reload failed", e);
@@ -199,7 +223,7 @@ function openConfig(node) {
         document.body.removeChild(overlay);
         // In-place slot updates don't stick reliably in the user's frontend;
         // an in-app graph reload is the dependable fix (same as F5).
-        if (hadLinks) reloadGraph();
+        if (hadLinks) reloadGraph(node.id);
     };
     allBtn.onclick = () => { for (const c of cbs) { c.cb.checked = true; hidden.delete(c.name); } };
     noneBtn.onclick = () => { for (const c of cbs) { c.cb.checked = false; hidden.add(c.name); } };

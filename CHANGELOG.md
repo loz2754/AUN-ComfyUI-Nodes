@@ -8,6 +8,7 @@
 ### Changed
 
 ### Fixed
+- `AUNInputsBasic`/`AUNKSampler*` "Configure widgets": preserve user-set node sizes when applying/reverting widget visibility (the in-app graph reload no longer resets node sizes).
 
 ### Notes
 
