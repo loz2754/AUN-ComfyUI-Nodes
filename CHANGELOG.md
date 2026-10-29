@@ -8,6 +8,8 @@
 ### Changed
 
 ### Fixed
+- `AUNInputsBasic`/`AUNKSampler*` "Configure widgets": user-set node sizes are now preserved on workflow load (targeted nodes no longer resize on open).
+- `AUNStringListBuilder`: text widgets no longer spill past the node's bottom edge after an F5 reload that follows a manual resize.
 
 ### Notes
 

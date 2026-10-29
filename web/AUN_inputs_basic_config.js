@@ -132,7 +132,7 @@ function sizeNudge(node) {
     } catch (e) { /* ignore */ }
 }
 
-function applyHidden(node, { reconnect = true } = {}) {
+function applyHidden(node, { reconnect = true, resize = true } = {}) {
     const cfg = getCfg(node);
     const hidden = new Set(cfg.hidden || []);
     for (const w of node.widgets || []) {
@@ -146,25 +146,30 @@ function applyHidden(node, { reconnect = true } = {}) {
             w.computeSize = undefined;
         }
     }
-    const cs = node.computeSize();
-    // Preserve manual width; recompute height via setSize so LiteGraph refreshes
-    // internal slot geometry (prevents links from sticking to stale widget positions).
-    const w = (node.size && Number.isFinite(node.size[0])) ? node.size[0] : (cs[0] || 0);
-    if (typeof node.setSize === "function") {
-        node.setSize([w, cs[1]]);
-    } else {
-        if (!Array.isArray(node.size)) node.size = [w, cs[1]];
-        node.size[1] = cs[1];
+    // On workflow load we must NOT resize: doing so would overwrite the user's
+    // saved node size with computeSize(). Only resize when applying a config.
+    if (resize) {
+        const cs = node.computeSize();
+        const w = (node.size && Number.isFinite(node.size[0])) ? node.size[0] : (cs[0] || 0);
+        if (typeof node.setSize === "function") {
+            node.setSize([w, cs[1]]);
+        } else {
+            if (!Array.isArray(node.size)) node.size = [w, cs[1]];
+            node.size[1] = cs[1];
+        }
     }
 
     // Recompute widget/slot geometry so links follow the new layout.
-    // _setConcreteSlots must run first: arrange() updates widget input slot
-    // positions from the (now hidden/shown) widget rows using _concreteInputs.
-    try {
-        node._widgetSlotsDirty = true;
-        node._setConcreteSlots?.();
-        node.arrange?.();
-    } catch (e) { /* ignore */ }
+    // Only when actually applying a config: marking the node dirty during
+    // workflow load makes LiteGraph re-arrange widgets and grow the node,
+    // overwriting the user's saved size.
+    if (resize) {
+        try {
+            node._widgetSlotsDirty = true;
+            node._setConcreteSlots?.();
+            node.arrange?.();
+        } catch (e) { /* ignore */ }
+    }
     node.setDirtyCanvas(true, true);
     try { app.canvas?.setDirty?.(true, true); } catch (e) { /* ignore */ }
     try { app.graph?.setDirtyCanvas?.(true, true); } catch (e) { /* ignore */ }
@@ -239,7 +244,9 @@ app.registerExtension({
         const orig = nodeType.prototype.onNodeCreated;
         nodeType.prototype.onNodeCreated = function () {
             if (orig) orig.apply(this, arguments);
-            applyHidden(this);
+            // Apply hidden state without resizing: on workflow load this hook can
+            // run after configure() has restored the user's saved node size.
+            applyHidden(this, { resize: false });
             const menu = this.getExtraMenuOptions;
             this.getExtraMenuOptions = function (canvas, options) {
                 if (menu) menu.apply(this, arguments);
@@ -249,8 +256,21 @@ app.registerExtension({
         const origCfg = nodeType.prototype.onConfigure;
         nodeType.prototype.onConfigure = function (info) {
             if (origCfg) origCfg.apply(this, arguments);
-            // Layout is built fresh during load, so no link rebuild needed here.
-            applyHidden(this, { reconnect: false });
+            // Capture the saved size restored by configure(), then re-assert it
+            // after applying hidden state so nothing on load can shrink it.
+            const savedW = this.size?.[0];
+            const savedH = this.size?.[1];
+            applyHidden(this, { reconnect: false, resize: false });
+            const restoreSize = () => {
+                try {
+                    if (Number.isFinite(savedW) && Number.isFinite(savedH) &&
+                        (this.size?.[0] !== savedW || this.size?.[1] !== savedH)) {
+                        this.setSize([savedW, savedH]);
+                    }
+                } catch (e) { /* ignore */ }
+            };
+            requestAnimationFrame(restoreSize);
+            setTimeout(restoreSize, 150);
         };
     }
 });

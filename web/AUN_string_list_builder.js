@@ -119,6 +119,11 @@ function applyStretchForSize(node, baseH) {
       } catch {}
     }
     node.widgets_dirty = true;
+    try {
+      node._widgetSlotsDirty = true;
+      node._setConcreteSlots?.();
+      node.arrange?.();
+    } catch (e) { /* ignore */ }
     return;
   }
   const weights = visible.map(cachedWeight);
@@ -136,6 +141,15 @@ function applyStretchForSize(node, baseH) {
     } catch {}
   }
   node.widgets_dirty = true;
+  // Re-run the canvas widget layout so computedHeight picks up the new
+  // __aun_stretchExtra values. Without this, DOM textareas are sized by the
+  // stretch while the canvas still lays them out at base height -> the widgets
+  // visually spill past the node's bottom edge after a reload.
+  try {
+    node._widgetSlotsDirty = true;
+    node._setConcreteSlots?.();
+    node.arrange?.();
+  } catch (e) { /* ignore */ }
   requestAnimationFrame(() => {
     for (const [w, taH] of pendingHeights) {
       try {
@@ -236,6 +250,9 @@ function patchNode(node) {
   node.onConfigure = function (info) {
     origConfigure?.apply(this, arguments);
     updateNodeVisibility(this, true);
+    // DOM widgets may not be measured yet during load; refit once they settle.
+    requestAnimationFrame(() => updateNodeVisibility(this, true));
+    setTimeout(() => updateNodeVisibility(this, true), 150);
   };
 
   const origResize = node.onResize;
@@ -283,5 +300,8 @@ app.registerExtension({
   async loadedGraphNode(node) {
     if (node.comfyClass !== NODE_CLASS && node.type !== NODE_CLASS) return;
     patchNode(node);
+    // Re-fit after the graph and DOM widgets have settled on load.
+    requestAnimationFrame(() => updateNodeVisibility(node, true));
+    setTimeout(() => updateNodeVisibility(node, true), 150);
   },
 });
