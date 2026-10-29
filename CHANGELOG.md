@@ -8,6 +8,7 @@
 ### Changed
 
 ### Fixed
+- `Inputs Basic + Prompt Switch` (and the text index switch family): numbered text slots now show only their first line (the prompt title) at a fixed one-line height, so stretching the node taller in non-compact mode no longer spreads the slots apart with growing gaps.
 
 ### Notes
 

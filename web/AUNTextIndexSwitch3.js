@@ -14,6 +14,168 @@ const TEXT_SELECTION_PAD = 24;
 // Clearance between the output-rail anchor (where the divider line sits) and
 // the first widget, so the divider row + label never overlap widgets.
 const TEXT_SELECTION_ROW_GAP = 16;
+// Each numbered text slot acts as a title: only its first line is shown. The
+// row therefore holds a single-line-high textarea. ComfyUI adds its own 4px
+// inter-widget gap, which is the original few-px spacing between slots.
+// (ComfyUI also hands leftover node body height to widgets that only report
+// computeLayoutSize, which spread the text slots apart as the node is stretched;
+// pinning both computeSize and computeLayoutSize, and the textarea inside them,
+// keeps that fixed spacing at any node height.)
+const TEXT_SLOT_LINE_HEIGHT_FALLBACK = 22;
+const TEXT_SLOT_NAME_RE = /^text\d+$/;
+
+function isTextSlotWidget(widget) {
+  return !!widget && TEXT_SLOT_NAME_RE.test(String(widget.name ?? ""));
+}
+
+function isTextSlotInEditor(el) {
+  return !!el?.closest?.("#AUN-text-edit-popup");
+}
+
+// A slot must be exactly one text line tall: no clipped descenders and no
+// sliver of the line below. The exact line box comes from the CSS `lh` unit,
+// resolved to px once per font so custom textarea font sizes keep working.
+let cssLhUnitSupported = null;
+
+function supportsLhUnit() {
+  if (cssLhUnitSupported !== null) return cssLhUnitSupported;
+  try {
+    cssLhUnitSupported = !!globalThis.CSS?.supports?.("height", "1lh");
+  } catch (e) {
+    cssLhUnitSupported = false;
+  }
+  return cssLhUnitSupported;
+}
+
+const lineHeightCache = new Map();
+
+function resolveLineHeightPx(el, cs) {
+  const lh = cs.lineHeight;
+  if (lh && lh !== "normal") {
+    const px = parseFloat(lh);
+    if (Number.isFinite(px) && px > 0) return px;
+  }
+
+  const fontSize = parseFloat(cs.fontSize) || 14;
+  const key = [
+    cs.fontStyle,
+    cs.fontWeight,
+    cs.fontSize,
+    cs.lineHeight,
+    cs.fontFamily,
+  ].join("|");
+  const cached = lineHeightCache.get(key);
+  if (cached) return cached;
+
+  // `line-height: normal` has no numeric value: a hidden probe with the same
+  // font and `height: 1lh` reports the used line box for this font.
+  let px = 0;
+  const doc = el.ownerDocument;
+  const parent = el.parentElement;
+  if (doc?.createElement && parent && supportsLhUnit()) {
+    const probe = doc.createElement("div");
+    probe.style.cssText =
+      "position:absolute;visibility:hidden;pointer-events:none;top:0;left:0;" +
+      "width:0;height:1lh;margin:0;padding:0;border:0;";
+    probe.style.fontFamily = cs.fontFamily;
+    probe.style.fontSize = cs.fontSize;
+    probe.style.fontWeight = cs.fontWeight;
+    probe.style.fontStyle = cs.fontStyle;
+    probe.style.lineHeight = cs.lineHeight;
+    try {
+      parent.appendChild(probe);
+      // Computed/offset height are layout px (zoom-independent), unlike
+      // getBoundingClientRect which is scaled by the canvas zoom transform.
+      const used = parseFloat(el.ownerDocument.defaultView?.getComputedStyle(probe)?.height);
+      px = Number.isFinite(used) && used > 0 ? used : probe.offsetHeight;
+    } catch (e) {
+      px = 0;
+    } finally {
+      probe.remove();
+    }
+  }
+
+  if (!(px > 0)) px = fontSize * 1.2;
+  lineHeightCache.set(key, px);
+  return px;
+}
+
+// Returns the CSS height to put on the textarea and the outer height the row
+// needs, honouring the textarea's own box sizing.
+function measureTextSlotMetrics(widget) {
+  const el = widget?.inputEl;
+  if (!el || el.isConnected === false || isTextSlotInEditor(el)) return null;
+  const view = el.ownerDocument?.defaultView;
+  if (!view?.getComputedStyle) return null;
+
+  let cs;
+  try {
+    cs = view.getComputedStyle(el);
+  } catch (e) {
+    return null;
+  }
+  if (!cs) return null;
+
+  const padding =
+    (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
+  const border =
+    (parseFloat(cs.borderTopWidth) || 0) +
+    (parseFloat(cs.borderBottomWidth) || 0);
+  const lineHeight = resolveLineHeightPx(el, cs);
+  if (!(lineHeight > 0)) return null;
+
+  const outerHeight = lineHeight + padding + border;
+  const borderBox = cs.boxSizing === "border-box";
+  return {
+    lineHeight,
+    outerHeight,
+    // border-box: `height` is the outer size; content-box: only the line box.
+    cssHeight: borderBox ? outerHeight : lineHeight,
+  };
+}
+
+function getTextSlotTextareaHeight(widget) {
+  return widget?.__AUN_textareaHeightMeasured
+    ? widget.__AUN_textareaHeight
+    : TEXT_SLOT_LINE_HEIGHT_FALLBACK;
+}
+
+function applyTextSlotTextareaStyle(widget) {
+  const el = widget?.inputEl;
+  // Leave the detached editor copy (double-click popup) alone.
+  if (!el?.style || isTextSlotInEditor(el)) return;
+  const height = getTextSlotTextareaHeight(widget);
+  el.style.minHeight = `${height}px`;
+  if (widget.__AUN_expanded) return;
+  el.style.height = `${height}px`;
+  // Only the first line is meaningful here; keep the slot free of scrollbars.
+  el.style.overflowY = "hidden";
+  if (el.ownerDocument?.activeElement !== el && el.scrollTop) {
+    el.scrollTop = 0;
+  }
+}
+
+function refreshTextSlotTextareaHeight(widget) {
+  if (!widget) return 0;
+  const metrics = measureTextSlotMetrics(widget);
+  if (metrics && metrics.cssHeight > 0) {
+    widget.__AUN_textareaHeight = metrics.cssHeight;
+    widget.__AUN_textareaOuterHeight = metrics.outerHeight;
+    widget.__AUN_textareaHeightMeasured = true;
+  }
+  applyTextSlotTextareaStyle(widget);
+  return getTextSlotTextareaHeight(widget);
+}
+
+function getTextSlotRowHeight(widget) {
+  // Round up: the row must never be shorter than the one-line textarea, or the
+  // frontend clips it (and the next line peeks through).
+  const height = widget?.__AUN_textareaHeightMeasured
+    ? widget.__AUN_textareaOuterHeight || widget.__AUN_textareaHeight
+    : getTextSlotTextareaHeight(widget);
+  return Math.ceil(height);
+}
+
 // AUNTextIndexSwitch5's extra param outputs (slots 3-8), collapsed into a
 // single dot in compact mode.
 const PARAM_OUTPUTS = new Set([
@@ -181,6 +343,34 @@ function isTargetNode(node) {
   );
 }
 
+// Idempotent guard used just before the frontend lays the node out. If a widget
+// object ever gets rebuilt, this re-installs the fixed text-slot row sizing so
+// the slots keep their original spacing instead of spreading with node height.
+function ensureTextSlotSizing(node) {
+  for (const widget of node?.widgets || []) {
+    if (!widget || !isTextSlotWidget(widget)) continue;
+    if (!widget.__AUN_textIndexSwitch3_hiddenAware) {
+      ensureHiddenAwareWidget(widget);
+    }
+    // Measure the real one-line height once the textarea is in the DOM. Until
+    // then the fallback height is used, so the layout never jumps far.
+    if (!widget.hidden && !widget.__AUN_textareaHeightMeasured) {
+      refreshTextSlotTextareaHeight(widget);
+    }
+    // Keep the slot showing its first line (the title) unless the user is
+    // actively editing inside it.
+    const el = widget.inputEl;
+    if (
+      el &&
+      !isTextSlotInEditor(el) &&
+      el.ownerDocument?.activeElement !== el &&
+      el.scrollTop
+    ) {
+      el.scrollTop = 0;
+    }
+  }
+}
+
 function ensureHiddenAwareWidget(widget) {
   if (!widget || widget.__AUN_textIndexSwitch3_hiddenAware) {
     return;
@@ -189,6 +379,21 @@ function ensureHiddenAwareWidget(widget) {
   widget.__AUN_textIndexSwitch3_hiddenAware = true;
   const originalComputeSize =
     typeof widget.computeSize === "function" ? widget.computeSize : null;
+  const isTextSlot = isTextSlotWidget(widget);
+
+  // Text slots keep a single fixed row height. Without this the frontend
+  // distributes the node's leftover body height across them (they otherwise
+  // only expose computeLayoutSize), so the gap between slots grows whenever the
+  // node is made taller. min == max means no free space can be absorbed.
+  if (isTextSlot) {
+    widget.computeLayoutSize = function computeLayoutSize() {
+      if (widget.hidden) {
+        return { minHeight: 0, maxHeight: 0, minWidth: 0 };
+      }
+      const rowHeight = getTextSlotRowHeight(widget);
+      return { minHeight: rowHeight, maxHeight: rowHeight, minWidth: 0 };
+    };
+  }
 
   widget.computeSize = function computeSizeProxy(...args) {
     const firstArg = args.length ? args[0] : undefined;
@@ -202,24 +407,28 @@ function ensureHiddenAwareWidget(widget) {
       return LiteGraph?.NODE_WIDTH ?? 200;
     };
 
+    const pad =
+      (widget.__AUN_boundaryPad ? BOUNDARY_PAD : 0) +
+      (widget.__AUN_textSelPad ? TEXT_SELECTION_PAD : 0);
+
     if (widget.hidden) {
       return [resolveWidth(), 0];
+    }
+
+    // Ignore any inherited multiline height: text slots are always the same
+    // fixed single-line row so stretching the node never changes the spacing.
+    if (isTextSlot) {
+      return [resolveWidth(), getTextSlotRowHeight(widget) + pad];
     }
 
     if (originalComputeSize) {
       const size = originalComputeSize.apply(widget, args);
       if (Array.isArray(size) && size.length >= 2) {
-        const pad =
-          (widget.__AUN_boundaryPad ? BOUNDARY_PAD : 0) +
-          (widget.__AUN_textSelPad ? TEXT_SELECTION_PAD : 0);
         return [size[0], size[1] + pad];
       }
     }
 
     const height = LiteGraph?.NODE_WIDGET_HEIGHT ?? 24;
-    const pad =
-      (widget.__AUN_boundaryPad ? BOUNDARY_PAD : 0) +
-      (widget.__AUN_textSelPad ? TEXT_SELECTION_PAD : 0);
     return [resolveWidth(), height + pad];
   };
 }
@@ -246,10 +455,15 @@ function applyWidgetHiddenState(widget, hidden) {
       widget.inputEl.style.display = hidden ? "none" : "block";
     }
     if (!hidden && widget.inputEl.style) {
-      widget.inputEl.style.minHeight = `${widget.comfyHeight ?? 20}px`;
-      // Reset to normal height if not expanded
-      if (!widget.__AUN_expanded) {
-        widget.inputEl.style.height = `${widget.comfyHeight ?? 20}px`;
+      if (isTextSlotWidget(widget)) {
+        // One line only: the first line is the prompt's title.
+        refreshTextSlotTextareaHeight(widget);
+      } else {
+        widget.inputEl.style.minHeight = `${widget.comfyHeight ?? 20}px`;
+        // Reset to normal height if not expanded
+        if (!widget.__AUN_expanded) {
+          widget.inputEl.style.height = `${widget.comfyHeight ?? 20}px`;
+        }
       }
     }
   }
@@ -3149,6 +3363,9 @@ try {
       const originalOnDrawFg = nodeType.prototype.onDrawForeground;
       nodeType.prototype.onDrawForeground = function onDrawForeground(ctx) {
         originalOnDrawFg?.apply(this, arguments);
+        // Runs immediately before the frontend re-arranges this node's widgets,
+        // so the fixed text-slot row sizing is always in force.
+        ensureTextSlotSizing(this);
         // Compact label is rendered as HTML overlay, not on canvas
         if (
           this.comfyClass === "AUNInputsBasicSwitch" &&
