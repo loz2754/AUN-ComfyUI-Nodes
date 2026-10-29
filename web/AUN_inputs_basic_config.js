@@ -132,6 +132,11 @@ function sizeNudge(node) {
     } catch (e) { /* ignore */ }
 }
 
+// Zero-height replacement used for hidden widgets.
+function hiddenWidgetComputeSize() {
+    return [0, -4];
+}
+
 function applyHidden(node, { reconnect = true, resize = true } = {}) {
     const cfg = getCfg(node);
     const hidden = new Set(cfg.hidden || []);
@@ -141,9 +146,18 @@ function applyHidden(node, { reconnect = true, resize = true } = {}) {
         if (w.name === "control_after_generate" && hidden.has("seed")) isHidden = true;
         w.hidden = isHidden;
         if (w.hidden) {
-            w.computeSize = () => [0, -4];
-        } else {
-            w.computeSize = undefined;
+            // Keep the real implementation: several AUN extensions patch
+            // computeSize (fixed row heights, section paddings), and deleting it
+            // on unhide left those nodes mis-laid-out.
+            if (!w.__AUN_savedComputeSize &&
+                typeof w.computeSize === "function" &&
+                w.computeSize !== hiddenWidgetComputeSize) {
+                w.__AUN_savedComputeSize = w.computeSize;
+            }
+            w.computeSize = hiddenWidgetComputeSize;
+        } else if (w.__AUN_savedComputeSize) {
+            w.computeSize = w.__AUN_savedComputeSize;
+            delete w.__AUN_savedComputeSize;
         }
     }
     // On workflow load we must NOT resize: doing so would overwrite the user's
@@ -263,9 +277,13 @@ app.registerExtension({
             applyHidden(this, { reconnect: false, resize: false });
             const restoreSize = () => {
                 try {
-                    if (Number.isFinite(savedW) && Number.isFinite(savedH) &&
-                        (this.size?.[0] !== savedW || this.size?.[1] !== savedH)) {
-                        this.setSize([savedW, savedH]);
+                    // Nodes that compute their own height (marked by their own
+                    // extension) must keep it: re-asserting the height loaded from
+                    // the graph left a stale extra line above the node footer.
+                    const h = this.__AUN_autoHeight ? this.size?.[1] : savedH;
+                    if (Number.isFinite(savedW) && Number.isFinite(h) &&
+                        (this.size?.[0] !== savedW || this.size?.[1] !== h)) {
+                        this.setSize([savedW, h]);
                     }
                 } catch (e) { /* ignore */ }
             };

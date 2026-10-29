@@ -349,9 +349,9 @@ function isTargetNode(node) {
 function ensureTextSlotSizing(node) {
   for (const widget of node?.widgets || []) {
     if (!widget || !isTextSlotWidget(widget)) continue;
-    if (!widget.__AUN_textIndexSwitch3_hiddenAware) {
-      ensureHiddenAwareWidget(widget);
-    }
+    // Idempotent: also re-installs computeSize if another extension (the
+    // widget-config node) reset it, which would drop the row height and pads.
+    ensureHiddenAwareWidget(widget);
     // Measure the real one-line height once the textarea is in the DOM. Until
     // then the fallback height is used, so the layout never jumps far.
     if (!widget.hidden && !widget.__AUN_textareaHeightMeasured) {
@@ -371,31 +371,64 @@ function ensureTextSlotSizing(node) {
   }
 }
 
+function getWidgetPad(widget) {
+  return (
+    (widget?.__AUN_boundaryPad ? BOUNDARY_PAD : 0) +
+    (widget?.__AUN_textSelPad ? TEXT_SELECTION_PAD : 0)
+  );
+}
+
 function ensureHiddenAwareWidget(widget) {
-  if (!widget || widget.__AUN_textIndexSwitch3_hiddenAware) {
+  if (!widget) return;
+
+  if (!widget.__AUN_textIndexSwitch3_hiddenAware) {
+    widget.__AUN_textIndexSwitch3_hiddenAware = true;
+
+    // Text slots keep a single fixed row height. Without this the frontend
+    // distributes the node's leftover body height across them (they otherwise
+    // only expose computeLayoutSize), so the gap between slots grows whenever
+    // the node is made taller. min == max means no free space can be absorbed.
+    if (isTextSlotWidget(widget)) {
+      widget.computeLayoutSize = function computeLayoutSize() {
+        if (widget.hidden) {
+          return { minHeight: 0, maxHeight: 0, minWidth: 0 };
+        }
+        const rowHeight = getTextSlotRowHeight(widget) + getWidgetPad(widget);
+        return { minHeight: rowHeight, maxHeight: rowHeight, minWidth: 0 };
+      };
+    }
+  }
+
+  ensureWidgetComputeSize(widget);
+}
+
+// The "Configure widgets" extension (AUN_inputs_basic_config.js) resets
+// widget.computeSize when it applies visibility. That silently drops the fixed
+// row height and the pad gaps (dividers then overlap widgets), so the proxy is
+// re-installed whenever something else replaced it.
+function ensureWidgetComputeSize(widget) {
+  if (!widget) return;
+  if (
+    widget.__AUN_textIndexSwitch3_sizeProxy &&
+    widget.computeSize === widget.__AUN_textIndexSwitch3_sizeProxy
+  ) {
     return;
   }
+  if (
+    !widget.__AUN_textIndexSwitch3_origComputeSize &&
+    typeof widget.computeSize === "function"
+  ) {
+    widget.__AUN_textIndexSwitch3_origComputeSize = widget.computeSize;
+  }
+  widget.computeSize = buildWidgetComputeSize(widget);
+}
 
-  widget.__AUN_textIndexSwitch3_hiddenAware = true;
+function buildWidgetComputeSize(widget) {
   const originalComputeSize =
-    typeof widget.computeSize === "function" ? widget.computeSize : null;
+    widget.__AUN_textIndexSwitch3_origComputeSize || null;
   const isTextSlot = isTextSlotWidget(widget);
 
-  // Text slots keep a single fixed row height. Without this the frontend
-  // distributes the node's leftover body height across them (they otherwise
-  // only expose computeLayoutSize), so the gap between slots grows whenever the
-  // node is made taller. min == max means no free space can be absorbed.
-  if (isTextSlot) {
-    widget.computeLayoutSize = function computeLayoutSize() {
-      if (widget.hidden) {
-        return { minHeight: 0, maxHeight: 0, minWidth: 0 };
-      }
-      const rowHeight = getTextSlotRowHeight(widget);
-      return { minHeight: rowHeight, maxHeight: rowHeight, minWidth: 0 };
-    };
-  }
-
-  widget.computeSize = function computeSizeProxy(...args) {
+  const proxy = function computeSizeProxy(...args) {
     const firstArg = args.length ? args[0] : undefined;
     const resolveWidth = () => {
       if (Array.isArray(firstArg) && Number.isFinite(firstArg[0])) {
@@ -407,12 +440,11 @@ function ensureHiddenAwareWidget(widget) {
       return LiteGraph?.NODE_WIDTH ?? 200;
     };
 
-    const pad =
-      (widget.__AUN_boundaryPad ? BOUNDARY_PAD : 0) +
-      (widget.__AUN_textSelPad ? TEXT_SELECTION_PAD : 0);
+    const pad = getWidgetPad(widget);
 
     if (widget.hidden) {
-      return [resolveWidth(), 0];
+      // ComfyUI's zero-height convention: the frontend adds 4px per row.
+      return [resolveWidth(), -4];
     }
 
     // Ignore any inherited multiline height: text slots are always the same
@@ -431,6 +463,9 @@ function ensureHiddenAwareWidget(widget) {
     const height = LiteGraph?.NODE_WIDGET_HEIGHT ?? 24;
     return [resolveWidth(), height + pad];
   };
+
+  widget.__AUN_textIndexSwitch3_sizeProxy = proxy;
+  return proxy;
 }
 
 function applyWidgetHiddenState(widget, hidden) {
@@ -2723,6 +2758,11 @@ function ensureTextWidgetsExist(node, slotCount) {
 function updateNodeVisualState(node) {
   if (!node) return;
 
+  // This node derives its own height from the widget stack; the widget-config
+  // extension must not re-assert a stale saved height on load (that left a
+  // blank line above the resolution footer). Width stays a user choice.
+  node.__AUN_autoHeight = true;
+
   // Ensure every widget (including the newly added 'set' constant widget) is
   // height-aware, so hidden widgets actually reduce the node height. This is
   // idempotent and covers widgets created after the initial patch pass.
@@ -3188,10 +3228,12 @@ function getTextSelectionStraddler(node) {
     (node.constructor?.slot_start_y || 0) + (rows + 0.7) * slotH;
   const visible = (node.widgets || []).filter((w) => w && !w.hidden);
   const width = node.size?.[0];
+  let sawPositioned = false;
 
   for (const w of visible) {
     const top = Number(w.last_y ?? w.y ?? 0);
     if (top <= 0) continue;
+    sawPositioned = true;
     // Widgets that start below the anchor are part of the section beneath the
     // divider: the divider belongs in the gap above them, not in their span.
     if (top > anchorY) return null;
@@ -3205,7 +3247,11 @@ function getTextSelectionStraddler(node) {
     }
     if (anchorY <= top + h) return w;
   }
-  return visible.length ? visible[visible.length - 1] : null;
+  // Nothing is positioned yet (widgets are laid out after the first arrange, so
+  // right after a workflow load every y is still 0). Padding the last widget
+  // then leaves a dead row above the footer; let the divider use the rail anchor
+  // instead.
+  return sawPositioned && visible.length ? visible[visible.length - 1] : null;
 }
 
 function updateDividerOverlayPosition(node) {

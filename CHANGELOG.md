@@ -19,6 +19,9 @@
 
 ### Fixed
 - `Inputs Basic + Prompt Switch` (and the text index switch family): numbered text slots now show only their first line (the prompt title) at a fixed one-line height, so stretching the node taller in non-compact mode no longer spreads the slots apart with growing gaps.
+- "Configure widgets" no longer deletes a widget's `computeSize`; it saves and restores the previous implementation, so AUN nodes that size their own widgets stay laid out correctly.
+- `Inputs Basic + Prompt Switch`: the "Text Selection" divider no longer pads the last widget while widget positions are still unknown (workflow load), which added an empty row between the `set` widget and the resolution footer until the node was toggled.
+- `Inputs Basic + Prompt Switch`: the node keeps its own computed height on workflow load instead of also re-asserting the height saved in the graph.
 
 ### Notes
 ## [2.34.24] - 2026-10-29
