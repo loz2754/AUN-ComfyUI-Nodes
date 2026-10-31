@@ -4,6 +4,9 @@
 ## [Unreleased]
 
 ### Added
+- `Merge Bundles` (`AUNMergeBundles`): merges several OBVPM bundles into one wire, so a single OBVPM Unbundle shows the values from all of the connected nodes instead of one bundle's fields. Bundles merge in input order; a field name two bundles share is kept once and the later copy renames to `name_2`, `name_3`, … The node grows one spare input as each fills, skips empty inputs and bypassed nodes, and its `set` widget exposes the merged bundle as an OBVPM bundle constant.
+- `Merge Bundles`: the node's **title follows its `set` name** (`Set ckpt`), like OBVPM's own Set node; the title it replaced is restored when the name is cleared, including across a save and reload.
+- `Merge Bundles`: bundles can also be merged **without wires**, by the constant name their node already sets (this pack's loaders, an OBVPM Bundle with *set* on, or a KJ Set). The node's **Constants…** button (also right-click → *Constants…*) opens a popup that lists the names visible in the graph: click to add, ▲▼ to change their merge order, ✕ to remove, OK to apply. There is no text box to type into. Named bundles merge after the wired ones, in the listed order, and their fields appear on an OBVPM Unbundle like any other. A source that is muted or bypassed is **skipped**: its values are left out, but its field names keep their place, so muting one reference image never renames the others (the muted one's outputs are simply None). A name that matches nothing, or a setter with no bundle output, still refuses to queue with a message naming it.
 
 ### Changed
 

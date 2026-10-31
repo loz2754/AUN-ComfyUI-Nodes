@@ -53,6 +53,7 @@ from .AUNLoraStackWithTriggers import AUNLoraStackWithTriggers
 from .AUNLoraStackWithTriggersModelClip import AUNLoraStackWithTriggersModelClip
 from .AUNManualAutoImageSwitch import AUNManualAutoImageSwitch
 from .AUNManualAutoTextSwitch import AUNManualAutoTextSwitch
+from .AUNMergeBundles import AUNMergeBundles
 from .AUNMultiBypassIndex import AUNMultiBypassIndex
 from .AUNMultiGroupUniversal import AUNMultiGroupUniversal
 from .AUNMultiMuteIndex import AUNMultiMuteIndex
@@ -163,6 +164,7 @@ NODE_CLASS_MAPPINGS = {
     "AUNLoraStackWithTriggersModelClip": AUNLoraStackWithTriggersModelClip,
     "AUNManualAutoImageSwitch": AUNManualAutoImageSwitch,
     "AUNManualAutoTextSwitch": AUNManualAutoTextSwitch,
+    "AUNMergeBundles": AUNMergeBundles,
     "AUNMultiBypassIndex": AUNMultiBypassIndex,
     "AUNMultiGroupUniversal": AUNMultiGroupUniversal,
     "AUNMultiMuteIndex": AUNMultiMuteIndex,
@@ -270,6 +272,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "AUNLoraStackWithTriggersModelClip": "LoRA Stack With Triggers (Model+Clip)",
     "AUNManualAutoImageSwitch": "Manual/Auto Image Switch",
     "AUNManualAutoTextSwitch": "Manual/Auto Text Switch",
+    "AUNMergeBundles": "Merge Bundles",
     "AUNMultiBypassIndex": "Multi Bypass Index",
     "AUNMultiGroupUniversal": "AUN Group Controller",
     "AUNMultiMuteIndex": "Multi Mute Index",

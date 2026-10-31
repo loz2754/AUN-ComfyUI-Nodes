@@ -1,6 +1,7 @@
 {
   "unverifiable_node_keys": [
     "AUNCollapseConnectionsController",
+    "AUNMergeBundles",
     "AUNMultiBypassIndex",
     "AUNMultiGroupUniversal",
     "AUNMultiMuteIndex",
