@@ -4,7 +4,6 @@
 ## [Unreleased]
 
 ### Added
-- `Merge Bundles`: **tracing**, all the way back. **Selecting the Unbundle, the merge node, or any node fed by that Unbundle** outlines every real source — a consumer's input is followed through the Unbundle and the merge to the node that actually supplies the field. Hovering an outlined node (or an input/output pin, on the classic canvas) labels it with the fields it supplies and how they arrived (wire or constant, muted marked); **Alt-click** a pin jumps to its source; right-clicking the merge node → *Sources…* lists every merged field with its source and a Go to button. Labels are drawn at the sources, not at the cursor, so they do not fight ComfyUI's own pin tooltip. UI only — no wires are added, and nothing in the OBVPM pack is changed.
 
 ### Changed
 
@@ -12,6 +11,16 @@
 
 ### Notes
 
+## [2.34.28] - 2026-11-01
+
+### Added
+- `Merge Bundles`: **tracing**, all the way back. **Selecting the Unbundle, the merge node, or any node fed by that Unbundle** outlines every real source — a consumer's input is followed through the Unbundle and the merge to the node that actually supplies the field. Hovering an outlined node (or an input/output pin, on the classic canvas) labels it with the fields it supplies and how they arrived (wire or constant, muted marked); **Alt-click** a pin jumps to its source; right-clicking the merge node → *Sources…* lists every merged field with its source and a Go to button. Labels are drawn at the sources, not at the cursor, so they do not fight ComfyUI's own pin tooltip. UI only — no wires are added, and nothing in the OBVPM pack is changed.
+
+### Changed
+
+### Fixed
+
+### Notes
 ## [2.34.27] - 2026-10-31
 
 ### Added
