@@ -17,6 +17,9 @@
  *    wraps `app.graphToPrompt` and fills `inputs`), so the server only
  *    ever sees wires and needs to know nothing about names.
  *  - the input sockets grow one spare at a time, like the Bundle node.
+ *  - tracing: hovering an OBVPM Unbundle output fed by this node names the
+ *    field's real source, Alt-click jumps there, and this node's menu lists
+ *    them all ("Sources…").
  *
  * The naming rule is mirrored in AUNMergeBundles.merge(): bundles merge in
  * input order (wired first, then the listed constants), the first copy of
@@ -757,9 +760,9 @@ function installTitle(node) {
 
 // ── Constants dialog ──────────────────────────────────────────────────
 
-const DIALOG_CLASS = "AUN-merge-constants-dialog";
+const DIALOG_CLASS = "AUN-merge-dialog";
 
-function closeConstantsDialog() {
+function closeMergeDialog() {
   document.querySelector(`.${DIALOG_CLASS}`)?.remove();
 }
 
@@ -785,7 +788,7 @@ function sectionLabel(text) {
   const label = document.createElement("div");
   label.textContent = text;
   label.style.cssText = [
-    "padding:10px 14px 4px", "color:#9aa4af", "font-size:11px",
+    "padding:10px 14px 4px", "color:#9aa4af", "font-size:12px",
     "letter-spacing:.04em", "text-transform:uppercase",
   ].join(";");
   return label;
@@ -803,7 +806,7 @@ function emptyHint(text) {
  * node, then order them. Nothing is written until OK.
  */
 function openConstantsDialog(node) {
-  closeConstantsDialog();
+  closeMergeDialog();
 
   const selected = [...constantNames(node)];
   const visible = () => visibleConstantNames(node);
@@ -822,7 +825,7 @@ function openConstantsDialog(node) {
     "flex-direction:column", "background:#202020", "color:#ddd",
     "border:1px solid #4a4a4a", "border-radius:8px", "overflow:hidden",
     "box-shadow:0 12px 40px rgba(0,0,0,.55)",
-    "font:13px/1.45 system-ui,-apple-system,sans-serif",
+    "font:14px/1.45 system-ui,-apple-system,sans-serif",
   ].join(";");
 
   const head = document.createElement("div");
@@ -863,12 +866,12 @@ function openConstantsDialog(node) {
     redraw();
   });
 
-  const cancel = dialogButton("Cancel", closeConstantsDialog);
+  const cancel = dialogButton("Cancel", closeMergeDialog);
   cancel.style.marginLeft = "auto";
 
   const ok = dialogButton("OK", () => {
     setConstants(node, selected);
-    closeConstantsDialog();
+    closeMergeDialog();
   }, { accent: true });
 
   const move = (index, delta) => {
@@ -978,12 +981,12 @@ function openConstantsDialog(node) {
 
   filter.addEventListener("input", redraw);
   overlay.addEventListener("mousedown", (event) => {
-    if (event.target === overlay) closeConstantsDialog();
+    if (event.target === overlay) closeMergeDialog();
   });
   overlay.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
       event.stopPropagation();
-      closeConstantsDialog();
+      closeMergeDialog();
     }
   });
 
@@ -1003,6 +1006,618 @@ function openConstantsDialog(node) {
   filter.focus();
 }
 
+// ── Where each field comes from ───────────────────────────────────────
+
+/** Centre and select a node, the way OBVPM's "Go to setter" does. */
+export function goToNode(node) {
+  if (!node) return;
+  const canvas = app.canvas;
+  canvas?.centerOnNode?.(node);
+  canvas?.selectNode?.(node, false);
+  node.setDirtyCanvas?.(true, true);
+  canvas?.setDirty?.(true, true);
+}
+
+/**
+ * "Sources…": every merged field, the node it comes from, and how it got
+ * here — a wire or a constant. "Go to" jumps to that node.
+ */
+export function openSourcesDialog(mergeNode) {
+  closeMergeDialog();
+  const plan = bundlePlan(mergeNode);
+  const rows = plan.filter((entry) => entry.source?.node || entry.error);
+
+  const overlay = document.createElement("div");
+  overlay.className = DIALOG_CLASS;
+  overlay.style.cssText = [
+    "position:fixed", "inset:0", "z-index:10000", "display:flex",
+    "align-items:center", "justify-content:center",
+    "background:rgba(0,0,0,.55)",
+  ].join(";");
+
+  const panel = document.createElement("div");
+  panel.style.cssText = [
+    "width:560px", "max-height:78vh", "display:flex",
+    "flex-direction:column", "background:#202020", "color:#ddd",
+    "border:1px solid #4a4a4a", "border-radius:8px", "overflow:hidden",
+    "box-shadow:0 12px 40px rgba(0,0,0,.55)",
+    "font:14px/1.45 system-ui,-apple-system,sans-serif",
+  ].join(";");
+
+  const head = document.createElement("div");
+  head.textContent = "Bundle sources";
+  head.style.cssText = [
+    "padding:12px 14px", "font-weight:600", "border-bottom:1px solid #3a3a3a",
+  ].join(";");
+
+  const list = document.createElement("div");
+  list.style.cssText = [
+    "overflow:auto", "max-height:60vh", "min-height:64px", "padding:2px 0 8px",
+  ].join(";");
+
+  const foot = document.createElement("div");
+  foot.style.cssText = [
+    "display:flex", "justify-content:flex-end", "gap:8px",
+    "padding:10px 14px", "border-top:1px solid #3a3a3a",
+  ].join(";");
+
+  if (!rows.length) {
+    list.append(emptyHint(
+      "Nothing is merged yet — wire a bundle or pick constants first.",
+    ));
+  }
+
+  for (const entry of rows) {
+    const row = document.createElement("div");
+    row.style.cssText = [
+      "display:flex", "align-items:center", "gap:10px",
+      "padding:6px 14px", "border-bottom:1px solid #2b2b2b",
+    ].join(";");
+
+    const fields = document.createElement("div");
+    fields.style.cssText = [
+      "flex:1", "min-width:0", "overflow-wrap:anywhere", "font-weight:600",
+      entry.skipped ? "opacity:.55" : "",
+    ].join(";");
+    fields.textContent = entry.final?.length
+      ? entry.final.join(", ")
+      : "(field names unknown)";
+
+    const where = document.createElement("div");
+    where.style.cssText = [
+      "flex:1", "min-width:0", "color:#999", "overflow-wrap:anywhere",
+    ].join(";");
+    if (entry.error) {
+      where.textContent = entry.error;
+    } else {
+      where.textContent = `${titleOf(entry.source?.node)} · ${kindOf(entry)}`
+        + (entry.skipped ? " · muted, empty" : "");
+    }
+
+    row.append(
+      fields,
+      where,
+      dialogButton("Go to", () => {
+        goToNode(entry.source?.node);
+        closeMergeDialog();
+      }, { disabled: !entry.source?.node }),
+    );
+    list.append(row);
+  }
+
+  overlay.addEventListener("mousedown", (event) => {
+    if (event.target === overlay) closeMergeDialog();
+  });
+  overlay.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      event.stopPropagation();
+      closeMergeDialog();
+    }
+  });
+
+  foot.append(dialogButton("Close", closeMergeDialog));
+  panel.append(head, list, foot);
+  overlay.append(panel);
+  document.body.append(overlay);
+}
+
+// ── Tracing a merged bundle back to its sources ───────────────────────
+//
+// A bundle replaces several wires with one, so the canvas can no longer say
+// which node an Unbundle output really comes from. These hooks put that
+// back for bundles packed by this node.
+//
+// The reliable way in is SELECTION: select the Unbundle (or this node) and
+// every source it draws from is outlined and labelled with the fields it
+// supplies. That needs no pointer hit-testing, so it works in both the
+// classic canvas and Nodes 2.0.
+//
+// On the classic canvas hovering an output pin also highlights just that
+// field's source. The label is drawn at the SOURCE, not at the cursor: the
+// pin already has ComfyUI's own tooltip there ("The bundle's value for
+// field 1"), so a second tooltip would only fight it.
+
+const UNBUNDLE_TYPE = "Unbundle (obvpm)";
+const PIN_TOLERANCE = 14;
+const MAX_LABEL = 120;
+
+let traceHover = null;         // { node, field, entry } under the pointer
+let traceKey = "";
+
+function isUnbundle(node) {
+  return !!node
+    && (node.type === UNBUNDLE_TYPE || node.comfyClass === UNBUNDLE_TYPE);
+}
+
+function isMergeNode(node) {
+  return !!node && (node.comfyClass === NODE_TYPE || node.type === NODE_TYPE);
+}
+
+function linkAt(graph, id) {
+  if (id == null) return null;
+  if (typeof id === "object") return id;          // already a link record
+  const links = graph?.links;
+  if (!links) return null;
+  return links.get ? links.get(id) ?? null : links[id] ?? null;
+}
+
+/** The link on `name` (or the first input, for a Reroute). */
+function inputLink(node, name) {
+  const inputs = node?.inputs ?? [];
+  const slot = name == null
+    ? inputs[0]
+    : inputs.find((input) => input?.name === name);
+  if (slot?.link == null) return null;
+  return linkAt(node.graph, slot.link);
+}
+
+/** The constant an Unbundle with `get` on is reading, or "". */
+function constantNameOf(node) {
+  if (node?.properties?.obvpm_constant !== true) return "";
+  return String(getWidget(node, "get")?.value ?? "").trim();
+}
+
+/** The merge node feeding this Unbundle, wired or by constant name. */
+function mergeNodeFor(node, depth = 0) {
+  if (!node || depth > 4) return null;
+
+  // A wired bundle, through reroutes.
+  const reroute = String(node.type ?? "") === "Reroute";
+  const link = inputLink(node, reroute ? null : "in");
+  if (link) {
+    const origin = node.graph?.getNodeById?.(link.origin_id) ?? null;
+    if (origin) {
+      if (isMergeNode(origin)) return origin;
+      if (String(origin.type ?? "") === "Reroute") {
+        return mergeNodeFor(origin, depth + 1);
+      }
+      // A KJ Get reads a constant by name: see whether that setter is us.
+      if (String(origin.type ?? "") === "GetNode") {
+        const name = String(origin.widgets?.[0]?.value ?? "").trim();
+        const hit = name ? findSetter(name, origin) : null;
+        if (hit && isMergeNode(hit.node)) return hit.node;
+      }
+    }
+  }
+
+  // No wire: an Unbundle with `get` on reads a setter by that name.
+  const name = constantNameOf(node);
+  if (name) {
+    const hit = findSetter(name, node);
+    if (hit && isMergeNode(hit.node)) return hit.node;
+  }
+  return null;
+}
+
+/** A merge node's plan, cached briefly: it is read on every redraw. */
+function planFor(node) {
+  const now = Date.now();
+  const hit = node.__aunTracePlan;
+  if (hit && now - hit.at < 500) return hit.entries;
+  const entries = bundlePlan(node);
+  node.__aunTracePlan = { at: now, entries };
+  return entries;
+}
+
+/** Field name -> the plan entry that supplies it. */
+function fieldMap(mergeNode) {
+  const map = new Map();
+  for (const entry of planFor(mergeNode)) {
+    for (const name of entry.final ?? []) {
+      if (!map.has(name)) map.set(name, entry);
+    }
+  }
+  return map;
+}
+
+function outputName(output) {
+  if (!output) return "";
+  return String(output.label || output.localized_name || output.name || "");
+}
+
+/**
+ * The output pin at graph coordinates (x, y), or null.
+ *
+ * Mirrors the frontend's own slot layout: outputs with a `pos` sit there;
+ * the rest stack from `slot_start_y` at 0.7 of a slot height. Nodes 2.0
+ * positions pins from its rendered layout, which is not reachable from
+ * here, so hover tracing is classic-canvas only (selection tracing covers
+ * both).
+ */
+function pinUnder(node, x, y) {
+  const lg = globalThis.LiteGraph ?? {};
+  if (lg.vueNodesMode) return null;
+
+  const slotHeight = lg.NODE_SLOT_HEIGHT ?? 20;
+  const half = slotHeight * 0.5;
+  const startY = node.constructor?.slot_start_y ?? 0;
+  const outputs = node.outputs ?? [];
+  const vertical = outputs.filter((output) => !slotPos(output));
+  const edge = node.pos[0] + node.size[0] + 1 - half;
+
+  for (const output of outputs) {
+    const pos = slotPos(output);
+    const pinX = pos ? node.pos[0] + pos[0] : edge;
+    const pinY = pos
+      ? node.pos[1] + pos[1]
+      : node.pos[1] + startY
+        + (vertical.indexOf(output) + 0.7) * slotHeight;
+    if (Math.abs(x - pinX) <= PIN_TOLERANCE
+        && Math.abs(y - pinY) <= half) {
+      return output;
+    }
+  }
+  return null;
+}
+
+/** A slot's explicit position, if it has one. */
+function slotPos(slot) {
+  const pos = slot?.pos;
+  if (Array.isArray(pos) && pos.length >= 2) return [pos[0], pos[1]];
+  if (pos && typeof pos.x === "number" && typeof pos.y === "number") {
+    return [pos.x, pos.y];
+  }
+  return null;
+}
+
+/** Where a widget-input's pin sits: on its widget row, at the left edge. */
+function widgetPin(node, input, half) {
+  const name = input?.widget?.name ?? input?.name;
+  const widget = (node.widgets ?? []).find((w) => w?.name === name);
+  if (!widget || !Number.isFinite(widget.last_y)) return null;
+  const height = globalThis.LiteGraph?.NODE_WIDGET_HEIGHT
+    ?? globalThis.LiteGraph?.NODE_SLOT_HEIGHT ?? 20;
+  return [node.pos[0] + half, node.pos[1] + widget.last_y + height * 0.5];
+}
+
+/**
+ * The input pin at graph coordinates (x, y), or null. Same layout rules as
+ * `pinUnder`, mirrored to the left edge; a converted widget's pin sits on
+ * its widget row.
+ */
+function inputPinUnder(node, x, y) {
+  const lg = globalThis.LiteGraph ?? {};
+  if (lg.vueNodesMode) return null;
+
+  const slotHeight = lg.NODE_SLOT_HEIGHT ?? 20;
+  const half = slotHeight * 0.5;
+  const startY = node.constructor?.slot_start_y ?? 0;
+  const inputs = node.inputs ?? [];
+  const vertical = inputs.filter((input) => !slotPos(input) && !input?.widget);
+  const edge = node.pos[0] + half;
+
+  for (const input of inputs) {
+    if (!input) continue;
+    let point = null;
+    const pos = slotPos(input);
+    if (pos) {
+      point = [node.pos[0] + pos[0], node.pos[1] + pos[1]];
+    } else if (input.widget) {
+      point = widgetPin(node, input, half);
+    } else {
+      point = [
+        edge,
+        node.pos[1] + startY + (vertical.indexOf(input) + 0.7) * slotHeight,
+      ];
+    }
+    if (!point) continue;
+    if (Math.abs(x - point[0]) <= PIN_TOLERANCE
+        && Math.abs(y - point[1]) <= half) {
+      return input;
+    }
+  }
+  return null;
+}
+
+/** A link's real origin, following Reroutes. */
+function resolveOrigin(node, link, depth = 0) {
+  if (!node || !link || depth > 4) return null;
+  const origin = node.graph?.getNodeById?.(link.origin_id) ?? null;
+  if (!origin) return null;
+  if (String(origin.type ?? "") !== "Reroute") {
+    return { node: origin, slot: link.origin_slot ?? 0 };
+  }
+  const up = inputLink(origin, null);
+  return up ? resolveOrigin(origin, up, depth + 1) : null;
+}
+
+/**
+ * A consumer's input, followed all the way back: input wire -> Unbundle
+ * output -> merge plan -> the node that really supplies that field.
+ */
+function traceThroughInput(node, input) {
+  const link = input?.link != null ? linkAt(node.graph, input.link) : null;
+  if (!link) return null;
+  const origin = resolveOrigin(node, link);
+  if (!origin || !isUnbundle(origin.node)) return null;
+  const merge = mergeNodeFor(origin.node);
+  const field = outputName(origin.node.outputs?.[origin.slot]);
+  const entry = merge ? fieldMap(merge).get(field) : null;
+  return entry?.source?.node ? { field, entry } : null;
+}
+
+function clearTraceHover() {
+  if (!traceHover) return;
+  traceHover = null;
+  traceKey = "";
+  app.canvas?.setDirty?.(true, true);
+}
+
+/** Any traced pin under these coordinates: { field, entry }. */
+function traceAt(x, y) {
+  const nodes = app.canvas?.graph?._nodes
+    ?? app.canvas?.graph?.nodes ?? [];
+  for (let i = nodes.length - 1; i >= 0; i--) {
+    const node = nodes[i];
+    if (!node?.pos || !node?.size) continue;
+    const near = x >= node.pos[0] - 24 && x <= node.pos[0] + node.size[0] + 24
+      && y >= node.pos[1] - 24 && y <= node.pos[1] + node.size[1] + 24;
+    if (!near) continue;
+
+    // An Unbundle's output pin: the field's own source.
+    if (isUnbundle(node)) {
+      const output = pinUnder(node, x, y);
+      if (output) {
+        const merge = mergeNodeFor(node);
+        const field = outputName(output);
+        const entry = merge ? fieldMap(merge).get(field) : null;
+        if (entry?.source?.node) return { field, entry };
+      }
+    }
+
+    // Any node's input pin: the same chain, from the consumer's side.
+    const input = inputPinUnder(node, x, y);
+    if (input) {
+      const traced = traceThroughInput(node, input);
+      if (traced) return traced;
+    }
+  }
+  return null;
+}
+
+/** Work out which pin the pointer is over, without waiting for a redraw. */
+function updateTraceHover(x, y) {
+  const found = traceAt(x, y);
+  if (!found) return clearTraceHover();
+
+  const { field, entry } = found;
+  const source = entry?.source?.node;
+  if (!source) return clearTraceHover();
+
+  const key = `${field}:${entry.skipped ? 1 : 0}:${source.id}:`
+    + `${entry.constant ?? entry.input ?? ""}`;
+  traceHover = { field, entry };
+  if (key === traceKey) return;
+  traceKey = key;
+  app.canvas?.setDirty?.(true, true);
+}
+
+function isSelected(node) {
+  if (node?.is_selected) return true;
+  const selected = app.canvas?.selected_nodes;
+  return !!(selected && selected[node.id]);
+}
+
+/**
+ * What is selected and can be traced: a merge node, an Unbundle it feeds,
+ * or a consumer wired to that Unbundle's output. Each gives the plan
+ * entries behind the fields it uses.
+ */
+function selectedTraceTargets() {
+  const nodes = app.canvas?.graph?._nodes
+    ?? app.canvas?.graph?.nodes ?? [];
+  const targets = [];
+  for (const node of nodes) {
+    if (!isSelected(node)) continue;
+    if (isMergeNode(node)) {
+      targets.push({ node, entries: planFor(node) });
+      continue;
+    }
+    if (isUnbundle(node)) {
+      const merge = mergeNodeFor(node);
+      if (merge) targets.push({ node, entries: planFor(merge) });
+      continue;
+    }
+    // A downstream node: follow each input through the Unbundle to the
+    // merge, so the real sources light up from the target's side too.
+    const entries = [];
+    const seen = new Set();
+    for (const input of node.inputs ?? []) {
+      const traced = traceThroughInput(node, input);
+      if (!traced || seen.has(traced.entry)) continue;
+      seen.add(traced.entry);
+      entries.push(traced.entry);
+    }
+    if (entries.length) targets.push({ node, entries });
+  }
+  return targets;
+}
+
+function kindOf(entry) {
+  if (entry.constant != null) return String(entry.constant);
+  return entry.input ?? "wire";
+}
+
+function clip(text) {
+  return text.length > MAX_LABEL ? `${text.slice(0, MAX_LABEL - 1)}…` : text;
+}
+
+/** Canvas zoom, so labels keep a readable size at any zoom level. */
+function traceScale() {
+  const scale = app.canvas?.ds?.scale;
+  return Number.isFinite(scale) && scale > 0 ? scale : 1;
+}
+
+function drawOutline(ctx, node) {
+  const scale = traceScale();
+  ctx.strokeStyle = "#4da3ff";
+  ctx.lineWidth = 2 / scale;
+  ctx.strokeRect(
+    node.pos[0] - 3, node.pos[1] - 3, node.size[0] + 6, node.size[1] + 6,
+  );
+}
+
+function drawLabel(ctx, node, text) {
+  const scale = traceScale();
+  const fontSize = 14 / scale;          // 14 screen px whatever the zoom
+  const padX = 7 / scale;
+  const padY = 4 / scale;
+  ctx.font = `${fontSize}px system-ui, sans-serif`;
+  const width = ctx.measureText(text).width + padX * 2;
+  const height = fontSize + padY * 2;
+  const x = node.pos[0] - 2;
+  const y = node.pos[1] - height - 8 / scale;
+
+  ctx.fillStyle = "rgba(18,18,18,.92)";
+  ctx.fillRect(x, y, width, height);
+  ctx.strokeStyle = "#3a3a3a";
+  ctx.lineWidth = 1 / scale;
+  ctx.strokeRect(x, y, width, height);
+  ctx.fillStyle = "#dbe6f2";
+  ctx.fillText(text, x + padX, y + padY + fontSize * 0.8);
+}
+
+/** Outline every source; label only the one under the pointer. */
+function drawMap(ctx, entries, labelNode = null) {
+  const byNode = new Map();
+  for (const entry of entries) {
+    const node = entry.source?.node;
+    if (!node?.pos || !node?.size) continue;
+    const list = byNode.get(node) ?? [];
+    list.push(entry);
+    byNode.set(node, list);
+  }
+
+  for (const [node, list] of byNode) {
+    drawOutline(ctx, node);
+    if (!labelNode || node !== labelNode) continue;
+    const parts = list.map((entry) => {
+      const names = (entry.final ?? []).join(", ") || "?";
+      return `${names} · ${kindOf(entry)}${entry.skipped ? " · muted" : ""}`;
+    });
+    drawLabel(ctx, node, clip(parts.join("   |   ")));
+  }
+}
+
+/** Hover a pin: that one field. Selected: the outlines, labelled on hover. */
+function drawTrace(ctx) {
+  if (!ctx) return;
+  if (traceHover) {
+    const { entry, field } = traceHover;
+    const node = entry.source?.node;
+    if (!node?.pos || !node?.size) return;
+    drawOutline(ctx, node);
+    drawLabel(
+      ctx,
+      node,
+      clip(`${field} ← ${titleOf(node)} · ${kindOf(entry)}`
+        + (entry.skipped ? " · muted" : "")),
+    );
+    return;
+  }
+  const under = app.canvas?.node_over ?? null;
+  for (const target of selectedTraceTargets()) {
+    drawMap(ctx, target.entries, under);
+  }
+}
+
+/** Client point -> graph point, without relying on the host's own state. */
+function graphPoint(clientX, clientY) {
+  const canvas = app.canvas;
+  const element = canvas?.canvas
+    ?? document.querySelector("canvas.lgraphcanvas");
+  if (!element || !canvas?.ds) return null;
+  const rect = element.getBoundingClientRect();
+  const scale = canvas.ds.scale || 1;
+  const offset = canvas.ds.offset;
+  const offsetX = Array.isArray(offset) ? offset[0] : (offset?.x ?? 0);
+  const offsetY = Array.isArray(offset) ? offset[1] : (offset?.y ?? 0);
+  return [
+    (clientX - rect.left) / scale - offsetX,
+    (clientY - rect.top) / scale - offsetY,
+  ];
+}
+
+function onTracePointerMove(event) {
+  const point = graphPoint(event.clientX, event.clientY);
+  if (!point) return clearTraceHover();
+  updateTraceHover(point[0], point[1]);
+}
+
+/** Alt-click a traced pin: select and centre the source node. */
+function bindAltClick() {
+  const element = app.canvas?.canvas
+    ?? document.querySelector("canvas.lgraphcanvas");
+  if (!element || element.__aunTraceClick) return !!element;
+  element.__aunTraceClick = true;
+  element.addEventListener("mousedown", (event) => {
+    const source = traceHover?.entry?.source?.node;
+    if (!event.altKey || !source) return;
+    // Take the click before the canvas starts dragging a link from the pin.
+    event.preventDefault();
+    event.stopPropagation();
+    goToNode(source);
+    clearTraceHover();
+  }, true);
+  return true;
+}
+
+function bindTracePointer() {
+  const element = app.canvas?.canvas
+    ?? document.querySelector("canvas.lgraphcanvas");
+  if (!element || element.__aunTraceMove) return !!element;
+  element.__aunTraceMove = true;
+  element.addEventListener("mousemove", onTracePointerMove, { passive: true });
+  element.addEventListener("mouseleave", clearTraceHover, { passive: true });
+  return true;
+}
+
+function hookTraceCanvas(canvas) {
+  if (!canvas || canvas.__aunBundleTrace) return;
+  canvas.__aunBundleTrace = true;
+  const baseDraw = canvas.onDrawForeground;
+  canvas.onDrawForeground = function (ctx) {
+    const result = baseDraw?.apply(this, arguments);
+    drawTrace(ctx);
+    return result;
+  };
+}
+
+/** Install the pointer/canvas hooks, retrying while the canvas is not up. */
+function installTrace() {
+  let tries = 0;
+  const install = () => {
+    hookTraceCanvas(app.canvas);
+    if (app.canvas?.__aunBundleTrace && bindTracePointer()
+        && bindAltClick()) {
+      console.info("[AUN] Merge Bundles: tracing installed");
+      return;
+    }
+    if (tries++ < 20) setTimeout(install, 500);
+  };
+  install();
+}
+
 // ── Extension ─────────────────────────────────────────────────────────
 
 app.registerExtension({
@@ -1010,9 +1625,27 @@ app.registerExtension({
 
   setup() {
     installPromptPass();
+    installTrace();
   },
 
   async beforeRegisterNodeDef(nodeType, nodeData) {
+    // Tracing lives on OBVPM's Unbundle: only its menu is patched, never
+    // its file.
+    if (nodeData.name === UNBUNDLE_TYPE) {
+      const baseMenu = nodeType.prototype.getExtraMenuOptions;
+      nodeType.prototype.getExtraMenuOptions = function (canvas, options) {
+        const result = baseMenu?.apply(this, arguments);
+        if (!Array.isArray(options)) return result;
+        const merge = mergeNodeFor(this);
+        if (!merge) return result;
+        options.push({
+          content: "Bundle sources…",
+          callback: () => openSourcesDialog(merge),
+        });
+        return result;
+      };
+      return;
+    }
     if (nodeData.name !== NODE_TYPE) return;
     const proto = nodeType.prototype;
 
@@ -1071,6 +1704,10 @@ app.registerExtension({
       options.push({
         content: "Constants…",
         callback: () => openConstantsDialog(this),
+      });
+      options.push({
+        content: "Sources…",
+        callback: () => openSourcesDialog(this),
       });
       return result;
     };
