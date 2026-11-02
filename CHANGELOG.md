@@ -11,6 +11,13 @@
 
 ### Notes
 
+## [2.35.1] - 2026-11-02
+
+### Fixed
+- `Split Bundle`: a newly added node now opens at its content size in both width and height instead of the default node box. Loaded and pasted nodes still keep their saved size (the fit only runs when the node was not restored from a workflow), and a later source change still only grows the width, so a node the user widened stays wide.
+
+### Notes
+
 ## [2.35.0] - 2026-11-02
 
 ### Added

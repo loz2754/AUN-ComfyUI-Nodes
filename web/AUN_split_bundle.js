@@ -346,13 +346,15 @@ function resolveNames(node) {
 
 /**
  * Fit the node's height to its pins, in both directions: a constant with
- * fewer fields must not leave the node stretched. Width is only grown, so
- * a node the user widened stays wide enough for its longest pin label.
+ * fewer fields must not leave the node stretched. By default width is only
+ * grown, so a node the user widened stays wide enough for its longest pin
+ * label; `fitWidth` takes the computed width exactly (used for a brand-new
+ * node, which should open at its content size in both directions).
  *
  * `node.size` is a typed-array view (Float64Array) in current frontends,
  * not a JS array, so it must not be gated on Array.isArray.
  */
-function resizeToFit(node) {
+function resizeToFit(node, { fitWidth = false } = {}) {
   if (node?.flags?.collapsed) return;
   if (node?.size == null || typeof node.size[1] !== "number") return;
   if (typeof node?.computeSize !== "function") return;
@@ -368,7 +370,10 @@ function resizeToFit(node) {
   }
   if (!size || typeof size[1] !== "number") return;
 
-  const next = [Math.max(width, size[0] ?? 0), Math.max(size[1], 0)];
+  const nextWidth = fitWidth
+    ? (size[0] ?? width)
+    : Math.max(width, size[0] ?? 0);
+  const next = [nextWidth, Math.max(size[1], 0)];
   if (next[0] === width && Math.abs(next[1] - height) < 1) return;
 
   if (typeof node.setSize === "function") {
@@ -796,6 +801,8 @@ app.registerExtension({
 
     const baseConfigure = proto.onConfigure;
     proto.onConfigure = function () {
+      // A configured node is a loaded/duplicated one: keep its saved size.
+      this.__aunSplitConfigured = true;
       const result = baseConfigure?.apply(this, arguments);
       // After the saved pins and links are back in place.
       requestAnimationFrame(() => {
@@ -818,11 +825,13 @@ app.registerExtension({
     installUi(node);
     syncOutputs(node, { keepSaved: true, resize: false });
     // nodeCreated can run before the node is in its graph, when the setter
-    // list is not visible yet; one frame later it is.
+    // list is not visible yet; one frame later it is. If this node is not
+    // being loaded from a workflow, it opens at its content size.
     requestAnimationFrame(() => {
       if (!node.__aunSplitReady) return;
       installUi(node);
       syncOutputs(node, { keepSaved: true, resize: false });
+      if (!node.__aunSplitConfigured) resizeToFit(node, { fitWidth: true });
     });
   },
 });
