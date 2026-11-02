@@ -1,12 +1,23 @@
-# OBVPM Set-Node Conversion Progress
+# Bundle Set Nodes and Split Bundle
 
-Track of AUN nodes adapted to act as OBVPM constants (via a `set` STRING input + a `bundle` OBVPM_BUNDLE output), so OBVPM Unbundle (get) / KJ Get can read their outputs by name and reduce node clutter.
+Track of AUN nodes adapted to act as bundle setters (a `set` STRING input + a `bundle` `OBVPM_BUNDLE` output), and of the `Split Bundle` reader that turns a bundle back into fields. A bundle is a plain dict, so the wire type string is kept as an opaque compatibility token: AUN neither imports nor needs another node pack to produce or read one.
 
-## Pattern (applied to each node)
+## Reading bundles
+
+`AUNSplitBundle` ("Split Bundle") has one output pin per field:
+
+- **wired**: a bundle output goes into its `bundle` input;
+- **by name**: `get` on + `constant` set to another node's `set` name, resolved at prompt build across subgraphs with no wire. The `constant` picker is a drop-down (and is hidden while `get` is off);
+- **pin order**: the **Fields…** button opens a dialog that lists the output pins for drag-to-reorder. The order is stored as field names in `properties.aun_split_order`; fields the saved order does not mention keep the bundle's own order after the ordered ones. **Reset order** restores the bundle's own order in the dialog (the bundle resolves its fields; the saved order only rearranges them). Reordering snapshots each field's wires before renaming the pins and re-homes them with `node.connect()`, so a wire follows its field to the new pin (a link with no target node, such as a subgraph output, has its origin slot retargeted directly).
+- **hidden fields**: a tick box per row hides that field's output pin; the hidden names are stored in `properties.aun_split_hidden`, and **Show all** clears them. A connected pin cannot be hidden, and hiding removes pins only after the remaining wires have been re-homed.
+
+Field names come from `aunBundleNames`; older AUN nodes still expose `obvpmBundleNames`, which is read as a fallback. OBVPM's Unbundle and KJ Get are optional readers if that pack is installed, not requirements.
+
+## Pattern (applied to each setter node)
 
 1. Python: import `BUNDLE` from `.aun_bundle_shared`; add optional `set` STRING input; add `BUNDLE` as last output named `bundle` containing a dict of the node's outputs; accept `set=""` in the function; return the bundle in every return path; update `DESCRIPTION`.
-2. JS: create `web/AUN_<node>_obvpm_constant.js` setting `obvpmConstantWidget = "set"`, runtime `obvpmConstantOutput` (finds the OBVPM_BUNDLE slot), and `obvpmBundleNames` returning the field-name list.
-3. `web/AUN_obvpm_slot_fix.js`: add the node class to `AUN_INPUT_CLASSES` so unpatched OBVPM's slot-0 assumption is corrected.
+2. JS: create `web/AUN_<node>_obvpm_constant.js` setting `obvpmConstantWidget = "set"`, runtime `obvpmConstantOutput` (finds the `OBVPM_BUNDLE` slot), and `obvpmBundleNames` returning the field-name list. The shared resolver also accepts the AUN-native names (`aunConstantWidget`, `aunConstantOutput`, `aunBundleNames`).
+3. `web/AUN_bundle_slot_fix.js`: add the node class to `AUN_INPUT_CLASSES` so OBVPM/KJ slot-0 assumptions are corrected if those readers are present.
 4. Update node README + CHANGELOG entry.
 
 ## Completed (verified working)
@@ -38,13 +49,14 @@ Track of AUN nodes adapted to act as OBVPM constants (via a `set` STRING input +
 - `AUNEmptyLatent` — bundle fields: `latent`, `width`, `height`, `seed`
 - `AUNWan22MoE` — bundle fields: `latent`, `image`
 - `AUNInputsBasicSwitch` — bundle fields: `model`, `clip`, `vae`, `ckpt_name`, `sampler`, `scheduler`, `cfg`, `steps`, `latent`, `width`, `height`, `seed`, `batch_size`, `text`, `label`, `index`
+- `AUNSplitBundle` — the reader: one output per field, wired or by constant name. No pack required.
 
 ## Next candidates (image family done; suggested next families)
 
 - Image save / title preview nodes (`AUNSaveImage`, `AUNSaveImageV2`, `AUNTitleImagePreview`)
-- Text/prompt nodes (high value for OBVPM bundle passing)
+- Text/prompt nodes (high value for bundle passing)
 - Latent / inputs-adjacent nodes
-- Any multi-output node where OBVPM get-by-name reduces wiring
+- Any multi-output node where get-by-name reduces wiring
 
 ## Notes
 

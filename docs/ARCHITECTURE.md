@@ -38,6 +38,8 @@ directly) — never copy the function into a node file.
 | `tooltip.js` | `showTooltip`, `formatLoraTooltip` | `aun_lora_dropdown_shared.js` |
 | `aun_persistence_shared.js` | `captureAunWidgetValues`, `restoreAunWidgetValues` | `AUN_universal_instant`, both `lora_stack` files, `AUN_random_lora_multi`, `AUN_random_lora_compact` |
 | `aun_lora_dropdown_shared.js`, `aun_lora_info_shared.js` | clickable LoRA labels, info dialog | LoRA frontend files |
+| `aun_bundle_constants.js` | `fieldsOf`, `findSetter`, `resolveConstantSource`, `registerPromptPass`, `walkPromptNodes`, graph helpers | `AUN_merge_bundles`, `AUN_split_bundle`, `AUN_bundle_slot_fix` |
+| `aun_dialog_shared.js` | `createDialog`, `dialogButton`, `sectionLabel`, `emptyHint`, `dragGrip`, `enableDragReorder` | `AUN_merge_bundles`, `AUN_split_bundle` |
 
 Known duplication (being worked through): `getWidget` redefined locally in
 ~10 files, `isCompact`/`setCompact` in ~7 — mostly the older large files

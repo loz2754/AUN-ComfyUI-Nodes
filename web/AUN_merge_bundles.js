@@ -35,24 +35,40 @@ import {
   forceRedraw,
   getWidget,
 } from "./index.js";
+import {
+  BUNDLE_TYPE,
+  ConstantRefusal,
+  MAX_GRAPH_DEPTH,
+  fieldsOf,
+  findSetter,
+  isOff,
+  linesOf,
+  nodesOf,
+  pathToGraph,
+  registerPromptPass,
+  resolveConstantSource,
+  sourceOf,
+  titleOf,
+  visibleConstantNames,
+} from "./aun_bundle_constants.js";
+import {
+  closeDialog,
+  createDialog,
+  dialogButton,
+  dragGrip,
+  emptyHint,
+  enableDragReorder,
+  sectionLabel,
+} from "./aun_dialog_shared.js";
 
 const NODE_TYPE = "AUNMergeBundles";
-const BUNDLE_TYPE = "OBVPM_BUNDLE";
 const INPUT_PREFIX = "bundle_";
-const MAX_INPUTS = 16;           // mirrors AUNMergeBundles.MAX_INPUTS
+const MAX_INPUTS = 64;           // mirrors AUNMergeBundles.MAX_INPUTS
 const HOLLOW_CIRCLE = 7;         // RenderShape.HollowCircle: optional pin
 const CONSTANTS_WIDGET = "constants";
 const ORDER_WIDGET = "order";
 const BUTTON_WIDGET = "__aun_constants_button";
 const TITLE_PROP = "aun_merge_title";   // the title to put back, kept in properties
-
-const OBVPM_BUNDLE = "Bundle (obvpm)";
-const KJ_SET = "SetNode";
-const MODE_NEVER = 2;            // LGraphEventMode.NEVER  (muted)
-const MODE_BYPASS = 4;           // LGraphEventMode.BYPASS
-
-const MAX_TRACE_DEPTH = 4;
-const MAX_GRAPH_DEPTH = 16;
 
 // ── Small helpers ─────────────────────────────────────────────────────
 
@@ -71,285 +87,11 @@ function bundleInputs(node) {
     .sort((a, b) => slotNumber(a.name) - slotNumber(b.name));
 }
 
-function linkOf(graph, id) {
-  if (id == null) return null;
-  const links = graph?.links;
-  return links?.get ? links.get(id) : links?.[id] ?? null;
-}
-
-/** The node and output slot a wire comes from. */
-function sourceOf(node, input) {
-  const graph = node?.graph ?? app.graph;
-  const link = input?.link != null ? linkOf(graph, input.link) : null;
-  if (!link) return null;
-  const origin = graph?.getNodeById?.(link.origin_id) ?? null;
-  return origin ? { node: origin, slot: link.origin_slot ?? 0 } : null;
-}
-
-function linesOf(text) {
-  return String(text ?? "")
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
-}
-
-function titleOf(node) {
-  return String(node?.title ?? node?.type ?? `node ${node?.id ?? "?"}`);
-}
-
-function isOff(node) {
-  return node?.mode === MODE_NEVER || node?.mode === MODE_BYPASS;
-}
-
-function nodesOf(graph) {
-  return graph?._nodes ?? graph?.nodes ?? [];
-}
-
-function rootGraph() {
-  return app.rootGraph ?? app.graph;
-}
-
-/** The root graph and every subgraph instanced below it. */
-function allGraphs(graph = rootGraph(), seen = new Set(), out = []) {
-  if (!graph || seen.has(graph)) return out;
-  seen.add(graph);
-  out.push(graph);
-  for (const node of nodesOf(graph)) {
-    if (node?.subgraph) allGraphs(node.subgraph, seen, out);
-  }
-  return out;
-}
-
-/** `graph` then each graph that instances it, up to the root. */
-function graphChain(graph) {
-  const root = rootGraph();
-  const graphs = allGraphs();
-  const chain = [graph];
-  let current = graph;
-  for (let depth = 0; current && current !== root && depth < 32; depth++) {
-    const parent = graphs.find(
-      (g) => g !== current && nodesOf(g).some((n) => n.subgraph === current),
-    );
-    if (!parent || chain.includes(parent)) {
-      if (root && !chain.includes(root)) chain.push(root);
-      break;
-    }
-    chain.push(parent);
-    current = parent;
-  }
-  return chain;
-}
-
-/**
- * The instance ids from the root graph down to `target`, for a prompt id
- * (`"3:12"`), or null when `target` is not on the way to `start`.
- *
- * Visibility is upward only — a constant must be set in this graph or an
- * outer one — so walking `start`'s own chain also picks the right instance
- * of a subgraph used more than once.
- */
-function pathToGraph(target, start) {
-  if (!target || !start) return null;
-  const chain = graphChain(start);
-  if (!chain.includes(target)) return null;
-  const forward = chain.slice().reverse();          // root ... start
-  if (forward[0] === target) return [];
-  const path = [];
-  let current = forward[0];
-  for (let i = 1; i < forward.length; i++) {
-    const next = forward[i];
-    const instance = nodesOf(current).find((n) => n.subgraph === next);
-    if (!instance) return null;
-    path.push(instance.id);
-    if (next === target) return path;
-    current = next;
-  }
-  return null;
-}
-
-// ── Bundle field names ────────────────────────────────────────────────
-
-/**
- * The field names of the bundle a wire carries.
- *
- * Three sources, in order: the producing node's own answer (every AUN
- * loader defines `obvpmBundleNames`), OBVPM Bundle's hidden `names`
- * widget, and OBVPM Value Presets' `values` JSON. A reroute is followed.
- * Null when the source cannot name its fields — the merge then still
- * works, only that bundle's fields get no labels on the Unbundle.
- */
-function fieldsOf(origin, slot, depth = 0) {
-  if (!origin || depth > MAX_TRACE_DEPTH) return null;
-  if (String(origin.type ?? "") === "Reroute") {
-    const up = sourceOf(origin, origin.inputs?.[0]);
-    return up ? fieldsOf(up.node, up.slot, depth + 1) : null;
-  }
-  if (typeof origin.obvpmBundleNames === "function") {
-    try {
-      const names = origin.obvpmBundleNames(slot);
-      if (Array.isArray(names)) return names.map((name) => String(name));
-    } catch (err) {
-      /* fall through to the widgets */
-    }
-  }
-  const namesWidget = getWidget(origin, "names");
-  const fromNames = namesWidget ? linesOf(namesWidget.value) : [];
-  if (fromNames.length) return fromNames;
-  const valuesWidget = getWidget(origin, "values");
-  if (valuesWidget && typeof valuesWidget.value === "string") {
-    try {
-      const parsed = JSON.parse(valuesWidget.value);
-      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-        return Object.keys(parsed);
-      }
-    } catch (err) {
-      /* not a Value Presets node */
-    }
-  }
-  return null;
-}
-
-// ── Bundles by constant name ──────────────────────────────────────────
-
-function isKjSet(node) {
-  return node?.type === KJ_SET || node?.comfyClass === KJ_SET;
-}
-
-/** The constant name a node sets, or "" when it is not a setter. */
-function setNameOf(node) {
-  // This pack's loaders (and this node, so merges can chain).
-  if (typeof node?.obvpmConstantWidget === "string"
-      && node.obvpmConstantWidget) {
-    return String(getWidget(node, node.obvpmConstantWidget)?.value ?? "")
-      .trim();
-  }
-  // OBVPM's own Bundle, with "set as a constant" turned on.
-  if (node?.type === OBVPM_BUNDLE && node?.properties?.obvpm_constant) {
-    return String(getWidget(node, "set")?.value ?? "").trim();
-  }
-  // KJNodes' Set: its name is the first widget.
-  if (isKjSet(node)) {
-    return String(node?.widgets?.[0]?.value ?? "").trim();
-  }
-  return "";
-}
-
-/** The output slot carrying a setter's bundle, or -1. */
-function bundleOutputSlot(node) {
-  const own = node?.obvpmConstantOutput;
-  if (typeof own === "number" && own >= 0) return own;
-  const outputs = node?.outputs ?? [];
-  const idx = outputs.findIndex(
-    (out) => String(out?.type ?? "") === BUNDLE_TYPE,
-  );
-  if (idx >= 0) return idx;
-  return outputs.length === 1 ? 0 : -1;
-}
-
-/** The nearest setter of `name` seen from `node`: own graph first, then up. */
-function findSetter(name, node) {
-  for (const graph of graphChain(node?.graph)) {
-    const setter = nodesOf(graph).find(
-      (other) => other !== node && setNameOf(other) === name,
-    );
-    if (setter) return { node: setter, graph };
-  }
-  return null;
-}
-
-/**
- * Where a constant's bundle really comes from: `{ node, slot, graph }`; or
- * `{ skipped: true, node, slot, graph, reason }` when its setter is muted
- * or bypassed — its names still count (so the other bundles keep their
- * fields), but it contributes no values; or `{ error }` for a real mistake
- * (an unknown name, a setter with no bundle output, an empty KJ Set).
- *
- * A KJ Set is stepped through to whatever feeds it, the same rule OBVPM's
- * constants use, so a Set on an Unbundle output resolves to the field's
- * own source.
- */
-function resolveConstantSource(node, name) {
-  const hit = findSetter(name, node);
-  if (!hit) {
-    return { error: `no constant named '${name}' is visible from this node` };
-  }
-  const setter = hit.node;
-  if (isOff(setter)) {
-    return {
-      skipped: true,
-      reason: `'${name}' is set on '${titleOf(setter)}', which is muted `
-        + "or bypassed",
-      node: setter,
-      slot: bundleOutputSlot(setter),
-      graph: hit.graph,
-    };
-  }
-  if (isKjSet(setter)) {
-    const up = sourceOf(setter, setter.inputs?.[0]);
-    if (!up) {
-      return {
-        error: `the Set named '${name}' has nothing wired into it`,
-      };
-    }
-    if (isOff(up.node)) {
-      return {
-        skipped: true,
-        reason: `'${name}' is fed by '${titleOf(up.node)}', which is muted `
-          + "or bypassed",
-        node: up.node,
-        slot: up.slot,
-        graph: up.node.graph ?? hit.graph,
-      };
-    }
-    // An output of a virtual node (an Unbundle, say) is not in the prompt:
-    // ask it where the value really comes from.
-    try {
-      const virtual = up.node?.isVirtualNode
-        ? up.node.resolveVirtualOutput?.(up.slot) : null;
-      if (virtual?.node) {
-        return {
-          node: virtual.node,
-          slot: virtual.slot ?? 0,
-          graph: virtual.node.graph ?? hit.graph,
-        };
-      }
-    } catch (err) {
-      /* fall through to the wire as it is */
-    }
-    return { node: up.node, slot: up.slot, graph: up.node.graph ?? hit.graph };
-  }
-  const slot = bundleOutputSlot(setter);
-  if (slot < 0) {
-    return {
-      error: `the constant '${name}' is set on '${titleOf(setter)}', which `
-        + "has no bundle output",
-    };
-  }
-  return { node: setter, slot, graph: hit.graph };
-}
-
 /** The constant names written in this node's box, in order, deduped. */
 function constantNames(node) {
   const widget = getWidget(node, CONSTANTS_WIDGET);
   const names = linesOf(widget?.value);
   return [...new Set(names)];
-}
-
-/**
- * Every constant name visible from `node`, nearest graph first, with the
- * node that sets it. Used by the dialog.
- */
-function visibleConstantNames(node) {
-  const found = new Map();
-  for (const graph of graphChain(node?.graph)) {
-    for (const other of nodesOf(graph)) {
-      if (other === node) continue;
-      const name = setNameOf(other);
-      if (!name || found.has(name)) continue;
-      found.set(name, { name, node: other, off: isOff(other) });
-    }
-  }
-  return [...found.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /**
@@ -468,9 +210,6 @@ function mergedNames(node) {
 
 // ── Prompt pass: names -> ordinary bundle inputs ──────────────────────
 
-/** A refusal the user asked for: it stops the run with its message. */
-class ConstantRefusal extends Error {}
-
 /** Log a skipped source once per node and name. */
 function logSkipped(node, entry) {
   const key = entry.constant ? `constant:${entry.constant}` : entry.input;
@@ -505,20 +244,27 @@ function injectConstants(output, entry, node) {
     const n = slotNumber(key);
     if (n > 0) taken.add(n);
   }
+  // A wired input may be missing from the prompt (its source was bypassed),
+  // but its slot is still in use on the canvas: never reuse it.
+  for (const input of node.inputs ?? []) {
+    const n = slotNumber(input?.name);
+    if (n > 0 && input.link != null) taken.add(n);
+  }
   const first = (taken.size ? Math.max(...taken) : 0) + 1;
   const free = [];
   for (let n = first; n <= MAX_INPUTS; n++) {
     if (!taken.has(n)) free.push(n);
   }
 
-  const live = plan.filter(
-    (item) => item.constant != null && !item.skipped,
-  ).length;
-  if (live > free.length) {
-    throw new ConstantRefusal(
-      `Merge Bundles: ${live} constant(s) are selected but only `
-      + `${free.length} bundle input(s) are free after the wired ones.`,
-    );
+  // Prompts can be serialised and passed back through several wrapper
+  // layers. If this bundle is already wired to a source, reuse that slot
+  // instead of allocating a second one.
+  const bySource = new Map();
+  for (const [key, value] of Object.entries(inputs)) {
+    if (slotNumber(key) <= 0) continue;
+    if (Array.isArray(value) && value.length === 2) {
+      bySource.set(`${value[0]}:${value[1]}`, key);
+    }
   }
 
   const serverPlan = [];
@@ -532,7 +278,6 @@ function injectConstants(output, entry, node) {
 
     let inputName = item.input;
     if (item.constant != null) {
-      inputName = `${INPUT_PREFIX}${free[nextFree++]}`;
       const source = item.source;
       const graph = source.graph ?? source.node?.graph;
       const path = pathToGraph(graph, node.graph);
@@ -548,6 +293,19 @@ function injectConstants(output, entry, node) {
           `Merge Bundles: '${item.constant}' resolves to `
           + `'${titleOf(source.node)}', which is not in the prompt.`,
         );
+      }
+      const sourceKey = `${id}:${source.slot}`;
+      inputName = bySource.get(sourceKey);
+      if (!inputName) {
+        if (nextFree >= free.length) {
+          throw new ConstantRefusal(
+            "Merge Bundles: there are not enough bundle inputs left for "
+            + `'${item.constant}' (only ${free.length} free after the `
+            + "wired ones).",
+          );
+        }
+        inputName = `${INPUT_PREFIX}${free[nextFree++]}`;
+        bySource.set(sourceKey, inputName);
       }
       inputs[inputName] = [id, source.slot];
     }
@@ -583,29 +341,14 @@ function fillMergeConstants(output, root) {
  * serialised — the same place and the same way OBVPM resolves its getters.
  */
 function installPromptPass() {
-  if (typeof app.graphToPrompt !== "function"
-      || app.graphToPrompt.__aunMergeConstants) {
-    return;
-  }
-  const base = app.graphToPrompt;
-  const wrapped = async function (...args) {
-    const result = await base.apply(this, args);
-    try {
-      const root = args[0]?.serialize ? args[0] : rootGraph();
-      fillMergeConstants(result?.output, root);
-    } catch (err) {
-      // Our own refusals stop the queue with their message; anything else
-      // must not take the whole prompt build down with it.
-      if (err instanceof ConstantRefusal) throw err;
-      console.error("[AUN] Merge Bundles: could not apply constants:", err);
-    }
-    return result;
-  };
-  wrapped.__aunMergeConstants = true;
-  app.graphToPrompt = wrapped;
+  if (installPromptPass.done) return;
+  installPromptPass.done = true;
+  registerPromptPass("Merge Bundles", (output, root) => {
+    fillMergeConstants(output, root);
+  });
 }
 
-/** Ask OBVPM's dynamic nodes to re-read this node's field names. */
+/** Ask bundle readers to re-read this node's field names. */
 function nudgeObvpm(node) {
   const graph = node?.graph ?? app.graph;
   for (const other of graph?._nodes ?? []) {
@@ -613,6 +356,11 @@ function nudgeObvpm(node) {
       other.__obvpmSync?.();
     } catch (err) {
       /* a consumer that cannot re-sync is not ours to fix here */
+    }
+    try {
+      other.__aunSplitSync?.();
+    } catch (err) {
+      /* a Split Bundle that cannot re-sync is not ours to fix here */
     }
   }
 }
@@ -763,42 +511,7 @@ function installTitle(node) {
 const DIALOG_CLASS = "AUN-merge-dialog";
 
 function closeMergeDialog() {
-  document.querySelector(`.${DIALOG_CLASS}`)?.remove();
-}
-
-function dialogButton(label, onClick, options = {}) {
-  const button = document.createElement("button");
-  button.type = "button";
-  button.textContent = label;
-  button.disabled = !!options.disabled;
-  button.style.cssText = [
-    "padding:5px 12px", "border-radius:5px",
-    `border:1px solid ${options.accent ? "#4a7dbd" : "#555"}`,
-    `background:${options.accent ? "#2f5b94" : "#333"}`,
-    "color:#eee", "font:inherit",
-    options.disabled ? "opacity:.45" : "cursor:pointer",
-  ].join(";");
-  if (!options.disabled) {
-    button.addEventListener("click", onClick);
-  }
-  return button;
-}
-
-function sectionLabel(text) {
-  const label = document.createElement("div");
-  label.textContent = text;
-  label.style.cssText = [
-    "padding:10px 14px 4px", "color:#9aa4af", "font-size:12px",
-    "letter-spacing:.04em", "text-transform:uppercase",
-  ].join(";");
-  return label;
-}
-
-function emptyHint(text) {
-  const hint = document.createElement("div");
-  hint.textContent = text;
-  hint.style.cssText = "padding:6px 14px;color:#999";
-  return hint;
+  closeDialog(DIALOG_CLASS);
 }
 
 /**
@@ -811,28 +524,9 @@ function openConstantsDialog(node) {
   const selected = [...constantNames(node)];
   const visible = () => visibleConstantNames(node);
 
-  const overlay = document.createElement("div");
-  overlay.className = DIALOG_CLASS;
-  overlay.style.cssText = [
-    "position:fixed", "inset:0", "z-index:10000", "display:flex",
-    "align-items:center", "justify-content:center",
-    "background:rgba(0,0,0,.55)",
-  ].join(";");
-
-  const panel = document.createElement("div");
-  panel.style.cssText = [
-    "width:500px", "max-height:78vh", "display:flex",
-    "flex-direction:column", "background:#202020", "color:#ddd",
-    "border:1px solid #4a4a4a", "border-radius:8px", "overflow:hidden",
-    "box-shadow:0 12px 40px rgba(0,0,0,.55)",
-    "font:14px/1.45 system-ui,-apple-system,sans-serif",
-  ].join(";");
-
-  const head = document.createElement("div");
-  head.textContent = "Constants to merge";
-  head.style.cssText = [
-    "padding:12px 14px", "font-weight:600", "border-bottom:1px solid #3a3a3a",
-  ].join(";");
+  const { overlay, panel, foot, close } = createDialog(
+    DIALOG_CLASS, "Constants to merge", { width: 500 },
+  );
 
   const selectedList = document.createElement("div");
   selectedList.style.cssText = [
@@ -853,12 +547,6 @@ function openConstantsDialog(node) {
     "flex:1", "overflow:auto", "min-height:90px", "padding:2px 0 8px",
   ].join(";");
 
-  const foot = document.createElement("div");
-  foot.style.cssText = [
-    "display:flex", "align-items:center", "gap:8px",
-    "padding:10px 14px", "border-top:1px solid #3a3a3a",
-  ].join(";");
-
   let redraw = () => {};
 
   const clear = dialogButton("Clear all", () => {
@@ -866,28 +554,32 @@ function openConstantsDialog(node) {
     redraw();
   });
 
-  const cancel = dialogButton("Cancel", closeMergeDialog);
+  const cancel = dialogButton("Cancel", close);
   cancel.style.marginLeft = "auto";
 
   const ok = dialogButton("OK", () => {
     setConstants(node, selected);
-    closeMergeDialog();
+    close();
   }, { accent: true });
 
-  const move = (index, delta) => {
-    const to = index + delta;
-    if (to < 0 || to >= selected.length) return;
-    const [name] = selected.splice(index, 1);
+  const moveTo = (from, to) => {
+    if (from === to || from < 0 || to < 0) return;
+    if (from >= selected.length || to >= selected.length) return;
+    const [name] = selected.splice(from, 1);
     selected.splice(to, 0, name);
     redraw();
   };
 
+  const move = (index, delta) => moveTo(index, index + delta);
+
   const selectedRow = (name, index, owners) => {
     const owner = owners.get(name);
     const row = document.createElement("div");
+    row.draggable = true;
+    row.dataset.dragIndex = String(index);
     row.style.cssText = [
       "display:flex", "align-items:center", "gap:6px",
-      "padding:3px 14px",
+      "padding:3px 14px", "cursor:grab",
     ].join(";");
 
     const text = document.createElement("div");
@@ -904,6 +596,7 @@ function openConstantsDialog(node) {
     text.append(strong, where);
 
     row.append(
+      dragGrip(),
       text,
       dialogButton("▲", () => move(index, -1), { disabled: index === 0 }),
       dialogButton("▼", () => move(index, 1),
@@ -980,19 +673,10 @@ function openConstantsDialog(node) {
   };
 
   filter.addEventListener("input", redraw);
-  overlay.addEventListener("mousedown", (event) => {
-    if (event.target === overlay) closeMergeDialog();
-  });
-  overlay.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
-      event.stopPropagation();
-      closeMergeDialog();
-    }
-  });
+  enableDragReorder(selectedList, moveTo);
 
   foot.append(clear, cancel, ok);
   panel.append(
-    head,
     sectionLabel("Selected — merged in this order"),
     selectedList,
     sectionLabel("Available in this graph"),
@@ -1000,7 +684,6 @@ function openConstantsDialog(node) {
     availableList,
     foot,
   );
-  overlay.append(panel);
   document.body.append(overlay);
   redraw();
   filter.focus();
@@ -1027,38 +710,14 @@ export function openSourcesDialog(mergeNode) {
   const plan = bundlePlan(mergeNode);
   const rows = plan.filter((entry) => entry.source?.node || entry.error);
 
-  const overlay = document.createElement("div");
-  overlay.className = DIALOG_CLASS;
-  overlay.style.cssText = [
-    "position:fixed", "inset:0", "z-index:10000", "display:flex",
-    "align-items:center", "justify-content:center",
-    "background:rgba(0,0,0,.55)",
-  ].join(";");
-
-  const panel = document.createElement("div");
-  panel.style.cssText = [
-    "width:560px", "max-height:78vh", "display:flex",
-    "flex-direction:column", "background:#202020", "color:#ddd",
-    "border:1px solid #4a4a4a", "border-radius:8px", "overflow:hidden",
-    "box-shadow:0 12px 40px rgba(0,0,0,.55)",
-    "font:14px/1.45 system-ui,-apple-system,sans-serif",
-  ].join(";");
-
-  const head = document.createElement("div");
-  head.textContent = "Bundle sources";
-  head.style.cssText = [
-    "padding:12px 14px", "font-weight:600", "border-bottom:1px solid #3a3a3a",
-  ].join(";");
+  const { overlay, panel, foot, close } = createDialog(
+    DIALOG_CLASS, "Bundle sources", { width: 560 },
+  );
+  foot.style.justifyContent = "flex-end";
 
   const list = document.createElement("div");
   list.style.cssText = [
     "overflow:auto", "max-height:60vh", "min-height:64px", "padding:2px 0 8px",
-  ].join(";");
-
-  const foot = document.createElement("div");
-  foot.style.cssText = [
-    "display:flex", "justify-content:flex-end", "gap:8px",
-    "padding:10px 14px", "border-top:1px solid #3a3a3a",
   ].join(";");
 
   if (!rows.length) {
@@ -1105,19 +764,8 @@ export function openSourcesDialog(mergeNode) {
     list.append(row);
   }
 
-  overlay.addEventListener("mousedown", (event) => {
-    if (event.target === overlay) closeMergeDialog();
-  });
-  overlay.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
-      event.stopPropagation();
-      closeMergeDialog();
-    }
-  });
-
-  foot.append(dialogButton("Close", closeMergeDialog));
-  panel.append(head, list, foot);
-  overlay.append(panel);
+  foot.append(dialogButton("Close", close));
+  panel.append(list, foot);
   document.body.append(overlay);
 }
 

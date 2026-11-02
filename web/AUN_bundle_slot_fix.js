@@ -1,4 +1,5 @@
-import { app } from "../../scripts/app.js";
+﻿import { app } from "../../scripts/app.js";
+import { registerPromptPass } from "./aun_bundle_constants.js";
 
 const AUN_INPUT_CLASSES = new Set([
     "AUNInputs", "AUNInputsBasic", "AUNInputsBasicSwitch", "AUNInputsRefine", "AUNInputsRefineBasic",
@@ -33,7 +34,7 @@ function isAunSetter(node) {
 
 function slotForSetter(node) {
     try {
-        const v = node?.obvpmConstantOutput;
+        const v = node?.aunConstantOutput ?? node?.obvpmConstantOutput;
         if (typeof v === "number") return v;
     } catch (e) {}
     const outs = node?.outputs || [];
@@ -55,45 +56,19 @@ function fixPromptSlots(root, prompt) {
     }
 }
 
-let _gtp = app.graphToPrompt;
-let _wrapped = null;
-
-function wrapGraphToPrompt() {
-    const cur = app.graphToPrompt;
-    if (cur && cur.__AUN_OBVPM_SLOT_FIX) return;
-    if (typeof cur !== "function") return;
-    const base = cur;
-    const wrapped = async function (...args) {
-        const result = await base.apply(this, args);
-        try {
-            const root = args[0]?.serialize ? args[0] : (app.rootGraph ?? app.graph);
-            fixPromptSlots(root, result?.output);
-        } catch (e) {}
-        return result;
-    };
-    wrapped.__AUN_OBVPM_SLOT_FIX = true;
-    _gtp = wrapped;
+/** Correct OBVPM/KJ getters that assume bundle slot 0 on AUN setters. */
+function installPromptPass() {
+    if (installPromptPass.done) return;
+    installPromptPass.done = true;
+    registerPromptPass("Bundle slot fix", (output, root) => {
+        fixPromptSlots(root, output);
+    }, { repeat: true });
 }
-
-try {
-    Object.defineProperty(app, "graphToPrompt", {
-        configurable: true,
-        get() { return _gtp; },
-        set(v) {
-            _gtp = v;
-            queueMicrotask(wrapGraphToPrompt);
-        },
-    });
-} catch (e) {
-    wrapGraphToPrompt();
-}
-
-queueMicrotask(() => { wrapGraphToPrompt(); patchKJ(); });
 
 function patchKJ() {
     const GetNode = globalThis.LiteGraph?.registered_node_types?.["GetNode"];
-    if (!GetNode || GetNode.prototype.__AUN_OBVPM_SLOT_FIX) return;
-    GetNode.prototype.__AUN_OBVPM_SLOT_FIX = true;
+    if (!GetNode || GetNode.prototype.__AUN_BUNDLE_SLOT_FIX) return;
+    GetNode.prototype.__AUN_BUNDLE_SLOT_FIX = true;
     const base = GetNode.prototype.resolveVirtualOutput;
     GetNode.prototype.resolveVirtualOutput = function (slot) {
         try {
@@ -107,12 +82,13 @@ function patchKJ() {
 }
 
 app.registerExtension({
-    name: "AUN.obvpmSlotFix",
+    name: "AUN.bundleSlotFix",
     setup() {
-        wrapGraphToPrompt();
+        installPromptPass();
         patchKJ();
     },
     beforeRegisterNodeDef() {
-        wrapGraphToPrompt();
+        installPromptPass();
     },
 });
+

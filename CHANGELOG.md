@@ -11,6 +11,25 @@
 
 ### Notes
 
+## [2.35.0] - 2026-11-02
+
+### Added
+- `Split Bundle` (`AUNSplitBundle`): reads the `bundle` output every AUN setter node produces and turns it into one output pin per field. Works two ways: wire a bundle in, or turn `get` on and name a constant — the browser resolves the name to the node that sets it (nearest graph first, then outward, including from inside a subgraph), so no wire is needed. `constant` is a drop-down of every setter in the graph (refreshed as setters are added or renamed), with an empty entry meaning "use the wire". Bundles are plain name/value mappings, so this node needs no other node pack. Pins follow `aunBundleNames` (older AUN nodes' `obvpmBundleNames` is still read), a name wins over a wire when both are present, and a muted/bypassed source leaves its pins named but empty.
+- `web/aun_bundle_constants.js`: one shared resolver for bundle constants (`fieldsOf`, `findSetter`, `resolveConstantSource`, `registerPromptPass`, `walkPromptNodes`). Merge Bundles and Split Bundle both use it, and all AUN prompt passes now share a single `app.graphToPrompt` wrapper instead of adding one each.
+
+### Changed
+
+### Fixed
+- Merge Bundles: constant names no longer consume a new bundle input each time the prompt is built. Other extensions wrap `app.graphToPrompt`, so the same output object could pass through several AUN wrappers; the shared wrapper now applies each pass once per prompt (the slot fix still repeats), and an already-resolved constant reuses its existing input. This removes the `N constant(s) are selected but only M bundle input(s) are free` refusal on workflows with many wired bundles.
+- Merge Bundles: raised the input ceiling from 16 to 64 so a heavily wired merge node still has room for its named constants.
+- `Split Bundle`: `constant` is now a real combo widget, so the setter list renders as a drop-down (changing a STRING widget's `type` after creation did not rebuild its control). Switching or losing a bundle source also clears the output plan and the hidden `fields` value, and every run sends the plan the node is showing, so the previous source's fields can no longer be replayed.
+- `Split Bundle`: `constant` is hidden while `get` is off, and a new **Fields…** dialog lists the output pins for drag-to-reorder. The order is saved in the node's properties, follows the workflow, and new fields are appended after the ordered ones. **Reset order** puts the rows back in the bundle's own order (the saved order only rearranges them). Each field also has a tick box: unticking it hides that output pin while the field stays in the bundle, and **Show all** brings them back. A pin with a connection cannot be hidden until it is unplugged. Reordering makes each field's wires follow it to its new pin, and hiding removes only unwired pins, so no connection is ever left pointing at a different field.
+- `Merge Bundles`: the selected constants can be reordered by dragging as well as with ▲▼. Both bundle dialogs now share `web/aun_dialog_shared.js` instead of each keeping its own copy of the overlay, buttons and styling.
+- `Split Bundle`: the node now resizes itself to its pins when the chosen constant changes — it shrinks when the new bundle has fewer fields and grows when it has more. Width is only grown, so a node the user widened stays wide; loading a workflow keeps the saved size.
+- `Split Bundle`: turning `get` off now restores the node's own title instead of keeping `Get <name>`. A workflow saved while `get` was on could restore the generated title as the node's title, and the old code then stored that as the title to put back. Older saves that already stored `Get <name>` there are ignored too, so an existing `Get Lora` clears; any title in the `Get <something>` form is treated as this node's own generated title (a hand-typed name in that exact form would be reset).
+
+### Notes
+
 ## [2.34.30] - 2026-11-02
 
 ### Added

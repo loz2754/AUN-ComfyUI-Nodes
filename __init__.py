@@ -93,6 +93,7 @@ from .AUNShowAnyMulti import AUNShowAnyMulti
 from .AUNPassthroughAnyMulti import AUNPassthroughAnyMulti
 from .AUNShowTextWithTitle import AUNShowTextWithTitle
 from .AUNSingleLabelSwitch import AUNSingleLabelSwitch
+from .AUNSplitBundle import AUNSplitBundle
 from .AUNStringListBuilder import AUNStringListBuilder
 from .AUNStringListIndex import AUNStringListIndex
 from .AUNStrip import AUNStrip
@@ -204,6 +205,7 @@ NODE_CLASS_MAPPINGS = {
     "AUNPassthroughAnyMulti": AUNPassthroughAnyMulti,
     "AUNShowTextWithTitle": AUNShowTextWithTitle,
     "AUNSingleLabelSwitch": AUNSingleLabelSwitch,
+    "AUNSplitBundle": AUNSplitBundle,
     "AUNStringListBuilder": AUNStringListBuilder,
     "AUNStringListIndex": AUNStringListIndex,
     "AUNStrip": AUNStrip,
@@ -312,6 +314,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "AUNPassthroughAnyMulti": "Passthrough Any Multi",
     "AUNShowTextWithTitle": "Show Text With Title",
     "AUNSingleLabelSwitch": "Single Label Switch",
+    "AUNSplitBundle": "Split Bundle",
     "AUNStringListBuilder": "String List Builder",
     "AUNStringListIndex": "String List Index",
     "AUNStrip": "Strip",

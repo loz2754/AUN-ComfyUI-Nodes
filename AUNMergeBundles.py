@@ -6,7 +6,7 @@ meant putting a Bundle node in between and wiring each one into a field.
 This node does that merge directly: every field of every connected bundle
 comes out as one bundle, so one Unbundle shows them all -- and it names
 them, because OBVPM asks a node that packs a bundle for its field names
-(`obvpmBundleNames`, see web/AUN_merge_bundles_obvpm.js).
+(`obvpmBundleNames`, see web/AUN_merge_bundles.js).
 
 The merge rule is deliberately simple and is mirrored in the browser, so
 the Unbundle's labels and the server's keys cannot drift apart:
@@ -23,7 +23,7 @@ the Unbundle's labels and the server's keys cannot drift apart:
 Bundles may also arrive without wires: the node's Constants... dialog lists
 the names that other nodes set (`obvpmConstantWidget`, an OBVPM Bundle with
 'set' on, a KJ Set), and the browser turns each into an ordinary input
-reference when the prompt is built -- see web/AUN_merge_bundles_obvpm.js.
+reference when the prompt is built -- see web/AUN_merge_bundles.js.
 Named bundles merge after the wired ones, in the order shown there.
 """
 
@@ -89,7 +89,7 @@ def _parse_order(raw):
 class AUNMergeBundles:
     """Several bundle wires in, one merged bundle out."""
 
-    MAX_INPUTS = 16
+    MAX_INPUTS = 64
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -110,10 +110,11 @@ class AUNMergeBundles:
         inputs["optional"]["set"] = ("STRING", {
             "default": "",
             "tooltip": (
-                "Constant name. When non-empty, this node sets an OBVPM "
-                "bundle constant readable by an OBVPM Unbundle (get) or "
-                "KJ Get, and the node's title follows the name "
-                "(Set <name>) until it is cleared."
+                "Constant name. When non-empty, this node sets an AUN "
+                "bundle constant readable by Split Bundle's get, or by "
+                "an OBVPM Unbundle (get) / KJ Get when installed, and the "
+                "node's title follows the name (Set <name>) until it is "
+                "cleared."
             ),
         })
         # One constant name per line, in merge order. Never shown: the
@@ -170,9 +171,10 @@ class AUNMergeBundles:
         "bypassed nodes (which hand on None).\n\n"
         "The node grows an extra input as each one fills, so there is "
         "always one spare. Set the 'set' widget to a constant name to "
-        "expose the merged bundle as an OBVPM bundle constant, readable by "
-        "an Unbundle with 'get' or a KJ Get -- the title then follows that "
-        "name (Set <name>) to match the other Set nodes."
+        "expose the merged bundle as an AUN bundle constant, readable by "
+        "Split Bundle's get (or an OBVPM Unbundle / KJ Get when installed) "
+        "-- the title then follows that name (Set <name>) to match the "
+        "other Set nodes."
     )
 
     def merge(self, **kwargs):
