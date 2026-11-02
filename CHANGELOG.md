@@ -8,10 +8,19 @@
 ### Changed
 
 ### Fixed
-- Workflow tab hover tooltips no longer truncate long workflow names: the popover now wraps the name and widens up to the viewport instead of clipping it at 250px.
 
 ### Notes
 
+## [2.34.30] - 2026-11-02
+
+### Added
+
+### Changed
+
+### Fixed
+- Workflow tab hover tooltips no longer truncate long workflow names: the popover now wraps the name and widens up to the viewport instead of clipping it at 250px.
+
+### Notes
 ## [2.34.29] - 2026-11-02
 
 ### Added
