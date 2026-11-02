@@ -8,6 +8,7 @@
 ### Changed
 
 ### Fixed
+- `Add to Prompt Multi`: collapsing the node with the native title-bar collapse dot now also hides its compact-mode rows and resolved-prompt footer instead of leaving them drawn over the collapsed node, and the node no longer resizes itself back open while collapsed.
 
 ### Notes
 

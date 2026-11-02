@@ -89,6 +89,8 @@ function updateNodeVisibility(node) {
 }
 
 function updateNodeSize(node) {
+  // Never fight the native title-only collapse.
+  if (node.flags?.collapsed) return;
   node.widgets_dirty = true;
   let h;
   try {
@@ -360,6 +362,11 @@ function patchNode(node) {
   const origDrawFg = node.onDrawForeground;
   node.onDrawForeground = function (ctx) {
     origDrawFg?.apply(this, arguments);
+    // Native collapse (title-only) must hide the compact overlays too.
+    if (this.flags?.collapsed) {
+      delete this.__aun_hitAreas;
+      return;
+    }
     if (isCompact(this)) {
       drawCompactRows(ctx, this);
       drawResolvedFooter(ctx, this);
@@ -368,7 +375,7 @@ function patchNode(node) {
 
   const origMouseDown = node.onMouseDown;
   node.onMouseDown = function (event, pos) {
-    if (isCompact(this) && pos && pos.length >= 2 && this.__aun_hitAreas) {
+    if (!this.flags?.collapsed && isCompact(this) && pos && pos.length >= 2 && this.__aun_hitAreas) {
       const [mx, my] = pos;
       for (const area of this.__aun_hitAreas) {
         if (mx >= area.x && mx <= area.x + area.w && my >= area.y && my <= area.y + area.h) {
@@ -418,7 +425,7 @@ function patchNode(node) {
   const origResize = node.onResize;
   node.onResize = function () {
     const result = origResize?.apply(this, arguments);
-    if (isCompact(this)) {
+    if (!this.flags?.collapsed && isCompact(this)) {
       const numAddons = clampAddons(getWidget(this, "num_addons")?.value ?? 1);
       const fh = this.__aun_footerHeight || FOOTER_H;
       const minH = TITLE_H + 4 + numAddons * (ROW_H + ROW_GAP) + 4 + fh + 2;
