@@ -4,6 +4,16 @@
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Fixed
+
+### Notes
+
+## [2.35.2] - 2026-11-03
+
+### Added
 - `Wireless Bundle` (`AUNWirelessBundle`): packs named values into one bundle, with or without wires. **Sources…** lists every node output in the graph; a picked output travels with no wire, injected as an ordinary link when the prompt is built. Wired inputs and wireless sources share one ordered list — drag to reorder, tick to switch a field off (packs as `None`); fields default to the output name, can be renamed, and stay in place when a source is muted, bypassed or deleted. The `set` name exposes the bundle as a constant for Split Bundle, OBVPM's Unbundle or a KJ Get. Sources are limited to the node's own graph; wireless sources become real upstream dependencies, so they always run (use a wired bundle for lazy branches).
 - `web/aun_bundle_constants.js`: shared `applyGeneratedTitle`/`isGeneratedTitle` (the `Get <name>`/`Set <name>` title logic both bundle nodes use) and `eachGraphLink`/`outputIsWired`/`wiredOutputNames` for output-slot work.
 - `web/utils.js`: shared `fitNodeSize()` (moved out of Split Bundle). A brand-new node fits width and height; after that only the height follows content and the width only grows. Used by Split Bundle and Wireless Bundle; Wireless Bundle also refits its height when wired sockets appear or disappear.
@@ -18,7 +28,6 @@
 - `Wireless Bundle`: reloading a workflow (F5) no longer leaves the node expanded to the height of its 32 declared input slots. The pool is trimmed at creation, before the saved inputs are restored, and on load the height follows the real pins again — a saved expanded height is discarded, while a width the user chose is kept and grown if the content needs it.
 
 ### Notes
-
 ## [2.35.1] - 2026-11-02
 
 ### Fixed
