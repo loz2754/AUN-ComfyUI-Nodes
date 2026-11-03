@@ -76,6 +76,56 @@ export function forceGraphRedraw(appRef) {
   appRef?.canvas?.setDirty?.(true, true);
 }
 
+/**
+ * Fit a node to its content. The height always follows computeSize();
+ * width is only grown, so a node the user widened stays wide. Pass
+ * `fitWidth` to take the computed width exactly — a brand-new node should
+ * open at its content size in both directions.
+ *
+ * `node.size` is a typed-array view (Float64Array) in current frontends,
+ * not a JS array, so it must not be gated on Array.isArray.
+ */
+export function fitNodeSize(node, { fitWidth = false } = {}) {
+  if (node?.flags?.collapsed) return;
+  if (node?.size == null || typeof node.size[1] !== "number") return;
+  if (typeof node?.computeSize !== "function") return;
+
+  const width = node.size[0] ?? 0;
+  const height = node.size[1] ?? 0;
+
+  let size = null;
+  try {
+    size = node.computeSize();
+  } catch (err) {
+    size = null;
+  }
+  if (!size || typeof size[1] !== "number") return;
+
+  const nextWidth = fitWidth
+    ? (size[0] ?? width)
+    : Math.max(width, size[0] ?? 0);
+  const next = [nextWidth, Math.max(size[1], 0)];
+  if (next[0] === width && Math.abs(next[1] - height) < 1) return;
+
+  if (typeof node.setSize === "function") {
+    try {
+      node.setSize(next);
+    } catch (err) {
+      /* fall through to the direct write */
+    }
+  }
+  // Some frontends keep the previous height inside setSize. The computed
+  // size is the real minimum, so make the assignment stick.
+  if (Math.abs((node.size?.[1] ?? 0) - next[1]) > 1) {
+    try {
+      node.size[1] = next[1];
+    } catch (err) {
+      /* a read-only size is not ours to force */
+    }
+  }
+  node.setDirtyCanvas?.(true, true);
+}
+
 // ── Title matching (used by bypass/mute/collapse-by-title nodes) ──
 
 /**

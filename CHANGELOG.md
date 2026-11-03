@@ -4,10 +4,18 @@
 ## [Unreleased]
 
 ### Added
+- `Wireless Bundle` (`AUNWirelessBundle`): packs named values into one bundle, with or without wires. **Sources…** lists every node output in the graph; a picked output travels with no wire, injected as an ordinary link when the prompt is built. Wired inputs and wireless sources share one ordered list — drag to reorder, tick to switch a field off (packs as `None`); fields default to the output name, can be renamed, and stay in place when a source is muted, bypassed or deleted. The `set` name exposes the bundle as a constant for Split Bundle, OBVPM's Unbundle or a KJ Get. Sources are limited to the node's own graph; wireless sources become real upstream dependencies, so they always run (use a wired bundle for lazy branches).
+- `web/aun_bundle_constants.js`: shared `applyGeneratedTitle`/`isGeneratedTitle` (the `Get <name>`/`Set <name>` title logic both bundle nodes use) and `eachGraphLink`/`outputIsWired`/`wiredOutputNames` for output-slot work.
+- `web/utils.js`: shared `fitNodeSize()` (moved out of Split Bundle). A brand-new node fits width and height; after that only the height follows content and the width only grows. Used by Split Bundle and Wireless Bundle; Wireless Bundle also refits its height when wired sockets appear or disappear.
+- `Split Bundle`: right-clicking a setter node — an AUN setter, OBVPM's Bundle/Value Presets, or a KJ Set — offers **Add Split Bundle (get)**. It creates a Split Bundle beside the setter, already `get`-mode with that node's constant name and its pins built; the item is disabled when the setter has no name.
+- `Split Bundle`: the **Fields…** dialog has **Select all** / **Select none** buttons, so the whole output-pin list can be ticked or unticked in one click. A connected pin still cannot be hidden, so *Select none* leaves wired fields ticked.
+- Bundle tracing now covers Wireless Bundle and Split Bundle. Selecting the Wireless Bundle, a Split Bundle reading it (wire or `get`), or any node fed by that Split outlines the nodes that really supply each field; hovering a Split output pin labels `field ← node · no wire` (or `in_N` for wired fields), **Alt-click** jumps to the source, and right-click → **Bundle sources…** lists every field with a *Go to* button. Merge Bundles and OBVPM Unbundles share the same engine, so a Wireless Bundle read through either traces the same way; disabled fields show `· off`, muted sources `· muted`, and missing sources are listed with the reason.
 
 ### Changed
 
 ### Fixed
+- `Wireless Bundle`: a source that the bundle already feeds can no longer create a dependency loop. The Sources dialog refuses it with the reason — including when a Split Bundle or Unbundle reads the bundle by its `get` name, which has no wire to show the loop — and the prompt pass raises a named `ConstantRefusal` instead of ComfyUI's bare circular-dependency error. Disabled fields are exempt.
+- `Wireless Bundle`: reloading a workflow (F5) no longer leaves the node expanded to the height of its 32 declared input slots. The pool is trimmed at creation, before the saved inputs are restored, and on load the height follows the real pins again — a saved expanded height is discarded, while a width the user chose is kept and grown if the content needs it.
 
 ### Notes
 

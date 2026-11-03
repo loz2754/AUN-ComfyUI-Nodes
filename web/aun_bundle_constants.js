@@ -132,6 +132,99 @@ export function isNodeType(node, type) {
   return !!node && (node.type === type || node.comfyClass === type);
 }
 
+// ── Output slots and generated titles ─────────────────────────────────
+
+/** Visit every link record in the graph, whatever shape the store has. */
+export function eachGraphLink(graph, visit) {
+  const links = graph?.links;
+  if (!links) return;
+  if (Array.isArray(links)) {
+    for (const link of links) visit(link);
+    return;
+  }
+  if (typeof links.forEach === "function") {       // Map-like store
+    links.forEach((link) => visit(link));
+    return;
+  }
+  if (typeof links.values === "function") {
+    for (const link of links.values()) visit(link);
+    return;
+  }
+  for (const key of Object.keys(links)) visit(links[key]);
+}
+
+/** Whether output pin `index` has a link (works with old and new frontends). */
+export function outputIsWired(node, index) {
+  try {
+    if (typeof node?.isOutputConnected === "function") {
+      return !!node.isOutputConnected(index);
+    }
+  } catch (err) {
+    /* fall through to the slot shape */
+  }
+  const out = node?.outputs?.[index];
+  if (Array.isArray(out?.links)) return out.links.length > 0;
+  return out?.link != null;
+}
+
+/** Field names whose current output pin is connected. */
+export function wiredOutputNames(node) {
+  const names = new Set();
+  const outs = node?.outputs ?? [];
+  for (let index = 0; index < outs.length; index++) {
+    if (!outputIsWired(node, index)) continue;
+    const name = String(outs[index]?.name ?? "");
+    if (name) names.add(name);
+  }
+  return names;
+}
+
+/** A title a node generated (`Get <name>` / `Set <name>`), not one the user chose. */
+export function isGeneratedTitle(title, prefix) {
+  const text = String(title ?? "").trim();
+  return !!prefix && text.length > prefix.length + 1
+    && text.startsWith(`${prefix} `);
+}
+
+/**
+ * Keep a node's title in step with the constant name it sets or reads,
+ * and put the user's own title back when the name is cleared.
+ *
+ * The generated title must never be stored as the title to restore: a
+ * workflow saved while the mode was on restores `Get <name>` as the
+ * node's title, and storing that would make it permanent.
+ */
+export function applyGeneratedTitle(node, { prop, prefix, name, display }) {
+  const props = (node.properties ??= {});
+  const text = String(name ?? "").trim();
+
+  if (text) {
+    const wanted = `${prefix} ${text}`;
+    if (props[prop] == null && node.title !== wanted
+        && !isGeneratedTitle(node.title, prefix)) {
+      props[prop] = node.title ?? "";
+    }
+    if (isGeneratedTitle(props[prop], prefix)) delete props[prop];
+    if (node.title !== wanted) {
+      node.title = wanted;
+      node.setDirtyCanvas?.(true, true);
+    }
+    return;
+  }
+
+  const kept = props[prop];
+  delete props[prop];
+
+  // Older saves may hold the generated title as if it were the user's, so
+  // any title in this node's generated form is treated as ours.
+  const usable = kept && !isGeneratedTitle(kept, prefix) ? kept : "";
+  const wanted = usable
+    || (isGeneratedTitle(node.title, prefix) ? display : "");
+  if (!wanted || node.title === wanted) return;
+  node.title = wanted;
+  node.setDirtyCanvas?.(true, true);
+}
+
 // ── Bundle field names ────────────────────────────────────────────────
 
 /**

@@ -1,4 +1,4 @@
-﻿import { app } from "../../scripts/app.js";
+import { app } from "../../scripts/app.js";
 import { registerPromptPass } from "./aun_bundle_constants.js";
 
 const AUN_INPUT_CLASSES = new Set([

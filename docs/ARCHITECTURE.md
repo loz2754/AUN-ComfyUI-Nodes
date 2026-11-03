@@ -31,14 +31,14 @@ directly) — never copy the function into a node file.
 
 | Module | Provides | Imported by |
 |---|---|---|
-| `utils.js` | `isCompact`, `setCompact`, `forceRedraw`, `injectStyles` | preset/keyword/preview nodes, `AUN_apply_preset_to_node`, … |
+| `utils.js` | `isCompact`, `setCompact`, `forceRedraw`, `fitNodeSize`, `injectStyles` | preset/keyword/preview nodes, `AUN_apply_preset_to_node`, `AUN_split_bundle`, `AUN_wireless_bundle`, … |
 | `widgets.js` | `getWidget`, `ensureHiddenAware`, `applyWidgetHiddenState`, `chainWidgetCallback` | image/slider/preview nodes, `AUN_multi_index_instant`, `AUN_string_list_builder`, … |
 | `graph-traversal.js` | `getAllGraphs`, `findNodeById`, `findNodeByIdentifier` | via `index.js` in ~10 extensions |
 | `event-bus.js` | `EventBus` | via `index.js` |
 | `tooltip.js` | `showTooltip`, `formatLoraTooltip` | `aun_lora_dropdown_shared.js` |
 | `aun_persistence_shared.js` | `captureAunWidgetValues`, `restoreAunWidgetValues` | `AUN_universal_instant`, both `lora_stack` files, `AUN_random_lora_multi`, `AUN_random_lora_compact` |
 | `aun_lora_dropdown_shared.js`, `aun_lora_info_shared.js` | clickable LoRA labels, info dialog | LoRA frontend files |
-| `aun_bundle_constants.js` | `fieldsOf`, `findSetter`, `resolveConstantSource`, `registerPromptPass`, `walkPromptNodes`, graph helpers | `AUN_merge_bundles`, `AUN_split_bundle`, `AUN_bundle_slot_fix` |
+| `aun_bundle_constants.js` | `fieldsOf`, `findSetter`, `resolveConstantSource`, `registerPromptPass`, `walkPromptNodes`, `applyGeneratedTitle`, output-slot helpers | `AUN_merge_bundles`, `AUN_split_bundle`, `AUN_wireless_bundle`, `AUN_bundle_slot_fix` |
 | `aun_dialog_shared.js` | `createDialog`, `dialogButton`, `sectionLabel`, `emptyHint`, `dragGrip`, `enableDragReorder` | `AUN_merge_bundles`, `AUN_split_bundle` |
 
 Known duplication (being worked through): `getWidget` redefined locally in

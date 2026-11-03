@@ -21,20 +21,26 @@ import { app } from "../../scripts/app.js";
 import {
   applyWidgetHiddenState,
   chainWidgetCallback,
+  fitNodeSize,
   forceRedraw,
   getWidget,
 } from "./index.js";
 import {
   ConstantRefusal,
+  applyGeneratedTitle,
+  eachGraphLink,
   fieldsOf,
   isNodeType,
+  outputIsWired,
   pathToGraph,
   registerPromptPass,
   resolveConstantSource,
+  setNameOf,
   sourceOf,
   titleOf,
   visibleConstantNames,
   walkPromptNodes,
+  wiredOutputNames,
 } from "./aun_bundle_constants.js";
 import {
   createDialog,
@@ -207,51 +213,6 @@ function savedFields(node, prop) {
   return new Set(Array.isArray(saved) ? saved.map((name) => String(name)) : []);
 }
 
-/** Whether output pin `index` has a link (works with old and new frontends). */
-function outputIsWired(node, index) {
-  try {
-    if (typeof node?.isOutputConnected === "function") {
-      return !!node.isOutputConnected(index);
-    }
-  } catch (err) {
-    /* fall through to the slot shape */
-  }
-  const out = node?.outputs?.[index];
-  if (Array.isArray(out?.links)) return out.links.length > 0;
-  return out?.link != null;
-}
-
-/** Field names whose current output pin is connected. */
-function wiredOutputNames(node) {
-  const names = new Set();
-  const outs = node?.outputs ?? [];
-  for (let index = 0; index < outs.length; index++) {
-    if (!outputIsWired(node, index)) continue;
-    const name = String(outs[index]?.name ?? "");
-    if (name) names.add(name);
-  }
-  return names;
-}
-
-/** Visit every link record in the graph, whatever shape the store has. */
-function eachGraphLink(graph, visit) {
-  const links = graph?.links;
-  if (!links) return;
-  if (Array.isArray(links)) {
-    for (const link of links) visit(link);
-    return;
-  }
-  if (typeof links.forEach === "function") {       // Map-like store
-    links.forEach((link) => visit(link));
-    return;
-  }
-  if (typeof links.values === "function") {
-    for (const link of links.values()) visit(link);
-    return;
-  }
-  for (const key of Object.keys(links)) visit(links[key]);
-}
-
 /**
  * Where each field's wires go, by field name, taken BEFORE any slot is
  * renamed. A pin that changes position can then take its wires with it.
@@ -345,57 +306,6 @@ function resolveNames(node) {
 }
 
 /**
- * Fit the node's height to its pins, in both directions: a constant with
- * fewer fields must not leave the node stretched. By default width is only
- * grown, so a node the user widened stays wide enough for its longest pin
- * label; `fitWidth` takes the computed width exactly (used for a brand-new
- * node, which should open at its content size in both directions).
- *
- * `node.size` is a typed-array view (Float64Array) in current frontends,
- * not a JS array, so it must not be gated on Array.isArray.
- */
-function resizeToFit(node, { fitWidth = false } = {}) {
-  if (node?.flags?.collapsed) return;
-  if (node?.size == null || typeof node.size[1] !== "number") return;
-  if (typeof node?.computeSize !== "function") return;
-
-  const width = node.size[0] ?? 0;
-  const height = node.size[1] ?? 0;
-
-  let size = null;
-  try {
-    size = node.computeSize();
-  } catch (err) {
-    size = null;
-  }
-  if (!size || typeof size[1] !== "number") return;
-
-  const nextWidth = fitWidth
-    ? (size[0] ?? width)
-    : Math.max(width, size[0] ?? 0);
-  const next = [nextWidth, Math.max(size[1], 0)];
-  if (next[0] === width && Math.abs(next[1] - height) < 1) return;
-
-  if (typeof node.setSize === "function") {
-    try {
-      node.setSize(next);
-    } catch (err) {
-      /* fall through to the direct write */
-    }
-  }
-  // Some frontends keep the previous height inside setSize. The computed
-  // size is the real minimum, so make the assignment stick.
-  if (Math.abs((node.size?.[1] ?? 0) - next[1]) > 1) {
-    try {
-      node.size[1] = next[1];
-    } catch (err) {
-      /* a read-only size is not ours to force */
-    }
-  }
-  node.setDirtyCanvas?.(true, true);
-}
-
-/**
  * Write the plan and rebuild the output pins.
  *
  * `keepSaved` is for loading only: until the wire or the named setter is
@@ -455,11 +365,11 @@ function syncOutputs(node, { keepSaved = false, resize = true } = {}) {
     }
   }
   if (resize && changed) {
-    resizeToFit(node);
+    fitNodeSize(node);
     // Some frontends settle the widget layout one frame later; fit again
     // then, so a shrink lands even when the first measure is still tall.
     requestAnimationFrame(() => {
-      if (node.__aunSplitReady) resizeToFit(node);
+      if (node.__aunSplitReady) fitNodeSize(node);
     });
   }
   updateSettingsLabel(node, plan.length);
@@ -471,44 +381,13 @@ function syncOutputs(node, { keepSaved = false, resize = true } = {}) {
 /** The node's display name, from its registration (`nodeData`). */
 let NODE_DISPLAY = "Split Bundle";
 
-/** A title this node generated (`Get <constant>`), not one the user chose. */
-function isGeneratedTitle(title) {
-  return /^Get\s+\S/.test(String(title ?? "").trim());
-}
-
 function applyTitle(node) {
-  const props = (node.properties ??= {});
-  const name = getMode(node) ? constantName(node) : "";
-
-  if (name) {
-    const wanted = `Get ${name}`;
-    // Remember the title to put back, but never remember a generated one:
-    // a workflow saved while `get` was on restores `Get <name>` as the
-    // node's title, and storing that would make it permanent.
-    if (props[TITLE_PROP] == null && node.title !== wanted
-        && !isGeneratedTitle(node.title)) {
-      props[TITLE_PROP] = node.title ?? "";
-    }
-    if (isGeneratedTitle(props[TITLE_PROP])) delete props[TITLE_PROP];
-    if (node.title !== wanted) {
-      node.title = wanted;
-      node.setDirtyCanvas?.(true, true);
-    }
-    return;
-  }
-
-  const kept = props[TITLE_PROP];
-  delete props[TITLE_PROP];
-
-  // Older saves stored the generated title as if it were the user's, so a
-  // "Get <name>" title can outlive `get` forever. Treat any such title as
-  // ours and put the node's own name back.
-  const usable = kept && !isGeneratedTitle(kept) ? kept : "";
-  const wanted = usable
-    || (isGeneratedTitle(node.title) ? NODE_DISPLAY : "");
-  if (!wanted || node.title === wanted) return;
-  node.title = wanted;
-  node.setDirtyCanvas?.(true, true);
+  applyGeneratedTitle(node, {
+    prop: TITLE_PROP,
+    prefix: "Get",
+    name: getMode(node) ? constantName(node) : "",
+    display: NODE_DISPLAY,
+  });
 }
 
 // ── Field order dialog ────────────────────────────────────────────────
@@ -564,7 +443,7 @@ function openSettingsDialog(node) {
   const wired = wiredOutputNames(node);
 
   const { overlay, panel, foot, close } = createDialog(
-    DIALOG_CLASS, "Split Bundle — fields", { width: 480 },
+    DIALOG_CLASS, "Split Bundle — fields", { width: 540 },
   );
 
   const list = document.createElement("div");
@@ -647,10 +526,20 @@ function openSettingsDialog(node) {
     order = [...natural];
     redraw();
   });
-  const showAll = dialogButton("Show all", () => {
+  const selectAll = dialogButton("Select all", () => {
     hidden.clear();
     redraw();
   });
+  selectAll.title = "Give every field an output pin.";
+  const selectNone = dialogButton("Select none", () => {
+    // A wired field cannot lose its pin, so it stays ticked.
+    for (const field of order) {
+      if (!wired.has(field)) hidden.add(field);
+    }
+    redraw();
+  });
+  selectNone.title = "Untick every field that has no connection. Wired "
+    + "fields keep their pin.";
   const cancel = dialogButton("Cancel", close);
   cancel.style.marginLeft = "auto";
   const ok = dialogButton("OK", () => {
@@ -664,7 +553,7 @@ function openSettingsDialog(node) {
     forceRedraw(node, app);
   }, { accent: true });
 
-  foot.append(reset, showAll, cancel, ok);
+  foot.append(reset, selectAll, selectNone, cancel, ok);
   panel.append(
     sectionLabel("Output pins — drag to reorder, untick to hide"),
     list,
@@ -735,11 +624,79 @@ function installUi(node) {
       applyTitle(node);
       syncOutputs(node);
       requestAnimationFrame(() => {
-        if (node.__aunSplitReady) resizeToFit(node);
+        if (node.__aunSplitReady) fitNodeSize(node);
       });
     });
   }
   applyTitle(node);
+}
+
+// ── "Add Split Bundle (get)" on every setter ─────────────────────────
+
+/** Whether a node definition declares the `set` name widget. */
+function declaresSetInput(nodeData) {
+  const inputs = nodeData?.input ?? {};
+  for (const group of ["required", "optional"]) {
+    const spec = inputs[group]?.set;
+    if (!spec) continue;
+    const type = Array.isArray(spec) ? spec[0] : spec?.type;
+    if (type === "STRING" || type === "COMBO") return true;
+  }
+  return false;
+}
+
+/** Create a Split Bundle reading this setter by name, to its right. */
+function addSplitBundleFor(setter) {
+  const name = setNameOf(setter);
+  const graph = setter?.graph ?? app.graph;
+  const lite = globalThis.LiteGraph;
+  if (!name || !graph || !lite?.createNode) return;
+
+  const split = lite.createNode(NODE_TYPE);
+  if (!split) return;
+
+  split.pos = [
+    (setter.pos?.[0] ?? 0) + (setter.size?.[0] ?? 200) + 40,
+    setter.pos?.[1] ?? 0,
+  ];
+  graph.add(split);
+
+  const get = getWidget(split, "get");
+  const constant = getWidget(split, "constant");
+  if (get) get.value = true;
+  if (constant) constant.value = name;
+
+  // nodeCreated may already have run (on add); sync so the title and pins
+  // appear now. Otherwise it picks the values up when it runs.
+  if (typeof split.__aunSplitSync === "function") {
+    split.__aunSplitSync();
+  } else {
+    applyTitle(split);
+    syncOutputs(split);
+  }
+
+  app.canvas?.selectNode?.(split, false);
+  split.setDirtyCanvas?.(true, true);
+  graph.setDirtyCanvas?.(true, true);
+}
+
+/** Right-click item on any node that sets a constant (AUN, OBVPM, KJ). */
+function installAddSplitMenu(nodeType) {
+  const proto = nodeType?.prototype;
+  if (!proto || proto.__aunAddSplitMenu) return;
+  proto.__aunAddSplitMenu = true;
+
+  const base = proto.getExtraMenuOptions;
+  proto.getExtraMenuOptions = function (canvas, options) {
+    const result = base?.apply(this, arguments);
+    if (!Array.isArray(options)) return result;
+    options.unshift({
+      content: "Add Split Bundle (get)",
+      disabled: !setNameOf(this),
+      callback: () => addSplitBundleFor(this),
+    }, null);
+    return result;
+  };
 }
 
 app.registerExtension({
@@ -752,7 +709,14 @@ app.registerExtension({
   },
 
   async beforeRegisterNodeDef(nodeType, nodeData) {
-    if (nodeData.name !== NODE_TYPE) return;
+    if (nodeData.name !== NODE_TYPE) {
+      // Setters (AUN, OBVPM's Bundle/Value Presets, KJ Set) get a
+      // right-click shortcut to a Split Bundle that reads them by name.
+      if (nodeData.name === "SetNode" || declaresSetInput(nodeData)) {
+        installAddSplitMenu(nodeType);
+      }
+      return;
+    }
     NODE_DISPLAY = nodeData.display_name || NODE_DISPLAY;
     const proto = nodeType.prototype;
 
@@ -766,7 +730,7 @@ app.registerExtension({
         applyTitle(this);
         syncOutputs(this);
         requestAnimationFrame(() => {
-          if (this.__aunSplitReady) resizeToFit(this);
+          if (this.__aunSplitReady) fitNodeSize(this);
         });
       }
       return result;
@@ -831,7 +795,8 @@ app.registerExtension({
       if (!node.__aunSplitReady) return;
       installUi(node);
       syncOutputs(node, { keepSaved: true, resize: false });
-      if (!node.__aunSplitConfigured) resizeToFit(node, { fitWidth: true });
+      if (!node.__aunSplitConfigured) fitNodeSize(node, { fitWidth: true });
     });
   },
 });
+

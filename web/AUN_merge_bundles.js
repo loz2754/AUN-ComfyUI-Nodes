@@ -707,7 +707,7 @@ export function goToNode(node) {
  */
 export function openSourcesDialog(mergeNode) {
   closeMergeDialog();
-  const plan = bundlePlan(mergeNode);
+  const plan = entriesFor(mergeNode);
   const rows = plan.filter((entry) => entry.source?.node || entry.error);
 
   const { overlay, panel, foot, close } = createDialog(
@@ -750,7 +750,8 @@ export function openSourcesDialog(mergeNode) {
       where.textContent = entry.error;
     } else {
       where.textContent = `${titleOf(entry.source?.node)} · ${kindOf(entry)}`
-        + (entry.skipped ? " · muted, empty" : "");
+        + (entry.skipped ? " · muted, empty" : "")
+        + (entry.disabled ? " · off" : "");
     }
 
     row.append(
@@ -769,11 +770,11 @@ export function openSourcesDialog(mergeNode) {
   document.body.append(overlay);
 }
 
-// ── Tracing a merged bundle back to its sources ───────────────────────
+// ── Tracing a bundle back to its sources ──────────────────────────────
 //
 // A bundle replaces several wires with one, so the canvas can no longer say
-// which node an Unbundle output really comes from. These hooks put that
-// back for bundles packed by this node.
+// which node an output really comes from. These hooks put that back for
+// bundles packed by Merge Bundles or Wireless Bundle.
 //
 // The reliable way in is SELECTION: select the Unbundle (or this node) and
 // every source it draws from is outlined and labelled with the fields it
@@ -786,6 +787,8 @@ export function openSourcesDialog(mergeNode) {
 // field 1"), so a second tooltip would only fight it.
 
 const UNBUNDLE_TYPE = "Unbundle (obvpm)";
+const SPLIT_TYPE = "AUNSplitBundle";
+const WIRELESS_TYPE = "AUNWirelessBundle";
 const PIN_TOLERANCE = 14;
 const MAX_LABEL = 120;
 
@@ -799,6 +802,21 @@ function isUnbundle(node) {
 
 function isMergeNode(node) {
   return !!node && (node.comfyClass === NODE_TYPE || node.type === NODE_TYPE);
+}
+
+function isSplitNode(node) {
+  return !!node
+    && (node.comfyClass === SPLIT_TYPE || node.type === SPLIT_TYPE);
+}
+
+function isWirelessNode(node) {
+  return !!node
+    && (node.comfyClass === WIRELESS_TYPE || node.type === WIRELESS_TYPE);
+}
+
+/** A node that packs a bundle and can name where each field came from. */
+function isProducer(node) {
+  return isMergeNode(node) || isWirelessNode(node);
 }
 
 function linkAt(graph, id) {
@@ -825,36 +843,108 @@ function constantNameOf(node) {
   return String(getWidget(node, "get")?.value ?? "").trim();
 }
 
-/** The merge node feeding this Unbundle, wired or by constant name. */
-function mergeNodeFor(node, depth = 0) {
-  if (!node || depth > 4) return null;
+/** A Split Bundle is reading by name when `get` is on and it has a name. */
+function splitReadsByName(node) {
+  const value = getWidget(node, "get")?.value;
+  const on = value === true || value === 1 || value === "true";
+  return on && !!String(getWidget(node, "constant")?.value ?? "").trim();
+}
 
-  // A wired bundle, through reroutes.
-  const reroute = String(node.type ?? "") === "Reroute";
-  const link = inputLink(node, reroute ? null : "in");
-  if (link) {
-    const origin = node.graph?.getNodeById?.(link.origin_id) ?? null;
-    if (origin) {
-      if (isMergeNode(origin)) return origin;
-      if (String(origin.type ?? "") === "Reroute") {
-        return mergeNodeFor(origin, depth + 1);
-      }
-      // A KJ Get reads a constant by name: see whether that setter is us.
-      if (String(origin.type ?? "") === "GetNode") {
-        const name = String(origin.widgets?.[0]?.value ?? "").trim();
-        const hit = name ? findSetter(name, origin) : null;
-        if (hit && isMergeNode(hit.node)) return hit.node;
-      }
-    }
-  }
-
-  // No wire: an Unbundle with `get` on reads a setter by that name.
-  const name = constantNameOf(node);
-  if (name) {
-    const hit = findSetter(name, node);
-    if (hit && isMergeNode(hit.node)) return hit.node;
+/** A setter's producer: itself, or what a KJ Set carries. */
+function producerOfSetter(hit) {
+  if (!hit?.node) return null;
+  if (isProducer(hit.node)) return hit.node;
+  if (String(hit.node.type ?? "") === "SetNode") {
+    const up = sourceOf(hit.node, hit.node.inputs?.[0]);
+    if (up && isProducer(up.node)) return up.node;
   }
   return null;
+}
+
+/**
+ * The producer a reader draws from: a Merge Bundles or Wireless Bundle
+ * node, wired or by constant name. Readers are OBVPM's Unbundle, a Split
+ * Bundle and (as a pass-through) a KJ Get.
+ */
+function producerFor(node, depth = 0) {
+  if (!node || depth > 6) return null;
+
+  if (isSplitNode(node)) {
+    if (splitReadsByName(node)) {
+      const name = String(getWidget(node, "constant")?.value ?? "").trim();
+      return producerOfSetter(findSetter(name, node));
+    }
+    const input = (node.inputs ?? []).find((item) => item?.name === "bundle");
+    const link = input?.link != null ? linkAt(node.graph, input.link) : null;
+    if (!link) return null;
+    const origin = node.graph?.getNodeById?.(link.origin_id) ?? null;
+    if (!origin) return null;
+    if (isProducer(origin)) return origin;
+    if (String(origin.type ?? "") === "Reroute") {
+      return producerFor(origin, depth + 1);
+    }
+    if (String(origin.type ?? "") === "GetNode") {
+      const name = String(origin.widgets?.[0]?.value ?? "").trim();
+      return name ? producerOfSetter(findSetter(name, origin)) : null;
+    }
+    return null;
+  }
+
+  if (isUnbundle(node)) {
+    // A wired bundle, through reroutes.
+    const reroute = String(node.type ?? "") === "Reroute";
+    const link = inputLink(node, reroute ? null : "in");
+    if (link) {
+      const origin = node.graph?.getNodeById?.(link.origin_id) ?? null;
+      if (origin) {
+        if (isProducer(origin)) return origin;
+        if (String(origin.type ?? "") === "Reroute") {
+          return producerFor(origin, depth + 1);
+        }
+        // A KJ Get reads a constant by name: see whether that setter is us.
+        if (String(origin.type ?? "") === "GetNode") {
+          const name = String(origin.widgets?.[0]?.value ?? "").trim();
+          const hit = name ? findSetter(name, origin) : null;
+          const producer = producerOfSetter(hit);
+          if (producer) return producer;
+        }
+      }
+    }
+
+    // No wire: an Unbundle with `get` on reads a setter by that name.
+    const name = constantNameOf(node);
+    if (name) return producerOfSetter(findSetter(name, node));
+    return null;
+  }
+
+  if (String(node.type ?? "") === "GetNode") {
+    const name = String(node.widgets?.[0]?.value ?? "").trim();
+    return name ? producerOfSetter(findSetter(name, node)) : null;
+  }
+  return null;
+}
+
+/**
+ * A producer's fields and their sources. Merge Bundles computes a plan;
+ * a node with an `aunBundleFieldEntries` hook (Wireless Bundle) answers
+ * itself, in the same entry shape.
+ */
+function entriesFor(node) {
+  if (!node) return [];
+  if (typeof node.aunBundleFieldEntries === "function") {
+    const now = Date.now();
+    const hit = node.__aunTraceEntries;
+    if (hit && now - hit.at < 500) return hit.entries;
+    let entries = [];
+    try {
+      entries = node.aunBundleFieldEntries() ?? [];
+    } catch (err) {
+      entries = [];
+    }
+    node.__aunTraceEntries = { at: now, entries };
+    return entries;
+  }
+  return planFor(node);
 }
 
 /** A merge node's plan, cached briefly: it is read on every redraw. */
@@ -867,10 +957,10 @@ function planFor(node) {
   return entries;
 }
 
-/** Field name -> the plan entry that supplies it. */
-function fieldMap(mergeNode) {
+/** Field name -> the entry that supplies it. */
+function fieldMap(producer) {
   const map = new Map();
-  for (const entry of planFor(mergeNode)) {
+  for (const entry of entriesFor(producer)) {
     for (const name of entry.final ?? []) {
       if (!map.has(name)) map.set(name, entry);
     }
@@ -990,17 +1080,19 @@ function resolveOrigin(node, link, depth = 0) {
 }
 
 /**
- * A consumer's input, followed all the way back: input wire -> Unbundle
- * output -> merge plan -> the node that really supplies that field.
+ * A consumer's input, followed all the way back: input wire -> reader
+ * output -> producer field -> the node that really supplies that value.
  */
 function traceThroughInput(node, input) {
   const link = input?.link != null ? linkAt(node.graph, input.link) : null;
   if (!link) return null;
   const origin = resolveOrigin(node, link);
-  if (!origin || !isUnbundle(origin.node)) return null;
-  const merge = mergeNodeFor(origin.node);
+  if (!origin || !(isUnbundle(origin.node) || isSplitNode(origin.node))) {
+    return null;
+  }
+  const producer = producerFor(origin.node);
   const field = outputName(origin.node.outputs?.[origin.slot]);
-  const entry = merge ? fieldMap(merge).get(field) : null;
+  const entry = producer ? fieldMap(producer).get(field) : null;
   return entry?.source?.node ? { field, entry } : null;
 }
 
@@ -1022,13 +1114,13 @@ function traceAt(x, y) {
       && y >= node.pos[1] - 24 && y <= node.pos[1] + node.size[1] + 24;
     if (!near) continue;
 
-    // An Unbundle's output pin: the field's own source.
-    if (isUnbundle(node)) {
+    // A reader's output pin: the field's own source.
+    if (isUnbundle(node) || isSplitNode(node)) {
       const output = pinUnder(node, x, y);
       if (output) {
-        const merge = mergeNodeFor(node);
+        const producer = producerFor(node);
         const field = outputName(output);
-        const entry = merge ? fieldMap(merge).get(field) : null;
+        const entry = producer ? fieldMap(producer).get(field) : null;
         if (entry?.source?.node) return { field, entry };
       }
     }
@@ -1077,13 +1169,13 @@ function selectedTraceTargets() {
   const targets = [];
   for (const node of nodes) {
     if (!isSelected(node)) continue;
-    if (isMergeNode(node)) {
-      targets.push({ node, entries: planFor(node) });
+    if (isProducer(node)) {
+      targets.push({ node, entries: entriesFor(node) });
       continue;
     }
-    if (isUnbundle(node)) {
-      const merge = mergeNodeFor(node);
-      if (merge) targets.push({ node, entries: planFor(merge) });
+    if (isUnbundle(node) || isSplitNode(node)) {
+      const producer = producerFor(node);
+      if (producer) targets.push({ node, entries: entriesFor(producer) });
       continue;
     }
     // A downstream node: follow each input through the Unbundle to the
@@ -1161,7 +1253,9 @@ function drawMap(ctx, entries, labelNode = null) {
     if (!labelNode || node !== labelNode) continue;
     const parts = list.map((entry) => {
       const names = (entry.final ?? []).join(", ") || "?";
-      return `${names} · ${kindOf(entry)}${entry.skipped ? " · muted" : ""}`;
+      return `${names} · ${kindOf(entry)}`
+        + (entry.skipped ? " · muted" : "")
+        + (entry.disabled ? " · off" : "");
     });
     drawLabel(ctx, node, clip(parts.join("   |   ")));
   }
@@ -1179,7 +1273,8 @@ function drawTrace(ctx) {
       ctx,
       node,
       clip(`${field} ← ${titleOf(node)} · ${kindOf(entry)}`
-        + (entry.skipped ? " · muted" : "")),
+        + (entry.skipped ? " · muted" : "")
+        + (entry.disabled ? " · off" : "")),
     );
     return;
   }
@@ -1277,18 +1372,20 @@ app.registerExtension({
   },
 
   async beforeRegisterNodeDef(nodeType, nodeData) {
-    // Tracing lives on OBVPM's Unbundle: only its menu is patched, never
-    // its file.
-    if (nodeData.name === UNBUNDLE_TYPE) {
+    // Tracing lives on the readers/producers: only their menus are patched,
+    // never their files.
+    if (nodeData.name === UNBUNDLE_TYPE
+        || nodeData.name === SPLIT_TYPE
+        || nodeData.name === WIRELESS_TYPE) {
       const baseMenu = nodeType.prototype.getExtraMenuOptions;
       nodeType.prototype.getExtraMenuOptions = function (canvas, options) {
         const result = baseMenu?.apply(this, arguments);
         if (!Array.isArray(options)) return result;
-        const merge = mergeNodeFor(this);
-        if (!merge) return result;
+        const producer = isProducer(this) ? this : producerFor(this);
+        if (!producer) return result;
         options.push({
           content: "Bundle sources…",
-          callback: () => openSourcesDialog(merge),
+          callback: () => openSourcesDialog(producer),
         });
         return result;
       };

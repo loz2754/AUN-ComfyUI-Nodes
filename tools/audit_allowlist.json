@@ -7,6 +7,7 @@
     "AUNMultiMuteIndex",
     "AUNMultiUniversal",
     "AUNRandomTextIndexSwitch",
-    "AUNTextIndexSwitch"
+    "AUNTextIndexSwitch",
+    "AUNWirelessBundle"
   ]
 }

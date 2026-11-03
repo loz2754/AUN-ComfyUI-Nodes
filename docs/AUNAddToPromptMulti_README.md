@@ -39,6 +39,7 @@ For each addon slot `N`:
 - Manual node width is preserved — resizing the node wider will stick across mode toggles and workflow reloads.
 - Auto-height adjusts to fit the number of active addon slots.
 - Minimum height enforcement prevents manual resize below usable thresholds.
+- The node keeps the size you set: the info area at the bottom scrolls when its text exceeds the bottom boundary (mouse wheel over the area, or the scrollbar on the right).
 
 ## Common setups
 

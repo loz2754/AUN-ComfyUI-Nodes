@@ -108,6 +108,7 @@ from .AUNTitleImagePreview import AUNTitleImagePreview
 from .AUNWan22MoE import AUNWan22MoE
 from .AUNWidgetConfig import AUNWidgetConfig
 from .AUNWildcardAddToPrompt import AUNWildcardAddToPrompt
+from .AUNWirelessBundle import AUNWirelessBundle
 from .KSamplerInputs import KSamplerInputs
 from .MainFolderManualName import MainFolderManualName
 from .TextSwitch2InputWithTextOutput import TextSwitch2InputWithTextOutput
@@ -220,6 +221,7 @@ NODE_CLASS_MAPPINGS = {
     "AUNWan22MoE": AUNWan22MoE,
     "AUNWidgetConfig": AUNWidgetConfig,
     "AUNWildcardAddToPrompt": AUNWildcardAddToPrompt,
+    "AUNWirelessBundle": AUNWirelessBundle,
     "KSamplerInputs": KSamplerInputs,
     "MainFolderManualName": MainFolderManualName,
     "TextSwitch2InputWithTextOutput": TextSwitch2InputWithTextOutput,
@@ -329,6 +331,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "AUNWan22MoE": "Wan2.2 MoE KSampler",
     "AUNWidgetConfig": "AUN Widget Config",
     "AUNWildcardAddToPrompt": "AUN Wildcard Add-To-Prompt",
+    "AUNWirelessBundle": "Wireless Bundle",
     "KSamplerInputs": "KSampler Inputs",
     "MainFolderManualName": "Manual Name",
     "TextSwitch2InputWithTextOutput": "Text Switch 2 Input With Text Output",
