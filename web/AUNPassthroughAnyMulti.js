@@ -577,9 +577,13 @@ function setupCollapseConnections(node) {
 
   const origMenu = node.getExtraMenuOptions;
   node.getExtraMenuOptions = function (canvas, options) {
-    if (origMenu) origMenu.apply(this, [canvas, options]);
+    try {
+      origMenu?.apply(this, [canvas, options]);
+    } catch (e) {
+      console.warn("[AUN] menu hook failed", e);
+    }
     const on = !!this.properties?.[COLLAPSE_KEY];
-    options.push(null, {
+    options.push({
       content: on ? "Show Connections" : "Collapse Connections",
       callback: () => toggleCollapse.call(this),
     });
@@ -670,8 +674,12 @@ function setupMaxValueLen(node) {
 
   const origMenu = node.getExtraMenuOptions;
   node.getExtraMenuOptions = function (canvas, options) {
-    if (origMenu) origMenu.apply(this, [canvas, options]);
-    options.push(null, {
+    try {
+      origMenu?.apply(this, [canvas, options]);
+    } catch (e) {
+      console.warn("[AUN] menu hook failed", e);
+    }
+    options.push({
       content: "Max Value Len",
       disabled: true,
     });

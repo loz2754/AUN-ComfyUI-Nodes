@@ -1379,7 +1379,12 @@ app.registerExtension({
         || nodeData.name === WIRELESS_TYPE) {
       const baseMenu = nodeType.prototype.getExtraMenuOptions;
       nodeType.prototype.getExtraMenuOptions = function (canvas, options) {
-        const result = baseMenu?.apply(this, arguments);
+        let result;
+        try {
+          result = baseMenu?.apply(this, arguments);
+        } catch (e) {
+          console.warn("[AUN] menu hook failed", e);
+        }
         if (!Array.isArray(options)) return result;
         const producer = isProducer(this) ? this : producerFor(this);
         if (!producer) return result;
@@ -1444,7 +1449,12 @@ app.registerExtension({
     };
 
     const baseMenu = proto.getExtraMenuOptions;    proto.getExtraMenuOptions = function (canvas, options) {
-      const result = baseMenu?.apply(this, arguments);
+      let result;
+      try {
+        result = baseMenu?.apply(this, arguments);
+      } catch (e) {
+        console.warn("[AUN] menu hook failed", e);
+      }
       if (!Array.isArray(options)) return result;
       options.push({
         content: "Constants…",

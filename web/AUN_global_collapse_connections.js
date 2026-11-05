@@ -248,11 +248,15 @@ function hookNode(node) {
 
   const origMenu = node.getExtraMenuOptions;
   node.getExtraMenuOptions = function (canvas, options) {
-    if (origMenu) origMenu.apply(this, [canvas, options]);
+    try {
+      origMenu?.apply(this, [canvas, options]);
+    } catch (e) {
+      console.warn("[AUN] menu hook failed", e);
+    }
     if (!globalDefault) return;
     if (shouldSkip(this)) return;
     const on = isConnectionCollapsed(this);
-    options.push(null, {
+    options.push({
       content: on ? "Show Connections" : "Collapse Connections",
       callback: () => toggleNodeCollapse(this),
     });

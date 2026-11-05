@@ -688,13 +688,18 @@ function installAddSplitMenu(nodeType) {
 
   const base = proto.getExtraMenuOptions;
   proto.getExtraMenuOptions = function (canvas, options) {
-    const result = base?.apply(this, arguments);
+    let result;
+    try {
+      result = base?.apply(this, arguments);
+    } catch (e) {
+      console.warn("[AUN] menu hook failed", e);
+    }
     if (!Array.isArray(options)) return result;
     options.unshift({
       content: "Add Split Bundle (get)",
       disabled: !setNameOf(this),
       callback: () => addSplitBundleFor(this),
-    }, null);
+    });
     return result;
   };
 }

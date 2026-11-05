@@ -203,9 +203,13 @@ function setupNode(node) {
 
     const origMenu = node.getExtraMenuOptions;
     node.getExtraMenuOptions = function (canvas, options) {
-      if (origMenu) origMenu.apply(this, [canvas, options]);
+      try {
+        origMenu?.apply(this, [canvas, options]);
+      } catch (e) {
+        console.warn("[AUN] menu hook failed", e);
+      }
       const on = !!this.properties?.[PK];
-      options.push(null, {
+      options.push({
         content: on ? "Show Controls" : "Preview Mode",
         callback: () => toggle(this),
       });

@@ -263,7 +263,11 @@ app.registerExtension({
             applyHidden(this, { resize: false });
             const menu = this.getExtraMenuOptions;
             this.getExtraMenuOptions = function (canvas, options) {
-                if (menu) menu.apply(this, arguments);
+                try {
+                    menu?.apply(this, arguments);
+                } catch (e) {
+                    console.warn("[AUN] menu hook failed", e);
+                }
                 options.push({ content: "Configure widgets", callback: () => openConfig(this) });
             };
         };

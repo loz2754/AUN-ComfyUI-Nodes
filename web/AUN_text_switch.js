@@ -32,10 +32,12 @@ app.registerExtension({
       // Add a right-click menu to toggle compact mode
       const origGetMenuOptions = this.getMenuOptions;
       this.getMenuOptions = function () {
-        const options = origGetMenuOptions
-          ? origGetMenuOptions.apply(this, arguments)
-          : [];
-        options.push(null);
+        let options = [];
+        try {
+          options = origGetMenuOptions?.apply(this, arguments) ?? [];
+        } catch (e) {
+          console.warn("[AUN] menu hook failed", e);
+        }
         options.push({
           content: this.properties._AUN_compactMode
             ? "AUN: Show all controls"
