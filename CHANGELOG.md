@@ -8,6 +8,16 @@
 ### Changed
 
 ### Fixed
+
+### Notes
+
+## [2.35.3] - 2026-11-05
+
+### Added
+
+### Changed
+
+### Fixed
 - Node context menus no longer disappear when another extension's `getExtraMenuOptions` hook throws. AUN's own menu hooks now catch failures from the rest of the chain, so the stock menu plus AUN's items still render — previously a single throwing pack (e.g. `comfyui-custom-scripts` scanning LiteGraph's `null` separators on preview nodes such as `AUN Image Single/Batch 3`) could suppress the entire right-click menu. AUN also stopped inserting `null` menu separators itself, since other packs' menu scanners do not expect them.
 
 ### Notes
