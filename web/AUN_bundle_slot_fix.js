@@ -1,6 +1,12 @@
 import { app } from "../../scripts/app.js";
 import { registerPromptPass } from "./aun_bundle_constants.js";
 
+/*
+ * Compatibility shim for OBVPM / KJ bundle readers. The bundle conventions
+ * it corrects come from OBVPM (https://github.com/chanon/comfyui-obvpm) by
+ * chanon — AUN's bundle nodes would not exist without that work.
+ */
+
 const AUN_INPUT_CLASSES = new Set([
     "AUNInputs", "AUNInputsBasic", "AUNInputsBasicSwitch", "AUNInputsRefine", "AUNInputsRefineBasic",
     "AUNInputsDiffusers", "AUNInputsDiffusersBasic", "AUNInputsDiffusersRefineBasic",

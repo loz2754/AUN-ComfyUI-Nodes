@@ -1,5 +1,9 @@
 """Split one bundle back into its fields.
 
+This builds on OBVPM by chanon (https://github.com/chanon/comfyui-obvpm):
+the bundle format, the `set`-name constant and the `obvpmBundleNames` hook
+are his design. AUN's bundle nodes exist because of that work.
+
 This is the reader for the bundles every AUN setter node produces (the
 `set` widget + `bundle` output), and it needs no other node pack: the
 bundle is a plain dict, and the field names are supplied by the browser

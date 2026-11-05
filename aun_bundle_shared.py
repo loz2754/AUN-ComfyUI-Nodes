@@ -1,4 +1,9 @@
-"""Shared helpers for OBVPM-compatible bundles (plain ordered dicts)."""
+"""Shared helpers for OBVPM-compatible bundles (plain ordered dicts).
+
+The bundle format, the `set`-name constant and the `obvpm*` compatibility
+hooks are OBVPM's design (https://github.com/chanon/comfyui-obvpm) by
+chanon. AUN's bundle nodes build directly on that work — thank you.
+"""
 
 BUNDLE = "OBVPM_BUNDLE"
 

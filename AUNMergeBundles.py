@@ -1,5 +1,9 @@
 """Merge several OBVPM bundles into one.
 
+This builds on OBVPM by chanon (https://github.com/chanon/comfyui-obvpm):
+the bundle format, the `set`-name constant and the `obvpmBundleNames` hook
+are his design. AUN's bundle nodes exist because of that work.
+
 The stock OBVPM Unbundle takes a single bundle. Feeding it the output of
 several nodes (a checkpoint loader, an image loader, an empty latent, ...)
 meant putting a Bundle node in between and wiring each one into a field.

@@ -16,6 +16,10 @@
  * Nothing here imports an external node pack. OBVPM/KJ nodes are only
  * recognised as optional sources or setters when they happen to be in the
  * graph.
+ *
+ * The bundle format, the `set`-name constant and the `obvpm*` hooks are
+ * OBVPM's design (https://github.com/chanon/comfyui-obvpm) by chanon.
+ * AUN's bundle nodes build directly on that work — thank you.
  */
 
 import { app } from "../../scripts/app.js";

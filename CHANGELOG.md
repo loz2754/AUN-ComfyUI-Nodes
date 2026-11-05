@@ -10,6 +10,7 @@
 ### Fixed
 
 ### Notes
+- Credit: the bundle format, `set`-name constants and the `obvpm*` compatibility hooks are **OBVPM**'s design (https://github.com/chanon/comfyui-obvpm) by **chanon**. AUN's bundle nodes build directly on that work; it is now acknowledged in the README, `docs/BUNDLE_NODES.md` and the bundle source files.
 
 ## [2.35.4] - 2026-11-05
 

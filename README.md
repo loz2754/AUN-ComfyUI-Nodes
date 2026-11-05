@@ -483,6 +483,7 @@ From your ComfyUI folder:
 
 AUN Nodes draw inspiration and code patterns from several excellent ComfyUI node projects. Special thanks to:
 
+- **OBVPM** ([comfyui-obvpm](https://github.com/chanon/comfyui-obvpm), by **chanon**) — AUN owes it a great deal. The name/value bundle, the `set`-name constant, the `obvpmBundleNames` / `obvpmConstantWidget` hooks, and the Unbundle / Value Presets behaviour that AUN interoperates with are all OBVPM's design. Merge Bundles, Split Bundle, Wireless Bundle and every AUN node's `bundle` output exist because of that work.
 - **rgthree** (Power Lora Loader and related nodes)
 - **WAS Node Suite** (was-nodes)
 - **Impact Pack** (comfyui-impact-pack)

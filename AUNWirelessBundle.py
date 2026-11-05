@@ -1,5 +1,9 @@
 """Pack values from other nodes into one bundle, with or without wires.
 
+This builds on OBVPM by chanon (https://github.com/chanon/comfyui-obvpm):
+the bundle format, the `set`-name constant and the `obvpmBundleNames` hook
+are his design. AUN's bundle nodes exist because of that work.
+
 A bundle is a plain name/value dict, so anything can travel in it. This
 node is the collecting end: each field is either
 

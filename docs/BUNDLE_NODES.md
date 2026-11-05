@@ -1,5 +1,7 @@
 # Bundle Set Nodes and Split Bundle
 
+> **Credit:** the bundle format, the `set`-name constant and the `obvpm*` compatibility hooks are the design of **OBVPM** ([comfyui-obvpm](https://github.com/chanon/comfyui-obvpm)) by **chanon**. AUN's bundle setters, Merge Bundles, Split Bundle and Wireless Bundle build directly on that work — thank you.
+
 Track of AUN nodes adapted to act as bundle setters (a `set` STRING input + a `bundle` `OBVPM_BUNDLE` output), and of the `Split Bundle` reader that turns a bundle back into fields. A bundle is a plain dict, so the wire type string is kept as an opaque compatibility token: AUN neither imports nor needs another node pack to produce or read one.
 
 ## Reading bundles
