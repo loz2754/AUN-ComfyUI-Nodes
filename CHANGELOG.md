@@ -4,6 +4,16 @@
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Fixed
+
+### Notes
+
+## [2.35.4] - 2026-11-05
+
+### Added
 - `Split Bundle`: the title can be hand-typed. Double-clicking the node title and naming it makes that title the node's own: it survives reloads, a changed constant and switching `get` off. Loading a workflow no longer re-derives the title (KJ's Get nodes behave the same way) — it only records an exact `Get <current constant>` title as generated, so any other hand-typed name is kept. The typed title is mirrored into `properties.aun_split_manual_title` (title-accessor watcher and serialize-time save). Right-click → **Reset title** clears it and returns to the generated title.
 
 ### Changed
