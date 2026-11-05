@@ -27,7 +27,6 @@ import {
 } from "./index.js";
 import {
   ConstantRefusal,
-  applyGeneratedTitle,
   eachGraphLink,
   fieldsOf,
   isNodeType,
@@ -55,6 +54,8 @@ const NODE_TYPE = "AUNSplitBundle";
 const MAX_OUTPUTS = 32;                 // mirrors AUNSplitBundle.MAX_OUTPUTS
 const FIELDS_WIDGET = "fields";
 const TITLE_PROP = "aun_split_title";   // the title to put back
+const MANUAL_PROP = "aun_split_manual_title"; // a title the user typed
+const GENERATED_PROP = "aun_split_generated_title"; // the title we wrote
 const ORDER_PROP = "aun_split_order";   // saved output order, by field name
 const HIDDEN_PROP = "aun_split_hidden"; // field names with no output pin
 const SETTINGS_BUTTON = "__aun_split_settings";
@@ -381,13 +382,203 @@ function syncOutputs(node, { keepSaved = false, resize = true } = {}) {
 /** The node's display name, from its registration (`nodeData`). */
 let NODE_DISPLAY = "Split Bundle";
 
+/** The title this node generates for its current mode and constant. */
+function autoTitleWanted(node) {
+  const name = getMode(node) ? constantName(node) : "";
+  return name ? `Get ${name}` : "";
+}
+
+/** The generated title this node wrote last time, if any. */
+function generatedTitle(node) {
+  const saved = node?.properties?.[GENERATED_PROP];
+  return typeof saved === "string" ? saved.trim() : "";
+}
+
+/** The hand-typed title saved on this node, if any. */
+function manualTitle(node) {
+  const saved = node?.properties?.[MANUAL_PROP];
+  return typeof saved === "string" ? saved.trim() : "";
+}
+
+/**
+ * Whether `title` is the title this node generated (now or last time).
+ * Exact match only — a typed `Get Anything` that is not this node's title
+ * still belongs to the user.
+ */
+function isAutoTitle(node, title) {
+  const text = String(title ?? "").trim();
+  if (!text) return false;
+  return text === generatedTitle(node) || text === autoTitleWanted(node);
+}
+
+/**
+ * A title the user typed: anything except the default name and the exact
+ * title this node generates for its current constant. A title that merely
+ * starts with "Get " is the user's, not ours.
+ */
+function customTitle(node) {
+  const title = String(node?.title ?? "").trim();
+  if (!title || title === NODE_DISPLAY) return "";
+  return isAutoTitle(node, title) ? "" : title;
+}
+
+/**
+ * Note that a title equal to the current generated one came from this node,
+ * without touching the title itself. Loading a workflow must leave the
+ * saved title exactly as it is (KJ's Get nodes behave this way).
+ */
+function seedTitle(node) {
+  const props = (node.properties ??= {});
+  if (props[MANUAL_PROP] != null || props[GENERATED_PROP] != null) return;
+  const title = String(node.title ?? "").trim();
+  const wanted = autoTitleWanted(node);
+  if (title && title === wanted) props[GENERATED_PROP] = title;
+}
+
+/**
+ * Notice a title the user just typed. `onTitleChanged` reports it on some
+ * frontends; the draw-time check catches the others. The title is copied
+ * into `properties` so a reload can put it back even when the restored
+ * node title arrives after this extension has run.
+ */
+function detectTitleEdit(node) {
+  const shown = node.__aunSplitTitleShown;
+  const title = String(node.title ?? "");
+  if (shown === undefined) {
+    node.__aunSplitTitleShown = title;
+    return;
+  }
+  if (title === shown) return;
+
+  const props = (node.properties ??= {});
+  const typed = customTitle(node);
+  if (typed) {
+    props[MANUAL_PROP] = typed;
+    delete props[GENERATED_PROP];
+    delete props[TITLE_PROP];
+    node.__aunSplitTitleShown = title;
+    return;
+  }
+
+  const trimmed = title.trim();
+  if (trimmed && trimmed === autoTitleWanted(node)) {
+    props[GENERATED_PROP] = trimmed;       // our own title, restored late
+  }
+
+  // A typed title stored on this node wins over a restored generated one;
+  // the default or an empty title means the user cleared it.
+  const saved = manualTitle(node);
+  if (saved && trimmed && trimmed !== NODE_DISPLAY) {
+    node.title = saved;
+    node.__aunSplitTitleShown = saved;
+    return;
+  }
+  node.__aunSplitTitleShown = title;
+  if (saved) delete props[MANUAL_PROP];
+}
+
 function applyTitle(node) {
-  applyGeneratedTitle(node, {
-    prop: TITLE_PROP,
-    prefix: "Get",
-    name: getMode(node) ? constantName(node) : "",
-    display: NODE_DISPLAY,
+  // Restoring a workflow writes the saved widget values and title; the
+  // title must stay exactly what was saved until the user edits a widget.
+  if (app?.configuringGraph) return;
+  const props = (node.properties ??= {});
+  const wanted = autoTitleWanted(node);
+  const typed = manualTitle(node) || customTitle(node);
+
+  if (typed) {
+    // The typed title is the node's own now; do not put an older title
+    // back when `get` is switched off or the constant changes.
+    props[MANUAL_PROP] = typed;
+    delete props[GENERATED_PROP];
+    delete props[TITLE_PROP];
+    node.__aunSplitTitleShown = typed;
+    if (node.title !== typed) {
+      node.title = typed;
+      node.setDirtyCanvas?.(true, true);
+    }
+    return;
+  }
+
+  delete props[MANUAL_PROP];
+  const previous = generatedTitle(node);
+
+  if (!wanted) {
+    // `get` off, or on with no constant: put the node's own title back.
+    const kept = props[TITLE_PROP];
+    delete props[TITLE_PROP];
+    delete props[GENERATED_PROP];
+    if (previous && node.title === previous) {
+      node.title = kept || NODE_DISPLAY;
+      node.setDirtyCanvas?.(true, true);
+    }
+    node.__aunSplitTitleShown = String(node.title ?? "");
+    return;
+  }
+
+  if (!previous) props[TITLE_PROP] = node.title ?? "";
+  props[GENERATED_PROP] = wanted;
+  if (node.title !== wanted) {
+    node.title = wanted;
+    node.setDirtyCanvas?.(true, true);
+  }
+  node.__aunSplitTitleShown = wanted;
+}
+
+/**
+ * Record a title written through the node's `title` accessor. This is how
+ * the frontend delivers a title edit, and it happens before any save, so
+ * the typed title is in `properties` even if the saved `title` field is
+ * later replaced by the generated one during a reload.
+ */
+function noteTitleWrite(node, value) {
+  const title = String(value ?? "").trim();
+  const props = (node.properties ??= {});
+  // A workflow load writes the saved title; do not judge it as typed or
+  // generated here. seedTitle() notices our own title after the load.
+  if (!app?.configuringGraph) {
+    if (!title || title === NODE_DISPLAY) {
+      if (props[MANUAL_PROP] != null) delete props[MANUAL_PROP];
+    } else if (!isAutoTitle(node, title)) {
+      props[MANUAL_PROP] = title;
+      delete props[GENERATED_PROP];
+      delete props[TITLE_PROP];
+    }
+  }
+  node.__aunSplitTitleShown = String(value ?? "");
+}
+
+/** Watch `node.title` on the instance, delegating to the class accessor. */
+function watchTitleWrites(node) {
+  if (node.__aunSplitTitleWatched) return;
+  node.__aunSplitTitleWatched = true;
+  let holder = node;
+  let desc = null;
+  while (holder && !desc) {
+    desc = Object.getOwnPropertyDescriptor(holder, "title");
+    holder = Object.getPrototypeOf(holder);
+  }
+  if (!desc?.get || !desc?.set) return;
+  Object.defineProperty(node, "title", {
+    configurable: true,
+    enumerable: false,
+    get() { return desc.get.call(this); },
+    set(value) {
+      desc.set.call(this, value);
+      noteTitleWrite(this, value);
+    },
   });
+}
+
+/** Drop a hand-typed title and go back to `Get <name>` (or the node name). */
+function resetTitle(node) {
+  const props = (node.properties ??= {});
+  delete props[MANUAL_PROP];
+  delete props[GENERATED_PROP];
+  delete props[TITLE_PROP];
+  node.title = "";
+  node.__aunSplitTitleShown = "";
+  applyTitle(node);
+  node.setDirtyCanvas?.(true, true);
 }
 
 // ── Field order dialog ────────────────────────────────────────────────
@@ -610,6 +801,7 @@ function injectSplit(output, root) {
 // ── UI ────────────────────────────────────────────────────────────────
 
 function installUi(node) {
+  watchTitleWrites(node);
   applyWidgetHiddenState(getWidget(node, FIELDS_WIDGET), true);
   ensureConstantCombo(node);
   applyConstantVisibility(node);
@@ -628,7 +820,7 @@ function installUi(node) {
       });
     });
   }
-  applyTitle(node);
+  seedTitle(node);
 }
 
 // ── "Add Split Bundle (get)" on every setter ─────────────────────────
@@ -666,14 +858,15 @@ function addSplitBundleFor(setter) {
   if (get) get.value = true;
   if (constant) constant.value = name;
 
-  // nodeCreated may already have run (on add); sync so the title and pins
-  // appear now. Otherwise it picks the values up when it runs.
+  // nodeCreated may already have run (on add); sync so the pins appear now.
+  // This is a fresh node, so the generated title is applied here (loads do
+  // not re-derive titles).
   if (typeof split.__aunSplitSync === "function") {
     split.__aunSplitSync();
   } else {
-    applyTitle(split);
     syncOutputs(split);
   }
+  applyTitle(split);
 
   app.canvas?.selectNode?.(split, false);
   split.setDirtyCanvas?.(true, true);
@@ -725,6 +918,50 @@ app.registerExtension({
     NODE_DISPLAY = nodeData.display_name || NODE_DISPLAY;
     const proto = nodeType.prototype;
 
+    // Keep the typed title in `properties` as well as in `title`, so a
+    // reload can restore it even if the node title it puts back is the
+    // generated one.
+    const baseSerialize = proto.serialize;
+    proto.serialize = function () {
+      const typed = customTitle(this);
+      if (typed) {
+        const props = (this.properties ??= {});
+        props[MANUAL_PROP] = typed;
+        delete props[TITLE_PROP];
+      }
+      return baseSerialize?.apply(this, arguments);
+    };
+
+    // A title the user typed stays; this puts the generated one back on
+    // request, for when the node should start following its constant again.
+    const baseMenu = proto.getExtraMenuOptions;
+    proto.getExtraMenuOptions = function (canvas, options) {
+      let result;
+      try {
+        result = baseMenu?.apply(this, arguments);
+      } catch (err) {
+        console.warn("[AUN] Split Bundle menu hook failed", err);
+      }
+      if (!Array.isArray(options)) return result;
+      if ((manualTitle(this) || customTitle(this))
+          && getMode(this) && constantName(this)) {
+        options.push({
+          content: "Reset title",
+          callback: () => resetTitle(this),
+        });
+      }
+      return result;
+    };
+
+    // Some frontends report a title edit through this callback; the rest
+    // are caught by the draw-time check.
+    const baseTitleChanged = proto.onTitleChanged;
+    proto.onTitleChanged = function () {
+      const result = baseTitleChanged?.apply(this, arguments);
+      detectTitleEdit(this);
+      return result;
+    };
+
     // A programmatic `constant`/`get` change (paste, load) does not always
     // reach the widget callback; this does.
     const baseWidgetChanged = proto.onWidgetChanged;
@@ -760,6 +997,7 @@ app.registerExtension({
     proto.onDrawForeground = function () {
       const result = baseDraw?.apply(this, arguments);
       if (!this.__aunSplitReady) return result;
+      detectTitleEdit(this);
       const now = Date.now();
       const last = this.__aunSplitRefreshAt ?? 0;
       if (now - last < 1000) return result;
