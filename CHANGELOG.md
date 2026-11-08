@@ -4,6 +4,16 @@
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Fixed
+
+### Notes
+
+## [2.35.6] - 2026-11-08
+
+### Added
 - Preset Manager: runtime application for a linked `manual_index` in **Random / Increment / Range** modes. When the index only exists during execution, the targets are ordered after the manager and the resolved row is written into their prompt inputs while it runs, so they execute with the same preset the node displays. `AUNApplyPresetToNode`'s execution-time path uses the same ordering.
 - Preset Manager: deterministic linked indices (literal/primitive INT nodes and AUN index switches in **Select** mode) are resolved at queue time, including the source node's own clamping.
 - Preset Manager setup dialog: wide/full-screen toggle (saved per browser), per-row field panels with their own scroll area and expand button, widget chips collapsed by default with a live included-count summary, and a responsive field grid.
