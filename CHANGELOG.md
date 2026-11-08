@@ -4,6 +4,16 @@
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Fixed
+
+### Notes
+
+## [2.35.5] - 2026-11-08
+
+### Added
 - `Path Filename Resolved (Video)` (`AUNPathFilenameVideoResolved`): new optional forced-input `selected_lora`. Wire an index-driven loader's runtime `selected LoRAs` output (e.g. `AUNLoRAsByPromptIndex`) into it and those LoRAs are merged into the sidecar `loras` block, so Range/Random prompt indices are recorded correctly.
 - LoRA extraction now understands index-driven loaders (`AUNLoRAsByPromptIndex`, `AUNRandomLoraModelOnlyMulti`): when `prompt_index` is a literal number, the LoRAs actually applied for that index (including per-slot enable toggles and model/clip strengths) are reported by the shared extractor, so `AUNSaveImage`, `AUNSaveVideo`/`AUNSaveVideoV2` and `AUNPathFilenameVideoResolved` sidecars all list them automatically.
 
@@ -16,7 +26,6 @@
 
 ### Notes
 - Credit: the bundle format, `set`-name constants and the `obvpm*` compatibility hooks are **OBVPM**'s design (https://github.com/chanon/comfyui-obvpm) by **chanon**. AUN's bundle nodes build directly on that work; it is now acknowledged in the README, `docs/BUNDLE_NODES.md` and the bundle source files.
-
 ## [2.35.4] - 2026-11-05
 
 ### Added
