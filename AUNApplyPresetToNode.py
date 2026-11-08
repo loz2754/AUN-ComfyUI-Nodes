@@ -97,6 +97,76 @@ def _find_target(prompt, identifier: str):
     return None, None
 
 
+def _depends_on(prompt, start_id, needle_id) -> bool:
+    """True when needle_id is upstream of start_id (walking input links)."""
+    if not isinstance(prompt, dict):
+        return False
+    needle = str(needle_id)
+    seen = set()
+    stack = [str(start_id)]
+    while stack:
+        nid = stack.pop()
+        if nid in seen:
+            continue
+        seen.add(nid)
+        node = prompt.get(nid)
+        if not isinstance(node, dict):
+            continue
+        inputs = node.get("inputs")
+        if not isinstance(inputs, dict):
+            continue
+        for value in inputs.values():
+            if _is_link(value):
+                src = str(value[0])
+                if src == needle:
+                    return True
+                stack.append(src)
+    return False
+
+
+def _inject_order_dependency(prompt, target_id, source_id, tag=None) -> bool:
+    """Force target_id to execute after source_id via a harmless fake link.
+
+    ComfyUI's executor builds its dependency graph from every link in a node's
+    inputs, while validation and input gathering only consider inputs the node
+    declares. An undeclared link key therefore orders the nodes without
+    changing inputs or behavior. Cycles are refused.
+    See docs/preset-manager-execution-ordering.md.
+    """
+    if not isinstance(prompt, dict):
+        return False
+    target = prompt.get(str(target_id))
+    source = prompt.get(str(source_id))
+    if not isinstance(target, dict) or not isinstance(source, dict):
+        return False
+    inputs = target.get("inputs")
+    if not isinstance(inputs, dict):
+        return False
+    key = "__aun_pm_order_%s" % (tag or source_id)
+    if key in inputs:
+        return True
+    # Adding target -> source would close a cycle if source already depends
+    # on target (target is upstream of source).
+    if _depends_on(prompt, source_id, target_id):
+        return False
+    inputs[key] = [str(source_id), 0]
+    return True
+
+
+def _order_targets_after(prompt, source_id, identifier):
+    """Order every target in identifier after source_id. Returns (ok, total)."""
+    ordered = 0
+    total = 0
+    for single in [x.strip() for x in str(identifier or "").split(",") if x.strip()]:
+        target, target_id = _find_target(prompt, single)
+        if target is None:
+            continue
+        total += 1
+        if _inject_order_dependency(prompt, target_id, source_id):
+            ordered += 1
+    return ordered, total
+
+
 def _coerce(name: str, value: Any, class_type: str, note_list: list):
     if not class_type:
         return value
@@ -248,6 +318,11 @@ def _aun_apply_presets_on_prompt(json_data):
                 continue
             values = _resolve_preset_values(prompt, node)
             if values is None:
+                # Values only resolve during execution (linked Random/
+                # Increment/Range index or linked phrase). Order the targets
+                # after this node; apply() writes the values into the prompt
+                # when it executes.
+                _order_targets_after(prompt, nid, ident)
                 continue
             values = _apply_aliases(values, inputs.get("aliases"))
             values = _filter_values(values, inputs.get("only_widgets"))
@@ -268,10 +343,28 @@ def _aun_apply_presets_on_prompt(json_data):
                 if not tv:
                     continue
                 notes = []
-                _write_values_into_node(target, tv, notes)
+                applied = _write_values_into_node(target, tv, notes)
+                # Keep the frontend in sync — one event per target so every
+                # node in a multi-target identifier updates its canvas.
+                try:
+                    from server import PromptServer
+                    meta = target.get("_meta", {}) if isinstance(target, dict) else {}
+                    target_title = meta.get("title") or (target.get("class_type") if isinstance(target, dict) else "")
+                    PromptServer.instance.send_sync(
+                        "AUN_apply_preset_applied",
+                        {
+                            "node_id": str(nid),
+                            "target_id": str(target_id or ""),
+                            "target_title": str(target_title or ""),
+                            "values": applied,
+                            "notes": notes,
+                        },
+                    )
+                except Exception:
+                    pass
                 try:
                     import logging
-                    logging.warning("[AUN] applied %s to %s: %s", tv, target_id, notes)
+                    logging.warning("[AUN] applied %s to %s: %s", applied, target_id, notes)
                 except Exception:
                     pass
 
@@ -281,6 +374,22 @@ def _aun_apply_presets_on_prompt(json_data):
                 continue
             resolved = resolve_preset_selection(inputs, prompt=prompt, queue_time=True)
             if not resolved:
+                # Values only resolve during execution (Random/Increment/Range
+                # index or a linked phrase). The manager writes them into the
+                # targets' prompt inputs when it executes, so order the targets
+                # after it.
+                ordered, total = _order_targets_after(prompt, nid, ident)
+                if total and ordered < total:
+                    try:
+                        import logging
+                        logging.warning(
+                            "[AUN] Preset Manager #%s: cannot order %d of %d target(s) "
+                            "after the manager (dependency cycle); those targets keep "
+                            "their existing widget values.",
+                            nid, total - ordered, total,
+                        )
+                    except Exception:
+                        pass
                 continue
             values = resolved[0] if isinstance(resolved, (tuple, list)) else resolved
             if not isinstance(values, dict) or not values:
@@ -299,25 +408,28 @@ def _aun_apply_presets_on_prompt(json_data):
                             break
                 if not isinstance(tv, dict) or not tv:
                     continue
-            notes = []
-            applied =                 _write_values_into_node(target, tv, notes)
-            # Keep frontend widgets in sync.
-            try:
-                from server import PromptServer
-                meta = target.get("_meta", {}) if isinstance(target, dict) else {}
-                target_title = meta.get("title") or (target.get("class_type") if isinstance(target, dict) else "")
-                PromptServer.instance.send_sync(
-                    "AUN_apply_preset_applied",
-                    {
-                        "node_id": str(nid),
-                        "target_id": str(target_id or ""),
-                        "target_title": str(target_title or ""),
-                        "values": applied,
-                        "notes": notes,
-                    },
-                )
-            except Exception:
-                pass
+                notes = []
+                applied = _write_values_into_node(target, tv, notes)
+                if not applied:
+                    continue
+                # Keep frontend widgets in sync — one event per target so
+                # every node in a multi-target identifier updates its canvas.
+                try:
+                    from server import PromptServer
+                    meta = target.get("_meta", {}) if isinstance(target, dict) else {}
+                    target_title = meta.get("title") or (target.get("class_type") if isinstance(target, dict) else "")
+                    PromptServer.instance.send_sync(
+                        "AUN_apply_preset_applied",
+                        {
+                            "node_id": str(nid),
+                            "target_id": str(target_id or ""),
+                            "target_title": str(target_title or ""),
+                            "values": applied,
+                            "notes": notes,
+                        },
+                    )
+                except Exception:
+                    pass
 
             # Also notify the Preset Manager footer (wireless/auto-apply path
             # may never execute the manager node, so it would not emit its own
@@ -486,6 +598,25 @@ class AUNApplyPresetToNode:
                 continue
             a = _write_values_into_node(t, tv, notes_all)
             applied_all[tid] = a
+            # Per-target frontend sync.
+            if unique_id is not None and a:
+                try:
+                    from server import PromptServer  # type: ignore[import-not-found]
+
+                    meta = t.get("_meta", {}) if isinstance(t, dict) else {}
+                    target_title = meta.get("title") or (t.get("class_type") if isinstance(t, dict) else "")
+                    PromptServer.instance.send_sync(
+                        "AUN_apply_preset_applied",
+                        {
+                            "node_id": str(unique_id),
+                            "target_id": str(tid or ""),
+                            "target_title": str(target_title or ""),
+                            "values": a,
+                            "notes": notes_all,
+                        },
+                    )
+                except Exception:
+                    pass
             target, target_id = t, tid
 
         applied_flat = {}
@@ -495,25 +626,6 @@ class AUNApplyPresetToNode:
         applied = applied_flat
 
         applied_json = json.dumps(applied, ensure_ascii=False, separators=(",", ":"))
-
-        if unique_id is not None and target is not None:
-            try:
-                from server import PromptServer  # type: ignore[import-not-found]
-
-                meta = target.get("_meta", {}) if isinstance(target, dict) else {}
-                target_title = meta.get("title") or (target.get("class_type") if isinstance(target, dict) else "")
-                PromptServer.instance.send_sync(
-                    "AUN_apply_preset_applied",
-                    {
-                        "node_id": str(unique_id),
-                        "target_id": str(target_id or ""),
-                        "target_title": str(target_title or ""),
-                        "values": applied,
-                        "notes": notes_all,
-                    },
-                )
-            except Exception:
-                pass
 
         return (applied_json, bool(applied), "; ".join(notes_all))
 

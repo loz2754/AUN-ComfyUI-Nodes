@@ -10,6 +10,7 @@ import { findNodeByIdentifier, getWidget } from "./index.js";
 const MAX_ROWS = 20;
 const STYLE_KEY = "__AUN_pm_setupStyle";
 const MODAL_KEY = "__AUN_pm_setupRefs";
+const WIDE_KEY = "AUN_pm_setup_wide";
 
 // ── Helpers ────────────────────────────────────────────────────────
 
@@ -66,6 +67,42 @@ function getIncluded(data, schemaNames) {
   return data.widgets.filter((n) => schemaNames.includes(n));
 }
 
+// Multi-target rows may store values nested per target id ({ "1": {...}, "3": {...} })
+// while single-target rows (and manual edits) use a flat { widget: value } map.
+// These helpers read/write both shapes so captured multi-target rows display
+// and edit correctly.
+function targetValueMap(values, wd) {
+  const tid = wd?._target ? String(wd._target.id ?? "") : "";
+  if (!tid || !values || typeof values !== "object") return null;
+  const nested = values[tid];
+  if (nested && typeof nested === "object" && !Array.isArray(nested)) return nested;
+  return null;
+}
+
+function readFieldValue(values, wd) {
+  if (!values || typeof values !== "object") return undefined;
+  const map = targetValueMap(values, wd);
+  if (map && Object.prototype.hasOwnProperty.call(map, wd.name)) return map[wd.name];
+  if (Object.prototype.hasOwnProperty.call(values, wd.name)) return values[wd.name];
+  return undefined;
+}
+
+function writeFieldValue(values, wd, value) {
+  if (!values || typeof values !== "object") return;
+  const map = targetValueMap(values, wd);
+  if (map) map[wd.name] = value;
+  // Keep a flat copy too: the backend's per-target lookup prefers the nested
+  // map, while manual output slots and external consumers read flat keys.
+  values[wd.name] = value;
+}
+
+function deleteFieldValue(values, wd) {
+  if (!values || typeof values !== "object") return;
+  const map = targetValueMap(values, wd);
+  if (map) delete map[wd.name];
+  delete values[wd.name];
+}
+
 function rowIsEmpty(row) {
   const kw = String(row?.keyword ?? "").trim();
   if (kw) return false;
@@ -101,9 +138,13 @@ function ensureStyles() {
     }
     .AUN-pm-setup-dialog {
       background: #1e1e2e; color: #cdd6f4; border-radius: 10px;
-      width: min(96vw, 760px); max-height: 92vh; display: flex;
+      width: min(96vw, 1180px); max-height: 92vh; display: flex;
       flex-direction: column; box-shadow: 0 12px 40px rgba(0,0,0,0.5);
       border: 1px solid rgba(255,255,255,0.08);
+      container-type: inline-size;
+    }
+    .AUN-pm-setup-dialog.is-wide {
+      width: min(98vw, 1680px); height: 96vh; max-height: 96vh;
     }
     .AUN-pm-setup-header {
       display: flex; align-items: center; justify-content: space-between;
@@ -116,6 +157,15 @@ function ensureStyles() {
       font-size: 18px; cursor: pointer; padding: 2px 6px; border-radius: 4px;
     }
     .AUN-pm-setup-close:hover { background: rgba(255,255,255,0.1); color: #fff; }
+    .AUN-pm-setup-expand {
+      background: none; border: 1px solid rgba(255,255,255,0.08);
+      color: rgba(205,214,244,0.6); font-size: 14px; cursor: pointer;
+      padding: 0 7px; border-radius: 4px; line-height: 22px;
+    }
+    .AUN-pm-setup-expand:hover { background: rgba(255,255,255,0.1); color: #fff; }
+    .AUN-pm-setup-expand.is-active {
+      background: rgba(137,180,250,0.18); border-color: rgba(137,180,250,0.4); color: #89b4fa;
+    }
     .AUN-pm-setup-toolbar {
       display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
       padding: 10px 18px; border-bottom: 1px solid rgba(255,255,255,0.06);
@@ -142,9 +192,24 @@ function ensureStyles() {
     }
     .AUN-pm-setup-status { font-size: 11px; color: rgba(205,214,244,0.5); margin-left: auto; }
     .AUN-pm-setup-chips {
-      display: flex; flex-wrap: wrap; gap: 4px; align-items: center;
-      padding: 8px 18px; border-bottom: 1px solid rgba(255,255,255,0.06);
+      display: flex; flex-direction: column; gap: 4px;
+      padding: 6px 18px; border-bottom: 1px solid rgba(255,255,255,0.06);
+      flex: 0 0 auto;
     }
+    .AUN-pm-setup-chips-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .AUN-pm-setup-chips-toggle {
+      background: none; border: 1px solid rgba(255,255,255,0.08); border-radius: 4px;
+      color: rgba(205,214,244,0.75); font-size: 11px; padding: 2px 8px; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
+      max-width: 100%; overflow: hidden; text-overflow: ellipsis;
+    }
+    .AUN-pm-setup-chips-toggle:hover { background: rgba(255,255,255,0.1); color: #cdd6f4; }
+    .AUN-pm-setup-chips-toggle .chev { font-size: 10px; width: 10px; text-align: center; }
+    .AUN-pm-setup-chips-list {
+      display: none; flex-wrap: wrap; gap: 4px; align-items: center;
+      max-height: 20vh; overflow-y: auto; padding-top: 2px;
+    }
+    .AUN-pm-setup-chips-list.is-open { display: flex; }
     .AUN-pm-setup-chips-label { font-size: 11px; color: rgba(205,214,244,0.5); margin-right: 4px; }
     .AUN-pm-setup-chip {
       background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
@@ -163,7 +228,7 @@ function ensureStyles() {
     }
     .AUN-pm-setup-filter::placeholder { color: rgba(205,214,244,0.3); }
     .AUN-pm-setup-body {
-      flex: 1; overflow-y: auto; padding: 10px 18px; display: flex;
+      flex: 1 1 auto; overflow-y: auto; padding: 10px 18px; display: flex;
       flex-direction: column; gap: 8px; min-height: 0;
     }
     .AUN-pm-setup-row {
@@ -189,12 +254,21 @@ function ensureStyles() {
       display: flex; align-items: center; justify-content: center;
     }
     .AUN-pm-setup-icon-btn:hover { background: rgba(255,255,255,0.1); color: #cdd6f4; }
+    .AUN-pm-setup-icon-btn.is-active {
+      background: rgba(137,180,250,0.18); border-color: rgba(137,180,250,0.4); color: #89b4fa;
+    }
     .AUN-pm-setup-icon-btn.is-danger:hover { color: #f38ba8; border-color: rgba(243,139,168,0.3); }
     .AUN-pm-setup-fields {
-      display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 10px 10px;
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 6px; padding: 4px 10px 10px;
+      max-height: clamp(180px, 32vh, 360px); overflow-y: auto;
+    }
+    .AUN-pm-setup-row.is-fields-expanded .AUN-pm-setup-fields { max-height: none; }
+    @container (min-width: 560px) {
+      .AUN-pm-setup-field--wide { grid-column: span 2; }
     }
     .AUN-pm-setup-field {
-      display: flex; flex-direction: column; gap: 2px; min-width: 100px; flex: 1 1 100px; max-width: 200px;
+      display: flex; flex-direction: column; gap: 2px; min-width: 0;
     }
     .AUN-pm-setup-field-label {
       font-size: 10px; color: rgba(205,214,244,0.45); overflow: hidden;
@@ -246,7 +320,26 @@ function ensureModal() {
   closeButton.type = "button";
   closeButton.className = "AUN-pm-setup-close";
   closeButton.textContent = "\u00d7";
-  header.append(heading, closeButton);
+  const expandButton = document.createElement("button");
+  expandButton.type = "button";
+  expandButton.className = "AUN-pm-setup-expand";
+  expandButton.textContent = "\u2922";
+  expandButton.title = "Toggle wide view";
+  const headerActions = document.createElement("div");
+  headerActions.style.cssText = "display:flex;align-items:center;gap:4px;";
+  headerActions.append(expandButton, closeButton);
+  header.append(heading, headerActions);
+
+  let wide = false;
+  try { wide = localStorage.getItem(WIDE_KEY) === "1"; } catch {}
+  dialog.classList.toggle("is-wide", wide);
+  expandButton.classList.toggle("is-active", wide);
+  expandButton.addEventListener("click", () => {
+    wide = !dialog.classList.contains("is-wide");
+    dialog.classList.toggle("is-wide", wide);
+    expandButton.classList.toggle("is-active", wide);
+    try { localStorage.setItem(WIDE_KEY, wide ? "1" : "0"); } catch {}
+  });
 
   // Toolbar
   const toolbar = document.createElement("div");
@@ -302,13 +395,24 @@ function ensureModal() {
 
   toolbar.append(toolbarLabel, stepper, captureRowSearch, captureRowSelect, captureBtn, clearAllBtn, exportBtn, importBtn, status);
 
-  // Widget filter chips
+  // Widget filter chips (header collapsed by default, list scrolls when open)
   const chips = document.createElement("div");
   chips.className = "AUN-pm-setup-chips";
-  const chipsLabel = document.createElement("span");
-  chipsLabel.className = "AUN-pm-setup-chips-label";
-  chipsLabel.textContent = "Widgets:";
-  chips.appendChild(chipsLabel);
+  const chipsHead = document.createElement("div");
+  chipsHead.className = "AUN-pm-setup-chips-head";
+  const chipsToggle = document.createElement("button");
+  chipsToggle.type = "button";
+  chipsToggle.className = "AUN-pm-setup-chips-toggle";
+  const chipsChevron = document.createElement("span");
+  chipsChevron.className = "chev";
+  chipsChevron.textContent = "\u25b8";
+  const chipsToggleLabel = document.createElement("span");
+  chipsToggleLabel.textContent = "Widgets:";
+  chipsToggle.append(chipsChevron, chipsToggleLabel);
+  const chipsList = document.createElement("div");
+  chipsList.className = "AUN-pm-setup-chips-list";
+  chipsHead.appendChild(chipsToggle);
+  chips.append(chipsHead, chipsList);
 
   // Body
   const body = document.createElement("div");
@@ -328,7 +432,9 @@ function ensureModal() {
 
   const refs = {
     overlay, subtitle, numInput, numDec, numInc, captureRowSelect, status,
-    chips, body, closeButton, node: null, options: null, numRows: 5,
+    chips, chipsHead, chipsList, chipsToggle, chipsChevron, chipsToggleLabel,
+    chipsExpanded: false,
+    body, closeButton, node: null, options: null, numRows: 5,
     clipboard: null, schema: [], included: [], filter: "",
   };
 
@@ -340,11 +446,16 @@ function ensureModal() {
   filterInput.title = "Show only fields whose widget name contains this text.";
   filterInput.addEventListener("input", () => {
     refs.filter = filterInput.value.trim().toLowerCase();
+    if (refs.filter && !refs.chipsExpanded) setChipsExpanded(refs, true);
+    renderChips(refs);
     renderRows(refs);
   });
   refs.filterInput = filterInput;
+  chipsHead.appendChild(filterInput);
+  chipsToggle.addEventListener("click", () => setChipsExpanded(refs, !refs.chipsExpanded));
 
   function closeModal() {
+    flushFocusedField(refs);
     refs.overlay.style.display = "none";
     document.body.classList.remove("AUN-pm-setup-open");
     refs.options?.onChanged?.(refs.node);
@@ -465,13 +576,24 @@ function captureIntoRow(node, row) {
     }
   } else {
     entry.values = entry.values || {};
+    // Names present on more than one target stay per-target only; unique
+    // names also get a flat copy so manual outputs and flat consumers work.
+    const nameCount = new Map();
+    for (const target of targets) {
+      for (const w of target.widgets || []) {
+        if (!w?.name || w.type === "button") continue;
+        nameCount.set(w.name, (nameCount.get(w.name) || 0) + 1);
+      }
+    }
     for (const target of targets) {
       const tid = String(target.id ?? target.title ?? "");
       const vals = (entry.values[tid] && typeof entry.values[tid] === "object") ? entry.values[tid] : {};
       entry.values[tid] = vals;
-      for (const name of schema) {
-        const tw = target.widgets?.find((w) => w.name === name);
-        vals[name] = tw ? tw.value : (vals[name] ?? "");
+      for (const w of target.widgets || []) {
+        if (!w?.name || w.type === "button") continue;
+        if (!schema.includes(w.name)) continue;
+        vals[w.name] = w.value;
+        if ((nameCount.get(w.name) || 0) === 1) entry.values[w.name] = w.value;
       }
     }
   }
@@ -530,17 +652,37 @@ function renderToolbar(refs) {
   refs.captureRowSelect.value = validValues.includes(prev) ? prev : "next";
 }
 
+function setChipsExpanded(refs, open) {
+  refs.chipsExpanded = !!open;
+  refs.chipsList?.classList.toggle("is-open", refs.chipsExpanded);
+  if (refs.chipsChevron) refs.chipsChevron.textContent = refs.chipsExpanded ? "\u25be" : "\u25b8";
+}
+
+function updateChipsLabel(refs) {
+  if (!refs.chipsToggleLabel) return;
+  const total = refs.schema.length;
+  if (!total) { refs.chipsToggleLabel.textContent = "Widgets: none"; return; }
+  const filter = refs.filter || "";
+  const visible = filter
+    ? refs.schema.filter((w) => w.name.toLowerCase().includes(filter))
+    : refs.schema;
+  const includedSet = new Set(refs.included);
+  const includedVisible = visible.filter((w) => includedSet.has(w.name)).length;
+  const suffix = filter ? ` (filter: "${refs.filter}")` : "";
+  refs.chipsToggleLabel.textContent =
+    `Widgets: ${includedVisible} of ${visible.length}${suffix} included`;
+}
+
 function renderChips(refs) {
-  refs.chips.replaceChildren();
-  const chipsLabel = document.createElement("span");
-  chipsLabel.className = "AUN-pm-setup-chips-label";
-  chipsLabel.textContent = "Widgets:";
-  refs.chips.appendChild(chipsLabel);
+  if (!refs.chipsList) return;
+  refs.chipsList.replaceChildren();
+  updateChipsLabel(refs);
 
   const node = refs.node;
   if (!node) return;
   const data = getPresetData(node);
   const includedSet = new Set(refs.included);
+  const filter = refs.filter || "";
 
   const allBtn = document.createElement("button");
   allBtn.type = "button"; allBtn.className = "AUN-pm-setup-action";
@@ -560,7 +702,7 @@ function renderChips(refs) {
     setPresetData(node, d);
     refresh(refs);
   });
-  refs.chips.append(allBtn, noneBtn);
+  refs.chipsList.append(allBtn, noneBtn);
 
   // Group chips by target node for clarity.
   const groups = new Map();
@@ -570,6 +712,8 @@ function renderChips(refs) {
     groups.get(title).push(w);
   }
   for (const [title, ws] of groups) {
+    const shown = filter ? ws.filter((w) => w.name.toLowerCase().includes(filter)) : ws;
+    if (filter && !shown.length) continue;
     const group = document.createElement("div");
     group.style.cssText = "display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-bottom:4px;";
     const hdr = document.createElement("span");
@@ -586,7 +730,7 @@ function renderChips(refs) {
       const d = getPresetData(node);
       const names = getIncluded(d, refs.schema.map((x) => x.name));
       const set = new Set(names);
-      for (const w of ws) set.add(w.name);
+      for (const w of shown) set.add(w.name);
       d.widgets = [...set];
       setPresetData(node, d);
       refresh(refs);
@@ -595,13 +739,13 @@ function renderChips(refs) {
       const d = getPresetData(node);
       const names = getIncluded(d, refs.schema.map((x) => x.name));
       const set = new Set(names);
-      for (const w of ws) set.delete(w.name);
+      for (const w of shown) set.delete(w.name);
       d.widgets = [...set];
       setPresetData(node, d);
       refresh(refs);
     });
     group.append(allBtn, noneBtn);
-    for (const w of ws) {
+    for (const w of shown) {
       const chip = document.createElement("span");
       chip.className = "AUN-pm-setup-chip" + (includedSet.has(w.name) ? "" : " off");
       chip.textContent = w.name;
@@ -617,16 +761,23 @@ function renderChips(refs) {
       });
       group.appendChild(chip);
     }
-    refs.chips.appendChild(group);
+    refs.chipsList.appendChild(group);
   }
-  if (refs.filterInput) refs.chips.appendChild(refs.filterInput);
 }
 
 function buildTypedInput(wd, value) {
   if (wd.type === "combo") {
     const sel = document.createElement("select");
     let options = wd.options?.values;
+    const hasValue = value !== undefined && value !== null && String(value) !== "";
     if (Array.isArray(options)) {
+      if (!hasValue) {
+        const unset = document.createElement("option");
+        unset.value = "";
+        unset.textContent = "\u2014 not set \u2014";
+        unset.dataset.aunUnset = "1";
+        sel.appendChild(unset);
+      }
       for (const opt of options) {
         const o = document.createElement("option");
         const ov = opt && typeof opt === "object" ? (opt.value ?? opt.content ?? "") : opt;
@@ -634,11 +785,21 @@ function buildTypedInput(wd, value) {
         if (String(ov) === String(value)) o.selected = true;
         sel.appendChild(o);
       }
+      if (!hasValue) sel.value = "";
     } else {
-      const o = document.createElement("option");
-      o.value = String(value ?? ""); o.textContent = String(value ?? "");
-      o.selected = true;
-      sel.appendChild(o);
+      if (!hasValue) {
+        const unset = document.createElement("option");
+        unset.value = "";
+        unset.textContent = "\u2014 not set \u2014";
+        unset.dataset.aunUnset = "1";
+        unset.selected = true;
+        sel.appendChild(unset);
+      } else {
+        const o = document.createElement("option");
+        o.value = String(value ?? ""); o.textContent = String(value ?? "");
+        o.selected = true;
+        sel.appendChild(o);
+      }
     }
     return sel;
   }
@@ -678,8 +839,21 @@ function inputToValue(input) {
   return input.value;
 }
 
+function flushFocusedField(refs) {
+  const active = document.activeElement;
+  if (!active || !refs?.body?.contains(active)) return;
+  try {
+    // Some browsers skip the blur-triggered change when the modal is hidden,
+    // so commit explicitly before tearing the field down.
+    active.dispatchEvent(new Event("change", { bubbles: true }));
+    active.blur?.();
+  } catch (_) {}
+}
+
 function renderRows(refs) {
+  flushFocusedField(refs);
   refs.body.replaceChildren();
+  refs.rowCards = [];
   const node = refs.node;
   if (!node) return;
   if (!refs.schema.length) {
@@ -733,6 +907,16 @@ function buildRowCard(node, row, entry, refs) {
   const actions = document.createElement("span");
   actions.className = "AUN-pm-setup-row-actions";
 
+  // Expand fields (escape the per-row scroll cap)
+  const expandRowBtn = document.createElement("button");
+  expandRowBtn.type = "button"; expandRowBtn.className = "AUN-pm-setup-icon-btn";
+  expandRowBtn.textContent = "\u2922"; expandRowBtn.title = "Expand this row's fields";
+  expandRowBtn.addEventListener("click", () => {
+    const expanded = card.classList.toggle("is-fields-expanded");
+    expandRowBtn.classList.toggle("is-active", expanded);
+    expandRowBtn.title = expanded ? "Collapse this row's fields" : "Expand this row's fields";
+  });
+
   // Capture here (overwrite)
   const capBtn = document.createElement("button");
   capBtn.type = "button"; capBtn.className = "AUN-pm-setup-icon-btn";
@@ -780,7 +964,7 @@ function buildRowCard(node, row, entry, refs) {
     setStatus(refs, `Deleted row ${row}.`);
   });
 
-  actions.append(capBtn, copyBtn, pasteBtn, delBtn);
+  actions.append(expandRowBtn, capBtn, copyBtn, pasteBtn, delBtn);
   head.append(num, nameInput, kwInput, actions);
 
   // Fields
@@ -794,15 +978,27 @@ function buildRowCard(node, row, entry, refs) {
     if (filter && !wd.name.toLowerCase().includes(filter)) continue;
     const field = document.createElement("div");
     field.className = "AUN-pm-setup-field";
+    if (wd.options?.multiline) field.classList.add("AUN-pm-setup-field--wide");
     const label = document.createElement("span");
     label.className = "AUN-pm-setup-field-label";
     label.textContent = wd.name;
     label.title = wd.name;
-    const input = buildTypedInput(wd, values[wd.name] ?? "");
-    input.addEventListener("change", () => {
-      values[wd.name] = inputToValue(input);
+    const input = buildTypedInput(wd, readFieldValue(values, wd) ?? "");
+    const apply = () => {
+      if (wd.type === "combo") {
+        const opt = input.options?.[input.selectedIndex];
+        if (opt?.dataset?.aunUnset) deleteFieldValue(values, wd);
+        else writeFieldValue(values, wd, inputToValue(input));
+      } else {
+        writeFieldValue(values, wd, inputToValue(input));
+      }
       save();
-    });
+    };
+    input.addEventListener("change", apply);
+    // Text/textarea/number fields only fire "change" on blur; mirror "input"
+    // so an edit is never lost if the row is rebuilt or the modal is closed
+    // before the field loses focus.
+    if (wd.type !== "combo") input.addEventListener("input", apply);
     field.append(label, input);
     fields.appendChild(field);
   }
@@ -848,6 +1044,9 @@ export function openPresetSetupDialog(node, options = {}) {
   refs.options = options;
   refs.numRows = getVisibleRows(node);
   refs.clipboard = null;
+  refs.filter = "";
+  if (refs.filterInput) refs.filterInput.value = "";
+  setChipsExpanded(refs, false);
   setStatus(refs, "");
   refresh(refs);
   refs.overlay.style.display = "flex";

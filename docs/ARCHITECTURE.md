@@ -14,6 +14,7 @@ it, and where to start when building something new.
 | `misc.py` (helpers only) | path helpers, `tensor2pil`, `get_sha256`, `AnyType` | `AUNSaveImage`, `AUNSaveVideo`, `AUNPathFilenameVideoResolved` |
 | `aun_path_filename_shared.py` | `%token%` templates, `build_path`, `crop_name`, sidecar text | `AUNPathFilenameV2`, `AUNPathFilenameVideo(V2)`, `AUNSaveImageV2`, `AUNSaveVideoV2`, `AUNFilenameResolverPreviewV2` |
 | `aun_lora_extraction_shared.py` | `extract_basic_loras_from_inputs` | `AUNSaveImage`, `AUNSaveVideo`, `AUNExtractPowerLoras` |
+| `AUNApplyPresetToNode.py` (helpers) | `_find_target`, `_write_values_into_node`, `_apply_aliases`, `_filter_values`, `_order_targets_after` / `_inject_order_dependency` | itself + `AUNPresetManager.py` (execution-time preset application; see `docs/preset-manager-execution-ordering.md`) |
 | `AUNSaveImage_helpers.py` | private helpers for `AUNSaveImage` only (lora/text/date/path) | `AUNSaveImage` |
 | `AUNJoinVideos.py` | `JoinVideosInDirectory` (internal to `AUNSaveVideo`, unregistered) | `AUNSaveVideo` |
 | `logger.py` | AUN logger, `log_exception` | `misc.py`, `AUNSaveVideo`, `AUNExtractPowerLoras` |

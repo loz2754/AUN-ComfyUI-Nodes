@@ -37,6 +37,14 @@ function getVisibleRows(node) {
   return Number.isFinite(val) ? Math.max(1, Math.min(MAX_ROWS, Math.floor(val))) : 5;
 }
 
+// True when manual_index is wired. The manual_preset widget is then only a
+// fallback used when the resolved index is 0, so the footer is the
+// authoritative display and the widget is hidden in compact mode.
+function isManualIndexLinked(node) {
+  const input = (node?.inputs || []).find((i) => i?.name === "manual_index");
+  return !!(input && input.link != null);
+}
+
 function isFooterVisible(node) {
   try {
     if (node?.properties && Object.prototype.hasOwnProperty.call(node.properties, "aun_pm_footerVisible")) {
@@ -62,9 +70,12 @@ function getMinimumCompactHeight(node) {
   if (!isCompact(node) || isNodeCollapsed(node)) return 0;
   const widgetH = globalThis.LiteGraph?.NODE_WIDGET_HEIGHT ?? 22;
   const slotH = globalThis.LiteGraph?.NODE_SLOT_HEIGHT ?? 20;
-  // Title + manual_preset combo + converged socket dots + footer preview.
+  // Title + manual_preset combo (hidden when manual_index is wired and the
+  // footer takes over the compact view) + converged socket dots + footer.
+  const hideCombo = isManualIndexLinked(node) && isFooterVisible(node);
+  const comboH = hideCombo ? 0 : widgetH;
   const footerH = isFooterVisible(node) ? (FOOTER_PAD + FOOTER_H + FOOTER_BOTTOM) : 0;
-  return TITLE_H + widgetH + slotH * 0.6 + footerH;
+  return TITLE_H + comboH + slotH * 0.6 + footerH;
 }
 
 function resizeNode(node) {
@@ -140,6 +151,9 @@ function computeLocalPreview(node) {
 }
 
 function buildPreviewText(node) {
+  if (isManualIndexLinked(node) && !getLastMatch(node)) {
+    return "index linked \u2014 run to resolve preset";
+  }
   const preview = getLastMatch(node) || node.__AUN_localPreview;
   if (preview && preview.index > 0) {
     const parts = [];
@@ -165,7 +179,8 @@ function buildPreviewText(node) {
       } catch {}
       for (const [k, v] of Object.entries(values)) {
         if (included && !included.has(k)) continue;
-        if (v != null && v !== "") parts.push(`${k}=${v}`);
+        if (v == null || v === "" || typeof v === "object") continue;
+        parts.push(`${k}=${v}`);
       }
     }
     return parts.join("  ");
@@ -276,11 +291,25 @@ function relabelOutputs(node) {
 function updateVisibility(node) {
   const count = getVisibleRows(node);
   const compact = isCompact(node);
+  const indexLinked = isManualIndexLinked(node);
+
+  // A wiring change invalidates the last run's match display.
+  if (node.__AUN_pm_indexLinked !== indexLinked) {
+    node.__AUN_pm_indexLinked = indexLinked;
+    node.__AUN_lastMatch = null;
+  }
 
   for (const name of ["visible_rows", "case_sensitive", "match_keywords", "node_identifier"]) {
     applyWidgetHiddenState(getWidget(node, name), compact);
   }
   applyWidgetHiddenState(getWidget(node, "preset_data"), true);
+  // With an external index the combo is a fallback only; hide it in compact
+  // mode when the footer is there to show the resolved preset, so the two
+  // cannot disagree.
+  applyWidgetHiddenState(
+    getWidget(node, "manual_preset"),
+    compact && indexLinked && isFooterVisible(node),
+  );
 
   node.__AUN_localPreview = computeLocalPreview(node);
 
@@ -454,6 +483,44 @@ function installSetupTitleButton(node) {
 }
 
 // ------------------------------------------------------------------
+// Prompt sync: guarantee the live preset_data string reaches the queue.
+// Newer frontends can serialize hidden widgets as stale/empty values; the
+// backend must always see the JSON currently stored on the node.
+// ------------------------------------------------------------------
+
+function patchPromptPresetData() {
+  if (app.__AUN_pm_promptPatched) return;
+  const origGraphToPrompt = app.graphToPrompt?.bind(app);
+  if (typeof origGraphToPrompt !== "function") return;
+  app.__AUN_pm_promptPatched = true;
+  app.graphToPrompt = async function patchedPresetGraphToPrompt(graph, options) {
+    const result = await origGraphToPrompt(graph, options);
+    try {
+      const prompt = result?.output;
+      if (!prompt || typeof prompt !== "object") return result;
+      const graphRef = graph || app?.graph;
+      for (const node of graphRef?._nodes || []) {
+        if (node?.comfyClass !== NODE_CLASS && node?.type !== NODE_CLASS) continue;
+        const entry = prompt[String(node.id)];
+        if (!entry || typeof entry !== "object") continue;
+        const raw = getWidget(node, "preset_data")?.value;
+        if (typeof raw !== "string") continue;
+        const inputs = (entry.inputs ||= {});
+        // A linked preset_data would be a [nodeId, slot] link — never clobber it.
+        const current = inputs.preset_data;
+        if (Array.isArray(current) && current.length === 2) continue;
+        inputs.preset_data = raw;
+      }
+    } catch (err) {
+      console.warn("[AUN] preset_data prompt sync failed", err);
+    }
+    return result;
+  };
+}
+
+patchPromptPresetData();
+
+// ------------------------------------------------------------------
 // Extension registration
 // ------------------------------------------------------------------
 
@@ -462,6 +529,7 @@ app.registerExtension({
 
   async beforeRegisterNodeDef(nodeType, nodeData) {
     if (nodeData.name !== NODE_CLASS) return;
+    patchPromptPresetData();
 
     const origComputeSize = nodeType.prototype.computeSize;
     if (typeof origComputeSize === "function") {
@@ -542,6 +610,14 @@ app.registerExtension({
     const onConfigure = nodeType.prototype.onConfigure;
     nodeType.prototype.onConfigure = function () {
       onConfigure?.apply(this, arguments);
+      requestAnimationFrame(() => updateVisibility(this));
+    };
+
+    // Connect / disconnect manual_index: toggle the fallback widget and
+    // recompute the compact height.
+    const origOnConnectionsChange = nodeType.prototype.onConnectionsChange;
+    nodeType.prototype.onConnectionsChange = function () {
+      origOnConnectionsChange?.apply(this, arguments);
       requestAnimationFrame(() => updateVisibility(this));
     };
 

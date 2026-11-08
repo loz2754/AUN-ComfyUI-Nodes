@@ -92,6 +92,7 @@ Generated list of documentation files under `docs/`.
 - [Collapse Connections × Use Everywhere — quirks & notes](./COLLAPSE_CONNECTIONS_USE_EVERYWHERE.md)
 - [SaveVideoPathNode_README](./SaveVideoPathNode_README.md)
 - [Frontend widget serialization issue](./frontend-widget-serialization-issue.md)
+- [Applying values that only exist during execution (Preset Manager)](./preset-manager-execution-ordering.md)
 - [Pack architecture: what links to what](./ARCHITECTURE.md)
 - [New node checklist](./NEW_NODE_CHECKLIST.md)
 - [Registry moderation incident 2026-09-05 (Manager stuck at v2.22.0)](./registry-moderation-2026-09-05.md)

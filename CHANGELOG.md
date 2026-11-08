@@ -4,10 +4,26 @@
 ## [Unreleased]
 
 ### Added
+- Preset Manager: runtime application for a linked `manual_index` in **Random / Increment / Range** modes. When the index only exists during execution, the targets are ordered after the manager and the resolved row is written into their prompt inputs while it runs, so they execute with the same preset the node displays. `AUNApplyPresetToNode`'s execution-time path uses the same ordering.
+- Preset Manager: deterministic linked indices (literal/primitive INT nodes and AUN index switches in **Select** mode) are resolved at queue time, including the source node's own clamping.
+- Preset Manager setup dialog: wide/full-screen toggle (saved per browser), per-row field panels with their own scroll area and expand button, widget chips collapsed by default with a live included-count summary, and a responsive field grid.
+- `docs/preset-manager-execution-ordering.md`: documents the ordering + execution-time write pattern for reuse by other nodes.
 
 ### Changed
+- Preset Manager setup dialog: the widget filter now also filters chips and auto-expands the chip list; per-target All/None buttons act on the filtered list.
+- Preset Manager compact view: `manual_preset` hides when `manual_index` is wired and the footer is visible, so the combo cannot disagree with the resolved preset. Hiding the footer brings the combo back.
+- Preset Manager footer: shows `index linked — run to resolve preset` before the first run with a linked index, and rewiring clears the last-run match display.
+- Preset Manager: `manual_preset` tooltip now explains it is the fallback when a linked index resolves to 0.
+- Multi-target application emits one `AUN_apply_preset_applied` event per target (both the manager and Apply node paths), so every target's canvas widgets sync.
+- `docs/ARCHITECTURE.md` / `docs/INDEX.md`: registered the new guide and the `AUNApplyPresetToNode` helper row.
 
 ### Fixed
+- Preset Manager: multi-target identifiers (`"1,3"`) only applied preset values to the last target.
+- Preset Manager: field edits could be lost if the dialog was closed or re-rendered before the input lost focus; fields now save on `input` and flush on close/rebuild.
+- Preset Manager: combos with no stored value displayed the first option as if it were selected; they now show `— not set —`, and clearing the selection removes the key.
+- Preset Manager: captured multi-target rows now display and edit correctly (per-target maps); widget names unique to one target also keep a flat value for manual outputs.
+- Preset Manager: the live `preset_data` widget is now forced into the queued prompt via a `graphToPrompt` hook, avoiding stale/empty hidden-widget serialization.
+- Preset Manager setup dialog: the widget chips section could squeeze the row editor to almost no height with many widgets.
 
 ### Notes
 

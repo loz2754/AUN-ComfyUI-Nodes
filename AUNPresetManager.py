@@ -108,6 +108,100 @@ def _resolve_linked_value(prompt, value, depth=0):
     return None
 
 
+def _coerce_index(value):
+    if isinstance(value, bool):
+        return int(value)
+    if isinstance(value, (int, float)):
+        return int(value)
+    if isinstance(value, str):
+        try:
+            return int(value.strip())
+        except ValueError:
+            return None
+    return None
+
+
+# Nodes that expose a deterministic integer index output. When the manager's
+# manual_index is linked to one of these in "Select" mode, the output is just
+# a widget value, so it can be resolved at queue time without executing any
+# node (executing Random/Increment/Range sources at queue time would consume
+# their state and diverge from the real run).
+# class name -> (output slot, widget name holding the index, clamp mode)
+_INDEX_LINK_SOURCES = {
+    "AUNTextIndexSwitch3": (2, "index", "slot_count"),
+    "AUNTextIndexSwitch4": (2, "index", "slot_count"),
+    "AUNTextIndexSwitch5": (2, "index", "slot_count"),
+    "AUNTextIndexSwitch5Diffusers": (2, "index", "slot_count"),
+    "AUNRandomIndexSwitch": (0, "select", None),
+    "AUNRandomTextIndexSwitch": (2, "select", None),
+    "AUNRandomTextIndexSwitchV2": (2, "select", "max_inputs"),
+}
+
+
+def _clamp_source_index(idx, inputs, clamp):
+    """Mirror the source node's own clamping so the resolved row matches."""
+    try:
+        if clamp == "slot_count":
+            limit = max(1, min(int(inputs.get("slot_count") or 2), 20))
+            return max(1, min(idx, limit))
+        if clamp == "max_inputs":
+            return max(1, min(idx, 20))
+    except (TypeError, ValueError):
+        pass
+    return idx
+
+
+def _resolve_manual_index(prompt, link):
+    """Resolve a linked manual_index to an int at queue time.
+
+    Only deterministic sources are resolved: literal/primitive values and the
+    fixed "Select" mode of AUN index switches. Random/Increment/Range sources
+    are execution-time only and return None (the manager still outputs the
+    right values, but targets cannot be pre-applied).
+    """
+    if not isinstance(prompt, dict) or not isinstance(link, list) or len(link) != 2:
+        return None
+    src = prompt.get(str(link[0]))
+    if not isinstance(src, dict):
+        return None
+    inputs = src.get("inputs")
+    if not isinstance(inputs, dict):
+        return None
+
+    cls = str(src.get("class_type") or "")
+    source = _INDEX_LINK_SOURCES.get(cls)
+    if source is not None:
+        out_slot, widget_name, clamp = source
+        try:
+            slot = int(link[1])
+        except (TypeError, ValueError):
+            return None
+        if slot != out_slot:
+            return None
+        if str(inputs.get("mode") or "Select") != "Select":
+            return None
+        idx = _coerce_index(inputs.get(widget_name))
+        if idx is None:
+            return None
+        return _clamp_source_index(idx, inputs, clamp)
+
+    # Unknown AUN nodes may be stateful; never treat their widgets as a
+    # literal index and never execute them here.
+    if cls.startswith("AUN"):
+        return None
+
+    # Literal primitive sources (PrimitiveNode, constant/int nodes).
+    for key in ("value", "int", "number", "index", "select"):
+        value = inputs.get(key)
+        if isinstance(value, list):
+            continue
+        idx = _coerce_index(value)
+        if idx is not None:
+            return idx
+
+    return _coerce_index(_resolve_linked_value(prompt, link))
+
+
 _CYCLE_STATE = {}
 
 
@@ -147,7 +241,8 @@ def resolve_preset_selection(inputs, prompt=None, queue_time=False):
 
     Returns (values_dict, matched_keyword, matched_index) or None when the
     inputs cannot be resolved statically (e.g. reference_phrase is a link that
-    cannot be resolved).
+    cannot be resolved, or manual_index is linked to a Random/Increment/Range
+    source whose value only exists at execution time).
     """
     if not isinstance(inputs, dict):
         return None
@@ -164,9 +259,15 @@ def resolve_preset_selection(inputs, prompt=None, queue_time=False):
 
     manual_index = inputs.get("manual_index", 0)
     if isinstance(manual_index, list):
-        # Linked manual_index (e.g. a cycling node) cannot be resolved
-        # statically at queue time; wired execution handles it instead.
-        return None
+        # Linked manual_index: resolve deterministic sources (literal values,
+        # index switches in Select mode) so queue-time application uses the
+        # same row the manager will output at execution.
+        if prompt is None:
+            return None
+        resolved_index = _resolve_manual_index(prompt, manual_index)
+        if resolved_index is None:
+            return None
+        manual_index = resolved_index
 
     cycle_mode = str(inputs.get("cycle_mode") or "Off")
     if cycle_mode == "Off":
@@ -303,7 +404,7 @@ class AUNPresetManager:
             }),
             "manual_preset": ("STRING", {
                 "default": "1",
-                "tooltip": "Preset name or row number (1-%d) to use as the active bundle. Clamped to visible_rows. With match_keywords=No, this is always used. With match_keywords=Yes, keywords can override it when they match." % cls.MAX_ROWS,
+                "tooltip": "Preset name or row number (1-%d) to use as the active bundle. Clamped to visible_rows. With match_keywords=No, this is used unless manual_index is connected and >0 (the index wins; this becomes the fallback for index 0). With match_keywords=Yes, keywords can override it when they match." % cls.MAX_ROWS,
             }),
             "match_keywords": (["Yes", "No"], {
                 "default": "Yes",
@@ -358,7 +459,7 @@ class AUNPresetManager:
 
     def select_preset(self, node_identifier, manual_preset="1", match_keywords="Yes",
                       visible_rows=5, case_sensitive=False, reference_phrase="",
-                      preset_data="", manual_index=0, unique_id=None, **kwargs):
+                      preset_data="", manual_index=0, prompt=None, unique_id=None, **kwargs):
         values, matched_keyword, matched_index = resolve_preset_selection({
             "visible_rows": visible_rows,
             "manual_preset": manual_preset,
@@ -388,6 +489,48 @@ class AUNPresetManager:
         manual_values += [None] * (self.MAX_MANUAL_OUTPUTS - len(manual_values))
 
         out_json = json.dumps(values, ensure_ascii=False, separators=(",", ":"))
+
+        # Runtime application: when the linked index (Random/Increment/Range)
+        # or reference phrase only resolves during execution, the on-prompt
+        # handler has ordered the targets after this node. Writing into their
+        # prompt inputs here makes them execute with this run's preset.
+        if isinstance(prompt, dict) and isinstance(values, dict) and values:
+            try:
+                # Imported lazily: AUNApplyPresetToNode imports this module.
+                from .AUNApplyPresetToNode import _find_target, _write_values_into_node
+
+                for single in [x.strip() for x in str(node_identifier or "").split(",") if x.strip()]:
+                    target, target_id = _find_target(prompt, single)
+                    if target is None:
+                        continue
+                    target_values = values
+                    meta = target.get("_meta", {}) if isinstance(target, dict) else {}
+                    target_title = meta.get("title") or (target.get("class_type") if isinstance(target, dict) else "")
+                    for key in (target_id, target_title, single):
+                        if key and isinstance(values.get(key), dict):
+                            target_values = values.get(key)
+                            break
+                    if not isinstance(target_values, dict) or not target_values:
+                        continue
+                    notes = []
+                    applied = _write_values_into_node(target, target_values, notes)
+                    if not applied:
+                        continue
+                    try:
+                        PromptServer.instance.send_sync(
+                            "AUN_apply_preset_applied",
+                            {
+                                "node_id": str(unique_id),
+                                "target_id": str(target_id or ""),
+                                "target_title": str(target_title or ""),
+                                "values": applied,
+                                "notes": notes,
+                            },
+                        )
+                    except Exception:
+                        pass
+            except Exception:
+                pass
 
         if unique_id is not None:
             try:
