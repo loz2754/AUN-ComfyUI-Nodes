@@ -12,7 +12,7 @@ Inputs
 - Auto name cropping: `max_num_words` where `0` means no limit
 - Free-text: `prefix_1`, `prefix_2`, `suffix_1`, `suffix_2`
 - Value inputs: `model_name`, `sampler_name`, `scheduler_name`, `steps_value`, `cfg_value`, `seed_value`
-- Sidecar-related optional inputs: `extension`, forced-input `positive_prompt`, forced-input `negative_prompt`, `frame_rate`, `loop_count`, `quality`, `width`, `height`, `count`, `sidecar_format`
+- Sidecar-related optional inputs: `extension`, forced-input `positive_prompt`, forced-input `negative_prompt`, `frame_rate`, `loop_count`, `quality`, `width`, `height`, `count`, `sidecar_format`, forced-input `selected_lora`
 
 Outputs
 
@@ -29,7 +29,10 @@ Sidecar contents
 
 LoRA behavior
 
-- LoRAs are auto-detected from the workflow using the same logic as `AUNSaveVideo` and are recorded only as a PowerLoraLoader-formatted block in the sidecar.
+- LoRAs are auto-detected from the runtime prompt using the same extractor as `AUNSaveImage`, which covers rgthree Power Lora Loader, standard `LoraLoader`/`LoraLoaderModelOnly`, AUN LoRA stacks, `AUNRandomLoraModelOnly` (Select mode) and LoRA-tag/LoraManager text loaders.
+- Index-driven loaders (`AUNLoRAsByPromptIndex`, `AUNRandomLoraModelOnlyMulti`) are resolved only when `prompt_index` is a literal number: the LoRAs for that index (honouring `apply_lora`, per-slot enable toggles and model/clip strengths) are included. When `prompt_index` comes from a link (Range/Random index node) the executed index is unknown at prompt-build time, so wire the node's runtime `selected LoRAs` output into the `selected_lora` input instead.
+- `selected_lora` accepts `<lora:name:model[:clip]>` tags or a comma-separated `name[:model[:clip]]` list. Entries are merged and de-duplicated by LoRA basename against the auto-detected list.
+- LoRAs are recorded only as a PowerLoraLoader-formatted block in the sidecar's `loras` field.
 - The filename remains compact and does not include LoRA tokens.
 
 Usage notes

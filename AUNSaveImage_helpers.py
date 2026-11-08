@@ -126,6 +126,75 @@ def _parse_lora_tag_text(text: str) -> list[dict]:
     return items
 
 
+def merge_selected_lora_input(lora_items: list[dict], selected_lora_text: Any) -> list[dict]:
+    """Merge a wired ``selected LoRAs`` string into an extracted LoRA item list.
+
+    Accepts ``<lora:name:model[:clip]>`` tags (AUNRandomLoraModelOnly /
+    AUNLoRAsByPromptIndex style) or a plain comma-separated
+    ``name[:model[:clip]]`` list. Duplicates are dropped by LoRA basename, so a
+    statically-detected loader entry wins over the runtime string.
+    """
+    text = selected_lora_text.strip() if isinstance(selected_lora_text, str) else ""
+    if not text or text.lower() == "none":
+        return lora_items
+
+    existing_basenames: set[str] = set()
+    for item in lora_items:
+        if isinstance(item, dict) and item.get('name'):
+            basename = os.path.splitext(os.path.basename(item['name']))[0].lower()
+            if basename:
+                existing_basenames.add(basename)
+
+    if "<lora:" in text.lower():
+        for tag in _parse_lora_tag_text(text):
+            tag_name = tag.get('name')
+            if not tag_name:
+                continue
+            tag_basename = os.path.splitext(tag_name)[0].lower()
+            if tag_basename in existing_basenames:
+                continue
+            lora_items.append({
+                'name': tag_name,
+                'strength': tag.get('strength', 1.0),
+                'strengthTwo': tag.get('strengthTwo', 1.0),
+                'origin': 'Selected',
+            })
+            existing_basenames.add(tag_basename)
+        return lora_items
+
+    for lora_entry in text.split(','):
+        lora_entry = lora_entry.strip()
+        if not lora_entry or lora_entry.lower() == "none":
+            continue
+        # Try to parse strength from "filename:model:clip" format
+        parts = lora_entry.split(':')
+        lora_name = parts[0].strip()
+        strength_m = 1.0
+        strength_c = 1.0
+        if len(parts) >= 2:
+            try:
+                strength_m = float(parts[1])
+            except ValueError:
+                pass
+        if len(parts) >= 3:
+            try:
+                strength_c = float(parts[2])
+            except ValueError:
+                pass
+
+        lora_basename = os.path.splitext(os.path.basename(lora_name))[0].lower()
+        if lora_basename in existing_basenames:
+            continue
+        lora_items.append({
+            'name': lora_name,
+            'strength': strength_m,
+            'strengthTwo': strength_c,
+            'origin': 'Selected',
+        })
+        existing_basenames.add(lora_basename)
+    return lora_items
+
+
 LORA_TAG_LOADER_NAMES = {
     "LoraTagLoader",
     "Lora Tag Loader",
@@ -595,7 +664,7 @@ def extract_loras(prompt: Any = None, extra_pnginfo: Any = None) -> list[dict]:
         if prompt_nodes_map:
             for nid, node in prompt_nodes_map.items():
                 # Check if bypassed in workflow
-                wf_node = workflow_nodes_map.get(str(nid))
+                wf_node = workflow_nodes_map.get(str(nid)) if workflow_nodes_map else None
                 if wf_node and wf_node.get('mode', 0) == 2:
                     continue
 

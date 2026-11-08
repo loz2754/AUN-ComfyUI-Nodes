@@ -9,7 +9,7 @@ from .model_utils import (
     get_scheduler_short_name,
 )
 from .misc import get_clean_filename, convert_relative_comfyui_path_to_full_path
-from .AUNSaveVideo import AUNSaveVideo
+from .AUNSaveImage_helpers import extract_loras, merge_selected_lora_input
 
 def _sanitize_token_str(value: str) -> str:
     if value is None:
@@ -62,6 +62,7 @@ class AUNPathFilenameVideoResolved:
                 "cfg_value": ("FLOAT", {"default": 7.5, "min": 0.0, "tooltip": "Actual cfg value (float)."}),
                 "seed_value": ("INT", {"default": 123456, "min": 0, "tooltip": "Actual seed value (integer)."}),
                 #"loras_value": ("STRING", {"multiline": False, "default": "", "tooltip": "Comma-separated lora descriptions to append when Include_Loras is On."}),
+                "selected_lora": ("STRING", {"forceInput": True, "default": "", "tooltip": "Optional runtime 'selected LoRAs' output (e.g. from AUNLoRAsByPromptIndex). Merged into the sidecar 'loras' block so index-driven LoRAs are recorded."}),
                 "sidecar_format": ([
                     "Output only (text)",
                     "Output only (json)",
@@ -81,7 +82,8 @@ class AUNPathFilenameVideoResolved:
     CATEGORY = "AUN Nodes/File Management"
     DESCRIPTION = (
         "Build a folder path and a filename for AUN Save Video with resolved values. Path = MainFolder/(optional date)/SubfolderA/SubfolderB. "
-    "Filename is joined by the delimiter from: (auto/manual name), optional prefixes, actual token values (model/sampler/... formatted), optional loras, and optional suffixes."
+    "Filename is joined by the delimiter from: (auto/manual name), optional prefixes, actual token values (model/sampler/... formatted), and optional suffixes. "
+    "The sidecar records all LoRAs found in the workflow (including AUNLoRAsByPromptIndex when its prompt_index is a literal) plus any wired 'selected LoRAs' input."
     )
 
     def generate_path(self, **kwargs):
@@ -120,16 +122,9 @@ class AUNPathFilenameVideoResolved:
         steps_value = kwargs.get("steps_value", 0)
         cfg_value = kwargs.get("cfg_value", 0.0)
         seed_value = kwargs.get("seed_value", 0)
-        loras_value = kwargs.get("loras_value", "")
+        selected_lora = kwargs.get("selected_lora", "")
         prompt = kwargs.get("prompt", None)
         extra_pnginfo = kwargs.get("extra_pnginfo", None)
-
-        # If no explicit loras token provided, try to auto-detect from the workflow like AUNSaveVideo
-        try:
-            if not loras_value:
-                loras_value = AUNSaveVideo._build_loras_token(prompt, extra_pnginfo, "full")
-        except Exception:
-            loras_value = loras_value or ""
 
         Name = manual_name if name_mode else auto_name
 
@@ -246,12 +241,17 @@ class AUNPathFilenameVideoResolved:
         full_output_dir_for_sidecar = os.path.join(comfy_output_root, path) if comfy_output_root and path else (comfy_output_root or path)
 
         # Sidecar: include full model name and shortened model name
-        # Build PowerLoraLoader-style lines from workflow LoRAs for sidecar, and parse LoRAs into structured form
-        _lora_power_lines = []
+        # Build PowerLoraLoader-style lines from workflow LoRAs (same extraction as AUNSaveImage),
+        # then merge the optional wired 'selected LoRAs' runtime string.
         try:
-            _items = AUNSaveVideo._extract_loras(prompt, extra_pnginfo)
+            _items = extract_loras(prompt, extra_pnginfo)
         except Exception:
             _items = []
+        try:
+            _items = merge_selected_lora_input(_items, selected_lora)
+        except Exception:
+            pass
+        _lora_power_lines = []
         def _fmt_strength_display(value):
             try:
                 if value is None:
