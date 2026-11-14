@@ -4,7 +4,7 @@ import {
   captureAunWidgetValues,
   restoreAunWidgetValues,
 } from "./aun_persistence_shared.js";
-import { syncCollapseVueLabels, withUESuppressed } from "./index.js";
+import { collapsedSlotPos, syncCollapseVueLabels, withUESuppressed } from "./index.js";
 
 const MAX_SLOTS = 20;
 const LIST_SPLITTER = /[,\n;]+/;
@@ -2420,13 +2420,13 @@ const extendNodePrototype = (nodeType, nodeData) => {
 
   const ccOrigGetOutputPos = nodeType.prototype.getOutputPos;
   nodeType.prototype.getOutputPos = function getOutputPos(index) {
-    if (isCCollapsed(this)) return ccOrigGetOutputPos.call(this, 0);
+    if (isCCollapsed(this)) return collapsedSlotPos(this, false, (i) => ccOrigGetOutputPos.call(this, i));
     return ccOrigGetOutputPos.call(this, index);
   };
 
   const ccOrigGetInputPos = nodeType.prototype.getInputPos;
   nodeType.prototype.getInputPos = function getInputPos(index) {
-    if (isCCollapsed(this)) return ccOrigGetInputPos.call(this, 0);
+    if (isCCollapsed(this)) return collapsedSlotPos(this, true, (i) => ccOrigGetInputPos.call(this, i));
     return ccOrigGetInputPos.call(this, index);
   };
 

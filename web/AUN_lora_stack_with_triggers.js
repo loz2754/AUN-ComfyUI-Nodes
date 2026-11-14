@@ -1,7 +1,7 @@
 import { app } from "../../scripts/app.js";
 import { openLoraInfoDialog } from "./aun_lora_info_shared.js";
 import { makeLoraLabelClickable } from "./aun_lora_dropdown_shared.js";
-import { isCompact, setCompact, isNodeCollapsed, withUESuppressed } from "./index.js";
+import { collapsedSlotPos, isCompact, setCompact, isNodeCollapsed, withUESuppressed } from "./index.js";
 
 const NODE_TYPE = "AUNLoraStackWithTriggers";
 const PROP_KEY = "_AUN_compactMode";
@@ -1418,12 +1418,12 @@ function setupNode(node) {
 
   const ccOrigGetOutputPos = node.getOutputPos.bind(node);
   node.getOutputPos = function getOutputPos(index) {
-    return isCCollapsed(this) ? ccOrigGetOutputPos(0) : ccOrigGetOutputPos(index);
+    return isCCollapsed(this) ? collapsedSlotPos(this, false, ccOrigGetOutputPos) : ccOrigGetOutputPos(index);
   };
 
   const ccOrigGetInputPos = node.getInputPos.bind(node);
   node.getInputPos = function getInputPos(index) {
-    return isCCollapsed(this) ? ccOrigGetInputPos(0) : ccOrigGetInputPos(index);
+    return isCCollapsed(this) ? collapsedSlotPos(this, true, ccOrigGetInputPos) : ccOrigGetInputPos(index);
   };
 
   const ccOrigDrawFg = node.onDrawForeground;

@@ -2,6 +2,7 @@ import { api } from "../../scripts/api.js";
 import { app } from "../../scripts/app.js";
 import { openLoraInfoDialog } from "./aun_lora_info_shared.js";
 import {
+  collapsedSlotPos,
   parsePositiveInt,
   isCompact,
   setCompact,
@@ -1127,12 +1128,12 @@ function setupNode(node) {
 
   const ccOrigGetOutputPos = node.getOutputPos.bind(node);
   node.getOutputPos = function getOutputPos(index) {
-    return isCCollapsed(this) ? ccOrigGetOutputPos(0) : ccOrigGetOutputPos(index);
+    return isCCollapsed(this) ? collapsedSlotPos(this, false, ccOrigGetOutputPos) : ccOrigGetOutputPos(index);
   };
 
   const ccOrigGetInputPos = node.getInputPos.bind(node);
   node.getInputPos = function getInputPos(index) {
-    return isCCollapsed(this) ? ccOrigGetInputPos(0) : ccOrigGetInputPos(index);
+    return isCCollapsed(this) ? collapsedSlotPos(this, true, ccOrigGetInputPos) : ccOrigGetInputPos(index);
   };
 
   const ccOrigDrawFg = node.onDrawForeground;

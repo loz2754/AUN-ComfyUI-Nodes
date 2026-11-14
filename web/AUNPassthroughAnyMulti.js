@@ -1,5 +1,5 @@
 import { app } from "../../scripts/app.js";
-import { syncCollapseVueLabels, withUESuppressed } from "./index.js";
+import { collapsedSlotPos, syncCollapseVueLabels, withUESuppressed } from "./index.js";
 
 const NODE_TYPE = "AUNPassthroughAnyMulti";
 const MAX_INPUTS = 20;
@@ -506,13 +506,13 @@ function setupCollapseConnections(node) {
 
   const origGetOutputPos = node.getOutputPos.bind(node);
   node.getOutputPos = function (index) {
-    if (this.properties?.[COLLAPSE_KEY]) return origGetOutputPos(0);
+    if (this.properties?.[COLLAPSE_KEY]) return collapsedSlotPos(this, false, origGetOutputPos);
     return origGetOutputPos(index);
   };
 
   const origGetInputPos = node.getInputPos.bind(node);
   node.getInputPos = function (index) {
-    if (this.properties?.[COLLAPSE_KEY]) return origGetInputPos(0);
+    if (this.properties?.[COLLAPSE_KEY]) return collapsedSlotPos(this, true, origGetInputPos);
     return origGetInputPos(index);
   };
 

@@ -1,5 +1,5 @@
 import { app } from "../../scripts/app.js";
-import { forceGraphRedraw, syncCollapseVueLabels, withUESuppressed } from "./index.js";
+import { collapsedSlotPos, forceGraphRedraw, syncCollapseVueLabels, withUESuppressed } from "./index.js";
 
 const PK = "collapse_connections";
 const SETTING_ID = "AUN.CollapseConnections.Enabled";
@@ -74,11 +74,11 @@ function applyCollapseState(node) {
   }
 
   node.getOutputPos = function (index) {
-    return isConnectionCollapsed(this) ? origGetOutputPos(0) : origGetOutputPos(index);
+    return isConnectionCollapsed(this) ? collapsedSlotPos(this, false, origGetOutputPos) : origGetOutputPos(index);
   };
 
   node.getInputPos = function (index) {
-    return isConnectionCollapsed(this) ? origGetInputPos(0) : origGetInputPos(index);
+    return isConnectionCollapsed(this) ? collapsedSlotPos(this, true, origGetInputPos) : origGetInputPos(index);
   };
 
   node.computeSize = function (out) {

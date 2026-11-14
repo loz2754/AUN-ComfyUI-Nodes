@@ -21,6 +21,8 @@ export {
   isCompact,
   setCompact,
   isNodeCollapsed,
+  collapsedSlotPos,
+  repairOversizedNode,
   fitNodeSize,
   forceRedraw,
   forceGraphRedraw,

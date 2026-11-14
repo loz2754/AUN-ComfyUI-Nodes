@@ -1,5 +1,5 @@
 import { app } from "../../scripts/app.js";
-import { syncCollapseVueLabels, withUESuppressed } from "./index.js";
+import { collapsedSlotPos, repairOversizedNode, syncCollapseVueLabels, withUESuppressed } from "./index.js";
 
 const TARGET_CLASSES = new Set([
   "AUNInputsBasic",
@@ -23,28 +23,29 @@ function setupNode(node) {
 
   const origGetOutputPos = node.getOutputPos.bind(node);
   node.getOutputPos = function (index) {
-    if (this.properties?.[PK]) return origGetOutputPos(0);
+    if (this.properties?.[PK]) return collapsedSlotPos(this, false, origGetOutputPos);
     return origGetOutputPos(index);
   };
 
   const origGetInputPos = node.getInputPos.bind(node);
   node.getInputPos = function (index) {
-    if (this.properties?.[PK]) return origGetInputPos(0);
+    if (this.properties?.[PK]) return collapsedSlotPos(this, true, origGetInputPos);
     return origGetInputPos(index);
   };
 
   const origComputeSize = (node.computeSize || (() => node.size)).bind(node);
   node.computeSize = function (out) {
-    const s = origComputeSize(out);
+    const s = origComputeSize(out) || [this.size?.[0] ?? 200, this.size?.[1] ?? 200];
+    const size = [s[0], s[1]];
     if (this.properties?.[PK]) {
       const ni =
         this.inputs?.filter((i) => !(this.widgets?.length && i.widget)).length ||
         0;
       const no = this.outputs?.length || 0;
       const rows = Math.max(ni, no);
-      s[1] -= Math.max(0, rows - 1) * LiteGraph.NODE_SLOT_HEIGHT;
+      size[1] -= Math.max(0, rows - 1) * LiteGraph.NODE_SLOT_HEIGHT;
     }
-    return s;
+    return size;
   };
 
   const origDrawFg = node.onDrawForeground;
@@ -174,6 +175,9 @@ function setupNode(node) {
   if (node.properties[PK]) {
     node.setSize([node.size[0], node.computeSize()[1]]);
   }
+
+  // Repair workflows saved while the pre-fix layout loop was inflating nodes.
+  requestAnimationFrame(() => repairOversizedNode(node));
 }
 
 app.registerExtension({

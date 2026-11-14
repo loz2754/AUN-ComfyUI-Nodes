@@ -32,7 +32,7 @@ directly) — never copy the function into a node file.
 
 | Module | Provides | Imported by |
 |---|---|---|
-| `utils.js` | `isCompact`, `setCompact`, `forceRedraw`, `fitNodeSize`, `injectStyles` | preset/keyword/preview nodes, `AUN_apply_preset_to_node`, `AUN_split_bundle`, `AUN_wireless_bundle`, … |
+| `utils.js` | `isCompact`, `setCompact`, `forceRedraw`, `fitNodeSize`, `injectStyles`, `collapsedSlotPos`, `repairOversizedNode` | preset/keyword/preview nodes, `AUN_apply_preset_to_node`, `AUN_split_bundle`, `AUN_wireless_bundle`, all collapse/compact slot getters (`AUN_global_collapse_connections`, `AUN_inputs_basic_collapse_connections`, `AUN_ksampler_collapse_connections`, `AUN_save_image_collapse_connections`, `AUN_random_lora_*`, `AUN_lora_stack_with_triggers*`, `AUNTextIndexSwitch3`, …), … |
 | `widgets.js` | `getWidget`, `ensureHiddenAware`, `applyWidgetHiddenState`, `chainWidgetCallback` | image/slider/preview nodes, `AUN_multi_index_instant`, `AUN_string_list_builder`, … |
 | `graph-traversal.js` | `getAllGraphs`, `findNodeById`, `findNodeByIdentifier` | via `index.js` in ~10 extensions |
 | `event-bus.js` | `EventBus` | via `index.js` |

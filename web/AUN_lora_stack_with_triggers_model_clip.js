@@ -1,7 +1,7 @@
 import { app } from "../../scripts/app.js";
 import { openLoraInfoDialog } from "./aun_lora_info_shared.js";
 import { makeLoraLabelClickable } from "./aun_lora_dropdown_shared.js";
-import { isCompact, setCompact, isNodeCollapsed, withUESuppressed } from "./index.js";
+import { collapsedSlotPos, isCompact, setCompact, isNodeCollapsed, withUESuppressed } from "./index.js";
 
 const NODE_TYPE = "AUNLoraStackWithTriggersModelClip";
 const PROP_KEY = "_AUN_compactMode";
@@ -1935,13 +1935,13 @@ app.registerExtension({
 
     const ccOrigGetOutputPos = nodeType.prototype.getOutputPos;
     nodeType.prototype.getOutputPos = function getOutputPos(index) {
-      if (isCCollapsed(this)) return ccOrigGetOutputPos.call(this, 0);
+      if (isCCollapsed(this)) return collapsedSlotPos(this, false, (i) => ccOrigGetOutputPos.call(this, i));
       return ccOrigGetOutputPos.call(this, index);
     };
 
     const ccOrigGetInputPos = nodeType.prototype.getInputPos;
     nodeType.prototype.getInputPos = function getInputPos(index) {
-      if (isCCollapsed(this)) return ccOrigGetInputPos.call(this, 0);
+      if (isCCollapsed(this)) return collapsedSlotPos(this, true, (i) => ccOrigGetInputPos.call(this, i));
       return ccOrigGetInputPos.call(this, index);
     };
 

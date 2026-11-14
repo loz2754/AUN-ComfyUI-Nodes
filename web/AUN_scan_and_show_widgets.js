@@ -809,7 +809,7 @@ function setupCollapseConnections(node) {
 
   const origGetOutputPos = node.getOutputPos.bind(node);
   node.getOutputPos = function (index) {
-    if (this.properties?.[COLLAPSE_KEY]) return origGetOutputPos(0);
+    if (this.properties?.[COLLAPSE_KEY]) return collapsedSlotPos(this, false, origGetOutputPos);
     return origGetOutputPos(index);
   };
 

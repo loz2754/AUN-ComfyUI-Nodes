@@ -40,6 +40,14 @@ export function ensureHiddenAware(widget) {
     typeof widget.computeSize === "function" ? widget.computeSize : null;
   widget.__AUN_hiddenAware = true;
 
+  // Modern DOM widgets expose computeLayoutSize only. The frontend already
+  // drops extension-hidden rows from layout (visibility.suppression), and
+  // adding a computeSize here turns a growable DOM row into a fixed 20px row,
+  // which desyncs the canvas layout on frontend >= 1.61.
+  if (!origComputeSize && typeof widget.computeLayoutSize === "function") {
+    return;
+  }
+
   // Detect multiline textarea widgets
   const isMultiline =
     widget.type === "customtext" || widget.options?.multiline === true;

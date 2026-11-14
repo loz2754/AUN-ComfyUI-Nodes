@@ -8,7 +8,7 @@
 
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
-import { findNodeByIdentifier, forceRedraw, isNodeCollapsed, getWidget, applyWidgetHiddenState, isCompact, setCompact, withUESuppressed } from "./index.js";
+import { collapsedSlotPos, findNodeByIdentifier, forceRedraw, isNodeCollapsed, getWidget, applyWidgetHiddenState, isCompact, setCompact, withUESuppressed } from "./index.js";
 
 const NODE_CLASS = "AUNApplyPresetToNode";
 const TITLE_H = 28;
@@ -419,10 +419,10 @@ app.registerExtension({
         const origGetOutputPos = this.getOutputPos.bind(this);
         const origGetInputPos = this.getInputPos.bind(this);
         this.getOutputPos = function (index) {
-          return isCompact(this) ? origGetOutputPos(0) : origGetOutputPos(index);
+          return isCompact(this) ? collapsedSlotPos(this, false, origGetOutputPos) : origGetOutputPos(index);
         };
         this.getInputPos = function (index) {
-          return isCompact(this) ? origGetInputPos(0) : origGetInputPos(index);
+          return isCompact(this) ? collapsedSlotPos(this, true, origGetInputPos) : origGetInputPos(index);
         };
       }
 

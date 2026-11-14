@@ -1,5 +1,5 @@
 import { app } from "../../scripts/app.js";
-import { getWidget as sharedGetWidget, withUESuppressed } from "./index.js";
+import { collapsedSlotPos, getWidget as sharedGetWidget, withUESuppressed } from "./index.js";
 
 const ADVANCED_WIDGETS = new Set([
   "show_overlay",
@@ -215,13 +215,13 @@ const setupCollapseOverrides = (node) => {
 
   const origGetOutputPos = node.getOutputPos.bind(node);
   node.getOutputPos = function (index) {
-    if (this.properties?.[PK]) return origGetOutputPos(0);
+    if (this.properties?.[PK]) return collapsedSlotPos(this, false, origGetOutputPos);
     return origGetOutputPos(index);
   };
 
   const origGetInputPos = node.getInputPos.bind(node);
   node.getInputPos = function (index) {
-    if (this.properties?.[PK]) return origGetInputPos(0);
+    if (this.properties?.[PK]) return collapsedSlotPos(this, true, origGetInputPos);
     return origGetInputPos(index);
   };
 

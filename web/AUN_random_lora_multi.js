@@ -4,6 +4,7 @@ import { openLoraInfoDialog } from "./aun_lora_info_shared.js";
 import { makeLoraLabelClickable } from "./aun_lora_dropdown_shared.js";
 import { openPromptSetupDialog } from "./AUN_random_lora_multi_setup_dialog.js";
 import {
+  collapsedSlotPos,
   parsePositiveInt,
   isCompact,
   setCompact,
@@ -2905,13 +2906,13 @@ app.registerExtension({
 
     const ccOrigGetOutputPos = nodeType.prototype.getOutputPos;
     nodeType.prototype.getOutputPos = function getOutputPos(index) {
-      if (isCCollapsed(this)) return ccOrigGetOutputPos.call(this, 0);
+      if (isCCollapsed(this)) return collapsedSlotPos(this, false, (i) => ccOrigGetOutputPos.call(this, i));
       return ccOrigGetOutputPos.call(this, index);
     };
 
     const ccOrigGetInputPos = nodeType.prototype.getInputPos;
     nodeType.prototype.getInputPos = function getInputPos(index) {
-      if (isCCollapsed(this)) return ccOrigGetInputPos.call(this, 0);
+      if (isCCollapsed(this)) return collapsedSlotPos(this, true, (i) => ccOrigGetInputPos.call(this, i));
       return ccOrigGetInputPos.call(this, index);
     };
 

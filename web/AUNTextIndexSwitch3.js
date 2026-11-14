@@ -1,6 +1,6 @@
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
-import { getWidget, isCompact, setCompact, syncCollapseVueLabels, withUESuppressed } from "./index.js";
+import { collapsedSlotPos, getWidget, isCompact, setCompact, syncCollapseVueLabels, withUESuppressed } from "./index.js";
 
 const NODE_TYPES = ["AUNTextIndexSwitch3", "AUNTextIndexSwitch4", "AUNTextIndexSwitch5", "AUNTextIndexSwitch5Diffusers", "AUNInputsBasicSwitch"];
 // Classes that have a built-in "mode" widget (Select/Increment/Random/Range)
@@ -3494,7 +3494,7 @@ try {
             this.comfyClass === "AUNInputsBasicSwitch" &&
             isCollapseConnections(this)
           ) {
-            return origGetInputPos.call(this, 0);
+            return collapsedSlotPos(this, true, (i) => origGetInputPos.call(this, i));
           }
           return origGetInputPos.apply(this, arguments);
         };

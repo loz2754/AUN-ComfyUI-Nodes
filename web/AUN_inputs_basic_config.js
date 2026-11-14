@@ -134,7 +134,7 @@ function sizeNudge(node) {
 
 // Zero-height replacement used for hidden widgets.
 function hiddenWidgetComputeSize() {
-    return [0, -4];
+    return [0, 0];
 }
 
 function applyHidden(node, { reconnect = true, resize = true } = {}) {
@@ -148,13 +148,15 @@ function applyHidden(node, { reconnect = true, resize = true } = {}) {
         if (w.hidden) {
             // Keep the real implementation: several AUN extensions patch
             // computeSize (fixed row heights, section paddings), and deleting it
-            // on unhide left those nodes mis-laid-out.
+            // on unhide left those nodes mis-laid-out. Widgets that only have
+            // computeLayoutSize are DOM-managed: hiding them via `hidden` is
+            // enough, and forcing a fixed row desyncs the canvas layout.
             if (!w.__AUN_savedComputeSize &&
                 typeof w.computeSize === "function" &&
                 w.computeSize !== hiddenWidgetComputeSize) {
                 w.__AUN_savedComputeSize = w.computeSize;
             }
-            w.computeSize = hiddenWidgetComputeSize;
+            if (w.__AUN_savedComputeSize) w.computeSize = hiddenWidgetComputeSize;
         } else if (w.__AUN_savedComputeSize) {
             w.computeSize = w.__AUN_savedComputeSize;
             delete w.__AUN_savedComputeSize;

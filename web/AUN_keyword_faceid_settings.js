@@ -1,6 +1,6 @@
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
-import { applyWidgetHiddenState, ensureHiddenAware, getWidget, injectStyles, forceRedraw, isNodeCollapsed, isCompact, setCompact, withUESuppressed } from "./index.js";
+import { collapsedSlotPos, applyWidgetHiddenState, ensureHiddenAware, getWidget, injectStyles, forceRedraw, isNodeCollapsed, isCompact, setCompact, withUESuppressed } from "./index.js";
 
 const NODE_CLASS = "AUNKeywordFaceIDSettings";
 const MAX_SLOTS = 6;
@@ -580,7 +580,7 @@ app.registerExtension({
     if (typeof origGetOutputPos === "function") {
       nodeType.prototype.getOutputPos = function (index) {
         if (isCompact(this)) {
-          return origGetOutputPos.call(this, 0);
+          return collapsedSlotPos(this, false, (i) => origGetOutputPos.call(this, i));
         }
         return origGetOutputPos.apply(this, arguments);
       };

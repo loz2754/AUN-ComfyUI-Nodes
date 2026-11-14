@@ -7,7 +7,7 @@
 
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
-import { getWidget, applyWidgetHiddenState, isCompact, setCompact, isNodeCollapsed, forceRedraw, findNodeByIdentifier, withUESuppressed } from "./index.js";
+import { collapsedSlotPos, getWidget, applyWidgetHiddenState, isCompact, setCompact, isNodeCollapsed, forceRedraw, findNodeByIdentifier, repairOversizedNode, withUESuppressed } from "./index.js";
 import { openPresetSetupDialog, refreshPresetSetupDialog } from "./AUN_preset_manager_setup_dialog.js";
 
 const NODE_CLASS = "AUNPresetManager";
@@ -596,10 +596,10 @@ app.registerExtension({
         const origGetOutputPos = this.getOutputPos.bind(this);
         const origGetInputPos = this.getInputPos.bind(this);
         this.getOutputPos = function (index) {
-          return isCompact(this) ? origGetOutputPos(0) : origGetOutputPos(index);
+          return isCompact(this) ? collapsedSlotPos(this, false, origGetOutputPos) : origGetOutputPos(index);
         };
         this.getInputPos = function (index) {
-          return isCompact(this) ? origGetInputPos(0) : origGetInputPos(index);
+          return isCompact(this) ? collapsedSlotPos(this, true, origGetInputPos) : origGetInputPos(index);
         };
       }
 
@@ -610,7 +610,10 @@ app.registerExtension({
     const onConfigure = nodeType.prototype.onConfigure;
     nodeType.prototype.onConfigure = function () {
       onConfigure?.apply(this, arguments);
-      requestAnimationFrame(() => updateVisibility(this));
+      requestAnimationFrame(() => {
+        updateVisibility(this);
+        repairOversizedNode(this);
+      });
     };
 
     // Connect / disconnect manual_index: toggle the fallback widget and

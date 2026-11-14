@@ -1,7 +1,7 @@
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
 import { getWidget, ensureHiddenAware, applyWidgetHiddenState } from "./widgets.js";
-import { injectStyles } from "./utils.js";
+import { collapsedSlotPos, injectStyles } from "./utils.js";
 import { withUESuppressed } from "./index.js";
 
 const NODE_TYPE = "AUNImageSliderComparer";
@@ -1087,7 +1087,7 @@ function applyCollapseHooks(node) {
 
   const origGetInputPos = node.getInputPos?.bind(node);
   node.getInputPos = function (index) {
-    if (this.properties?.[COLLAPSE_KEY]) return origGetInputPos(0);
+    if (this.properties?.[COLLAPSE_KEY]) return collapsedSlotPos(this, true, origGetInputPos);
     return origGetInputPos(index);
   };
 

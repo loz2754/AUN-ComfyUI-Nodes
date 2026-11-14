@@ -57,6 +57,84 @@ export function isNodeCollapsed(node) {
   return !!node?.flags?.collapsed;
 }
 
+/**
+ * Shrink a node left oversized by the pre-fix layout feedback loop (the node
+ * grew by one widget row per arrange pass until it was tall enough to swallow
+ * the canvas). Only touches absurd heights, so genuine tall nodes are safe.
+ *
+ * @param {object} node - The node to inspect.
+ * @param {number} [threshold] - Heights below this are never touched.
+ * @returns {boolean} True when the node was resized.
+ */
+export function repairOversizedNode(node, threshold = 5000) {
+  const height = Number(node?.size?.[1]);
+  if (!Number.isFinite(height) || height < threshold) return false;
+  try {
+    const target = node.computeSize?.()[1];
+    if (Number.isFinite(target) && target > 0 && target < height) {
+      node.setSize?.([node.size[0], target]);
+      node.setDirtyCanvas?.(true, true);
+      node.graph?.setDirtyCanvas?.(true, true);
+      return true;
+    }
+  } catch (err) {
+    /* a node that cannot compute its size is left as-is */
+  }
+  return false;
+}
+
+/**
+ * Position to report for every slot while connection-collapse / compact mode
+ * converges them onto a single point.
+ *
+ * Frontend >= 1.61 derives node layout from slot geometry: `arrange()` takes
+ * the bounds of every non-widget input via `getInputPos()`, positions the
+ * widgets below that, then writes a widget-backed input slot's `pos` back from
+ * `widget.y`. Converging on an arbitrary index (the old `getInputPos(0)`) made
+ * the layout read its own output: every pass moved the anchor down by
+ * `NODE_SLOT_HEIGHT` and grew the node by one row, without bound.
+ *
+ * Anchor on a slot whose position never depends on the widget layout instead,
+ * and fall back to the constant first-row geometry when no such slot exists.
+ *
+ * @param {object} node - The node whose slots converge.
+ * @param {boolean} isInput - True for inputs, false for outputs.
+ * @param {Function} original - The slot getter captured before overriding.
+ * @returns {[number, number]} Position in graph coordinates.
+ */
+export function collapsedSlotPos(node, isInput, original) {
+  const slots = (isInput ? node?.inputs : node?.outputs) || [];
+  const widgetBacked = (slot) => isInput && !!node?.widgets?.length && !!slot?.widget;
+
+  // A collapsed (title-only) node keeps the frontend's own single-point
+  // geometry; convergence does not apply there.
+  if (isNodeCollapsed(node)) {
+    const litegraph = globalThis.LiteGraph;
+    const titleH = litegraph?.NODE_TITLE_HEIGHT ?? 30;
+    const width = isInput
+      ? 0
+      : (node?._collapsed_width ?? litegraph?.NODE_COLLAPSED_WIDTH ?? 80);
+    return [(node?.pos?.[0] ?? 0) + width, (node?.pos?.[1] ?? 0) - titleH * 0.5];
+  }
+
+  if (typeof original === "function") {
+    try {
+      const anchor = slots.findIndex(
+        (slot) => slot && !slot.pos && !widgetBacked(slot),
+      );
+      if (anchor >= 0) return original(anchor);
+    } catch (err) {
+      /* fall through to the constant geometry */
+    }
+  }
+
+  // No widget-independent slot (or no captured getter): use the default
+  // first-row position, which is constant across layout passes.
+  const x = isInput ? 10 : Math.max(0, (node?.size?.[0] ?? 0) - 9);
+  const y = 14 + (Number(node?.constructor?.slot_start_y) || 0);
+  return [(node?.pos?.[0] ?? 0) + x, (node?.pos?.[1] ?? 0) + y];
+}
+
 // ── Redraw helpers ────────────────────────────────────────────
 
 /**
