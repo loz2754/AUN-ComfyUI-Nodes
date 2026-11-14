@@ -8,6 +8,12 @@
 ### Changed
 
 ### Fixed
+
+### Notes
+
+## [2.35.7] - 2026-11-14
+
+### Fixed
 - Node height runaway on ComfyUI frontend 1.61.2: compact / collapse-connections mode overrode `getInputPos`/`getOutputPos` to report slot 0 for every slot, and 1.61 derives layout from slot geometry — for widget-backed input 0 the node then grew by one row (`NODE_SLOT_HEIGHT` + gap) on every arrange pass, without bound (e.g. `AUNInputsMiniMaxH3Basic` reaching ~150 000 px). All compact/collapse slot getters now share `collapsedSlotPos()` (`web/utils.js`), which anchors on a slot that is never derived from widget layout. Affected: AUN Inputs family, Preset Manager, KSampler/SaveImage/Global collapse, Random LoRA, LoRA Stack With Triggers, TextIndexSwitch3, Show/Passthrough Any Multi, Image Slider Comparer, Universal Instant, VHS Combine Preview, Scan And Show Widgets, Manual/Auto Image Switch, Keyword FaceID.
 - Existing workflows saved with an inflated node height self-repair on load: `repairOversizedNode()` (`web/utils.js`) clamps nodes taller than 5000 px back to their computed size (Preset Manager and the AUN Inputs family).
 - Hidden-widget layout hardening for frontend ≥ 1.61: `ensureHiddenAware()` no longer injects a fixed `computeSize` into DOM widgets that only expose `computeLayoutSize`, `hiddenWidgetComputeSize()` returns `[0, 0]` instead of `[0, -4]`, and `computeSize` results are cloned before mutation instead of being modified in place.
