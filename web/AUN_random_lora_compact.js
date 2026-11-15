@@ -2,6 +2,8 @@ import { api } from "../../scripts/api.js";
 import { app } from "../../scripts/app.js";
 import { openLoraInfoDialog } from "./aun_lora_info_shared.js";
 import {
+  attachCanvasOverlay,
+  canvasOverlayOrigin,
   collapsedSlotPos,
   parsePositiveInt,
   isCompact,
@@ -500,7 +502,7 @@ function ensureInfoButton(node) {
     });
   });
 
-  document.body.appendChild(button);
+  attachCanvasOverlay(button);
   node.__AUN_randomLoraInfoButton = button;
   allInfoButtons.add(node);
   startInfoButtonRAF();
@@ -598,10 +600,11 @@ function positionInfoButton(node, ctx) {
   ).matrixTransform(matrix);
 
   button.title = `Show LoRA info for ${loraBasename(selectedLora) ?? selectedLora}`;
+  const origin = canvasOverlayOrigin();
   Object.assign(button.style, {
     display: "flex",
-    left: `${canvasRect.left + topLeft.x}px`,
-    top: `${canvasRect.top + topLeft.y}px`,
+    left: `${canvasRect.left + topLeft.x - origin.left}px`,
+    top: `${canvasRect.top + topLeft.y - origin.top}px`,
     width: `${Math.max(INFO_BUTTON_SIZE, bottomRight.x - topLeft.x)}px`,
     height: `${Math.max(INFO_BUTTON_SIZE, bottomRight.y - topLeft.y)}px`,
   });

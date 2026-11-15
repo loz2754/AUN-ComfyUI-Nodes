@@ -1,6 +1,15 @@
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
-import { collapsedSlotPos, getWidget, isCompact, setCompact, syncCollapseVueLabels, withUESuppressed } from "./index.js";
+import {
+  attachCanvasOverlay,
+  canvasOverlayOrigin,
+  collapsedSlotPos,
+  getWidget,
+  isCompact,
+  setCompact,
+  syncCollapseVueLabels,
+  withUESuppressed,
+} from "./index.js";
 
 const NODE_TYPES = ["AUNTextIndexSwitch3", "AUNTextIndexSwitch4", "AUNTextIndexSwitch5", "AUNTextIndexSwitch5Diffusers", "AUNInputsBasicSwitch"];
 // Classes that have a built-in "mode" widget (Select/Increment/Random/Range)
@@ -709,7 +718,7 @@ function getCompactOverlay(node) {
 
   const overlay = document.createElement("div");
   overlay.style.cssText = `
-    position: fixed;
+    position: absolute;
     z-index: 11;
     pointer-events: none;
     display: none;
@@ -754,7 +763,7 @@ function getCompactOverlay(node) {
   `;
   container.appendChild(labelRow);
   overlay.appendChild(container);
-  document.body.appendChild(overlay);
+  attachCanvasOverlay(overlay);
 
   const ov = { overlay, label, hint, container };
   compactOverlays.set(node, ov);
@@ -851,11 +860,12 @@ function updateCompactOverlayPosition(node) {
     const screenY = canvasRect.top + (node.pos[1] + panOffsetY) * scale;
 
     // Label position: 6px from left, 28px from top (in node-local coordinates, scaled)
+    const origin = canvasOverlayOrigin();
     const labelX = screenX + 6 * scale;
     const labelY = screenY + 28 * scale;
 
-    ov.overlay.style.left = `${labelX}px`;
-    ov.overlay.style.top = `${labelY}px`;
+    ov.overlay.style.left = `${labelX - origin.left}px`;
+    ov.overlay.style.top = `${labelY - origin.top}px`;
   } catch (e) {
     // ignore position errors during drag
   }
@@ -1065,12 +1075,13 @@ function updateCompactOverlay(node, overrideIndex, force = false) {
     const screenY = canvasRect.top + (node.pos[1] + panOffsetY) * scale;
 
     // Label position: 6px from left, 28px from top (in node-local coordinates, scaled)
+    const origin = canvasOverlayOrigin();
     const labelX = screenX + 6 * scale;
     const labelY = screenY + 28 * scale;
 
     ov.overlay.style.display = "block";
-    ov.overlay.style.left = `${labelX}px`;
-    ov.overlay.style.top = `${labelY}px`;
+    ov.overlay.style.left = `${labelX - origin.left}px`;
+    ov.overlay.style.top = `${labelY - origin.top}px`;
   } catch (e) {
     console.warn("[AUNTextIndexSwitch3] Failed to position overlay:", e);
     ov.overlay.style.display = "none";
@@ -3170,7 +3181,7 @@ function getDividerOverlay(node) {
 
   const overlay = document.createElement("div");
   overlay.style.cssText = `
-    position: fixed;
+    position: absolute;
     z-index: 11;
     pointer-events: none;
     display: none;
@@ -3199,7 +3210,7 @@ function getDividerOverlay(node) {
   overlay.appendChild(label);
   overlay.appendChild(rightLine);
 
-  document.body.appendChild(overlay);
+  attachCanvasOverlay(overlay);
 
   const ov = { overlay, leftLine, label, rightLine };
   dividerOverlays.set(node, ov);
@@ -3328,13 +3339,14 @@ function updateDividerOverlayPosition(node) {
     }
 
     const rowH = 14;
+    const origin = canvasOverlayOrigin();
     ov.overlay.style.display = "flex";
     ov.overlay.style.alignItems = "center";
     ov.overlay.style.left = `${
-      canvasRect.left + (node.pos[0] + panOffsetX) * scale + 8 * scale
+      canvasRect.left + (node.pos[0] + panOffsetX) * scale + 8 * scale - origin.left
     }px`;
     ov.overlay.style.top = `${
-      canvasRect.top + (node.pos[1] + panOffsetY) * scale + y * scale - rowH / 2
+      canvasRect.top + (node.pos[1] + panOffsetY) * scale + y * scale - rowH / 2 - origin.top
     }px`;
     ov.overlay.style.width = `${Math.max(0, node.size[0] - 16) * scale}px`;
     ov.overlay.style.height = `${rowH}px`;

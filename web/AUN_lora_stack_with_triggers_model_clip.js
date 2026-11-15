@@ -1,7 +1,15 @@
 import { app } from "../../scripts/app.js";
 import { openLoraInfoDialog } from "./aun_lora_info_shared.js";
 import { makeLoraLabelClickable } from "./aun_lora_dropdown_shared.js";
-import { collapsedSlotPos, isCompact, setCompact, isNodeCollapsed, withUESuppressed } from "./index.js";
+import {
+  attachCanvasOverlay,
+  canvasOverlayOrigin,
+  collapsedSlotPos,
+  isCompact,
+  setCompact,
+  isNodeCollapsed,
+  withUESuppressed,
+} from "./index.js";
 
 const NODE_TYPE = "AUNLoraStackWithTriggersModelClip";
 const PROP_KEY = "_AUN_compactMode";
@@ -559,7 +567,7 @@ function buildCompactRow(node, slotIndex) {
   enabled.title = `Enable slot ${slotIndex}`;
 
   row.append(loraLabel, strengthModelControl, strengthClipControl, enabled);
-  document.body.appendChild(row);
+  attachCanvasOverlay(row);
 
   // Only block pointer/mouse events on the row, not the input fields
   for (const eventName of [
@@ -905,7 +913,7 @@ function ensureCompactFooter(node) {
   if (node.__AUN_compactFooter) return node.__AUN_compactFooter;
   const el = document.createElement("div");
   el.className = "AUN-lora-stack-footer";
-  document.body.appendChild(el);
+  attachCanvasOverlay(el);
   node.__AUN_compactFooter = el;
   return el;
 }
@@ -991,6 +999,7 @@ function isNodeOccluded(node, canvasRect, scale, offsetX, offsetY) {
 
 function positionCompactRowsCore(node, canvasRect, scale, offsetX, offsetY, numSlots, showClipStrength, occluded) {
   const rows = ensureCompactRows(node);
+  const origin = canvasOverlayOrigin();
   const currentWidth = node.size?.[0] ?? 360;
   const runtimeRowY = getWidgetBottomY(getWidget(node, "apply_stack"));
   const baseY = Number.isFinite(runtimeRowY)
@@ -1029,8 +1038,8 @@ function positionCompactRowsCore(node, canvasRect, scale, offsetX, offsetY, numS
     );
     Object.assign(row.root.style, {
       display: "grid",
-      left: `${screenPos.x}px`,
-      top: `${screenPos.y}px`,
+      left: `${screenPos.x - origin.left}px`,
+      top: `${screenPos.y - origin.top}px`,
       width: `${Math.max(80, screenBottomRight.x - screenPos.x)}px`,
       height: `${Math.max(22, screenBottomRight.y - screenPos.y)}px`,
     });
@@ -1071,8 +1080,8 @@ function positionCompactRowsCore(node, canvasRect, scale, offsetX, offsetY, numS
 
     Object.assign(footerEl.style, {
       display: "block",
-      left: `${screenTL.x}px`,
-      top: `${screenTL.y}px`,
+      left: `${screenTL.x - origin.left}px`,
+      top: `${screenTL.y - origin.top}px`,
       width: `${Math.max(20, screenBR.x - screenTL.x)}px`,
       height: `${Math.max(20, screenBR.y - screenTL.y)}px`,
     });

@@ -1,6 +1,19 @@
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
-import { collapsedSlotPos, applyWidgetHiddenState, ensureHiddenAware, getWidget, injectStyles, forceRedraw, isNodeCollapsed, isCompact, setCompact, withUESuppressed } from "./index.js";
+import {
+  attachCanvasOverlay,
+  canvasOverlayOrigin,
+  collapsedSlotPos,
+  applyWidgetHiddenState,
+  ensureHiddenAware,
+  getWidget,
+  injectStyles,
+  forceRedraw,
+  isNodeCollapsed,
+  isCompact,
+  setCompact,
+  withUESuppressed,
+} from "./index.js";
 
 const NODE_CLASS = "AUNKeywordFaceIDSettings";
 const MAX_SLOTS = 6;
@@ -161,7 +174,7 @@ function ensureFooter(node) {
   ensureFooterStyles();
   const el = document.createElement("div");
   el.className = "AUN-faceid-footer";
-  document.body.appendChild(el);
+  attachCanvasOverlay(el);
   node.__AUN_faceidFooter = el;
   activeFooters.set(node.id, node);
   return el;
@@ -454,11 +467,12 @@ function syncAndPositionFooter(node) {
 
   const screenTL = graphToScreen(canvasRect, graphLeft, graphTop, scale, offsetX, offsetY);
   const screenBR = graphToScreen(canvasRect, graphRight, graphBottom, scale, offsetX, offsetY);
+  const origin = canvasOverlayOrigin();
 
   Object.assign(el.style, {
     display: "block",
-    left: `${screenTL.x}px`,
-    top: `${screenTL.y}px`,
+    left: `${screenTL.x - origin.left}px`,
+    top: `${screenTL.y - origin.top}px`,
     width: `${Math.max(20, screenBR.x - screenTL.x)}px`,
     height: `${Math.max(20, screenBR.y - screenTL.y)}px`,
   });

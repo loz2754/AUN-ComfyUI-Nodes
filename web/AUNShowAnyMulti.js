@@ -1,5 +1,11 @@
 import { app } from "../../scripts/app.js";
-import { collapsedSlotPos, syncCollapseVueLabels, withUESuppressed } from "./index.js";
+import {
+  attachCanvasOverlay,
+  canvasOverlayOrigin,
+  collapsedSlotPos,
+  syncCollapseVueLabels,
+  withUESuppressed,
+} from "./index.js";
 
 const NODE_TYPE = "AUNShowAnyMulti";
 const MAX_INPUTS = 20;
@@ -198,7 +204,7 @@ function getOverlayState(node) {
   if (!state) {
     const overlay = document.createElement("div");
     overlay.style.cssText = `
-      position: fixed;
+      position: absolute;
       z-index: 11;
       pointer-events: auto;
       display: none;
@@ -212,7 +218,7 @@ function getOverlayState(node) {
       padding: 4px;
     `;
     overlay.appendChild(container);
-    document.body.appendChild(overlay);
+    attachCanvasOverlay(overlay);
 
     state = { overlay, container };
     overlayRegistry.set(node, state);
@@ -422,9 +428,10 @@ function positionOverlay(node) {
     return;
   }
 
+  const origin = canvasOverlayOrigin();
   state.overlay.style.display = "block";
-  state.overlay.style.left = `${screenX + pad}px`;
-  state.overlay.style.top = `${screenY + yOffset}px`;
+  state.overlay.style.left = `${screenX - origin.left + pad}px`;
+  state.overlay.style.top = `${screenY - origin.top + yOffset}px`;
   state.overlay.style.width = `${maxW}px`;
   state.overlay.style.maxHeight = `${availableH}px`;
   state.overlay.style.overflowY = "auto";

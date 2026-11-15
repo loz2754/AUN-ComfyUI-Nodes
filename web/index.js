@@ -71,3 +71,10 @@ export {
   walkPromptNodes,
   wiredOutputNames,
 } from "./aun_bundle_constants.js";
+export {
+  CANVAS_OVERLAY_LAYER_ID,
+  ensureCanvasOverlayLayer,
+  attachCanvasOverlay,
+  detachCanvasOverlay,
+  canvasOverlayOrigin,
+} from "./canvas_overlay.js";

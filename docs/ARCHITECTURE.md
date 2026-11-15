@@ -37,6 +37,7 @@ directly) — never copy the function into a node file.
 | `graph-traversal.js` | `getAllGraphs`, `findNodeById`, `findNodeByIdentifier` | via `index.js` in ~10 extensions |
 | `event-bus.js` | `EventBus` | via `index.js` |
 | `tooltip.js` | `showTooltip`, `formatLoraTooltip` | `aun_lora_dropdown_shared.js` |
+| `canvas_overlay.js` | `ensureCanvasOverlayLayer`, `attachCanvasOverlay`, `canvasOverlayOrigin` | all node-pinned DOM overlays: `AUNShowAnyMulti`, `AUNPassthroughAnyMulti`, `AUN_scan_and_show_widgets`, `AUNTextIndexSwitch3`, `AUN_random_lora_multi`, `AUN_random_lora_compact`, both `lora_stack_with_triggers` files, `AUN_keyword_*`, `AUN_manual_auto_image_switch`, `AUN_video_preview`, `AUN_image_slider_comparer`, `AUN_bookmark_jump` |
 | `aun_persistence_shared.js` | `captureAunWidgetValues`, `restoreAunWidgetValues` | `AUN_universal_instant`, both `lora_stack` files, `AUN_random_lora_multi`, `AUN_random_lora_compact` |
 | `aun_lora_dropdown_shared.js`, `aun_lora_info_shared.js` | clickable LoRA labels, info dialog | LoRA frontend files |
 | `aun_bundle_constants.js` | `fieldsOf`, `findSetter`, `resolveConstantSource`, `registerPromptPass`, `walkPromptNodes`, `applyGeneratedTitle`, output-slot helpers | `AUN_merge_bundles`, `AUN_split_bundle`, `AUN_wireless_bundle`, `AUN_bundle_slot_fix` |

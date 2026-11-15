@@ -2,7 +2,7 @@ import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
 import { getWidget, ensureHiddenAware, applyWidgetHiddenState } from "./widgets.js";
 import { collapsedSlotPos, injectStyles } from "./utils.js";
-import { withUESuppressed } from "./index.js";
+import { attachCanvasOverlay, canvasOverlayOrigin, withUESuppressed } from "./index.js";
 
 const NODE_TYPE = "AUNImageSliderComparer";
 const MAX_PAIRS = 5;
@@ -333,11 +333,12 @@ function offsetDOMWidget(widget, ctx, node, widgetWidth, widgetY, height) {
   const y2 = y1 + Math.max(0, h);
   const p1 = new DOMPoint(padding, y1).matrixTransform(M);
   const p2 = new DOMPoint(Math.max(0, widgetWidth - padding), y2).matrixTransform(M);
+  const origin = canvasOverlayOrigin();
   Object.assign(widget.inputEl.style, {
     transformOrigin: "0 0",
     transform: "none",
-    left: `${elRect.left + p1.x}px`,
-    top: `${elRect.top + p1.y}px`,
+    left: `${elRect.left + p1.x - origin.left}px`,
+    top: `${elRect.top + p1.y - origin.top}px`,
     width: `${Math.max(0, p2.x - p1.x)}px`,
     height: `${Math.max(0, p2.y - p1.y)}px`,
     position: "absolute",
@@ -621,7 +622,7 @@ function createSliderWidget(node, state) {
   container.style.display = "none";
   widget.inputEl = container;
   widget.parent = node;
-  document.body.appendChild(container);
+  attachCanvasOverlay(container);
 
   return widget;
 }
@@ -973,12 +974,13 @@ function positionSliderOverlay(node) {
     w.inputEl.style.display = "none";
     return;
   }
+  const origin = canvasOverlayOrigin();
   Object.assign(w.inputEl.style, {
     position: "absolute",
     zIndex: 5,
     display: "",
-    left: `${left}px`,
-    top: `${top}px`,
+    left: `${left - origin.left}px`,
+    top: `${top - origin.top}px`,
     width: `${width}px`,
     height: `${height}px`,
     transform: "none",

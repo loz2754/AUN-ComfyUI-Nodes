@@ -1,5 +1,7 @@
 ﻿import { app } from "../../scripts/app.js";
 import {
+  attachCanvasOverlay,
+  canvasOverlayOrigin,
   findNodesMatching,
   getRootGraph,
   getVisibleGraph,
@@ -9,7 +11,7 @@ const STORAGE_KEY = "AUN.BookmarkJump.Buttons";
 
 const STYLES = `
   .aun-jump-btn {
-    position: fixed;
+    position: absolute;
     z-index: 5;
     padding: 5px 10px;
     border: 1px solid rgba(255,255,255,0.08);
@@ -409,9 +411,9 @@ document.addEventListener("keydown", (e) => {
 function positionButton(el, data) {
   const scale = getCanvasScale();
   const screen = worldToScreen(data.x, data.y);
-  const pad = 4 * scale;
-  el.style.left = screen.x + "px";
-  el.style.top = screen.y + "px";
+  const origin = canvasOverlayOrigin();
+  el.style.left = screen.x - origin.left + "px";
+  el.style.top = screen.y - origin.top + "px";
   el.style.display = "block";
 }
 
@@ -506,7 +508,7 @@ function createJumpButtonEl(data) {
     window.addEventListener("mouseup", onUp);
   });
 
-  document.body.appendChild(el);
+  attachCanvasOverlay(el);
   buttonEls.set(data.id, { el, data, dragging: false });
 }
 

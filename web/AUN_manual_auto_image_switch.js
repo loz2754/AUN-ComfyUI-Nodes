@@ -1,5 +1,11 @@
 import { app } from "../../scripts/app.js";
-import { collapsedSlotPos, getWidget as sharedGetWidget, withUESuppressed } from "./index.js";
+import {
+  attachCanvasOverlay,
+  canvasOverlayOrigin,
+  collapsedSlotPos,
+  getWidget as sharedGetWidget,
+  withUESuppressed,
+} from "./index.js";
 
 const ADVANCED_WIDGETS = new Set([
   "show_overlay",
@@ -50,11 +56,12 @@ const offsetColorInput = (inputEl, ctx, node, widget) => {
     swatchX + swatchWidth,
     swatchY + swatchHeight,
   ).matrixTransform(matrix);
+  const origin = canvasOverlayOrigin();
 
   Object.assign(inputEl.style, {
     position: "absolute",
-    left: `${elRect.left + topLeft.x}px`,
-    top: `${elRect.top + topLeft.y}px`,
+    left: `${elRect.left + topLeft.x - origin.left}px`,
+    top: `${elRect.top + topLeft.y - origin.top}px`,
     width: `${Math.max(12, bottomRight.x - topLeft.x)}px`,
     height: `${Math.max(12, bottomRight.y - topLeft.y)}px`,
     display: "block",
@@ -93,7 +100,7 @@ const attachColorPicker = (node, widgetName) => {
     cursor: "pointer",
     zIndex: 8,
   });
-  document.body.appendChild(colorInput);
+  attachCanvasOverlay(colorInput);
   widget.__AUN_colorInput = colorInput;
 
   widget.options = widget.options || {};

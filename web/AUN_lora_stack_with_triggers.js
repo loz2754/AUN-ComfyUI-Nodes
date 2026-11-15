@@ -1,7 +1,15 @@
 import { app } from "../../scripts/app.js";
 import { openLoraInfoDialog } from "./aun_lora_info_shared.js";
 import { makeLoraLabelClickable } from "./aun_lora_dropdown_shared.js";
-import { collapsedSlotPos, isCompact, setCompact, isNodeCollapsed, withUESuppressed } from "./index.js";
+import {
+  attachCanvasOverlay,
+  canvasOverlayOrigin,
+  collapsedSlotPos,
+  isCompact,
+  setCompact,
+  isNodeCollapsed,
+  withUESuppressed,
+} from "./index.js";
 
 const NODE_TYPE = "AUNLoraStackWithTriggers";
 const PROP_KEY = "_AUN_compactMode";
@@ -455,7 +463,7 @@ function buildCompactRow(node, slotIndex) {
   enabled.type = "checkbox";
   enabled.title = `Enable slot ${slotIndex}`;
   row.append(loraLabel, strengthControl, enabled);
-  document.body.appendChild(row);
+  attachCanvasOverlay(row);
 
   for (const eventName of [
     "pointerdown", "pointerup", "mousedown", "mouseup", "click",
@@ -812,6 +820,7 @@ function isNodeOccluded(node, canvasRect, scale, offsetX, offsetY) {
 
 function positionCompactRowsCore(node, canvasRect, scale, offsetX, offsetY, occluded) {
   const rows = ensureCompactRows(node);
+  const origin = canvasOverlayOrigin();
   const numSlots = getNumSlots(node);
   const currentWidth = node.size?.[0] ?? 360;
   const runtimeRowY = getWidgetBottomY(getWidget(node, "apply_stack"));
@@ -836,8 +845,8 @@ function positionCompactRowsCore(node, canvasRect, scale, offsetX, offsetY, occl
     const bottomRight = graphToScreen(canvasRect, nodeX + COMPACT_SIDE_PADDING + innerWidth, nodeY + localTop + COMPACT_ROW_HEIGHT, scale, offsetX, offsetY);
     Object.assign(row.root.style, {
       display: "grid",
-      left: `${topLeft.x}px`,
-      top: `${topLeft.y}px`,
+      left: `${topLeft.x - origin.left}px`,
+      top: `${topLeft.y - origin.top}px`,
       width: `${Math.max(80, bottomRight.x - topLeft.x)}px`,
       height: `${Math.max(22, bottomRight.y - topLeft.y)}px`,
     });

@@ -37,7 +37,7 @@ ComfyUI custom node pack (Python + JS). Nodes are discovered at ComfyUI startup;
 - Shared utilities: import from `web/index.js` (constants, widgets, utils, graph-traversal, event-bus, group-state).
 - Node extensions use `app.registerExtension({ name: "AUNNodes.NodeType", ... })` with `beforeRegisterNodeDef` for prototype patching.
 - Dynamic output slots: use `syncOutputs` pattern — create outputs on `onExecuted`, restore on `onConfigure`/`loadedGraphNode`.
-- Overlay display pattern: fixed-position DOM elements positioned via RAF loop against canvas coordinates.
+- Overlay display pattern: `attachCanvasOverlay()` from `web/canvas_overlay.js` + absolute positioning via RAF loop against canvas coordinates (never `document.body` + `position: fixed` — that paints above the 1.61+ side panels).
 - Height persistence: save height in `onConfigure` → `_aunSavedHeight`, restore in `nodeCreated` via `requestAnimationFrame`.
 
 **JS utilities (import from `web/index.js`):**
@@ -46,6 +46,7 @@ ComfyUI custom node pack (Python + JS). Nodes are discovered at ComfyUI startup;
 - `graph-traversal.js` — `getAllGraphs()`, `findNodeById()`
 - `event-bus.js` — `EventBus` (subscribe/unsubscribe events)
 - `tooltip.js` — `showTooltip()`, `formatLoraTooltip()`
+- `canvas_overlay.js` — `attachCanvasOverlay()`, `canvasOverlayOrigin()`
 - `aun_lora_dropdown_shared.js` — `makeLoraLabelClickable()`
 - `aun_lora_info_shared.js` — `openLoraInfoDialog()`
 

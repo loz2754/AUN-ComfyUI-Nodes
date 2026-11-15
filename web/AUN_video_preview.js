@@ -3,6 +3,7 @@
 
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
+import { attachCanvasOverlay, canvasOverlayOrigin } from "./index.js";
 
 const PREVIEW_REGISTRY = new WeakMap();
 const SUPPORTED_NODE_NAMES = new Set(["AUNSaveVideo", "AUNSaveVideoV2"]);
@@ -136,12 +137,13 @@ function offsetDOMWidget(widget, ctx, node, widgetWidth, widgetY, height) {
     Math.max(0, widgetWidth - padding),
     y2,
   ).matrixTransform(M);
+  const origin = canvasOverlayOrigin();
 
   Object.assign(widget.inputEl.style, {
     transformOrigin: "0 0",
     transform: "none", // width/height/pos are absolute in CSS pixels already
-    left: `${elRect.left + p1.x}px`,
-    top: `${elRect.top + p1.y}px`,
+    left: `${elRect.left + p1.x - origin.left}px`,
+    top: `${elRect.top + p1.y - origin.top}px`,
     width: `${Math.max(0, p2.x - p1.x)}px`,
     height: `${Math.max(0, p2.y - p1.y)}px`,
     position: "absolute",
@@ -241,7 +243,7 @@ function createMediaWidget(name, url, format, node) {
   widget.inputEl = container;
   widget.mediaEl = el;
   widget.parent = node;
-  document.body.appendChild(container);
+  attachCanvasOverlay(container);
 
   return widget;
 }
