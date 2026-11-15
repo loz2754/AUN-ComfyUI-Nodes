@@ -11,6 +11,15 @@
 
 ### Notes
 
+## [2.35.8] - 2026-11-15
+
+### Fixed
+- Node overlays no longer show through the ComfyUI side panels (Workflows, Apps, Console, bottom panel) on frontend 1.61+: the shell now isolates its own stacking contexts and places the panels at `z-1`..`z-3`, so `position: fixed` overlays on `document.body` (z-index 5–12) always painted over them. All node-pinned overlays now mount in `web/canvas_overlay.js` — one layer inside the canvas wrapper (isolated + clipped), re-parented rather than recreated on shell re-render, with a `document.body` viewport fallback for older frontends. Affected: Show Any Multi, Passthrough Any Multi, Scan And Show Widgets, TextIndexSwitch3 compact label and Inputs divider, Random LoRA Multi (rows + footer), Random LoRA compact info button, LoRA Stack With Triggers (rows + footer, both variants), Keyword FaceID Settings / Preset Selector footers, Manual/Auto Image Switch colour swatch, video preview and image slider comparer DOM widgets, bookmark jump buttons. Menus, tooltips, popups and modal dialogs intentionally stay body-level.
+- Overlays are additionally clipped to the canvas area, so a node scrolled under an open panel can no longer draw over it; panel transparency and the floating-sidebar style no longer let overlay text bleed through.
+
+### Notes
+- Node overlay providers now use `attachCanvasOverlay()` / `canvasOverlayOrigin()` from `web/index.js`; see `docs/ARCHITECTURE.md`.
+
 ## [2.35.7] - 2026-11-14
 
 ### Fixed
