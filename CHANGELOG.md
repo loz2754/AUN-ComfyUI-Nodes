@@ -9,10 +9,19 @@
 
 ### Fixed
 
+### Notes
+
+## [2.35.9] - 2026-11-15
+
+### Added
+
+### Changed
+
+### Fixed
+
 - `AUNLoRAsByPromptIndex` / `AUNRandomLoraModelOnlyMulti`: linking an external index no longer swallows the widget. Root cause: the node's local `computeSize` wrapper reported **zero height** for any `hidden` widget, and a widget that has been converted to an input still reports `hidden === true` (its row is suppressed by the connection, not by the extension). The row therefore collapsed onto the row below, so the input's socket dot landed on the wrong row — or, when the row was dropped from layout, in the title bar. The wrapper now keys off `visibility.suppression` (`byExtension` vs `byConnection`), matching the shared `ensureHiddenAware`, so a connection-suppressed row keeps its full height. Auto-height no longer temporarily reassigns `node.widgets` (which went through the frontend's reactive widget view and re-committed widget order on every resize) — `node.computeSize()` already skips extension-hidden rows. `onConnectionsChange` and every load path clear a stale extension-hidden flag on connected widget inputs and re-run the layout, and the compact live monitor now tracks which widget inputs are wired so the row re-settles immediately after a connect or disconnect.
 
 ### Notes
-
 ## [2.35.8] - 2026-11-15
 
 ### Fixed
