@@ -509,7 +509,17 @@ function ensureHiddenAwareWidget(widget) {
       return globalThis.LiteGraph?.NODE_WIDTH ?? 200;
     };
 
-    if (this.hidden || this.__AUN_zeroSize) {
+    // Only an extension-hidden row collapses to zero height. A row suppressed
+    // by a connection (a link was dropped on the widget) keeps its row: the
+    // frontend draws the input's socket dot on that row, and zeroing it makes
+    // the dot land on the next widget (or, if the row is dropped from layout
+    // entirely, in the title bar). `this.hidden` is true for both cases, so
+    // read the visibility suppression flags directly.
+    const suppression = this.visibility?.suppression;
+    const byExtension = suppression?.byExtension === true;
+    const byConnection =
+      suppression?.byConnection === true || this.connectionSuppressed === true;
+    if (byExtension || this.__AUN_zeroSize || (this.hidden && !byConnection)) {
       if (Array.isArray(firstArg)) {
         firstArg[1] = 0;
         return firstArg;
@@ -547,32 +557,92 @@ function applyWidgetHiddenState(widget, hidden) {
   widget.__AUN_visible = !hidden;
 }
 
-function computeVisibleNodeHeight(node, width) {
-  if (!node) return null;
-  const targetWidth = Number.isFinite(width) ? width : (node.size?.[0] ?? 200);
-  const computeTarget = [targetWidth, 0];
+// A widget the frontend converted into an input (a link was dropped on the
+// widget) draws its socket dot on the widget's row. That dot is the only way
+// to cut the link from this end, so a row hidden by compact / no-empty-slots
+// takes the dot with it. These helpers let the hide rules exempt linked rows.
+function findConvertedInput(node, widget) {
+  if (!node || !widget) return null;
+  const inputs = Array.isArray(node.inputs) ? node.inputs : [];
+  const byRef = inputs.find((inp) => inp && inp.widget === widget);
+  if (byRef) return byRef;
+  if (!widget.name) return null;
+  return (
+    inputs.find((inp) => inp && inp.name === widget.name && inp.widget) || null
+  );
+}
 
-  if (typeof node.computeSize !== "function") {
-    return null;
-  }
+function isWidgetInputLinked(node, widget) {
+  const input = findConvertedInput(node, widget);
+  return !!input && input.link != null;
+}
 
-  let computed = null;
-  const allWidgets = node.widgets;
-  if (Array.isArray(allWidgets) && allWidgets.length) {
-    const visible = allWidgets.filter((widget) => !widget?.hidden);
-    if (visible.length !== allWidgets.length) {
-      node.widgets = visible;
-      try {
-        computed = node.computeSize(computeTarget);
-      } finally {
-        node.widgets = allWidgets;
-      }
-    } else {
-      computed = node.computeSize(computeTarget);
+// True when any widget on this node has been converted into a wired input.
+function hasLinkedWidgetInput(node) {
+  const inputs = Array.isArray(node?.inputs) ? node.inputs : [];
+  return inputs.some((input) => input && input.widget && input.link != null);
+}
+
+// A converted widget must keep a normal, laid-out row: the frontend draws the
+// input's socket dot on that row, and an extension-hidden row loses both the
+// dot and its height. Clear the flags every load path that can set them.
+function revealConvertedWidgetRow(widget, input) {
+  if (!widget) return;
+  try {
+    const suppression = widget.visibility?.suppression;
+    if (suppression) suppression.byExtension = false;
+  } catch (_) {}
+  try {
+    // Legacy frontends rewrote a converted widget's type; newer ones read that
+    // type as "hidden by extension". The input keeps the original type.
+    if (String(widget.type) === "converted-widget" && input?.type) {
+      widget.type = input.type;
     }
-  } else {
-    computed = node.computeSize(computeTarget);
+  } catch (_) {}
+  try {
+    if (widget.hidden) widget.hidden = false;
+  } catch (_) {}
+  widget.__AUN_visible = true;
+}
+
+// Keep every connected widget-input drawable: clear the flags that would make
+// the frontend drop the row (and with it the socket dot).
+function syncWidgetBackedInputs(node) {
+  if (!node) return;
+  const widgets = Array.isArray(node.widgets) ? node.widgets : [];
+  const inputs = Array.isArray(node.inputs) ? node.inputs : [];
+  let touched = false;
+  for (const input of inputs) {
+    if (!input || !input.widget || input.link == null) continue;
+    // The frontend recreates widget objects on some load paths; re-bind so the
+    // row we keep drawable is the one actually rendered.
+    if (!widgets.includes(input.widget) && input.name) {
+      const live = widgets.find((w) => w && w.name === input.name);
+      if (live) input.widget = live;
+    }
+    input.hidden = false;
+    input.disabled = false;
+    revealConvertedWidgetRow(input.widget, input);
+    touched = true;
   }
+  // Re-run the layout so the row (and the slot position derived from it) is
+  // correct on the very next frame instead of after the next reload.
+  if (touched) {
+    try {
+      node.arrange?.();
+    } catch (_) {}
+  }
+}
+
+function computeVisibleNodeHeight(node, width) {
+  if (!node || typeof node.computeSize !== "function") return null;
+  const targetWidth = Number.isFinite(width) ? width : (node.size?.[0] ?? 200);
+
+  // node.computeSize() already skips extension-hidden rows and asks every
+  // remaining row for its height, so no widget-list juggling is needed here.
+  // Reassigning node.widgets used to go through the frontend's reactive widget
+  // view (syncWidgetOrder), which re-committed widget order on every resize.
+  const computed = node.computeSize([targetWidth, 0]);
 
   const height = Number.isFinite(computed?.[1])
     ? computed[1]
@@ -1838,18 +1908,25 @@ function applyCompact(node) {
       // In compact mode, hide ALL LoRA widgets - overlay provides UI.
       // For the new node, also hide empty-slot dropdowns in full mode so
       // prompts with no LoRAs show no empty slots.
+      // Linked rows are never hidden: their socket dot is the only way to
+      // disconnect an externally wired slot from this end.
       if (loraW) {
         ensureHiddenAwareWidget(loraW);
         applyWidgetHiddenState(
           loraW,
-          !isActivePrompt || (isNewNode(node) && !hasLora) || compact,
+          !isWidgetInputLinked(node, loraW) &&
+            (!isActivePrompt || (isNewNode(node) && !hasLora) || compact),
         );
       }
 
       const smW = getWidget(node, `p${p}_strength_model${s}`);
       if (smW) {
         ensureHiddenAwareWidget(smW);
-        applyWidgetHiddenState(smW, !isActivePrompt || !hasLora || compact);
+        applyWidgetHiddenState(
+          smW,
+          !isWidgetInputLinked(node, smW) &&
+            (!isActivePrompt || !hasLora || compact),
+        );
       }
 
       const scW = getWidget(node, `p${p}_strength_clip${s}`);
@@ -1857,20 +1934,27 @@ function applyCompact(node) {
         ensureHiddenAwareWidget(scW);
         applyWidgetHiddenState(
           scW,
-          !isActivePrompt || !hasLora || !showClipStrength(node) || compact,
+          !isWidgetInputLinked(node, scW) &&
+            (!isActivePrompt || !hasLora || !showClipStrength(node) || compact),
         );
       }
 
       const tW = getWidget(node, `p${p}_trigger${s}`);
       if (tW) {
         ensureHiddenAwareWidget(tW);
-        applyWidgetHiddenState(tW, !isActivePrompt || !hasLora || compact);
+        applyWidgetHiddenState(
+          tW,
+          !isWidgetInputLinked(node, tW) && (!isActivePrompt || !hasLora || compact),
+        );
       }
 
       const eW = getWidget(node, `p${p}_enabled${s}`);
       if (eW) {
         ensureHiddenAwareWidget(eW);
-        applyWidgetHiddenState(eW, !isActivePrompt || !hasLora || compact);
+        applyWidgetHiddenState(
+          eW,
+          !isWidgetInputLinked(node, eW) && (!isActivePrompt || !hasLora || compact),
+        );
       }
     }
   }
@@ -1879,14 +1963,17 @@ function applyCompact(node) {
   const basePromptW = getWidget(node, "base_prompt");
   if (basePromptW) {
     ensureHiddenAwareWidget(basePromptW);
-    applyWidgetHiddenState(basePromptW, compact);
+    applyWidgetHiddenState(
+      basePromptW,
+      compact && !isWidgetInputLinked(node, basePromptW),
+    );
   }
 
   // Hide label widget in compact mode (canvas overlay replaces it)
   const labelW = getWidget(node, "label");
   if (labelW) {
     ensureHiddenAwareWidget(labelW);
-    applyWidgetHiddenState(labelW, compact);
+    applyWidgetHiddenState(labelW, compact && !isWidgetInputLinked(node, labelW));
   }
 
   // OBVPM 'set' widget: visible in full mode, hidden in compact mode (where
@@ -1902,38 +1989,89 @@ function applyCompact(node) {
     // but make it occupy zero space and draw nothing so it never renders in
     // the node. The value is edited via the context menu.
     ensureHiddenAwareWidget(setW);
+    if (!setW.__AUN_setOrig) {
+      setW.__AUN_setOrig = { draw: setW.draw, label: setW.label };
+    }
+    // Linked -> keep a real, drawable row so its socket dot stays reachable.
+    const setLinked = isWidgetInputLinked(node, setW);
     setW.hidden = false;
     setW.__AUN_visible = true;
-    setW.__AUN_zeroSize = true;
-    setW.draw = () => {};
-    setW.label = " ";
+    setW.__AUN_zeroSize = !setLinked;
+    setW.draw = setLinked ? setW.__AUN_setOrig.draw : () => {};
+    setW.label = setLinked ? setW.__AUN_setOrig.label : " ";
+
+    const restoreSetDom = () => {
+      if (!setW.__AUN_setDomHidden) return;
+      for (const el of setW.__AUN_setDomHidden) {
+        try {
+          el.style.display = "";
+        } catch (_) {}
+      }
+      setW.__AUN_setDomHidden = null;
+    };
     const hideSetDom = () => {
-      if (!setW) return;
-      if (setW.inputEl) {
-        setW.inputEl.style.display = "none";
-        let el = setW.inputEl.parentElement;
-        for (let i = 0; i < 3 && el; i++) {
-          el.style.display = "none";
-          el = el.parentElement;
+      if (!setW || !setW.inputEl) return;
+      setW.inputEl.style.display = "none";
+      // Only hide wrappers that contain no other widget's DOM. Walking up
+      // blindly would blank sibling rows - including the socket row of
+      // prompt_index when it has been converted to an input - which leaves
+      // the link undrawable/undisconnectable from this end.
+      const ownedBySet = (el) => {
+        if (!el) return false;
+        for (const w of node.widgets || []) {
+          if (!w || w === setW) continue;
+          const other = w.inputEl || w.element;
+          if (!other || typeof el.contains !== "function") continue;
+          try {
+            if (el.contains(other)) return false;
+          } catch (_) {}
         }
+        return true;
+      };
+      const hidden = (setW.__AUN_setDomHidden = []);
+      let el = setW.inputEl.parentElement;
+      for (let i = 0; i < 3 && el; i++) {
+        if (!ownedBySet(el)) break;
+        el.style.display = "none";
+        hidden.push(el);
+        el = el.parentElement;
       }
     };
-    hideSetDom();
-    requestAnimationFrame(() => hideSetDom());
+    if (setLinked) {
+      restoreSetDom();
+    } else {
+      hideSetDom();
+      requestAnimationFrame(() => hideSetDom());
+    }
   }
 
   // Hide num_prompts in compact mode
   const numPromptsW = getWidget(node, "num_prompts");
   if (numPromptsW) {
     ensureHiddenAwareWidget(numPromptsW);
-    applyWidgetHiddenState(numPromptsW, compact);
+    applyWidgetHiddenState(
+      numPromptsW,
+      compact && !isWidgetInputLinked(node, numPromptsW),
+    );
   }
+
+  // Keep connected widget-input rows (and their socket dots) drawable.
+  syncWidgetBackedInputs(node);
 
   // Sync hidden clip strengths
   syncHiddenClipStrength(node);
 
   updateAutoHeight(node);
   scheduleAutoHeightUpdate(node);
+  // The frontend only re-lays out widget rows when it thinks they changed.
+  // After a connect/disconnect the converted widget's row (and the slot
+  // position derived from it) must be recomputed now, otherwise its socket dot
+  // stays at the old position until the next reload.
+  if (hasLinkedWidgetInput(node)) {
+    try {
+      node.arrange?.();
+    } catch (_) {}
+  }
   node.setDirtyCanvas?.(true, true);
 
   // Persist all widget values (incl. hidden) into node properties so the
@@ -2089,6 +2227,14 @@ function startCompactLiveMonitor(node) {
       const enabledW = getWidget(node, `p${promptIdx}_enabled${s}`);
       parts.push(String(!!enabledW?.value));
     }
+    // Include which widget-backed inputs are wired: the frontend converts a
+    // widget into an input without necessarily calling onConnectionsChange, so
+    // this is what re-settles the row layout (and the socket dot position)
+    // after a connect or disconnect.
+    for (const input of node.inputs || []) {
+      if (!input || !input.widget) continue;
+      if (input.link != null) parts.push(`w:${input.widget.name || input.name}`);
+    }
     // Include upstream label value so changes from Random/Increment/Range switches trigger redraw
     parts.push(readLabelValue());
     return parts.join("|");
@@ -2106,7 +2252,7 @@ function startCompactLiveMonitor(node) {
     const signature = readSignature();
     if (signature !== lastSignature) {
       lastSignature = signature;
-      if (isCompact(node)) {
+      if (isCompact(node) || hasLinkedWidgetInput(node)) {
         applyCompact(node);
         forceRedraw(node);
         scheduleAutoHeightUpdate(node, 1, 0);
@@ -2752,6 +2898,35 @@ app.registerExtension({
         return protoOrigSetSize?.call(this, constrainedSize);
       }
       return protoOrigSetSize?.call(this, newSize);
+    };
+
+    // onConnectionsChange — settle widget-backed input rows immediately after
+    // a link is dropped on (or removed from) a widget, so a converted widget
+    // keeps a drawable row and its socket dot.
+    const protoOrigConnectionsChange = nodeType.prototype.onConnectionsChange;
+    nodeType.prototype.onConnectionsChange = function onConnectionsChange(
+      ...args
+    ) {
+      const result = protoOrigConnectionsChange?.apply(this, args);
+      const type = args[0];
+      const isInput = type === (globalThis.LiteGraph?.INPUT ?? 1);
+      const slot = isInput ? this.inputs?.[args[1]] : null;
+      if (!slot || !slot.widget) return result;
+      const settle = () => {
+        try {
+          syncWidgetBackedInputs(this);
+          applyCompact(this);
+          this.setDirtyCanvas?.(true, true);
+          this.graph?.setDirtyCanvas?.(true, true);
+        } catch (_) {}
+      };
+      // Let the caller finish writing slot.link before reading it.
+      if (typeof requestAnimationFrame === "function") {
+        requestAnimationFrame(settle);
+      } else {
+        setTimeout(settle, 0);
+      }
+      return result;
     };
 
     // onDrawForeground
