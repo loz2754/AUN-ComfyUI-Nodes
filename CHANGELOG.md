@@ -4,6 +4,16 @@
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Fixed
+
+### Notes
+
+## [2.35.11] - 2026-11-20
+
+### Added
 - Preset Manager: new `runs_per_row`, `counter_target` and `counter_widget` inputs. Hold each preset row for N queued runs and optionally write a 1..N run index to another node at queue time (e.g. a text index switch in Select mode), so every prompt runs before the checkpoint changes. The queue-time row/run is recorded on the prompt so the manager's outputs match the applied values.
 - Preset Manager: new Reset title-bar button and `AUN: Restart cycle at row 1` node menu action. Sequential/Random cycling still continues across runs by default; clicking Reset makes the next run start at row 1, then continue cycling from there.
 
@@ -14,7 +24,6 @@
 - Preset Manager / Apply Preset To Node: queue-time widget sync events are now deferred and replayed one preset group per run, so the target's widgets (e.g. `ckpt_name`) and the Preset Manager footer track the executing prompt in a multi-prompt batch instead of jumping to the last queued row. Generation is unchanged — presets are still applied at queue time before validation/caching.
 
 ### Notes
-
 ## [2.35.10] - 2026-11-20
 
 ### Added
