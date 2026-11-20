@@ -1,4 +1,5 @@
 import fnmatch
+import itertools
 import json
 import re
 from typing import Any
@@ -300,11 +301,19 @@ def _resolve_preset_values(prompt: dict, apply_node: dict):
 
 _ON_PROMPT_HANDLER_ATTR = "__AUN_apply_preset_handler_registered"
 
+# Queue-time applications are sent to the canvas as deferred groups: a batch
+# queue submits every prompt before any of them executes, so replaying the
+# events immediately would leave the canvas on the last queued row. The
+# frontend buffers these groups and applies one per execution_start.
+_DEFERRED_SYNC_SEQ = itertools.count(1)
+
 
 def _aun_apply_presets_on_prompt(json_data):
     prompt = json_data.get("prompt") if isinstance(json_data, dict) else None
     if not isinstance(prompt, dict):
         return json_data
+
+    apply_seq = next(_DEFERRED_SYNC_SEQ)
 
     for nid, node in prompt.items():
         if not isinstance(node, dict):
@@ -358,6 +367,8 @@ def _aun_apply_presets_on_prompt(json_data):
                             "target_title": str(target_title or ""),
                             "values": applied,
                             "notes": notes,
+                            "deferred": True,
+                            "apply_seq": apply_seq,
                         },
                     )
                 except Exception:
@@ -392,8 +403,22 @@ def _aun_apply_presets_on_prompt(json_data):
                         pass
                 continue
             values = resolved[0] if isinstance(resolved, (tuple, list)) else resolved
-            if not isinstance(values, dict) or not values:
+            if not isinstance(values, dict):
                 continue
+            mi = resolved[2] if isinstance(resolved, (tuple, list)) and len(resolved) > 2 else 0
+            mk = resolved[1] if isinstance(resolved, (tuple, list)) and len(resolved) > 1 else ""
+            run_in_row = resolved[3] if isinstance(resolved, (tuple, list)) and len(resolved) > 3 else 1
+            # Remember the queue-time row so the manager's own execution-time
+            # outputs match the values that were applied (no counter drift).
+            try:
+                node["_aun_pm_plan"] = {
+                    "values": values,
+                    "keyword": mk,
+                    "index": int(mi or 0),
+                    "run_in_row": int(run_in_row or 1),
+                }
+            except Exception:
+                pass
             for single in [x.strip() for x in ident.split(",") if x.strip()] or [""]:
                 target, target_id = _find_target(prompt, single)
                 if target is None:
@@ -426,25 +451,65 @@ def _aun_apply_presets_on_prompt(json_data):
                             "target_title": str(target_title or ""),
                             "values": applied,
                             "notes": notes,
+                            "deferred": True,
+                            "apply_seq": apply_seq,
                         },
                     )
                 except Exception:
                     pass
+
+            # Optional run-in-row counter: hold the row for runs_per_row
+            # prompts and push 1..N into another node (e.g. a text index
+            # switch in Select mode) so every prompt runs before the row
+            # advances. Written at queue time, like the row values themselves.
+            counter_target = str(inputs.get("counter_target") or "").strip()
+            counter_widget = str(inputs.get("counter_widget") or "index").strip()
+            if counter_target and counter_widget:
+                for single in [x.strip() for x in counter_target.split(",") if x.strip()]:
+                    ctarget, cid = _find_target(prompt, single)
+                    if ctarget is None:
+                        continue
+                    cnotes = []
+                    capplied = _write_values_into_node(
+                        ctarget, {counter_widget: run_in_row}, cnotes
+                    )
+                    if not capplied:
+                        continue
+                    try:
+                        from server import PromptServer
+                        cmeta = ctarget.get("_meta", {}) if isinstance(ctarget, dict) else {}
+                        ctitle = cmeta.get("title") or (ctarget.get("class_type") if isinstance(ctarget, dict) else "")
+                        PromptServer.instance.send_sync(
+                            "AUN_apply_preset_applied",
+                            {
+                                "node_id": str(nid),
+                                "target_id": str(cid or ""),
+                                "target_title": str(ctitle or ""),
+                                "values": capplied,
+                                "notes": cnotes,
+                                "deferred": True,
+                                "apply_seq": apply_seq,
+                            },
+                        )
+                    except Exception:
+                        pass
 
             # Also notify the Preset Manager footer (wireless/auto-apply path
             # may never execute the manager node, so it would not emit its own
             # executed event).
             try:
                 from server import PromptServer
-                mi = resolved[2] if isinstance(resolved, (tuple, list)) and len(resolved) > 2 else 0
-                mk = resolved[1] if isinstance(resolved, (tuple, list)) and len(resolved) > 1 else ""
                 PromptServer.instance.send_sync(
                     "AUN_preset_manager_executed",
                     {
                         "node_id": str(nid),
                         "matched_keyword": mk,
                         "matched_index": int(mi or 0),
+                        "run_in_row": int(run_in_row or 1),
+                        "runs_per_row": int(inputs.get("runs_per_row") or 1),
                         "selected_values": json.dumps(values if isinstance(values, dict) else {}, ensure_ascii=False, separators=(",", ":")),
+                        "deferred": True,
+                        "apply_seq": apply_seq,
                     },
                 )
             except Exception:

@@ -474,7 +474,7 @@ app.registerExtension({
 // WebSocket: sync target widgets + update the confirmation footer
 // ------------------------------------------------------------------
 
-api.addEventListener("AUN_apply_preset_applied", ({ detail }) => {
+function applyPresetUpdate(detail) {
   if (!detail || !app?.graph) return;
 
   const applyNode = app.graph.getNodeById?.(detail.node_id);
@@ -511,4 +511,46 @@ api.addEventListener("AUN_apply_preset_applied", ({ detail }) => {
     applyNode.setDirtyCanvas?.(true, true);
     forceRedraw(applyNode);
   }
+}
+
+// A batch queue submits every prompt before any of them executes, so the
+// queue-time applications arrive in a burst. Replaying them immediately
+// would leave the canvas on the last queued row; buffer them and apply one
+// preset group per execution_start instead, so the widgets track the run.
+const deferredPresetGroups = new Map();
+let deferredFallbackSeq = 0;
+
+function bufferDeferredPresetUpdate(detail) {
+  const key = detail.apply_seq != null
+    ? `seq:${detail.apply_seq}`
+    : `seq:fallback:${++deferredFallbackSeq}`;
+  const group = deferredPresetGroups.get(key);
+  if (group) group.push(detail);
+  else deferredPresetGroups.set(key, [detail]);
+}
+
+function replayNextDeferredPresetGroup() {
+  const first = deferredPresetGroups.entries().next();
+  if (first.done) return false;
+  const [key, group] = first.value;
+  deferredPresetGroups.delete(key);
+  for (const detail of group) applyPresetUpdate(detail);
+  return true;
+}
+
+api.addEventListener("AUN_apply_preset_applied", ({ detail }) => {
+  if (!detail) return;
+  if (detail.deferred) bufferDeferredPresetUpdate(detail);
+  else applyPresetUpdate(detail);
+});
+
+api.addEventListener("execution_start", () => {
+  replayNextDeferredPresetGroup();
+});
+
+// Drop leftovers when the queue drains (e.g. queued prompts were deleted).
+api.addEventListener("status", ({ detail }) => {
+  const remaining = detail?.status?.exec_info?.queue_remaining
+    ?? detail?.exec_info?.queue_remaining;
+  if (remaining === 0) deferredPresetGroups.clear();
 });

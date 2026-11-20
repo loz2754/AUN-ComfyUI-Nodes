@@ -7,8 +7,9 @@
 
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
-import { collapsedSlotPos, getWidget, applyWidgetHiddenState, isCompact, setCompact, isNodeCollapsed, forceRedraw, findNodeByIdentifier, repairOversizedNode, withUESuppressed } from "./index.js";
+import { collapsedSlotPos, getWidget, applyWidgetHiddenState, isCompact, setCompact, isNodeCollapsed, forceRedraw, findNodeByIdentifier, repairOversizedNode, withUESuppressed, injectStyles } from "./index.js";
 import { openPresetSetupDialog, refreshPresetSetupDialog } from "./AUN_preset_manager_setup_dialog.js";
+import { showTooltipAtPos, hideTooltip } from "./tooltip.js";
 
 const NODE_CLASS = "AUNPresetManager";
 const MAX_ROWS = 20;
@@ -167,6 +168,9 @@ function buildPreviewText(node) {
     })();
     if (rowName) parts.push(rowName);
     parts.push(preview.keyword ? `#${preview.index} ${preview.keyword}` : `preset ${preview.index}`);
+    if (Number(preview.runsPerRow) > 1) {
+      parts.push(`run ${preview.runInRow ?? 1}/${preview.runsPerRow}`);
+    }
     let values = preview.values;
     if (values && typeof values === "string") {
       try { values = JSON.parse(values); } catch { values = null; }
@@ -299,10 +303,11 @@ function updateVisibility(node) {
     node.__AUN_lastMatch = null;
   }
 
-  for (const name of ["visible_rows", "case_sensitive", "match_keywords", "node_identifier"]) {
+  for (const name of ["visible_rows", "case_sensitive", "match_keywords", "node_identifier", "runs_per_row", "counter_target", "counter_widget"]) {
     applyWidgetHiddenState(getWidget(node, name), compact);
   }
   applyWidgetHiddenState(getWidget(node, "preset_data"), true);
+  applyWidgetHiddenState(getWidget(node, "reset_token"), true);
   // With an external index the combo is a fallback only; hide it in compact
   // mode when the footer is there to show the resolved preset, so the two
   // cannot disagree.
@@ -326,6 +331,7 @@ function updateVisibility(node) {
        return nm ? nm : String(i + 1);
      });
      if (!opts.includes("Sequential")) opts.push("Sequential");
+     if (!opts.includes("Random")) opts.push("Random");
      mpW.type = "combo";
      mpW.options = mpW.options || {};
      mpW.options.values = opts;
@@ -483,6 +489,129 @@ function installSetupTitleButton(node) {
 }
 
 // ------------------------------------------------------------------
+// Reset cycle
+// ------------------------------------------------------------------
+
+function resetPresetCycle(node) {
+  if (!node) return;
+  const w = getWidget(node, "reset_token");
+  if (w) w.value = (Number(w.value) || 0) + 1;
+  node.__AUN_lastMatch = null;
+  node.__AUN_localPreview = computeLocalPreview(node);
+  forceRedraw(node);
+}
+
+function installResetTooltipWatcher() {
+  if (app.__AUN_pm_resetTooltipInstalled) return;
+  if (!app?.canvas?.canvas) return;
+  app.__AUN_pm_resetTooltipInstalled = true;
+
+  // Core shows a separate node-description tooltip when hovering the title
+  // bar; hide it while the pointer is on a title button.
+  injectStyles(
+    "__AUN_pm_resetTooltipSuppressStyle",
+    "body.AUN-pm-reset-hover .node-tooltip { display: none !important; }",
+  );
+
+  const tooltipText = "Restart the cycle at row 1 for the next run.\nThe rest of the batch continues from there.";
+  let hoveredNode = null;
+
+  const update = (event) => {
+    const graph = app.canvas?.graph || app.graph;
+    const mouse = app.canvas?.graph_mouse;
+    let hit = null;
+    if (Array.isArray(mouse) && Array.isArray(graph?._nodes)) {
+      for (const node of graph._nodes) {
+        const btn = node?.__AUN_resetTitleButton;
+        if (!btn || !btn.visible || node.flags?.collapsed) continue;
+        if (btn.isPointInside(mouse[0] - node.pos[0], mouse[1] - node.pos[1])) {
+          hit = node;
+          break;
+        }
+      }
+    }
+    if (hit === hoveredNode) return;
+    hoveredNode = hit;
+    document.body.classList.toggle("AUN-pm-reset-hover", !!hit);
+    if (hit) {
+      showTooltipAtPos(event.clientX, event.clientY, tooltipText, { delay: 150 });
+    } else {
+      hideTooltip();
+    }
+  };
+
+  app.canvas.canvas.addEventListener("pointermove", update, { passive: true });
+  app.canvas.canvas.addEventListener("pointerleave", () => {
+    hoveredNode = null;
+    document.body.classList.remove("AUN-pm-reset-hover");
+    hideTooltip();
+  }, { passive: true });
+}
+
+function installResetTitleButton(node) {
+  if (node.__AUN_pm_resetTitleInstalled) return;
+  if (typeof node.addTitleButton !== "function") return;
+  node.__AUN_pm_resetTitleInstalled = true;
+
+  const resetW = 48;
+  const BTN_H = 18;
+  const btn = node.addTitleButton({
+    name: "AUN_pm_reset",
+    text: "Reset",
+    fontSize: 11,
+    height: BTN_H,
+    cornerRadius: 4,
+  });
+  btn.getWidth = function getWidth() { return this.visible ? resetW : 0; };
+  btn.draw = function draw(ctx, x, y) {
+    if (!this.visible) return;
+    const x0 = x + (this.xOffset || 0);
+    const y0 = y + (this.yOffset || 0);
+    const h = this.height || BTN_H;
+    this._last_area = [x0, y0, resetW, h];
+    const mouse = app?.canvas?.graph_mouse;
+    const local = Array.isArray(mouse) && Array.isArray(node.pos)
+      ? [mouse[0] - node.pos[0], mouse[1] - node.pos[1]]
+      : null;
+    const hovered = !!local && local[0] >= x0 - 0.5 && local[0] <= x0 + resetW + 0.5 && local[1] >= y0 - 0.5 && local[1] <= y0 + h + 0.5;
+    ctx.save();
+    ctx.beginPath();
+    if (typeof ctx.roundRect === "function") ctx.roundRect(x0 + 0.5, y0 + 0.5, resetW - 1, h - 1, 4);
+    else ctx.rect(x0 + 0.5, y0 + 0.5, resetW - 1, h - 1);
+    ctx.fillStyle = hovered ? "rgba(255,255,255,0.28)" : "rgba(255,255,255,0.14)";
+    ctx.fill();
+    ctx.strokeStyle = hovered ? "rgba(255,255,255,0.55)" : "rgba(255,255,255,0.32)";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.fillStyle = hovered ? "#ffffff" : "#dbe4ff";
+    ctx.font = "11px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("\u21ba Reset", x0 + resetW / 2, y0 + h / 2 + 0.5);
+    ctx.restore();
+  };
+  btn.isPointInside = function isPointInside(x, y) {
+    const a = this._last_area;
+    if (!a) return false;
+    return x >= a[0] && x <= a[0] + a[2] && y >= a[1] && y <= a[1] + a[3];
+  };
+  node.__AUN_resetTitleButton = btn;
+
+  const origOnTitleButtonClick = node.onTitleButtonClick?.bind(node);
+  node.onTitleButtonClick = function onTitleButtonClick(button, canvas) {
+    if (button && button.name === "AUN_pm_reset") {
+      document.body.classList.remove("AUN-pm-reset-hover");
+      hideTooltip();
+      resetPresetCycle(this);
+      return;
+    }
+    if (origOnTitleButtonClick) origOnTitleButtonClick(button, canvas);
+  };
+
+  installResetTooltipWatcher();
+}
+
+// ------------------------------------------------------------------
 // Prompt sync: guarantee the live preset_data string reaches the queue.
 // Newer frontends can serialize hidden widgets as stale/empty values; the
 // backend must always see the JSON currently stored on the node.
@@ -510,6 +639,13 @@ function patchPromptPresetData() {
         const current = inputs.preset_data;
         if (Array.isArray(current) && current.length === 2) continue;
         inputs.preset_data = raw;
+        // Hidden widgets can serialize stale values on newer frontends; the
+        // Reset button bumps reset_token, so always send the live value.
+        const tokenWidget = getWidget(node, "reset_token");
+        const tokenCurrent = inputs.reset_token;
+        if (tokenWidget && !(Array.isArray(tokenCurrent) && tokenCurrent.length === 2)) {
+          inputs.reset_token = tokenWidget.value;
+        }
       }
     } catch (err) {
       console.warn("[AUN] preset_data prompt sync failed", err);
@@ -604,6 +740,7 @@ app.registerExtension({
       }
 
       installSetupTitleButton(this);
+      installResetTitleButton(this);
       requestAnimationFrame(() => updateVisibility(this));
     };
 
@@ -650,6 +787,10 @@ app.registerExtension({
          },
        });
        options.push({
+         content: "AUN: Restart cycle at row 1",
+         callback: () => resetPresetCycle(this),
+       });
+       options.push({
          content: isFooterVisible(this) ? "AUN: Hide footer" : "AUN: Show footer",
          callback: () => {
            setFooterVisible(this, !isFooterVisible(this));
@@ -676,7 +817,7 @@ app.registerExtension({
 // WebSocket: executed event updates the footer preview
 // ------------------------------------------------------------------
 
-api.addEventListener("AUN_preset_manager_executed", ({ detail }) => {
+function applyPresetManagerExecuted(detail) {
   if (!detail || !app?.graph) return;
   const node = app.graph.getNodeById?.(detail.node_id);
   if (!node) return;
@@ -687,8 +828,48 @@ api.addEventListener("AUN_preset_manager_executed", ({ detail }) => {
     index: Number(detail.matched_index ?? 0),
     keyword: detail.matched_keyword ?? "",
     values: detail.selected_values ?? "{}",
+    runInRow: Number(detail.run_in_row ?? 1),
+    runsPerRow: Number(detail.runs_per_row ?? 1),
   };
   forceRedraw(node);
+}
+
+// Queue-time executed events arrive in a burst for a batch; replay one
+// group per execution_start so the footer follows the running prompt.
+const deferredExecutedGroups = new Map();
+let deferredExecutedFallback = 0;
+
+function replayNextDeferredExecutedGroup() {
+  const first = deferredExecutedGroups.entries().next();
+  if (first.done) return false;
+  const [key, group] = first.value;
+  deferredExecutedGroups.delete(key);
+  for (const detail of group) applyPresetManagerExecuted(detail);
+  return true;
+}
+
+api.addEventListener("AUN_preset_manager_executed", ({ detail }) => {
+  if (!detail) return;
+  if (detail.deferred) {
+    const key = detail.apply_seq != null
+      ? `seq:${detail.apply_seq}`
+      : `seq:fallback:${++deferredExecutedFallback}`;
+    const group = deferredExecutedGroups.get(key);
+    if (group) group.push(detail);
+    else deferredExecutedGroups.set(key, [detail]);
+    return;
+  }
+  applyPresetManagerExecuted(detail);
+});
+
+api.addEventListener("execution_start", () => {
+  replayNextDeferredExecutedGroup();
+});
+
+api.addEventListener("status", ({ detail }) => {
+  const remaining = detail?.status?.exec_info?.queue_remaining
+    ?? detail?.exec_info?.queue_remaining;
+  if (remaining === 0) deferredExecutedGroups.clear();
 });
 
 app.registerExtension({

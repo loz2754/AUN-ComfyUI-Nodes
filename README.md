@@ -107,6 +107,22 @@ Use `AUN Text Index Switch 4`, `AUN Multi Negative Prompt` and `AUN Add-To-Promp
 
 Your setup: `AUN Text Index Switch 4` -> `AUN Add-To-Prompt (Multi)` -> `CLIP Text Encode`; `AUN Text Index Switch 4` -> `AUN Multi Negative Prompt` -> `CLIP Text Encode`; and both -> `AUN Show Any Multi`
 
+### Checkpoint Sweep: Every Prompt Before the Next Checkpoint
+
+Use `AUN Preset Manager` with `runs_per_row` and `counter_target` to run a whole list of prompts for each checkpoint, then move to the next checkpoint. The preset rows hold only the checkpoints; the manager drives the text switch's `index` 1..N at queue time, so the checkpoint and prompt cannot drift apart.
+
+[Checkpoint sweep workflow (JSON)](docs/example_workflows/Image/AUNExampleWF-PresetSweep-RunsPerRow.json)
+
+1. Add `AUN Text Index Switch 4` (`AUNTextIndexSwitch4`) for the positive prompt, put the prompts in slots 1..N, and set its mode to **Select**. The first line of each slot is the label/title (used in filenames and previews); put the actual prompt on the second line. Leave its `index` widget unlinked — the manager writes it.
+2. Add `AUN Preset Manager` and set `node_identifier` to the loader (`AUN Inputs Basic` in the example), `runs_per_row` = N, `counter_target` = the text switch's node ID, and `counter_widget` = `index`.
+3. In Setup, create one preset row per checkpoint (or import the JSON above), set `manual_preset` = Sequential, `match_keywords` = No, and `visible_rows` = the number of checkpoints.
+4. Queue `checkpoints × prompts` runs (batch count). The manager holds each checkpoint for N runs while the switch's index steps 1..N, so every prompt runs before the checkpoint changes.
+5. Use the title-bar Reset button to start the next sweep at the first checkpoint and prompt.
+
+Your setup: `AUN Text Index Switch 4` -> `CLIP Text Encode`; `AUN Preset Manager` -> `AUN Inputs Basic` (`ckpt_name`) and -> `AUN Text Index Switch 4` (`index`)
+
+Up to 20 checkpoint rows; the prompt count is independent, so 5 checkpoints × 8 prompts works. The example uses three SDXL checkpoints as placeholders — swap the rows for your own. `runs_per_row` must match the number of active prompt slots.
+
 ### Comparing Two Images Side-by-Side
 
 Use `AUN Image Slider Comparer` (`AUNImageSliderComparer`) to compare two versions of an image — before/after, original vs upscaled, two generations — with a slider. Two modes are available: Drag (click and drag to scrub) and Slide (slider follows the mouse without clicking). Switch between them via the right-click menu.
@@ -511,6 +527,7 @@ Complex nodes include detailed READMEs with examples and troubleshooting.
 - Model and Text Selector: [docs/AUNRandomModelBundleSwitch_README.md](docs/AUNRandomModelBundleSwitch_README.md)
 - Random LoRA Model Loader: [docs/AUNRandomLoraModelOnly_README.md](docs/AUNRandomLoraModelOnly_README.md)
 - LoRAs by Prompt Index: [docs/AUNLoRAsByPromptIndex_README.md](docs/AUNLoRAsByPromptIndex_README.md)
+- Preset Manager: [docs/AUNPresetManager_README.md](docs/AUNPresetManager_README.md)
 - Extract Model Name: [docs/AUNExtractModelName_README.md](docs/AUNExtractModelName_README.md)
 - Extract Power LoRAs: [docs/AUNExtractPowerLoras_README.md](docs/AUNExtractPowerLoras_README.md)
 - Extract Widget Value: [docs/AUNExtractWidgetValue_README.md](docs/AUNExtractWidgetValue_README.md)

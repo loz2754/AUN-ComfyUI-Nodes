@@ -55,6 +55,7 @@ Generated list of documentation files under `docs/`.
 - [AUNPathFilenameVideo](./SaveVideoPathNode_README.md)
 - [AUNPathFilenameVideoResolved](./AUNPathFilenameVideoResolved_README.md)
 - [AUNPathFilenameVideoV2](./AUNPathFilenameVideoV2_README.md)
+- [AUNPresetManager](./AUNPresetManager_README.md)
 - [AUNRandomAnySwitch](./AUNRandomAnySwitch_README.md)
 - [AUNRandomLoraModelOnly](./AUNRandomLoraModelOnly_README.md)
 - [AUNRandomLoraModelOnlyMulti](./AUNRandomLoraModelOnlyMulti_README.md)

@@ -205,32 +205,83 @@ def _resolve_manual_index(prompt, link):
 _CYCLE_STATE = {}
 
 
-def _cycle_index(mode, key, visible_rows, queue_time=False):
-    st = _CYCLE_STATE.setdefault(str(key), {"last": 0, "pending": None})
+def _cycle_index(mode, key, visible_rows, queue_time=False, reset_token=None, runs_per_row=1):
+    runs = max(1, int(runs_per_row or 1))
+    st = _CYCLE_STATE.setdefault(
+        str(key),
+        {"last": 0, "run_in_row": 0, "pending": None, "pending_run": 1, "token": None},
+    )
+    # The Reset button bumps reset_token; the first prompt that sees the new
+    # value starts over at row 1 / run 1, the rest of the batch continues.
+    if reset_token is not None:
+        token = str(reset_token)
+        if st.get("token") != token:
+            st["last"] = 0
+            st["run_in_row"] = 0
+            st["pending"] = None
+            st["pending_run"] = 1
+            st["token"] = token
+
+    def advance_sequential():
+        row = int(st.get("last") or 0)
+        run = max(1, int(st.get("run_in_row") or 0))
+        if row <= 0:
+            row, run = 1, 1
+        elif run < runs:
+            run += 1
+        else:
+            row = (row % visible_rows) + 1
+            run = 1
+        st["last"] = row
+        st["run_in_row"] = run
+        return row, run
+
     if queue_time:
         if mode == "Sequential":
-            st["last"] = (st["last"] % visible_rows) + 1
+            row, run = advance_sequential()
         elif mode == "Random":
-            import random
-            st["last"] = random.randint(1, visible_rows)
+            row = int(st.get("last") or 0)
+            run = max(1, int(st.get("run_in_row") or 0))
+            if row <= 0 or run >= runs:
+                import random
+                row = random.randint(1, visible_rows)
+                run = 1
+            else:
+                run += 1
+            st["last"] = row
+            st["run_in_row"] = run
         else:
-            st["last"] = max(1, min(int(st["last"] or 1), visible_rows))
-        st["pending"] = st["last"]
-        return st["last"]
+            row = max(1, min(int(st.get("last") or 1), visible_rows))
+            run = 1
+            st["last"] = row
+            st["run_in_row"] = run
+        st["pending"] = row
+        st["pending_run"] = run
+        return row, run
+
     # execution time
     if st.get("pending") is not None:
-        val = st["pending"]
+        row = int(st["pending"])
+        run = max(1, int(st.get("pending_run") or 1))
         st["pending"] = None
-        return val
+        st["pending_run"] = 1
+        return row, run
     if mode == "Sequential":
-        st["last"] = (st["last"] % visible_rows) + 1
+        row, run = advance_sequential()
     elif mode == "Random":
         import random
-        st["last"] = random.randint(1, visible_rows)
+        row = random.randint(1, visible_rows)
+        run = 1
+        st["last"] = row
+        st["run_in_row"] = run
     else:
-        st["last"] = max(1, min(int(st["last"] or 1), visible_rows))
+        row = max(1, min(int(st.get("last") or 1), visible_rows))
+        run = 1
+        st["last"] = row
+        st["run_in_row"] = run
     st["pending"] = None
-    return st["last"]
+    st["pending_run"] = 1
+    return row, run
 
 
 def resolve_preset_selection(inputs, prompt=None, queue_time=False):
@@ -239,10 +290,11 @@ def resolve_preset_selection(inputs, prompt=None, queue_time=False):
     dict (as found in the queued prompt). Shared by the node's own execution
     and by AUNApplyPresetToNode's queue-time prompt handler.
 
-    Returns (values_dict, matched_keyword, matched_index) or None when the
-    inputs cannot be resolved statically (e.g. reference_phrase is a link that
-    cannot be resolved, or manual_index is linked to a Random/Increment/Range
-    source whose value only exists at execution time).
+    Returns (values_dict, matched_keyword, matched_index, run_in_row) or None
+    when the inputs cannot be resolved statically (e.g. reference_phrase is a
+    link that cannot be resolved, or manual_index is linked to a
+    Random/Increment/Range source whose value only exists at execution time).
+    run_in_row is the 1..runs_per_row position inside the current row.
     """
     if not isinstance(inputs, dict):
         return None
@@ -291,13 +343,21 @@ def resolve_preset_selection(inputs, prompt=None, queue_time=False):
         _rows_for_name = []
 
     manual_n = 1
+    run_in_row = 1
     try:
         mi = int(manual_index)
     except (ValueError, TypeError):
         mi = 0
     if cycle_mode != "Off":
         key = inputs.get("unique_id") or inputs.get("node_identifier") or "global"
-        manual_n = _cycle_index(cycle_mode, key, visible_rows, queue_time=queue_time)
+        manual_n, run_in_row = _cycle_index(
+            cycle_mode,
+            key,
+            visible_rows,
+            queue_time=queue_time,
+            reset_token=inputs.get("reset_token"),
+            runs_per_row=inputs.get("runs_per_row", 1),
+        )
     elif mi > 0:
         manual_n = mi
     else:
@@ -358,7 +418,7 @@ def resolve_preset_selection(inputs, prompt=None, queue_time=False):
         if isinstance(vals, dict):
             values = vals
 
-    return values, matched_keyword, int(matched_index)
+    return values, matched_keyword, int(matched_index), int(run_in_row)
 
 
 class AUNPresetManager:
@@ -386,8 +446,14 @@ class AUNPresetManager:
         "Also outputs up to 12 manual value slots (ANY type) labelled with "
         "the widget names, for wiring directly into a target node's "
         "converted inputs or into other nodes such as AUNSaveImageV2 "
-        "filename fields. Warning: applying a preset overwrites the target "
-        "node's widget values (linked inputs are never overwritten)."
+        "filename fields. Sequential/Random cycling continues across runs; "
+        "click the Reset button in the title bar (or the node menu) to start "
+        "the next run at row 1. Set runs_per_row > 1 to hold a row for several "
+        "runs, and counter_target/counter_widget to drive a 1..runs_per_row "
+        "index on another node (e.g. a text index switch in Select mode) so "
+        "every prompt runs before the checkpoint changes. Warning: applying a "
+        "preset overwrites the target node's widget values (linked inputs are "
+        "never overwritten)."
     )
     RETURN_TYPES = ("STRING", "STRING", "INT") + tuple(any_type for _ in range(MAX_MANUAL_OUTPUTS))
     RETURN_NAMES = ("selected_values", "matched_keyword", "matched_index") + tuple(
@@ -442,6 +508,28 @@ class AUNPresetManager:
                 "multiline": True,
                 "tooltip": "Internal: JSON preset rows edited by the Setup dialog. Hidden from the UI.",
             }),
+            "reset_token": ("INT", {
+                "default": 0,
+                "min": 0,
+                "max": 0xffffffffffffffff,
+                "step": 1,
+                "tooltip": "Internal: incremented by the Reset title-bar button. A changed value restarts the sequential/random cycle at row 1 on the next run. Hidden from the UI.",
+            }),
+            "runs_per_row": ("INT", {
+                "default": 1,
+                "min": 1,
+                "max": 10000,
+                "step": 1,
+                "tooltip": "How many queued runs stay on each preset row before the cycle advances to the next row. Pair with counter_target to sweep an index (e.g. a text index switch) through all prompts for each row.",
+            }),
+            "counter_target": ("STRING", {
+                "default": "",
+                "tooltip": "Optional node ID or title whose widget is set to the current run-in-row index (1..runs_per_row) on every queued run. Use a text index switch in Select mode; comma-separated for multiple targets.",
+            }),
+            "counter_widget": ("STRING", {
+                "default": "index",
+                "tooltip": "Widget name on counter_target that receives the run-in-row index (default: index).",
+            }),
         }
         return {
             "required": required,
@@ -459,19 +547,38 @@ class AUNPresetManager:
 
     def select_preset(self, node_identifier, manual_preset="1", match_keywords="Yes",
                       visible_rows=5, case_sensitive=False, reference_phrase="",
-                      preset_data="", manual_index=0, prompt=None, unique_id=None, **kwargs):
-        values, matched_keyword, matched_index = resolve_preset_selection({
-            "visible_rows": visible_rows,
-            "manual_preset": manual_preset,
-            "manual_index": manual_index,
-            "match_keywords": match_keywords,
-            "case_sensitive": case_sensitive,
-            "reference_phrase": reference_phrase,
-            "preset_data": preset_data,
-            "unique_id": unique_id,
-        }, queue_time=False)
-        if values is None:
-            values, matched_keyword, matched_index = {}, "", 0
+                      preset_data="", manual_index=0, reset_token=0,
+                      runs_per_row=1, counter_target="", counter_widget="index",
+                      prompt=None, unique_id=None, **kwargs):
+        # The on-prompt handler stores the row resolved at queue time on the
+        # manager's prompt node. Use it here so the node's outputs match the
+        # values that were actually applied, without advancing the cycle again.
+        plan = None
+        if isinstance(prompt, dict) and unique_id is not None:
+            plan_node = prompt.get(str(unique_id))
+            if isinstance(plan_node, dict):
+                plan = plan_node.get("_aun_pm_plan")
+
+        if isinstance(plan, dict) and isinstance(plan.get("values"), dict):
+            values = plan.get("values") or {}
+            matched_keyword = str(plan.get("keyword") or "")
+            matched_index = int(plan.get("index") or 0)
+            run_in_row = int(plan.get("run_in_row") or 1)
+        else:
+            values, matched_keyword, matched_index, run_in_row = resolve_preset_selection({
+                "visible_rows": visible_rows,
+                "manual_preset": manual_preset,
+                "manual_index": manual_index,
+                "match_keywords": match_keywords,
+                "case_sensitive": case_sensitive,
+                "reference_phrase": reference_phrase,
+                "preset_data": preset_data,
+                "reset_token": reset_token,
+                "runs_per_row": runs_per_row,
+                "unique_id": unique_id,
+            }, queue_time=False)
+            if values is None:
+                values, matched_keyword, matched_index, run_in_row = {}, "", 0, 1
 
         # Manual wiring outputs: values for the included widgets, in the
         # order the frontend stores in preset_data.widgets (drives the
@@ -540,6 +647,8 @@ class AUNPresetManager:
                         "node_id": str(unique_id),
                         "matched_keyword": matched_keyword,
                         "matched_index": int(matched_index),
+                        "run_in_row": int(run_in_row),
+                        "runs_per_row": int(runs_per_row or 1),
                         "selected_values": out_json,
                     },
                 )
