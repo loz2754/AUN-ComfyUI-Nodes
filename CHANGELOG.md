@@ -7,8 +7,10 @@
 - `AUNSaveImageV2`: added optional `set` STRING input and `bundle` (OBVPM_BUNDLE) output exposing `filename`/`sidecar_text` as a bundle constant. Registered as a bundle setter; the `set` widget is hidden in Preview Mode.
 
 ### Changed
+- `AUNWildcardAddToPrompt`: added a right-click "Collapse Connections" / "Show Connections" option (double-click still toggles compact mode).
 
 ### Fixed
+- `AUNWildcardAddToPrompt`: compact-mode auto-height now includes the title bar and slot rail, so the populated-text box is no longer clipped at the bottom.
 
 ### Notes
 
