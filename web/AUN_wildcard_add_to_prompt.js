@@ -128,7 +128,20 @@ function computeNodeWidth(node) {
 
 function updateAutoHeight(node) {
   if (!node) return;
-  const h = computeNodeHeight(node);
+  // Prefer the node's own computeSize: it includes the title bar and the
+  // slot rail, which the widget-only sum misses. Without this the node stays
+  // too short after the extra 'bundle' output was added, clipping the
+  // populated-text box at the bottom.
+  let h = null;
+  if (typeof node.computeSize === "function") {
+    try {
+      const cs = node.computeSize([node.size?.[0] ?? 300, 0]);
+      if (Array.isArray(cs) && Number.isFinite(cs[1])) h = cs[1];
+    } catch (e) {
+      // fall back to the widget sum below
+    }
+  }
+  if (!Number.isFinite(h)) h = computeNodeHeight(node);
   if (!Number.isFinite(h)) return;
   node.__AUN_internalResize = true;
   // Only mutate the height slot directly — calling setSize([w, h]) can trigger
