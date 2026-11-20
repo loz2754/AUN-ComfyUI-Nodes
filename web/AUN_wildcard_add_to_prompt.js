@@ -1,11 +1,16 @@
 import { app } from "../../scripts/app.js";
-import { getWidget, isCompact, setCompact, withUESuppressed } from "./index.js";
+import { collapsedSlotPos, getWidget, isCompact, setCompact, withUESuppressed } from "./index.js";
 
 const PLACEHOLDER_VALUES = new Set([
   "Select wildcard...",
   "No wildcards found",
 ]);
 const PROP_KEY = "_AUN_compactMode";
+const COLLAPSE_KEY = "collapse_connections";
+
+function isCollapseConnections(node) {
+  return !!node?.properties?.[COLLAPSE_KEY];
+}
 const ALL_WIDGETS = [
   "wildcards",
   "wildcard_selector",
@@ -305,6 +310,87 @@ function setupCompact(node) {
     };
   }
 
+  // ── Collapse Connections (menu-only; double-click stays compact mode) ──
+  if (typeof node.getOutputPos === "function" && !node.__aunCollapseHooked) {
+    const origGetOutputPos = node.getOutputPos.bind(node);
+    node.getOutputPos = function (index) {
+      return isCollapseConnections(this)
+        ? collapsedSlotPos(this, false, origGetOutputPos)
+        : origGetOutputPos(index);
+    };
+  }
+  if (typeof node.getInputPos === "function") {
+    const origGetInputPos = node.getInputPos.bind(node);
+    node.getInputPos = function (index) {
+      return isCollapseConnections(this)
+        ? collapsedSlotPos(this, true, origGetInputPos)
+        : origGetInputPos(index);
+    };
+  }
+
+  // Shrink the rail while collapsed so the converged dot does not leave empty
+  // rows behind. Wraps the padding-aware computeSize installed above.
+  if (typeof node.computeSize === "function" && !node.__aunCollapseSizeHooked) {
+    const prevComputeSize = node.computeSize;
+    node.__aunCollapseSizeHooked = true;
+    node.computeSize = function (...args) {
+      const result = prevComputeSize.apply(this, args);
+      if (Array.isArray(result) && result.length >= 2 && isCollapseConnections(this)) {
+        const ni = (this.inputs || []).filter(
+          (i) => !(this.widgets?.length && i.widget),
+        ).length;
+        const no = (this.outputs || []).length;
+        const rows = Math.max(ni, no);
+        const slotH = globalThis.LiteGraph?.NODE_SLOT_HEIGHT ?? 20;
+        return [result[0], result[1] - Math.max(0, rows - 1) * slotH];
+      }
+      return result;
+    };
+  }
+
+  const origCollapseDrawFg = node.onDrawForeground;
+  node.onDrawForeground = function (ctx) {
+    origCollapseDrawFg?.apply(this, arguments);
+    const c = isCollapseConnections(this);
+    for (const slot of [...(this.inputs || []), ...(this.outputs || [])]) {
+      if (!slot) continue;
+      if (this.widgets?.length && slot.widget) continue;
+      if (!c) {
+        if ("__aun_collapse_origLabel" in slot) {
+          slot.label = slot.__aun_collapse_origLabel;
+          delete slot.__aun_collapse_origLabel;
+        }
+        if (slot.label === "") delete slot.label;
+        continue;
+      }
+      if (!("__aun_collapse_origLabel" in slot)) {
+        slot.__aun_collapse_origLabel = slot.label;
+      }
+      // Falsy "" so `label || name` readers fall back to the real slot name;
+      // the canvas draw-swap hides it visually.
+      slot.label = "";
+    }
+  };
+
+  const toggleCollapseConnections = (n) => {
+    n.properties = n.properties || {};
+    n.properties[COLLAPSE_KEY] = !isCollapseConnections(n);
+    updateAutoHeight(n);
+    n.setDirtyCanvas?.(true, true);
+    n.graph?.setDirtyCanvas?.(true, true);
+  };
+
+  node.__aun_remoteCollapse = (next) => {
+    const target = !!next;
+    if (isCollapseConnections(node) === target) return;
+    node.properties = node.properties || {};
+    node.properties[COLLAPSE_KEY] = target;
+    updateAutoHeight(node);
+    node.setDirtyCanvas?.(true, true);
+    node.graph?.setDirtyCanvas?.(true, true);
+  };
+  node.__aunCollapseHooked = true;
+
   // Tag this node so the canvas-level hook can find it
   node.__aunMinHeightNode = true;
 
@@ -320,6 +406,11 @@ function setupCompact(node) {
         setCompact(this, !isCompact(this));
         applyCompact(this);
       },
+    });
+    const collapsed = isCollapseConnections(this);
+    options.push({
+      content: collapsed ? "Show Connections" : "Collapse Connections",
+      callback: () => toggleCollapseConnections(this),
     });
   };
 
