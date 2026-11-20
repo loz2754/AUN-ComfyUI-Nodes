@@ -15,7 +15,7 @@ const AUN_INPUT_CLASSES = new Set([
     "AUNTextIndexSwitch", "AUNTextIndexSwitch3", "AUNTextIndexSwitch4", "AUNTextIndexSwitch5", "AUNTextIndexSwitch5Diffusers",
     "AUNRandomTextIndexSwitch", "AUNRandomTextIndexSwitchV2", "AUNAnyIndexSwitch", "AUNCheckpointLoaderWithClipSkip",
     "AUNLoraLoaderModelOnlyFromString", "AUNLoraStackWithTriggers", "AUNLoraStackWithTriggersModelClip",
-    "AUNLoRAsByPromptIndex", "KSamplerInputs",
+    "AUNLoRAsByPromptIndex", "KSamplerInputs", "AUNSaveImageV2",
     "AUNKSamplerPlusV2", "AUNKSamplerPlusv4", "AUNEmptyLatent", "AUNWan22MoE",
 ]);
 

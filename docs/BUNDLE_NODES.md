@@ -77,6 +77,7 @@ Wireless sources become real upstream dependencies and always execute — this n
 - `AUNEmptyLatent` — bundle fields: `latent`, `width`, `height`, `seed`
 - `AUNWan22MoE` — bundle fields: `latent`, `image`
 - `AUNInputsBasicSwitch` — bundle fields: `model`, `clip`, `vae`, `ckpt_name`, `sampler`, `scheduler`, `cfg`, `steps`, `latent`, `width`, `height`, `seed`, `batch_size`, `text`, `label`, `index`
+- `AUNSaveImageV2` — bundle fields: `filename`, `sidecar_text` (the `set` widget is hidden in Preview Mode)
 - `AUNSplitBundle` — the reader: one output per field, wired or by constant name. No pack required.
 
 ## Next candidates (image family done; suggested next families)

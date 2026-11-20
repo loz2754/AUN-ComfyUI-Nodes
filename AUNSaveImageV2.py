@@ -1,4 +1,5 @@
 from .AUNSaveImage import AUNSaveImage
+from .aun_bundle_shared import BUNDLE
 from .aun_path_filename_shared import split_path_filename, strip_lora_filename_tokens
 
 
@@ -9,6 +10,10 @@ class AUNSaveImageV2(AUNSaveImage):
         optional.pop("loras_delimiter", None)
         optional.pop("save_sidecar_to_file", None)
         optional.pop("time_format", None)
+        optional["set"] = ("STRING", {
+            "default": "",
+            "tooltip": "Constant name. When non-empty, this node sets an OBVPM bundle constant readable by an OBVPM Unbundle (get) or KJ Get."
+        })
         return {
             "required": {
                 "images": ("IMAGE", {"tooltip": "Input images to save. Can be single image or batch."}),
@@ -19,18 +24,25 @@ class AUNSaveImageV2(AUNSaveImage):
             "hidden": AUNSaveImage.INPUT_TYPES()["hidden"],
         }
 
-    RETURN_TYPES = ("STRING", "STRING")
-    RETURN_NAMES = ("filename", "sidecar_text")
+    RETURN_TYPES = ("STRING", "STRING", BUNDLE)
+    RETURN_NAMES = ("filename", "sidecar_text", "bundle")
     FUNCTION = "save_files_v2"
     OUTPUT_NODE = True
     CATEGORY = "AUN Nodes/Image"
-    DESCRIPTION = "A versatile image saver with advanced filename customization and metadata embedding. Accepts a path_filename input with support for %token% placeholders, %token placeholders, and date/time formatting. Use AUNPathFilenameV2 to generate path_filename strings from individual components. Right-click -> \"Preview Mode\" or double-click to hide all widgets and focus on the image preview."
+    DESCRIPTION = "A versatile image saver with advanced filename customization and metadata embedding. Accepts a path_filename input with support for %token% placeholders, %token placeholders, and date/time formatting. Use AUNPathFilenameV2 to generate path_filename strings from individual components. Right-click -> \"Preview Mode\" or double-click to hide all widgets and focus on the image preview. Set the 'set' widget to a constant name to expose filename/sidecar_text as an OBVPM bundle constant."
 
-    def save_files_v2(self, images, path_filename, extension, **kwargs):
+    def save_files_v2(self, images, path_filename, extension, set="", **kwargs):
         kwargs.pop("loras_delimiter", None)
         path_filename = strip_lora_filename_tokens(path_filename)
         path, filename = split_path_filename(path_filename)
-        return self.save_files(images, filename, path, extension, **kwargs)
+        result = self.save_files(images, filename, path, extension, **kwargs)
+        res = result.get("result")
+        if isinstance(res, tuple):
+            filename_out = res[0] if len(res) > 0 else None
+            sidecar_text = res[1] if len(res) > 1 else None
+            bundle = {"filename": filename_out, "sidecar_text": sidecar_text}
+            result["result"] = res + (bundle,)
+        return result
 
 
 NODE_CLASS_MAPPINGS = {"AUNSaveImageV2": AUNSaveImageV2}

@@ -12,7 +12,7 @@ const HIDE_WIDGETS = new Set([
   "seed_value", "date_format", "sidecar_format",
   "lpw_positive", "lpw_negative", "loras_delimiter",
   "preview", "save_image", "save_sidecar_to_file",
-  "path_filename", "filename", "path", "extension",
+  "path_filename", "filename", "path", "extension", "set",
 ]);
 
 function applyWidgetVisibility(node) {

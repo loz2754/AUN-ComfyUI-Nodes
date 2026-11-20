@@ -4,6 +4,7 @@
 ## [Unreleased]
 
 ### Added
+- `AUNSaveImageV2`: added optional `set` STRING input and `bundle` (OBVPM_BUNDLE) output exposing `filename`/`sidecar_text` as a bundle constant. Registered as a bundle setter; the `set` widget is hidden in Preview Mode.
 
 ### Changed
 
