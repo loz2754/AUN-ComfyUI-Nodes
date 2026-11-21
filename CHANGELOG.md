@@ -4,10 +4,14 @@
 ## [Unreleased]
 
 ### Added
+- Added `AUNH3BatchSplit` (MiniMax H3 Batch, Split Per Image) and `AUNH3SplitVideoBatch` (MiniMax H3 Split Video Batch), adapted from the `comfyui-h3-image-batch` pack. The first patches a model clone so MiniMax H3 samples a batch one image at a time and repeats the latent; the second splits a batched video decode into one clip per item (with its own audio) for Save Video / VHS Video Combine.
+- Added an all-clips grid preview for batched video saves: when a run produces two or more clips, every clip is shown inline and the stock single-clip preview is hidden.
+- `AUNH3BatchSplit` imports `comfy.nested_tensor` lazily, so a future ComfyUI move of that module can no longer stop the whole AUN pack from loading.
 
 ### Changed
 
 ### Fixed
+- The all-clips preview now only resizes nodes it attached its own widget to. Previously every output node was resized after each run, which reset user-set and workflow-restored heights and, for nodes that persist height on `onResize`, saved the shrunken height back into the workflow.
 
 ### Notes
 

@@ -27,6 +27,7 @@ from .AUNLoRAsByPromptIndex import AUNLoRAsByPromptIndex
 from .AUNGetActiveNodeTitle import AUNGetActiveNodeTitle
 from .AUNGetConnectedNodeTitles import AUNGetConnectedNodeTitles
 from .AUNGraphScraper import AUNGraphScraper
+from .AUNH3Batch import AUNH3BatchSplit, AUNH3SplitVideoBatch
 from .AUNImageLoadResize import AUNImageLoadResize
 from .AUNImageResize import AUNImageResize
 from .AUNImageSingleBatch3 import AUNImageSingleBatch3
@@ -140,6 +141,8 @@ NODE_CLASS_MAPPINGS = {
     "AUNGetActiveNodeTitle": AUNGetActiveNodeTitle,
     "AUNGetConnectedNodeTitles": AUNGetConnectedNodeTitles,
     "AUNGraphScraper": AUNGraphScraper,
+    "AUNH3BatchSplit": AUNH3BatchSplit,
+    "AUNH3SplitVideoBatch": AUNH3SplitVideoBatch,
     "AUNImageLoadResize": AUNImageLoadResize,
     "AUNImageResize": AUNImageResize,
     "AUNImageSingleBatch3": AUNImageSingleBatch3,
@@ -250,6 +253,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "AUNLoRAsByPromptIndex": "LoRAs by Prompt Index",
     "AUNGetActiveNodeTitle": "Get Active Node Title",
     "AUNGetConnectedNodeTitles": "Get Connected Node Titles",
+    "AUNH3BatchSplit": "MiniMax H3 Batch (Split Per Image)",
+    "AUNH3SplitVideoBatch": "MiniMax H3 Split Video Batch",
     "AUNImageLoadResize": "Load & Resize Image",
     "AUNImageResize": "Resize Image",
     "AUNImageSingleBatch3": "Load Image Single/Batch",
