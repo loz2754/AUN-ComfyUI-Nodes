@@ -4,7 +4,7 @@ import json
 import re
 from typing import Any
 
-from .AUNPresetManager import resolve_preset_selection
+from .AUNPresetManager import build_preview_values, resolve_preset_selection
 
 
 def _is_link(value):
@@ -507,6 +507,7 @@ def _aun_apply_presets_on_prompt(json_data):
                         "matched_index": int(mi or 0),
                         "run_in_row": int(run_in_row or 1),
                         "runs_per_row": int(inputs.get("runs_per_row") or 1),
+                        "preview_values": build_preview_values(values, None),
                         "selected_values": json.dumps(values if isinstance(values, dict) else {}, ensure_ascii=False, separators=(",", ":")),
                         "deferred": True,
                         "apply_seq": apply_seq,

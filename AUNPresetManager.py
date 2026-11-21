@@ -2,6 +2,13 @@ import json
 
 from server import PromptServer
 
+from .model_utils import (
+    get_lora_short_name,
+    get_sampler_short_name,
+    get_scheduler_short_name,
+    get_short_name,
+)
+
 
 class AlwaysEqualProxy(str):
     def __eq__(self, _):
@@ -421,6 +428,46 @@ def resolve_preset_selection(inputs, prompt=None, queue_time=False):
     return values, matched_keyword, int(matched_index), int(run_in_row)
 
 
+_MODELISH_KEY_PARTS = ("ckpt", "checkpoint", "model", "unet", "vae", "clip", "diffusion")
+_MODEL_EXTS = (".safetensors", ".ckpt", ".pt", ".bin", ".gguf", ".pth", ".sft")
+
+
+def _short_preview_value(name, value):
+    """Shorten a footer value with the same helpers used for filenames."""
+    if not isinstance(value, str) or not value:
+        return value
+    key = str(name or "").lower()
+    try:
+        if "sampler" in key:
+            return get_sampler_short_name(value)
+        if "scheduler" in key:
+            return get_scheduler_short_name(value)
+        if "lora" in key:
+            return get_lora_short_name(value)
+        if any(part in key for part in _MODELISH_KEY_PARTS) or value.lower().endswith(_MODEL_EXTS):
+            return get_short_name(value)
+    except Exception:
+        pass
+    return value
+
+
+def build_preview_values(values, widgets=None):
+    """Footer preview values: [{name, value}] with AUN short names used for
+    model/sampler/scheduler/LoRA values. The applied values stay untouched."""
+    if not isinstance(values, dict):
+        return []
+    names = [str(w) for w in (widgets or []) if w in values]
+    if not names:
+        names = [str(k) for k in values.keys()]
+    out = []
+    for name in names:
+        value = values.get(name)
+        if value is None or value == "" or isinstance(value, (dict, list)):
+            continue
+        out.append({"name": name, "value": _short_preview_value(name, value)})
+    return out
+
+
 class AUNPresetManager:
     """
     Preset manager for a target node's widgets.
@@ -649,6 +696,7 @@ class AUNPresetManager:
                         "matched_index": int(matched_index),
                         "run_in_row": int(run_in_row),
                         "runs_per_row": int(runs_per_row or 1),
+                        "preview_values": build_preview_values(values, widget_order),
                         "selected_values": out_json,
                     },
                 )

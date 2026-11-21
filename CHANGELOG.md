@@ -8,6 +8,7 @@
 ### Changed
 
 ### Fixed
+- Preset Manager: the canvas footer now shows model/sampler/scheduler/LoRA values through the AUN short-name helpers and uses compact widget labels. Overlong tokens wrap at separators instead of being truncated, and footer text is clipped to the footer box.
 
 ### Notes
 

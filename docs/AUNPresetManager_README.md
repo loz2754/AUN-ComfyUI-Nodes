@@ -93,7 +93,7 @@ Import format:
 - **Reset** (title-bar button or *AUN: Restart cycle at row 1*) restarts the next queued prompt at row 1 / run 1. It is one-shot: the rest of that batch continues from row 1/run 1. This is useful after stopping mid-sweep, which otherwise continues from the stopped row.
 - **runs_per_row** holds the row and increments an internal run index. **counter_target** writes that index at queue time, so another node (typically a text index switch in **Select** mode) sees the right index before validation/caching.
 - A full sweep normally queues `rows × runs_per_row` prompts (batch count). `batch_size` multiplies images per prompt; it does not advance the row faster.
-- The footer preview shows the selected row/name and, when `runs_per_row > 1`, `run x/N`.
+- The footer preview shows the selected row/name and, when `runs_per_row > 1`, `run x/N`. Model/sampler/scheduler/LoRA values use the same short names as filenames, and long tokens wrap instead of spilling out of the node.
 
 ## Recipes
 

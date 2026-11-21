@@ -151,6 +151,75 @@ function computeLocalPreview(node) {
   return { index, keyword, values };
 }
 
+const WIDGET_SHORT_LABELS = {
+  ckpt_name: "ckpt",
+  checkpoint: "ckpt",
+  checkpoint_name: "ckpt",
+  unet_name: "unet",
+  diffusion_model: "model",
+  diffusion: "model",
+  model_name: "model",
+  vae_name: "vae",
+  clip_name: "clip",
+  sampler: "sampler",
+  sampler_name: "sampler",
+  scheduler: "sched",
+  positive_prompt: "pos",
+  negative_prompt: "neg",
+  batch_size: "batch",
+  aspect_ratio: "aspect",
+  aspect_mode: "orient",
+  megapixels: "MP",
+  multiple: "mult",
+  clip_skip: "clip skip",
+  speed_lora: "lora",
+  speed_lora_model: "lora",
+  speed_lora_strength: "lora str",
+  filename_prefix: "prefix",
+  lora_name: "lora",
+  strength_model: "model str",
+  strength_clip: "clip str",
+};
+const WIDGET_WORD_ABBR = {
+  strength: "str",
+  scheduler: "sched",
+  checkpoint: "ckpt",
+  positive: "pos",
+  negative: "neg",
+  resolution: "res",
+  megapixels: "MP",
+  multiple: "mult",
+  weight: "wt",
+  diffusion: "model",
+};
+
+function shortWidgetName(name) {
+  const raw = String(name ?? "").trim();
+  if (!raw) return "";
+  const mapped = WIDGET_SHORT_LABELS[raw.toLowerCase()];
+  if (mapped) return mapped;
+  return raw
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => WIDGET_WORD_ABBR[word.toLowerCase()] || word)
+    .join(" ");
+}
+
+// Local preview only (before a run): strip paths/extensions from file-like
+// values. Executed previews use the server-side AUN shorteners instead.
+function shortenLocalValue(name, value) {
+  if (typeof value !== "string") return value;
+  const key = String(name || "").toLowerCase();
+  const fileLike = /(ckpt|checkpoint|model|unet|vae|clip|lora|diffusion)/.test(key)
+    || /\.(safetensors|ckpt|pt|bin|gguf|pth|sft)$/i.test(value);
+  if (!fileLike) return value;
+  const base = value.replace(/\\/g, "/").split("/").pop() || value;
+  return base.replace(/\.[^.]+$/, "");
+}
+
 function buildPreviewText(node) {
   if (isManualIndexLinked(node) && !getLastMatch(node)) {
     return "index linked \u2014 run to resolve preset";
@@ -175,7 +244,15 @@ function buildPreviewText(node) {
     if (values && typeof values === "string") {
       try { values = JSON.parse(values); } catch { values = null; }
     }
-    if (values && typeof values === "object") {
+    const previewValues = Array.isArray(preview.previewValues) ? preview.previewValues : null;
+    if (previewValues && previewValues.length) {
+      for (const item of previewValues) {
+        const name = shortWidgetName(item?.name);
+        const value = item?.value;
+        if (!name || value == null || value === "" || typeof value === "object") continue;
+        parts.push(`${name}=${value}`);
+      }
+    } else if (values && typeof values === "object") {
       let included = null;
       try {
         const pd = JSON.parse(String(getWidget(node, "preset_data")?.value ?? "{}"));
@@ -184,7 +261,7 @@ function buildPreviewText(node) {
       for (const [k, v] of Object.entries(values)) {
         if (included && !included.has(k)) continue;
         if (v == null || v === "" || typeof v === "object") continue;
-        parts.push(`${k}=${v}`);
+        parts.push(`${shortWidgetName(k)}=${shortenLocalValue(k, v)}`);
       }
     }
     return parts.join("  ");
@@ -380,6 +457,46 @@ function toggleCompactMode(node) {
 // Canvas footer preview (drawn, not DOM — keeps FPS healthy)
 // ------------------------------------------------------------------
 
+// Break an overlong token into width-fitting chunks, preferring separators
+// so names/values wrap instead of being cut off.
+function breakLongToken(ctx, token, maxWidth) {
+  const chunks = [];
+  let rest = token;
+  while (rest) {
+    if (ctx.measureText(rest).width <= maxWidth) {
+      chunks.push(rest);
+      break;
+    }
+    let lo = 1;
+    let hi = rest.length;
+    let best = 1;
+    while (lo <= hi) {
+      const mid = Math.floor((lo + hi) / 2);
+      if (ctx.measureText(rest.slice(0, mid)).width <= maxWidth) {
+        best = mid;
+        lo = mid + 1;
+      } else {
+        hi = mid - 1;
+      }
+    }
+    let cut = best;
+    const prefix = rest.slice(0, best);
+    const lastDelim = Math.max(
+      prefix.lastIndexOf("="),
+      prefix.lastIndexOf("_"),
+      prefix.lastIndexOf("."),
+      prefix.lastIndexOf("-"),
+      prefix.lastIndexOf("\\"),
+      prefix.lastIndexOf("/"),
+    );
+    if (lastDelim >= Math.max(0, best - 12)) cut = lastDelim + 1;
+    if (cut <= 0) cut = 1;
+    chunks.push(rest.slice(0, cut));
+    rest = rest.slice(cut);
+  }
+  return chunks;
+}
+
 function drawFooterBox(ctx, node) {
   const footerH = getFooterHeight(node);
   if (footerH <= 0) return;
@@ -399,28 +516,52 @@ function drawFooterBox(ctx, node) {
     ctx.rect(x0, y0, x1 - x0, y1 - y0);
   }
   ctx.fill();
+  // Keep any remaining overlong token inside the footer.
+  ctx.clip();
 
   ctx.font = "13px sans-serif";
   ctx.textBaseline = "top";
+  ctx.textAlign = "left";
   ctx.fillStyle = "rgba(225,225,225,0.92)";
   const text = buildPreviewText(node);
   const maxWidth = Math.max(10, x1 - x0 - 14);
   const words = text.split(/\s+/).filter(Boolean);
-  let line = "";
-  let y = y0 + 8;
   const lineH = 17;
+  let y = y0 + 8;
+  let line = "";
+
+  const drawLine = (value) => {
+    if (!value || y + lineH > y1 - 2) return false;
+    ctx.fillText(value, x0 + 6, y);
+    y += lineH;
+    return true;
+  };
+
+  const drawToken = (word) => {
+    for (const chunk of breakLongToken(ctx, word, maxWidth)) {
+      if (!drawLine(chunk)) return false;
+    }
+    return true;
+  };
+
   for (const word of words) {
+    if (ctx.measureText(word).width > maxWidth) {
+      if (line) {
+        if (!drawLine(line)) break;
+        line = "";
+      }
+      if (!drawToken(word)) break;
+      continue;
+    }
     const test = line ? line + " " + word : word;
     if (ctx.measureText(test).width > maxWidth && line) {
-      ctx.fillText(line, x0 + 6, y);
-      y += lineH;
-      if (y + lineH > y1 - 4) break;
+      if (!drawLine(line)) break;
       line = word;
     } else {
       line = test;
     }
   }
-  if (line && y + lineH <= y1 - 2) ctx.fillText(line, x0 + 6, y);
+  if (line) drawLine(line);
   ctx.restore();
 }
 
@@ -828,6 +969,7 @@ function applyPresetManagerExecuted(detail) {
     index: Number(detail.matched_index ?? 0),
     keyword: detail.matched_keyword ?? "",
     values: detail.selected_values ?? "{}",
+    previewValues: Array.isArray(detail.preview_values) ? detail.preview_values : null,
     runInRow: Number(detail.run_in_row ?? 1),
     runsPerRow: Number(detail.runs_per_row ?? 1),
   };
