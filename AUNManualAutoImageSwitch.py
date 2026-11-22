@@ -162,7 +162,7 @@ class AUNManualAutoImageSwitch:
         return image_tensor.to(dtype=dtype, device=device)
 
     @classmethod
-    def IS_CHANGED(cls, image, Filename, width, height, ManualName, name_mode, show_overlay, overlay_text, background_color, text_color, box_color):
+    def IS_CHANGED(cls, image, Filename, width, height, ManualName, name_mode, show_overlay, overlay_text, background_color, text_color, box_color, set="", **kwargs):
         return float("nan")
 
     def output(self, image, Filename, width, height, ManualName, name_mode, show_overlay=True, overlay_text="No image loaded", background_color="181818", text_color="E6E6E6", box_color="000000", set=""):

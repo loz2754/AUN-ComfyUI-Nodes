@@ -5,6 +5,7 @@ from pathlib import Path
 from PIL.PngImagePlugin import PngInfo
 import folder_paths
 import node_helpers
+from .aun_input_files_shared import list_input_images
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -93,13 +94,12 @@ def clean_filename_for_output(filename_without_ext, max_words=0):
 class AUNImageLoadResize:
     @classmethod
     def INPUT_TYPES(cls):
-        input_dir = folder_paths.get_input_directory()
-        files = [f for f in os.listdir(input_dir) if os.path.isfile(os.path.join(input_dir, f))]
+        files = list_input_images()
         return {"required":
                     {
-                    "image": (sorted(files), {
+                    "image": (files, {
                         "image_upload": True,
-                        "tooltip": "Select image file from input directory or upload new image."
+                        "tooltip": "Select image file from the input directory or upload a new image. Images in subfolders are listed as 'subfolder/image.ext'."
                     }),
                     "resize": ("BOOLEAN", {
                         "default": False,
@@ -157,7 +157,7 @@ class AUNImageLoadResize:
     def load_image(self, image, resize, use_framepack_bucket, base_resolution, width, height, method="keep proportion", crop_position="center", interpolation="lanczos", max_num_words=0, divisible_by=8, prompt=None, set=""):
 
         image_path = folder_paths.get_annotated_filepath(image)
-        filename = image.rsplit('.', 1)[0]  # get image name
+        filename = os.path.basename(image).rsplit('.', 1)[0]  # get image name
         img = node_helpers.pillow(Image.open, image_path)
 
         output_images = []

@@ -99,7 +99,7 @@ class AUNEmptyLatent:
         return ({"samples": latent}, width, height, seed, bundle)   
     
     @classmethod
-    def IS_CHANGED(self, width, height, aspect_ratio, mode, swap_dimensions, batch_size,seed):
+    def IS_CHANGED(self, width, height, aspect_ratio, mode, swap_dimensions, batch_size, seed, set="", **kwargs):
         # Always return True to force re-execution
         time.time()
         if mode == "fixed":

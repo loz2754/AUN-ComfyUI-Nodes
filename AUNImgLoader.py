@@ -6,6 +6,7 @@ from pathlib import Path
 from PIL.PngImagePlugin import PngInfo
 import folder_paths
 import node_helpers
+from .aun_input_files_shared import list_input_images
 import numpy as np
 import torch
 from PIL import Image, ImageSequence, ImageOps
@@ -50,10 +51,9 @@ def clean_filename_for_output(filename_without_ext, max_words=0):
 class AUNImgLoader:
     @classmethod
     def INPUT_TYPES(cls):
-        input_dir = folder_paths.get_input_directory()
-        files = [f for f in os.listdir(input_dir) if os.path.isfile(os.path.join(input_dir, f))]
+        files = list_input_images()
         return {"required": {
-                    "image": (sorted(files), {"image_upload": True, "tooltip": "Select the image to load."}),
+                    "image": (files, {"image_upload": True, "tooltip": "Select the image to load. Images in subfolders of the input directory are listed as 'subfolder/image.ext'."}),
                     "max_num_words": ("INT", {
                         "default": 0, "min": 0, "max": 32, "step": 1,
                         "tooltip": "Maximum number of words to keep for both filename outputs. Set to 0 for no limit."
@@ -77,7 +77,7 @@ class AUNImgLoader:
 
     def load_image(self, image, max_num_words=0, prompt=None, set=""):
         image_path = folder_paths.get_annotated_filepath(image)
-        filename = image.rsplit('.', 1)[0]  # get image name
+        filename = os.path.basename(image).rsplit('.', 1)[0]  # get image name
         img = node_helpers.pillow(Image.open, image_path)
 
         output_images = []

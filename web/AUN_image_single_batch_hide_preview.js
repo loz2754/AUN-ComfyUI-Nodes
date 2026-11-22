@@ -1,5 +1,6 @@
 // Hide image preview on AUNImageSingleBatch3 when hide_preview widget is true.
-// Displays the loaded filename in a text widget just above the image preview.
+// Displays the loaded filename in a text widget just above the image preview,
+// updating live as the image combo selection changes (no run required).
 import { app } from "../../scripts/app.js";
 
 const TARGET_NODE_TYPE = "AUNImageSingleBatch3";
@@ -66,11 +67,11 @@ function updateFilenameWidget(node, filename) {
   if (!el) return;
 
   let displayText = filename;
-  const maxWidth = el.clientWidth - 16;
+  const maxWidth = (el.clientWidth || 0) - 16;
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d");
   ctx.font = "bold 12px monospace";
-  if (ctx.measureText(displayText).width > maxWidth) {
+  if (maxWidth > 0 && ctx.measureText(displayText).width > maxWidth) {
     while (displayText.length > 1 && ctx.measureText(displayText + "...").width > maxWidth) {
       displayText = displayText.slice(0, -1);
     }
@@ -78,6 +79,100 @@ function updateFilenameWidget(node, filename) {
   }
   el.textContent = displayText;
   widget.value = displayText;
+  return displayText;
+}
+
+/**
+ * Convert an image widget value into the same filename the node outputs:
+ * basename only, extension stripped (matches os.path.splitext(os.path.basename(...))).
+ */
+function filenameFromImageValue(value) {
+  if (typeof value !== "string") return "";
+  const base = value.split(/[\\/]/).pop() || "";
+  return base.replace(/\.[^./\\]+$/, "");
+}
+
+/**
+ * Live-update the filename label while the user scrolls through the image combo,
+ * without waiting for a queue/run.
+ *
+ * A shared requestAnimationFrame poll is used instead of node.onDrawForeground:
+ * in Vue node mode (frontend 1.5x+) LGraphCanvas.drawNode() returns before calling
+ * node.onDrawForeground, so draw hooks never fire there. Polling widget.value works
+ * with the legacy combo, the Vue select widget, the <> arrows, and uploads.
+ */
+const watchedNodes = new Set();
+let pollHandle = null;
+
+function syncFilenameLabel(node) {
+  if (!node?.widgets) {
+    watchedNodes.delete(node);
+    return;
+  }
+
+  const sourceMode = node.widgets?.find((w) => w.name === "source_mode")?.value;
+  const imageWidget = node.widgets?.find((w) => w.name === "image_upload");
+  if (!imageWidget) return;
+
+  if (sourceMode !== "Single Image Upload") {
+    // Clear the cache so switching back to single mode re-syncs the label
+    // instead of leaving a batch filename on screen.
+    node._aunLastImageValue = undefined;
+    return;
+  }
+
+  const current = imageWidget.value;
+  // Only handle plain filename strings; leave asset/object values to the executed handler.
+  if (typeof current !== "string") return;
+  const labelWidget = node.widgets?.find((w) => w.name === "_aun_filename_display");
+  const labelEl = labelWidget?._aun_el;
+  // Re-apply if the value changed OR if Vue re-rendered the DOM widget and wiped the text.
+  if (current === node._aunLastImageValue && labelEl && labelEl.textContent === node._aunLastDisplay) {
+    return;
+  }
+
+  node._aunLastImageValue = current;
+  node._aunLastDisplay = updateFilenameWidget(node, filenameFromImageValue(current));
+  node.setDirtyCanvas?.(true);
+  node.graph?.setDirtyCanvas?.(true, true);
+}
+
+function startFilenamePoll() {
+  if (pollHandle != null) return;
+  const tick = () => {
+    if (watchedNodes.size === 0) {
+      pollHandle = null;
+      return;
+    }
+    for (const node of watchedNodes) syncFilenameLabel(node);
+    pollHandle = requestAnimationFrame(tick);
+  };
+  pollHandle = requestAnimationFrame(tick);
+}
+
+function attachFilenameWatcher(node) {
+  if (node._aunFilenameWatcherAttached) return;
+  node._aunFilenameWatcherAttached = true;
+
+  watchedNodes.add(node);
+  startFilenamePoll();
+
+  // Immediate update on upload / legacy combo picks.
+  const imageWidget = node.widgets?.find((w) => w.name === "image_upload");
+  if (imageWidget) {
+    const originalCallback = imageWidget.callback;
+    imageWidget.callback = function () {
+      const result = originalCallback?.apply(this, arguments);
+      syncFilenameLabel(node);
+      return result;
+    };
+  }
+
+  const originalOnRemoved = node.onRemoved;
+  node.onRemoved = function () {
+    watchedNodes.delete(node);
+    return originalOnRemoved?.apply(this, arguments);
+  };
 }
 
 /**
@@ -85,6 +180,7 @@ function updateFilenameWidget(node, filename) {
  */
 function hookNodeCreated(node) {
   getOrCreateFilenameWidget(node);
+  attachFilenameWatcher(node);
 }
 
 /**

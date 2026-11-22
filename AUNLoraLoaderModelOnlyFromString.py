@@ -116,7 +116,7 @@ class AUNLoraLoaderModelOnlyFromString:
         return (loaded_model, resolved, bundle)
 
     @classmethod
-    def IS_CHANGED(cls, model=None, lora_name=None, strength_model=None):
+    def IS_CHANGED(cls, model=None, lora_name=None, strength_model=None, set="", **kwargs):
         return (str(lora_name or "").strip(), float(strength_model or 0.0))
 
 

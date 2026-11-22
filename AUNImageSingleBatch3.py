@@ -11,6 +11,7 @@ import fnmatch
 from nodes import PreviewImage
 from server import PromptServer  # already available in ComfyUI core
 from .aun_bundle_shared import BUNDLE
+from .aun_input_files_shared import list_input_images
 
 def clean_filename_for_output(filename_without_ext, max_words=0):
     """Replace symbols with spaces, collapse whitespace, optionally drop a trailing numeric counter,
@@ -210,8 +211,7 @@ class AUNImageSingleBatch3(PreviewImage):
     @classmethod
     def INPUT_TYPES(cls):
         predefined_paths = load_predefined_paths()
-        input_dir = folder_paths.get_input_directory()
-        files = [f for f in os.listdir(input_dir) if os.path.isfile(os.path.join(input_dir, f))]
+        files = list_input_images()
 
         return {
             "required": {
@@ -240,10 +240,10 @@ class AUNImageSingleBatch3(PreviewImage):
                     "tooltip": "Multi-purpose field:\n• For fixed/range modes: Comma-separated 1-based indices or ranges (e.g., 2,3,4-7,10)\n• For search mode: Search pattern supporting wildcards (*,?,[]), regex, simple text, or name + trailing-number range (e.g., 'portrait*', '.*face.*', 'John [7-14]', 'John [1-5, 7-14]'). Name matches case-insensitive substring; bracket matches trailing number only. Separate clauses with ';' for OR (e.g., 'Jane; John [7-14]'). Files list in human order (2 < 10 < 101)."
                 }),
                 "image_upload": (
-                    sorted(files),
+                    files,
                     {
                         "image_upload": True,
-                        "tooltip": "When source_mode is 'Single Image Upload', choose the file from the ComfyUI input directory.",
+                        "tooltip": "When source_mode is 'Single Image Upload', choose the file from the ComfyUI input directory. Images in subfolders are listed as 'subfolder/image.ext'.",
                     },
                 ),
                 "max_num_words": ("INT", {

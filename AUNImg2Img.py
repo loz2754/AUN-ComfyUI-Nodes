@@ -5,6 +5,7 @@ from pathlib import Path
 from PIL.PngImagePlugin import PngInfo
 import folder_paths
 import node_helpers
+from .aun_input_files_shared import list_input_images
 import numpy as np
 import torch
 from PIL import Image, ImageSequence, ImageOps
@@ -56,8 +57,7 @@ def clean_filename_for_output(filename_without_ext, max_words=0):
 class AUNImg2Img:
     @classmethod
     def INPUT_TYPES(cls):
-        input_dir = folder_paths.get_input_directory()
-        files = [f for f in os.listdir(input_dir) if os.path.isfile(os.path.join(input_dir, f))]
+        files = list_input_images()
         return {"required": 
                     {
                     "img2img": ("BOOLEAN", { "default": False, "label_on": "On", "label_off": "Off", "tooltip": "Enable/disable Img2Img mode." }),
@@ -66,7 +66,7 @@ class AUNImg2Img:
                     "new_height": ("INT", { "default": 1024, "min": 0, "max": 2048,"step": 8, "tooltip": "Set the new height for the image when Img2Img is enabled. The longest side of the image will be resized to this length. Aspect ratio is preserved." }),
                     "latent_width": ("INT", { "forceInput": True, "tooltip": "The width of the latent space (from EmptyLatentImage node). The longest side of the image will be resized to this length. Aspect ratio is preserved."}),
                     "latent_height": ("INT", { "forceInput": True, "tooltip": "The height of the latent space (from EmptyLatentImage node). The longest side of the image will be resized to this length. Aspect ratio is preserved."}),
-                    "image": (sorted(files), {"image_upload": True, "tooltip": "Select the image to use for Img2Img."}),
+                    "image": (files, {"image_upload": True, "tooltip": "Select the image to use for Img2Img. Images in subfolders of the input directory are listed as 'subfolder/image.ext'."}),
                     "max_num_words": ("INT", {
                         "default": 0, "min": 0, "max": 32, "step": 1,
                         "tooltip": "Maximum number of words to keep for both filename outputs. Set to 0 for no limit."
@@ -87,7 +87,7 @@ class AUNImg2Img:
 
     def load_image(self, img2img, denoise_strength, image, new_width, new_height, latent_width, latent_height, vae, empty_latent, max_num_words=0, prompt=None):
         image_path = folder_paths.get_annotated_filepath(image)
-        filename = image.rsplit('.', 1)[0]  # get image name
+        filename = os.path.basename(image).rsplit('.', 1)[0]  # get image name
         img = node_helpers.pillow(Image.open, image_path)
 
         output_images = []
