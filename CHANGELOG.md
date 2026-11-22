@@ -4,6 +4,16 @@
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Fixed
+
+### Notes
+
+## [2.35.14] - 2026-11-22
+
+### Added
 - Image loader nodes (`AUNImgLoader`, `AUNImg2Img`, `AUNImageLoadResize` and the `image_upload` combo of `AUNImageSingleBatch3`) now list images inside subfolders of the ComfyUI `input` directory as `subfolder/image.ext`. Listing is provided by the new shared helper `aun_input_files_shared.list_input_images()` (recursive, natural sort, hidden/system folders skipped, capped at 10,000 entries).
 
 ### Changed
@@ -14,7 +24,6 @@
 - `IS_CHANGED()` now accepts the optional `set` widget in `AUNManualAutoImageSwitch`, `AUNEmptyLatent` and `AUNLoraLoaderModelOnlyFromString`, removing the `unexpected keyword argument 'set'` warnings in the server log.
 
 ### Notes
-
 ## [2.35.13] - 2026-11-21
 
 ### Added
