@@ -4,10 +4,14 @@
 ## [Unreleased]
 
 ### Added
+- Image loader nodes (`AUNImgLoader`, `AUNImg2Img`, `AUNImageLoadResize` and the `image_upload` combo of `AUNImageSingleBatch3`) now list images inside subfolders of the ComfyUI `input` directory as `subfolder/image.ext`. Listing is provided by the new shared helper `aun_input_files_shared.list_input_images()` (recursive, natural sort, hidden/system folders skipped, capped at 10,000 entries).
 
 ### Changed
+- `AUNImgLoader`, `AUNImg2Img` and `AUNImageLoadResize` now return only the file's base name from the `filename` / `cleaned filename` outputs when a subfolder image is selected.
 
 ### Fixed
+- `AUNImageSingleBatch3`: the filename label now updates while scrolling the image combo in Single Image Upload mode instead of only after a run. Implemented with a shared RAF poll because node draw hooks are not called in Vue node mode.
+- `IS_CHANGED()` now accepts the optional `set` widget in `AUNManualAutoImageSwitch`, `AUNEmptyLatent` and `AUNLoraLoaderModelOnlyFromString`, removing the `unexpected keyword argument 'set'` warnings in the server log.
 
 ### Notes
 
