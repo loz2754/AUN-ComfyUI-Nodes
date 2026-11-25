@@ -39,6 +39,7 @@ import {
   BUNDLE_TYPE,
   ConstantRefusal,
   MAX_GRAPH_DEPTH,
+  bundleOutputSlot,
   fieldsOf,
   findSetter,
   isOff,
@@ -47,6 +48,7 @@ import {
   pathToGraph,
   registerPromptPass,
   resolveConstantSource,
+  setNameOf,
   sourceOf,
   titleOf,
   visibleConstantNames,
@@ -774,7 +776,9 @@ export function openSourcesDialog(mergeNode) {
 //
 // A bundle replaces several wires with one, so the canvas can no longer say
 // which node an output really comes from. These hooks put that back for
-// bundles packed by Merge Bundles or Wireless Bundle.
+// bundles packed by Merge Bundles or Wireless Bundle, and for the plain
+// setters (the AUN loaders and the other `set` nodes), which supply every
+// field themselves.
 //
 // The reliable way in is SELECTION: select the Unbundle (or this node) and
 // every source it draws from is outlined and labelled with the fields it
@@ -819,6 +823,41 @@ function isProducer(node) {
   return isMergeNode(node) || isWirelessNode(node);
 }
 
+/**
+ * A bundle setter that is not one of the packing nodes: any node with an
+ * `OBVPM_BUNDLE` output and field names (all the AUN loaders, the other
+ * AUN setters, OBVPM's Value Presets, ...). It supplies every field itself,
+ * so the tracer can name it as the source of each one.
+ *
+ * Re-checked at most twice a second: the answer depends on widgets and on
+ * neighbours (a setter's names can appear/disappear as the graph changes),
+ * and it is asked on every pointer move.
+ */
+function isBundleSetter(node) {
+  if (!node || isProducer(node)) return false;
+  const type = String(node.type ?? "");
+  if (type === "Reroute" || type === "GetNode") return false;
+  const now = Date.now();
+  const hit = node.__aunBundleSetter;
+  if (hit && now - hit.at < 500) return hit.yes;
+  const slot = bundleOutputSlot(node);
+  let yes = false;
+  if (slot >= 0) {
+    try {
+      yes = !!fieldsOf(node, slot);
+    } catch (err) {
+      yes = false;
+    }
+  }
+  node.__aunBundleSetter = { at: now, yes };
+  return yes;
+}
+
+/** Anything that can be traced back as the place a bundle comes from. */
+function isBundleSource(node) {
+  return isProducer(node) || isBundleSetter(node);
+}
+
 function linkAt(graph, id) {
   if (id == null) return null;
   if (typeof id === "object") return id;          // already a link record
@@ -856,15 +895,17 @@ function producerOfSetter(hit) {
   if (isProducer(hit.node)) return hit.node;
   if (String(hit.node.type ?? "") === "SetNode") {
     const up = sourceOf(hit.node, hit.node.inputs?.[0]);
-    if (up && isProducer(up.node)) return up.node;
+    if (up && isBundleSource(up.node)) return up.node;
   }
-  return null;
+  // A plain setter (an AUN loader, say) packs its own bundle: trace it as
+  // the source of every field rather than stopping at the name.
+  return isBundleSetter(hit.node) ? hit.node : null;
 }
 
 /**
- * The producer a reader draws from: a Merge Bundles or Wireless Bundle
- * node, wired or by constant name. Readers are OBVPM's Unbundle, a Split
- * Bundle and (as a pass-through) a KJ Get.
+ * The bundle a reader draws from: a Merge Bundles / Wireless Bundle node,
+ * or any node that sets a bundle itself, wired or by constant name. Readers
+ * are OBVPM's Unbundle, a Split Bundle and (as a pass-through) a KJ Get.
  */
 function producerFor(node, depth = 0) {
   if (!node || depth > 6) return null;
@@ -879,7 +920,7 @@ function producerFor(node, depth = 0) {
     if (!link) return null;
     const origin = node.graph?.getNodeById?.(link.origin_id) ?? null;
     if (!origin) return null;
-    if (isProducer(origin)) return origin;
+    if (isBundleSource(origin)) return origin;
     if (String(origin.type ?? "") === "Reroute") {
       return producerFor(origin, depth + 1);
     }
@@ -897,7 +938,7 @@ function producerFor(node, depth = 0) {
     if (link) {
       const origin = node.graph?.getNodeById?.(link.origin_id) ?? null;
       if (origin) {
-        if (isProducer(origin)) return origin;
+        if (isBundleSource(origin)) return origin;
         if (String(origin.type ?? "") === "Reroute") {
           return producerFor(origin, depth + 1);
         }
@@ -927,7 +968,8 @@ function producerFor(node, depth = 0) {
 /**
  * A producer's fields and their sources. Merge Bundles computes a plan;
  * a node with an `aunBundleFieldEntries` hook (Wireless Bundle) answers
- * itself, in the same entry shape.
+ * itself, in the same entry shape; any other setter names itself as the
+ * source of every field it packs.
  */
 function entriesFor(node) {
   if (!node) return [];
@@ -944,7 +986,34 @@ function entriesFor(node) {
     node.__aunTraceEntries = { at: now, entries };
     return entries;
   }
+  if (isBundleSetter(node)) return setterEntries(node);
   return planFor(node);
+}
+
+/**
+ * A plain setter's entries: every field is supplied by the setter itself,
+ * labelled with the constant it sets. Merge Bundles and Wireless Bundle are
+ * answered above, so a setter that is also a producer never lands here.
+ */
+function setterEntries(node) {
+  const now = Date.now();
+  const hit = node.__aunTraceSetter;
+  if (hit && now - hit.at < 500) return hit.entries;
+
+  const slot = bundleOutputSlot(node);
+  const names = slot >= 0 ? fieldsOf(node, slot) : null;
+  const constant = setNameOf(node) || null;
+  const skipped = isOff(node);
+  const entries = (names ?? []).map((name) => ({
+    final: [name],
+    source: { node, slot },
+    constant,
+    input: "bundle",
+    skipped,
+    disabled: false,
+  }));
+  node.__aunTraceSetter = { at: now, entries };
+  return entries;
 }
 
 /** A merge node's plan, cached briefly: it is read on every redraw. */
@@ -976,11 +1045,12 @@ function outputName(output) {
 /**
  * The output pin at graph coordinates (x, y), or null.
  *
- * Mirrors the frontend's own slot layout: outputs with a `pos` sit there;
- * the rest stack from `slot_start_y` at 0.7 of a slot height. Nodes 2.0
- * positions pins from its rendered layout, which is not reachable from
- * here, so hover tracing is classic-canvas only (selection tracing covers
- * both).
+ * The frontend's own `getOutputPos()` is authoritative: it knows the real
+ * row for every pin, including widget-backed inputs, compact/collapse
+ * layouts and Nodes 2.0. A layout guess is only used by frontends without
+ * it. Nodes 2.0 positions pins from its rendered layout, which is not
+ * reachable from here, so hover tracing is classic-canvas only (selection
+ * tracing covers both).
  */
 function pinUnder(node, x, y) {
   const lg = globalThis.LiteGraph ?? {};
@@ -988,34 +1058,64 @@ function pinUnder(node, x, y) {
 
   const slotHeight = lg.NODE_SLOT_HEIGHT ?? 20;
   const half = slotHeight * 0.5;
-  const startY = node.constructor?.slot_start_y ?? 0;
   const outputs = node.outputs ?? [];
-  const vertical = outputs.filter((output) => !slotPos(output));
-  const edge = node.pos[0] + node.size[0] + 1 - half;
 
-  for (const output of outputs) {
-    const pos = slotPos(output);
-    const pinX = pos ? node.pos[0] + pos[0] : edge;
-    const pinY = pos
-      ? node.pos[1] + pos[1]
-      : node.pos[1] + startY
-        + (vertical.indexOf(output) + 0.7) * slotHeight;
-    if (Math.abs(x - pinX) <= PIN_TOLERANCE
-        && Math.abs(y - pinY) <= half) {
+  for (let index = 0; index < outputs.length; index++) {
+    const output = outputs[index];
+    if (!output) continue;
+    const point = slotUnderPos(node, index, false)
+      ?? outputPinGuess(node, output);
+    if (Math.abs(x - point[0]) <= PIN_TOLERANCE
+        && Math.abs(y - point[1]) <= half) {
       return output;
     }
   }
   return null;
 }
 
+/**
+ * Where the frontend says slot `index` is, in graph coordinates, or null.
+ * Handles the array and `{x, y}` (and typed-array) shapes it returns.
+ */
+function slotUnderPos(node, index, isInput) {
+  const fn = isInput ? node?.getInputPos : node?.getOutputPos;
+  if (typeof fn !== "function") return null;
+  try {
+    const pos = fn.call(node, index);
+    const pair = Array.isArray(pos) || ArrayBuffer.isView(pos);
+    const x = Number(pair ? pos[0] : pos?.x);
+    const y = Number(pair ? pos[1] : pos?.y);
+    return Number.isFinite(x) && Number.isFinite(y) ? [x, y] : null;
+  } catch (err) {
+    return null;               // a slot the frontend cannot place
+  }
+}
+
 /** A slot's explicit position, if it has one. */
 function slotPos(slot) {
   const pos = slot?.pos;
-  if (Array.isArray(pos) && pos.length >= 2) return [pos[0], pos[1]];
+  if ((Array.isArray(pos) || ArrayBuffer.isView(pos)) && pos.length >= 2) {
+    return [pos[0], pos[1]];
+  }
   if (pos && typeof pos.x === "number" && typeof pos.y === "number") {
     return [pos.x, pos.y];
   }
   return null;
+}
+
+/** Layout guess for a frontend without `getOutputPos()`. */
+function outputPinGuess(node, output) {
+  const lg = globalThis.LiteGraph ?? {};
+  const slotHeight = lg.NODE_SLOT_HEIGHT ?? 20;
+  const half = slotHeight * 0.5;
+  const startY = node.constructor?.slot_start_y ?? 0;
+  const pos = slotPos(output);
+  if (pos) return [node.pos[0] + pos[0], node.pos[1] + pos[1]];
+  const vertical = (node.outputs ?? []).filter((item) => !slotPos(item));
+  return [
+    node.pos[0] + node.size[0] + 1 - half,
+    node.pos[1] + startY + (vertical.indexOf(output) + 0.7) * slotHeight,
+  ];
 }
 
 /** Where a widget-input's pin sits: on its widget row, at the left edge. */
@@ -1029,9 +1129,9 @@ function widgetPin(node, input, half) {
 }
 
 /**
- * The input pin at graph coordinates (x, y), or null. Same layout rules as
- * `pinUnder`, mirrored to the left edge; a converted widget's pin sits on
- * its widget row.
+ * The input pin at graph coordinates (x, y), or null. `getInputPos()` is
+ * used when the frontend has it — the same source the collapse/compact
+ * layouts override, so a pin is hit where it is really drawn.
  */
 function inputPinUnder(node, x, y) {
   const lg = globalThis.LiteGraph ?? {};
@@ -1039,25 +1139,13 @@ function inputPinUnder(node, x, y) {
 
   const slotHeight = lg.NODE_SLOT_HEIGHT ?? 20;
   const half = slotHeight * 0.5;
-  const startY = node.constructor?.slot_start_y ?? 0;
   const inputs = node.inputs ?? [];
-  const vertical = inputs.filter((input) => !slotPos(input) && !input?.widget);
-  const edge = node.pos[0] + half;
 
-  for (const input of inputs) {
+  for (let index = 0; index < inputs.length; index++) {
+    const input = inputs[index];
     if (!input) continue;
-    let point = null;
-    const pos = slotPos(input);
-    if (pos) {
-      point = [node.pos[0] + pos[0], node.pos[1] + pos[1]];
-    } else if (input.widget) {
-      point = widgetPin(node, input, half);
-    } else {
-      point = [
-        edge,
-        node.pos[1] + startY + (vertical.indexOf(input) + 0.7) * slotHeight,
-      ];
-    }
+    const point = slotUnderPos(node, index, true)
+      ?? inputPinGuess(node, input, half);
     if (!point) continue;
     if (Math.abs(x - point[0]) <= PIN_TOLERANCE
         && Math.abs(y - point[1]) <= half) {
@@ -1065,6 +1153,22 @@ function inputPinUnder(node, x, y) {
     }
   }
   return null;
+}
+
+/** Layout guess for a frontend without `getInputPos()`. */
+function inputPinGuess(node, input, half) {
+  const lg = globalThis.LiteGraph ?? {};
+  const slotHeight = lg.NODE_SLOT_HEIGHT ?? 20;
+  const startY = node.constructor?.slot_start_y ?? 0;
+  const pos = slotPos(input);
+  if (pos) return [node.pos[0] + pos[0], node.pos[1] + pos[1]];
+  if (input.widget) return widgetPin(node, input, half);
+  const vertical = (node.inputs ?? [])
+    .filter((item) => item && !slotPos(item) && !item.widget);
+  return [
+    node.pos[0] + half,
+    node.pos[1] + startY + (vertical.indexOf(input) + 0.7) * slotHeight,
+  ];
 }
 
 /** A link's real origin, following Reroutes. */

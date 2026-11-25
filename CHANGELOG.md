@@ -4,10 +4,14 @@
 ## [Unreleased]
 
 ### Added
+- AUN Wildcard Add-To-Prompt: added a `freeze` option (UI label "Freeze populated text", visible in compact mode) that reuses and displays the most recent populated text instead of re-randomizing wildcards.
 
 ### Changed
 
 ### Fixed
+- Bundle tracing now works from plain bundle setters, not just from `Merge Bundles` and `Wireless Bundle`. Hovering a `Split Bundle`, OBVPM Unbundle or KJ Get output that is fed by (or reads the constant of) a setter such as an `AUNInputs*` loader now outlines that node and labels the field with the constant it comes from; selecting the reader outlines it, **Alt-click** jumps to it, and right-click → **Bundle sources…** lists every field. Reroutes and KJ Gets are never mistaken for setters.
+- Hover tracing now asks the frontend for each pin's real position (`getInputPos` / `getOutputPos`), so pins are hit where they are drawn in widget-heavy, compact and connection-collapsed nodes instead of by a row estimate. Hovering down a node no longer highlights sources that its pins have nothing to do with.
+- Selecting a plain bundle setter no longer makes the tracer outline it and print its whole field list above its title bar; selection targets stay `Merge Bundles`, `Wireless Bundle` and the readers.
 
 ### Notes
 

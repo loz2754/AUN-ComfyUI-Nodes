@@ -36,8 +36,9 @@ Wireless sources become real upstream dependencies and always execute — this n
 `AUN_merge_bundles.js` owns the shared bundle tracer (selection outlines, pin hover, Alt-click, **Bundle sources…**). It is producer-agnostic:
 
 - a **producer** is Merge Bundles or Wireless Bundle. `entriesFor(node)` asks a node with an `aunBundleFieldEntries` hook for `{final, source, input, skipped, disabled, error}` entries in the same shape as Merge's plan; otherwise it uses Merge's `bundlePlan`.
-- a **reader** is OBVPM's Unbundle, `AUNSplitBundle`, or a KJ Get. `producerFor(reader)` follows a wire (through Reroutes), a `get`/`constant` name, or a KJ Set's input to the producer.
-- hovering a reader's output pin resolves `field → entriesFor(producer)`; hovering any node's input pin follows the same chain from the consumer side (`traceThroughInput`).
+- any other **setter** (the AUN loaders, the other `set` nodes, OBVPM's Value Presets) is a trace source too: it has an `OBVPM_BUNDLE` output and publishes its field names, so every field traces back to the setter itself and is labelled with the constant it sets. Reroutes and KJ Gets are never mistaken for setters.
+- a **reader** is OBVPM's Unbundle, `AUNSplitBundle`, or a KJ Get. `producerFor(reader)` follows a wire (through Reroutes), a `get`/`constant` name, or a KJ Set's input to the producer or setter.
+- hovering a reader's output pin resolves `field → entriesFor(producer)`; hovering any node's input pin follows the same chain from the consumer side (`traceThroughInput`). Pin hit-testing asks the frontend for `getInputPos` / `getOutputPos`, so widget rows, compact mode and connection-collapsed nodes keep the pins and the pointer in step.
 - selecting a producer or reader outlines every source node; selecting a downstream node outlines the sources of the fields its inputs use.
 - the Wireless hook reports wireless rows as `input: "no wire"`, disabled rows as `disabled`, muted sources as `skipped`, and unresolved rows with an `error`, so the labels say `· no wire`, `· off`, `· muted`, or the reason.
 

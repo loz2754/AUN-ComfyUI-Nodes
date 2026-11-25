@@ -164,6 +164,8 @@ _LOCAL_WILDCARDS = _LocalWildcardProcessor()
 
 
 class AUNWildcardAddToPrompt(AUNAddToPrompt):
+    _last_populated_text = {}
+
     @classmethod
     def _selector_values(cls):
         wildcard_names = _LOCAL_WILDCARDS.get_wildcard_names(force_refresh=True)
@@ -225,6 +227,15 @@ class AUNWildcardAddToPrompt(AUNAddToPrompt):
                         "tooltip": "Whether to add the processed text: on, off, or random 50/50.",
                     },
                 ),
+                "freeze": (
+                    "BOOLEAN",
+                    {
+                        "default": False,
+                        "label_on": "Frozen",
+                        "label_off": "Live",
+                        "tooltip": "When enabled, reuse and display the most recent populated text instead of re-randomizing wildcards.",
+                    },
+                ),
             },
             "hidden": {"unique_id": "UNIQUE_ID", "extra_pnginfo": "EXTRA_PNGINFO"},
         }
@@ -273,13 +284,32 @@ class AUNWildcardAddToPrompt(AUNAddToPrompt):
         delimiter,
         order,
         mode,
+        freeze=False,
         prompt=None,
         unique_id=None,
         extra_pnginfo=None,
         set="",
     ):
         source_text = wildcards or ""
-        processed_text = self._process_wildcards(source_text)
+
+        uid = unique_id
+        if isinstance(uid, (list, tuple)):
+            uid = uid[0] if uid else None
+        uid_key = str(uid) if uid is not None else None
+
+        if freeze:
+            cached = self._last_populated_text.get(uid_key) if uid_key is not None else None
+            if cached is None:
+                processed_text = self._process_wildcards(source_text)
+                if uid_key is not None:
+                    self._last_populated_text[uid_key] = processed_text
+            else:
+                processed_text = cached
+        else:
+            processed_text = self._process_wildcards(source_text)
+            if uid_key is not None:
+                self._last_populated_text[uid_key] = processed_text
+
         result, addition_applied, order_normalized, mode_normalized = self._combine_prompt(
             prompt,
             processed_text,
@@ -294,6 +324,7 @@ class AUNWildcardAddToPrompt(AUNAddToPrompt):
             {
                 "node": "AUNWildcardAddToPrompt",
                 "mode": mode_normalized,
+                "freeze": bool(freeze),
                 "applied": bool(addition_applied),
                 "result": result,
                 "source_text": source_text,
@@ -309,7 +340,7 @@ class AUNWildcardAddToPrompt(AUNAddToPrompt):
         return {"ui": {"populated_text": [processed_text]}, "result": (result, processed_text, bundle)}
 
     @classmethod
-    def IS_CHANGED(cls, wildcards, wildcard_selector, delimiter, order, mode, prompt=None, **kwargs):
+    def IS_CHANGED(cls, wildcards, wildcard_selector, delimiter, order, mode, freeze=False, prompt=None, **kwargs):
         return time.time()
 
 

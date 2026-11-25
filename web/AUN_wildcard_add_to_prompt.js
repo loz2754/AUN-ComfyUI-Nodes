@@ -17,10 +17,11 @@ const ALL_WIDGETS = [
   "delimiter",
   "order",
   "mode",
+  "freeze",
   "populated_text",
   "set",
 ];
-const COMPACT_VISIBLE = new Set(["mode", "populated_text"]);
+const COMPACT_VISIBLE = new Set(["mode", "freeze", "populated_text"]);
 
 function appendWildcardToken(existingText, token) {
   const current = typeof existingText === "string" ? existingText : "";
@@ -443,6 +444,9 @@ app.registerExtension({
     const onNodeCreated = nodeType.prototype.onNodeCreated;
     nodeType.prototype.onNodeCreated = function () {
       onNodeCreated?.apply(this, arguments);
+
+      const freezeWidget = this.widgets?.find((w) => w.name === "freeze");
+      if (freezeWidget) freezeWidget.label = "Freeze populated text";
 
       // ── Selector callback wiring ──
       const textWidget = this.widgets?.find(
