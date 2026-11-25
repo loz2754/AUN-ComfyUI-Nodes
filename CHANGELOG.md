@@ -4,6 +4,16 @@
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Fixed
+
+### Notes
+
+## [2.35.15] - 2026-11-25
+
+### Added
 - AUN Wildcard Add-To-Prompt: added a `freeze` option (UI label "Freeze populated text", visible in compact mode) that reuses and displays the most recent populated text instead of re-randomizing wildcards.
 
 ### Changed
@@ -14,7 +24,6 @@
 - Selecting a plain bundle setter no longer makes the tracer outline it and print its whole field list above its title bar; selection targets stay `Merge Bundles`, `Wireless Bundle` and the readers.
 
 ### Notes
-
 ## [2.35.14] - 2026-11-22
 
 ### Added
