@@ -48,7 +48,9 @@ and position the last run used (`300 × 200 → 512 × 512 · 1 / 4`).
 
 ## Size
 
-Only the numbers the chosen mode reads are shown.
+**Size** and every number it reads live under **More** on the card, so the
+node stays compact; open **More** to change them. Only the numbers the chosen
+mode reads are shown.
 
 | Size | What it does | Reads |
 |---|---|---|
@@ -70,11 +72,15 @@ Only the numbers the chosen mode reads are shown.
 **Keep** picks the part a crop keeps: `center`, edges and corners. You can
 also click the small before picture — the click's third picks the part.
 
-Under **More**: **Method** (lanczos, bicubic, bilinear, nearest,
-nearest-exact, area), **Enlarge** (off = never make a picture bigger), and
-**Filename words** (`max_num_words`).
+Under **More**: **Size** and its settings, **Method** (lanczos, bicubic,
+bilinear, nearest, nearest-exact, area), **Enlarge** (off = never make a
+picture bigger), **Filename words** (`max_num_words`), **Result preview**, and
+**Bundle name**.
 
 **Preview** off skips writing the preview file under the node.
+
+Once you resize the node by hand, changing modes or opening and closing
+**More** no longer changes its size.
 
 ## The picture on the node
 

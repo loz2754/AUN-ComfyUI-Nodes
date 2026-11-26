@@ -154,6 +154,7 @@ export function mountCard(node, { rows, minWidth = 320, hide = [] } = {}) {
     node, root, rows: [], groups: {}, height: 0, widget: null,
     rowTop: new Map(), rowSpan: new Map(), autoHeight: null,
     disposed: false, byHand: false, socketed: [],
+    userHeight: false, applyingSize: false,
   };
   node.__aunCard = state;
 
@@ -429,17 +430,26 @@ export function mountCard(node, { rows, minWidth = 320, hide = [] } = {}) {
       + ROW_GAP * (visible.length - 1);
   }
 
+  const setNodeSize = (width, height) => {
+    state.applyingSize = true;
+    try {
+      node.setSize?.([width, height]);
+    } finally {
+      state.applyingSize = false;
+    }
+  };
+
   function applyNodeSize() {
+    // Once the person has sized the node themselves (or a workflow restored
+    // its saved size), the card never resizes it again.
+    if (state.userHeight) return;
     const width = Math.max(minWidth, Number(node.size?.[0]) || minWidth);
     const floor = Number(node.computeSize?.()[1]) || state.height + WRAPPER_INSET;
     const current = Number(node.size?.[1]) || 0;
     if (state.autoHeight === null) state.autoHeight = current;
-    const userSized = Math.abs(current - state.autoHeight) > 1;
-    if (!userSized || current < floor - 1) {
-      if (Math.abs(current - floor) > 1) node.setSize?.([width, floor]);
-      state.autoHeight = floor;
-    }
-    if (width < minWidth) node.setSize?.([minWidth, node.size?.[1] ?? floor]);
+    if (Math.abs(current - floor) > 1) setNodeSize(width, floor);
+    state.autoHeight = floor;
+    if (width < minWidth) setNodeSize(minWidth, node.size?.[1] ?? floor);
   }
 
   function refresh() {
@@ -559,6 +569,20 @@ export function mountCard(node, { rows, minWidth = 320, hide = [] } = {}) {
     if (target) chainWidgetCallback(target, () => refresh());
   }
 
+  // A size the person set by hand is theirs: from then on mode changes and
+  // row folds only change what the card draws, never the node's size.
+  const previousResize = node.onResize;
+  node.onResize = function () {
+    const result = previousResize?.apply(this, arguments);
+    if (!state.applyingSize && !state.disposed) {
+      const height = Number(node.size?.[1]);
+      if (Number.isFinite(height) && (state.autoHeight === null || Math.abs(height - state.autoHeight) > 1)) {
+        state.userHeight = true;
+      }
+    }
+    return result;
+  };
+
   const previousConfigure = node.onConfigure;
   node.onConfigure = function (info) {
     const result = previousConfigure?.apply(this, arguments);
@@ -569,11 +593,11 @@ export function mountCard(node, { rows, minWidth = 320, hide = [] } = {}) {
         if (target) hideMirrored(target);
       }
       const savedHeight = Number(info?.size?.[1]);
+      // A saved size is the workflow's size: keep it exactly.
+      if (Number.isFinite(savedHeight) && savedHeight > 0) state.userHeight = true;
       refresh();
-      // A workflow saved with a taller node keeps its height; only a node
-      // that is too short for its rows grows.
       if (Number.isFinite(savedHeight) && savedHeight > (node.size?.[1] ?? 0)) {
-        node.setSize?.([Math.max(minWidth, node.size?.[0] ?? minWidth), savedHeight]);
+        setNodeSize(Math.max(minWidth, node.size?.[0] ?? minWidth), savedHeight);
       }
       state.autoHeight = Number(node.size?.[1]) || state.autoHeight;
       node.setDirtyCanvas?.(true, true);
