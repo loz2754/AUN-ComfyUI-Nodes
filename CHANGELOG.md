@@ -6,12 +6,21 @@
 ### Added
 
 ### Changed
-- AUN Load Image Pro: **Size** and every setting it reads, plus **Bundle name**, now live under **More**, which starts closed — the card is much more compact. The node also keeps any size you set by hand: changing modes or folding/unfolding **More** no longer resizes it, and a workflow restores its saved height exactly.
 
 ### Fixed
 
 ### Notes
 
+## [2.36.1] - 2026-11-26
+
+### Added
+
+### Changed
+- AUN Load Image Pro: **Size** and every setting it reads, plus **Bundle name**, now live under **More**, which starts closed — the card is much more compact. The node also keeps any size you set by hand: changing modes or folding/unfolding **More** no longer resizes it, and a workflow restores its saved height exactly.
+
+### Fixed
+
+### Notes
 ## [2.36.0] - 2026-11-26
 
 ### Added
