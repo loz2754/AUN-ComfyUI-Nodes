@@ -24,6 +24,9 @@ const AUN_NODE_TYPES = new Set([
   "AUNMultiGroupUniversal",
   "ANCMultiUniversal",
   "ANCMultiGroupUniversal",
+  // Card node: every widget it mirrors is hidden, so older frontends that
+  // drop hidden widgets from graphToPrompt must not lose these values.
+  "AUNImageLoaderPro",
 ]);
 
 function shouldSkipWidget(w) {

@@ -18,6 +18,10 @@ const SKIP_CLASSES = new Set([
   "AUNStringListBuilder",
   "AUNScanAndShowWidgets",
   "AUNImageSliderComparer", "AUNAddToPromptMulti",
+  // The card mirrors widgets into its own rows (conditional rows + More
+  // group); the global hook's height maths would fight it. Its own
+  // socket-only Collapse Connections lives in AUN_load_image_pro.js.
+  "AUNImageLoaderPro",
   "AUNManualAutoImageSwitch",
   "AUNWildcardAddToPrompt",
   "AUNLoraStackWithTriggers", "AUNLoraStackWithTriggersModelClip", "AUNLoRAsByPromptIndex", "AUNRandomLoraModelOnly", "AUNRandomLoraModelOnlyMulti",

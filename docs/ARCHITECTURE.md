@@ -14,7 +14,8 @@ it, and where to start when building something new.
 | `misc.py` (helpers only) | path helpers, `tensor2pil`, `get_sha256`, `AnyType` | `AUNSaveImage`, `AUNSaveVideo`, `AUNPathFilenameVideoResolved` |
 | `aun_path_filename_shared.py` | `%token%` templates, `build_path`, `crop_name`, sidecar text | `AUNPathFilenameV2`, `AUNPathFilenameVideo(V2)`, `AUNSaveImageV2`, `AUNSaveVideoV2`, `AUNFilenameResolverPreviewV2` |
 | `aun_lora_extraction_shared.py` | `extract_basic_loras_from_inputs` | `AUNSaveImage`, `AUNSaveVideo`, `AUNExtractPowerLoras` |
-| `aun_input_files_shared.py` | `list_input_images` (recursive relative paths in `input/`) | `AUNImgLoader`, `AUNImg2Img`, `AUNImageLoadResize`, `AUNImageSingleBatch3` |
+| `aun_input_files_shared.py` | `list_input_images` (recursive relative paths in `input/`) | `AUNImgLoader`, `AUNImg2Img`, `AUNImageLoadResize`, `AUNImageSingleBatch3`, `AUNImageLoaderPro` |
+| `aun_load_image_shared.py` | `plan_load_size` / `apply_load_size`, size modes + FramePack buckets, filename cleaning, folder listing, search patterns, index ranges | `AUNImageLoaderPro` (the older loaders keep their local copies for now) |
 | `AUNApplyPresetToNode.py` (helpers) | `_find_target`, `_write_values_into_node`, `_apply_aliases`, `_filter_values`, `_order_targets_after` / `_inject_order_dependency` | itself + `AUNPresetManager.py` (execution-time preset application; see `docs/preset-manager-execution-ordering.md`) |
 | `AUNSaveImage_helpers.py` | private helpers for `AUNSaveImage` only (lora/text/date/path) | `AUNSaveImage` |
 | `AUNJoinVideos.py` | `JoinVideosInDirectory` (internal to `AUNSaveVideo`, unregistered) | `AUNSaveVideo` |
@@ -43,6 +44,8 @@ directly) — never copy the function into a node file.
 | `aun_lora_dropdown_shared.js`, `aun_lora_info_shared.js` | clickable LoRA labels, info dialog | LoRA frontend files |
 | `aun_bundle_constants.js` | `fieldsOf`, `findSetter`, `resolveConstantSource`, `registerPromptPass`, `walkPromptNodes`, `applyGeneratedTitle`, output-slot helpers | `AUN_merge_bundles`, `AUN_split_bundle`, `AUN_wireless_bundle`, `AUN_bundle_slot_fix` |
 | `aun_dialog_shared.js` | `createDialog`, `dialogButton`, `sectionLabel`, `emptyHint`, `dragGrip`, `enableDragReorder` | `AUN_merge_bundles`, `AUN_split_bundle` |
+| `aun_card_theme.js`, `aun_card_scrub.js`, `aun_widget_card.js` | AusBoss-style card panel: `mountCard`, scrub number field, `comboValues`, `commitWidgetValue` | `AUN_load_image_pro.js` (the only card node so far; a future card node imports these instead of copying) |
+| `aun_load_size.js` | browser mirror of `plan_load_size`: `planLoadSize`, `sizeText`, `shapeText`, `changeText`, `thumbSizes`, `keptPart`, `cropSideAt`, `stepFile`, `placeText` | `AUN_load_image_pro.js`; checked against the backend by `tools/check_load_size_parity.py` |
 
 Known duplication (being worked through): `getWidget` redefined locally in
 ~10 files, `isCompact`/`setCompact` in ~7 — mostly the older large files

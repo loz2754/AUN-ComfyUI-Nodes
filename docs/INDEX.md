@@ -22,6 +22,7 @@ Generated list of documentation files under `docs/`.
 - [AUNImageSingleBatch3](./AUNImageSingleBatch3_README.md)
 - [AUNManualAutoImageSwitch](./AUNManualAutoImageSwitch_README.md)
 - [AUNImageLoadResize](./AUNImageLoadResize_README.md)
+- [AUNImageLoaderPro](./AUNImageLoaderPro_README.md)
 - [AUNImageResize](./AUNImageResize_README.md)
 - [AUNImageSliderComparer](./AUNImageSliderComparer_README.md)
 - [AUNImg2Img](./AUNImg2Img_README.md)

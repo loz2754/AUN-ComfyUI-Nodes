@@ -29,6 +29,7 @@ from .AUNGetConnectedNodeTitles import AUNGetConnectedNodeTitles
 from .AUNGraphScraper import AUNGraphScraper
 from .AUNH3Batch import AUNH3BatchSplit, AUNH3SplitVideoBatch
 from .AUNImageLoadResize import AUNImageLoadResize
+from .AUNImageLoaderPro import AUNImageLoaderPro
 from .AUNImageResize import AUNImageResize
 from .AUNImageSingleBatch3 import AUNImageSingleBatch3
 from .AUNImageSliderComparer import AUNImageSliderComparer
@@ -144,6 +145,7 @@ NODE_CLASS_MAPPINGS = {
     "AUNH3BatchSplit": AUNH3BatchSplit,
     "AUNH3SplitVideoBatch": AUNH3SplitVideoBatch,
     "AUNImageLoadResize": AUNImageLoadResize,
+    "AUNImageLoaderPro": AUNImageLoaderPro,
     "AUNImageResize": AUNImageResize,
     "AUNImageSingleBatch3": AUNImageSingleBatch3,
     "AUNImageSliderComparer": AUNImageSliderComparer,
@@ -256,6 +258,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "AUNH3BatchSplit": "MiniMax H3 Batch (Split Per Image)",
     "AUNH3SplitVideoBatch": "MiniMax H3 Split Video Batch",
     "AUNImageLoadResize": "Load & Resize Image",
+    "AUNImageLoaderPro": "AUN Load Image Pro",
     "AUNImageResize": "Resize Image",
     "AUNImageSingleBatch3": "Load Image Single/Batch",
     "AUNImageSliderComparer": "AUN Image Slider Comparer",

@@ -4,6 +4,7 @@
 ## [Unreleased]
 
 ### Added
+- AUN Load Image Pro (`AUNImageLoaderPro`): a card-style all-in-one image loader that takes the best of AusBoss's Load Image (`AUSBOSS_NODES_LoadImage`), AUN Load & Resize Image (`AUNImageLoadResize`) and AUN Load Image Single/Batch (`AUNImageSingleBatch3`). Single upload or folder batch (increment/decrement/random/fixed/range/search with wildcard, regex and `Name [7-14]` patterns), live before/after preview with click-to-pick crop, live "in → out" size line, and 11 size modes (megapixels, longest side, scale, fit inside, fit + pad, crop to fill, crop, crop to ratio, stretch, FramePack bucket, off). Outputs image, mask, raw and cleaned filename, size, original size and an OBVPM bundle. Backed by `aun_load_image_shared.py` and the new `web/aun_*` card helpers.
 
 ### Changed
 
